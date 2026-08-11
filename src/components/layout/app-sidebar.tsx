@@ -1,0 +1,91 @@
+"use client";
+
+import * as React from "react";
+import { usePathname } from "next/navigation";
+import { ChevronDown } from "lucide-react";
+import { motion } from "framer-motion";
+
+import { cn } from "@/lib/utils";
+import { isNavActive, type NavSection } from "@/lib/nav";
+import { NavLink } from "@/components/layout/nav-link";
+import { Logo } from "@/components/layout/logo";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
+export interface AppSidebarProps {
+  sections: NavSection[];
+}
+
+// FASE 5.5 — Sidebar agrupada por secciones colapsables (desktop >= 1024px).
+export function AppSidebar({ sections }: AppSidebarProps) {
+  const pathname = usePathname();
+  const [expanded, setExpanded] = React.useState(true);
+
+  React.useEffect(() => {
+    const update = () => {
+      const w = getComputedStyle(document.documentElement)
+        .getPropertyValue("--sidebar-width")
+        .trim();
+      setExpanded(!w || parseInt(w, 10) > 80);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  return (
+    <div className="flex h-full w-full flex-col">
+      <div className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+        <Logo size={20} className="rounded-lg" />
+        {expanded && (
+          <span className="text-sm font-semibold tracking-tight">Multi-POS</span>
+        )}
+      </div>
+
+      <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
+        {sections.map((section) => {
+          const openedByDefault =
+            section.items.some((item) => isNavActive(item, pathname)) ||
+            section.title === sections[0]?.title;
+          return (
+            <Collapsible
+              key={section.title ?? "default"}
+              defaultOpen={openedByDefault}
+              className="group/collapsible"
+            >
+              <CollapsibleTrigger className="flex h-7 w-full items-center justify-between rounded-md px-2 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/50 transition-colors hover:text-sidebar-foreground">
+                <span>{section.title}</span>
+                {expanded && (
+                  <ChevronDown className="size-3.5 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="space-y-0.5 pb-1 pt-0.5">
+                  {section.items.map((item) => (
+                    <motion.div
+                      key={item.href}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <NavLink item={item} />
+                    </motion.div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          );
+        })}
+      </nav>
+
+      <div className="shrink-0 border-t p-3">
+        <p className={cn("text-[0.65rem] text-sidebar-foreground/40", !expanded && "hidden")}>
+          Sistema Multi-POS v0.1
+        </p>
+      </div>
+    </div>
+  );
+}
