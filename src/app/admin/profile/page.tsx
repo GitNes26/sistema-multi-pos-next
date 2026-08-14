@@ -15,7 +15,7 @@ export default async function ProfilePage() {
   if (!session?.user) redirect("/auth/login");
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="w-full">
       <PageHeader
         icon={<UserRound className="size-5" />}
         title="Mi perfil"

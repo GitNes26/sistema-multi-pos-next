@@ -18,7 +18,7 @@ export default async function AdminMenusPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="w-full">
       <PageHeader
         icon={<Menu className="size-5" />}
         title="Gestión de menú"

@@ -18,7 +18,7 @@ export default async function PaymentsSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="w-full">
       <PageHeader
         icon={<CreditCard className="size-5" />}
         title="Pasarelas de pago"

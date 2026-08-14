@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { useThemeStore } from "@/stores/theme-store";
+import { useState } from "react"
+import { useThemeStore } from "@/stores/theme-store"
 import {
   mergeAppearance,
   THEMES,
@@ -14,45 +14,63 @@ import {
   type CardSize,
   type FontFamily,
   type SidebarStyle,
-} from "@/lib/appearance";
-import { DEFAULT_APP_SETTINGS } from "@/lib/db/app-settings";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Check, Loader2, Monitor, Moon, Palette, Save, Sun, Zap } from "lucide-react";
-import { cn } from "@/lib/utils";
+} from "@/lib/appearance"
+import { DEFAULT_APP_SETTINGS } from "@/lib/db/app-settings"
+import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import {
+  Check,
+  Loader2,
+  Monitor,
+  Moon,
+  Palette,
+  Save,
+  Sun,
+  Zap,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
 
-const THEME_LABELS: Record<ThemeMode, { label: string; icon: React.ReactNode }> = {
+const THEME_LABELS: Record<
+  ThemeMode,
+  { label: string; icon: React.ReactNode }
+> = {
   system: { label: "Sistema", icon: <Monitor /> },
   light: { label: "Claro", icon: <Sun /> },
   dark: { label: "Oscuro", icon: <Moon /> },
   pos: { label: "POS", icon: <Zap /> },
-};
+}
 
 const DENSITY_LABELS: Record<Density, string> = {
   compact: "Compacto",
   comfortable: "Cómodo",
   spacious: "Espacioso",
-};
+}
 
 const CARD_LABELS: Record<CardSize, string> = {
   sm: "Pequeñas",
   md: "Medianas",
   lg: "Grandes",
-};
+}
 
 const FONT_LABELS: Record<FontFamily, string> = {
   montserrat: "Montserrat",
   poppins: "Poppins",
   system: "Sistema",
-};
+}
 
 const SIDEBAR_LABELS: Record<SidebarStyle, string> = {
   full: "Completa",
   compact: "Compacta",
   icon: "Iconos",
-};
+}
 
 function Swatch({ hue }: { hue: number }) {
   return (
@@ -63,7 +81,7 @@ function Swatch({ hue }: { hue: number }) {
       />
       <span className="font-mono text-xs text-muted-foreground">{hue}°</span>
     </div>
-  );
+  )
 }
 
 function Segmented<T extends string>({
@@ -72,19 +90,22 @@ function Segmented<T extends string>({
   labels,
   onChange,
 }: {
-  value: T;
-  options: readonly T[];
-  labels: Record<T, string> | Record<T, { label: string; icon: React.ReactNode }>;
-  onChange: (v: T) => void;
+  value: T
+  options: readonly T[]
+  labels:
+    Record<T, string> | Record<T, { label: string; icon: React.ReactNode }>
+  onChange: (v: T) => void
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {options.map((opt) => {
-        const item = labels[opt];
-        const isString = typeof item === "string";
-        const label = isString ? (item as string) : (item as { label: string }).label;
-        const icon = !isString ? (item as { icon: React.ReactNode }).icon : null;
-        const active = opt === value;
+        const item = labels[opt]
+        const isString = typeof item === "string"
+        const label = isString
+          ? (item as string)
+          : (item as { label: string }).label
+        const icon = !isString ? (item as { icon: React.ReactNode }).icon : null
+        const active = opt === value
         return (
           <button
             key={opt}
@@ -100,41 +121,43 @@ function Segmented<T extends string>({
             {icon}
             {label}
           </button>
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
 export function AppearanceSettingsForm() {
-  const theme = useThemeStore((s) => s.theme);
-  const tenant = useThemeStore((s) => s.tenant);
-  const overrides = useThemeStore((s) => s.overrides);
-  const setTheme = useThemeStore((s) => s.setTheme);
-  const setOverride = useThemeStore((s) => s.setAppearanceOverride);
-  const resetOverrides = useThemeStore((s) => s.resetAppearanceOverrides);
-  const setTenant = useThemeStore((s) => s.setTenant);
+  const theme = useThemeStore((s) => s.theme)
+  const tenant = useThemeStore((s) => s.tenant)
+  const overrides = useThemeStore((s) => s.overrides)
+  const setTheme = useThemeStore((s) => s.setTheme)
+  const setOverride = useThemeStore((s) => s.setAppearanceOverride)
+  const resetOverrides = useThemeStore((s) => s.resetAppearanceOverrides)
+  const setTenant = useThemeStore((s) => s.setTenant)
 
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
-  const appearance = mergeAppearance(tenant, overrides);
+  const appearance = mergeAppearance(tenant, overrides)
 
   function applyLocal(patch: Partial<typeof appearance>) {
-    setOverride(patch);
+    setOverride(patch)
   }
 
   async function saveForCompany() {
-    setSaving(true);
-    setSaved(false);
+    setSaving(true)
+    setSaved(false)
     const res = await fetch("/api/settings/appearance", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ theme, ...appearance }),
-    });
-    const data = (await res.json().catch(() => null)) as { settings?: typeof DEFAULT_APP_SETTINGS } | null;
-    setSaving(false);
-    if (!res.ok) return;
+    })
+    const data = (await res.json().catch(() => null)) as {
+      settings?: typeof DEFAULT_APP_SETTINGS
+    } | null
+    setSaving(false)
+    if (!res.ok) return
     setTenant({
       primaryHue: data!.settings!.primaryHue,
       accentHue: data!.settings!.accentHue,
@@ -144,32 +167,33 @@ export function AppearanceSettingsForm() {
       borderRadius: data!.settings!.borderRadius,
       cardSize: data!.settings!.cardSize as never,
       sidebarStyle: data!.settings!.sidebarStyle as never,
-    });
-    resetOverrides();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    })
+    resetOverrides()
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   async function resetCompany() {
-    setSaving(true);
+    setSaving(true)
     const res = await fetch("/api/settings/appearance", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(DEFAULT_APP_SETTINGS),
-    });
-    setSaving(false);
-    if (!res.ok) return;
-    setTenant({ ...DEFAULT_APP_SETTINGS } as never);
-    resetOverrides();
+    })
+    setSaving(false)
+    if (!res.ok) return
+    setTenant({ ...DEFAULT_APP_SETTINGS } as never)
+    resetOverrides()
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto w-full space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Apariencia</h1>
           <p className="text-sm text-muted-foreground">
-            Tema y estilo del sistema para toda la empresa. Los cambios se aplican al instante.
+            Tema y estilo del sistema para toda la empresa. Los cambios se
+            aplican al instante.
           </p>
         </div>
         {saved && (
@@ -179,17 +203,24 @@ export function AppearanceSettingsForm() {
         )}
       </div>
 
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Monitor className="size-4" /> Tema
           </CardTitle>
           <CardDescription>
-            Claro, oscuro, POS (dark de alta densidad) o siguiendo el sistema del dispositivo.
+            Claro, oscuro, POS (dark de alta densidad) o siguiendo el sistema
+            del dispositivo.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Segmented value={theme} options={THEMES} labels={THEME_LABELS} onChange={setTheme} />
+          <Segmented
+            value={theme}
+            options={THEMES}
+            labels={THEME_LABELS}
+            onChange={setTheme}
+          />
         </CardContent>
       </Card>
 
@@ -199,7 +230,8 @@ export function AppearanceSettingsForm() {
             <Palette className="size-4" /> Colores
           </CardTitle>
           <CardDescription>
-            El tono primario para botones/acciones y el de acento para resaltados.
+            El tono primario para botones/acciones y el de acento para
+            resaltados.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -218,7 +250,9 @@ export function AppearanceSettingsForm() {
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label3 helper="Usado en acentos y estados seleccionados">Color de acento</Label3>
+              <Label3 helper="Usado en acentos y estados seleccionados">
+                Color de acento
+              </Label3>
               <Swatch hue={appearance.accentHue} />
             </div>
             <Slider
@@ -258,7 +292,9 @@ export function AppearanceSettingsForm() {
               max={1.3}
               step={0.05}
               value={[appearance.fontScale]}
-              onValueChange={(v) => applyLocal({ fontScale: Number(v[0].toFixed(2)) })}
+              onValueChange={(v) =>
+                applyLocal({ fontScale: Number(v[0].toFixed(2)) })
+              }
             />
           </div>
         </CardContent>
@@ -321,6 +357,7 @@ export function AppearanceSettingsForm() {
           </div>
         </CardContent>
       </Card>
+      </div>
 
       <Separator />
 
@@ -329,23 +366,33 @@ export function AppearanceSettingsForm() {
           {saving ? <Loader2 className="animate-spin" /> : <Save />}
           Guardar para la empresa
         </Button>
-        <Button variant="outline" onClick={() => void resetCompany()} disabled={saving}>
+        <Button
+          variant="outline"
+          onClick={() => void resetCompany()}
+          disabled={saving}
+        >
           Restablecer valores de la empresa
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Los cambios se guardan también en este dispositivo en tiempo real (preferencias locales en
-        localStorage, sincronizadas entre pestañas).
+        Los cambios se guardan también en este dispositivo en tiempo real
+        (preferencias locales en localStorage, sincronizadas entre pestañas).
       </p>
     </div>
-  );
+  )
 }
 
-function Label3({ children, helper }: { children: React.ReactNode; helper?: string }) {
+function Label3({
+  children,
+  helper,
+}: {
+  children: React.ReactNode
+  helper?: string
+}) {
   return (
     <div>
       <p className="text-sm font-medium">{children}</p>
       {helper && <p className="text-xs text-muted-foreground">{helper}</p>}
     </div>
-  );
+  )
 }

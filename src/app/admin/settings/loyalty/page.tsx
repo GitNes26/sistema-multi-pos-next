@@ -18,7 +18,7 @@ export default async function LoyaltySettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="w-full">
       <PageHeader
         icon={<Sparkles className="size-5" />}
         title="Lealtad y puntos"

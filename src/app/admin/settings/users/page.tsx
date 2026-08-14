@@ -18,7 +18,7 @@ export default async function UsersSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="w-full">
       <PageHeader
         icon={<Users className="size-5" />}
         title="Usuarios y permisos"

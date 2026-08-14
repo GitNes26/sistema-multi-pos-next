@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/logo";
 import { SearchDialog, SearchTrigger } from "@/components/layout/search-dialog";
 import { NotificationsBell } from "@/components/layout/notifications-bell";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu, type UserMenuUser } from "@/components/layout/user-menu";
 import { useUiStore } from "@/stores/ui-store";
 
@@ -65,6 +66,7 @@ export function AppHeader({ sections, user }: AppHeaderProps) {
         </div>
 
         <div className="flex items-center gap-1">
+          <ThemeToggle />
           <NotificationsBell />
           <UserMenu user={user} />
         </div>

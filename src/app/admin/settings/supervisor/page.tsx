@@ -18,7 +18,7 @@ export default async function SupervisorSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="w-full">
       <PageHeader
         icon={<ShieldCheck className="size-5" />}
         title="Aprobación de supervisor"

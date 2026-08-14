@@ -18,7 +18,7 @@ export default async function CompanySettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="w-full">
       <PageHeader
         icon={<Building2 className="size-5" />}
         title="Datos de empresa"
