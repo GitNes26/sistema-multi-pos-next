@@ -1,0 +1,76 @@
+"use client";
+
+import { ClipboardList, LogOut, Unlock, LockKeyhole } from "lucide-react";
+import { signOut } from "next-auth/react";
+import { usePosStore } from "@/stores/pos-store";
+import { money } from "@/lib/pos/money";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/layout/logo";
+
+interface PosHeaderProps {
+  onOpenCatalogs: () => void;
+  onOpenCash: () => void;
+}
+
+export function PosHeader({ onOpenCatalogs, onOpenCash }: PosHeaderProps) {
+  const session = usePosStore((s) => s.session);
+  const cashier = usePosStore((s) => s.cashier);
+  const location = usePosStore((s) => s.location);
+
+  return (
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card/80 px-3 backdrop-blur lg:px-4">
+      <Logo className="h-8 w-auto" />
+      <div className="hidden min-w-0 sm:block">
+        <p className="text-sm font-bold leading-tight">Punto de venta</p>
+        <p className="truncate text-[11px] leading-tight text-muted-foreground">
+          {location.name} · {cashier.name || "Cajero"}
+        </p>
+      </div>
+
+      <div className="ml-auto flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onOpenCash}
+          className={cn(
+            "flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition hover:bg-muted",
+            session && session.status === "open"
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              : "border-destructive/40 bg-destructive/10 text-destructive"
+          )}
+          title="Abrir / cerrar caja"
+        >
+          {session && session.status === "open" ? (
+            <>
+              <Unlock className="size-3.5" />
+              <span className="hidden md:inline">
+                {session.registerName} · fondo {money(session.openingCash)}
+              </span>
+              <span className="md:hidden">Caja abierta</span>
+            </>
+          ) : (
+            <>
+              <LockKeyhole className="size-3.5" />
+              <span className="hidden md:inline">Caja cerrada — abrir</span>
+              <span className="md:hidden">Caja</span>
+            </>
+          )}
+        </button>
+
+        <Button variant="ghost" size="icon" onClick={onOpenCatalogs} aria-label="Catálogos y pedidos">
+          <ClipboardList className="size-4" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => void signOut({ callbackUrl: "/auth/login" })}
+          className="text-muted-foreground"
+        >
+          <LogOut className="size-4" />
+          <span className="hidden md:inline">Salir</span>
+        </Button>
+      </div>
+    </header>
+  );
+}

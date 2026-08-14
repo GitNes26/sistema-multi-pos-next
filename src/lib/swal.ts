@@ -50,6 +50,43 @@ export function swalToast(
   })
 }
 
+/** Toast de notificación entrante (FASE 11.4) con título + descripción. */
+export function swalNotificationToast(n: {
+  title: string;
+  description?: string;
+  href?: string;
+}) {
+  return Swal.fire({
+    ...baseOptions(),
+    toast: true,
+    position: "top-end",
+    timer: 5000,
+    timerProgressBar: true,
+    showConfirmButton: false,
+    showCloseButton: true,
+    allowOutsideClick: false,
+    customClass: {
+      ...baseOptions().customClass,
+      popup: "swal2-popup-custom swal2-toast swal2-toast-notif",
+    },
+    title: n.title,
+    html: n.description
+      ? `<div class="swal2-notification-desc">${n.description}</div>`
+      : undefined,
+    didOpen: (el) => {
+      const href = n.href;
+      if (href) {
+        el.addEventListener("click", () => {
+          if (window.location.pathname !== href) {
+            window.location.assign(href);
+          }
+          Swal.close();
+        });
+      }
+    },
+  })
+}
+
 export function swalMessage(title: string, icon: SwalIcon = "info") {
   return Swal.fire({
     ...baseOptions(),

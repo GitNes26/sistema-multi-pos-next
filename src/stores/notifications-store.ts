@@ -57,6 +57,26 @@ function countUnread(items: AppNotification[]): number {
   return items.filter((n) => !n.read).length;
 }
 
+function apiUrl(path: string): string {
+  return `/api/notifications${path}`;
+}
+
+async function markReadRemote(id: string) {
+  try {
+    await fetch(apiUrl(`/${id}`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ read: true }) });
+  } catch {
+    // La marca local prevalece; el reintento ocurre con la próxima acción.
+  }
+}
+
+async function markAllReadRemote() {
+  try {
+    await fetch(apiUrl("/read-all"), { method: "POST" });
+  } catch {
+    // silencioso
+  }
+}
+
 export const useNotificationStore = create<NotificationsState>((set) => ({
   items: [],
   connected: false,
@@ -67,18 +87,22 @@ export const useNotificationStore = create<NotificationsState>((set) => ({
       unread: s.unread + (n.read ? 0 : 1),
     })),
   setItems: (items) => set({ items, unread: countUnread(items) }),
-  markRead: (id) =>
+  markRead: (id) => {
+    markReadRemote(id);
     set((s) => {
       const items = s.items.map((n) =>
         n.id === id ? { ...n, read: true } : n
       );
       return { items, unread: countUnread(items) };
-    }),
-  markAllRead: () =>
+    });
+  },
+  markAllRead: () => {
+    markAllReadRemote();
     set((s) => ({
       items: s.items.map((n) => ({ ...n, read: true })),
       unread: 0,
-    })),
+    }));
+  },
   setConnected: (connected) => set({ connected }),
   seedDemo: () =>
     set({

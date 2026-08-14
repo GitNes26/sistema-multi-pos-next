@@ -14,6 +14,12 @@
 
 # Cada ítem lleva ✅ cuando se implementa completamente.
 
+# Cuando TODOS los subpuntos/viñetas de un punto padre ya están completos,
+
+# marca también ese punto padre con ✅ (se propaga en todos los niveles).
+
+# Si un punto padre queda completo al terminar sus hijos, márcalo igualmente.
+
 # Orden: por FASES, dentro de cada fase por MÓDULOS.
 
 # Hosting: VPS Hostinger + Dokploy
@@ -32,27 +38,27 @@
 6. [Relaciones y Jerarquía](#6-relaciones-y-jerarquía)
 7. [Autenticación y Autorización](#7-autenticación-y-autorización)
 8. [Sistema de Apariencia](#8-sistema-de-apariencia)
-9. [FASE 0 — Infraestructura](#fase-0--infraestructura-y-configuración-base)
-10. [FASE 1 — Base de Datos](#fase-1--base-de-datos)
-11. [FASE 2 — Autenticación](#fase-2--autenticación-y-autorización)
-12. [FASE 3 — Apariencia](#fase-3--sistema-de-apariencia)
+9. [FASE 0 — Infraestructura](#fase-0--infraestructura-y-configuración-base) ✅
+10. [FASE 1 — Base de Datos](#fase-1--base-de-datos) ✅
+11. [FASE 2 — Autenticación](#fase-2--autenticación-y-autorización) ✅
+12. [FASE 3 — Apariencia](#fase-3--sistema-de-apariencia) ✅
 13. [FASE 4 — Componentes Base](#fase-4--componentes-base) ✅
 14. [FASE 5 — Layout y Navegación](#fase-5--layout-y-navegación) ✅
-15. [FASE 6 — POS](#fase-6--punto-de-venta)
-16. [FASE 7 — Catálogos CRUD](#fase-7--catálogos-cruds)
-17. [FASE 8 — Inventario](#fase-8--inventario)
-18. [FASE 9 — Ventas e Historial](#fase-9--ventas-e-historial)
-19. [FASE 10 — Reportes](#fase-10--reportes-y-analytics)
-20. [FASE 11 — Notificaciones SSE](#fase-11--notificaciones-sse)
-21. [FASE 12 — Pedidos y Preparación](#fase-12--pedidos-y-preparación)
-22. [FASE 13 — Portal de Clientes](#fase-13--portal-de-clientes)
-23. [FASE 14 — Permisos](#fase-14--sistema-de-permisos)
-24. [FASE 15 — Ajustes](#fase-15--ajustes-del-sistema)
-25. [FASE 16 — Pasarelas de Pago](#fase-16--pasarelas-de-pago)
-26. [FASE 17 — Multi-plataforma](#fase-17--multi-plataforma)
-27. [FASE 18 — Publicaciones](#fase-18--publicaciones-newsfeed)
-28. [FASE 19 — Importación/Exportación](#fase-19--importación-y-exportación)
-29. [FASE 20 — Calidad y Pulido](#fase-20--calidad-y-pulido)
+15. [FASE 6 — POS](#fase-6--punto-de-venta) ✅
+16. [FASE 7 — Catálogos CRUD](#fase-7--catálogos-cruds) ✅
+17. [FASE 8 — Inventario](#fase-8--inventario) ✅
+18. [FASE 9 — Ventas e Historial](#fase-9--ventas-e-historial) ✅
+19. [FASE 10 — Reportes](#fase-10--reportes-y-analytics) ✅
+20. [FASE 11 — Notificaciones SSE](#fase-11--notificaciones-sse) ✅
+21. [FASE 12 — Pedidos y Preparación](#fase-12--pedidos-y-preparación) ✅
+22. [FASE 13 — Portal de Clientes](#fase-13--portal-de-clientes) ✅
+23. [FASE 14 — Permisos](#fase-14--sistema-de-permisos) ✅
+24. [FASE 15 — Ajustes](#fase-15--ajustes-del-sistema) ✅
+25. [FASE 16 — Pasarelas de Pago](#fase-16--pasarelas-de-pago) ✅
+26. [FASE 17 — Multi-plataforma](#fase-17--multi-plataforma) ✅
+27. [FASE 18 — Publicaciones](#fase-18--publicaciones-newsfeed) ✅
+28. [FASE 19 — Importación/Exportación](#fase-19--importación-y-exportación) ✅
+29. [FASE 20 — Calidad y Pulido](#fase-20--calidad-y-pulido) ✅
 30. [Reglas Transversales de UI](#reglas-transversales-de-ui)
 31. [Sonidos del Sistema](#sonidos-del-sistema)
 
@@ -250,6 +256,10 @@ sistema-multi-pos/
 │   │   │   │   │   └── page.tsx    # Apariencia
 │   │   │   │   ├── company/
 │   │   │   │   │   └── page.tsx    # Datos empresa
+│   │   │   │   ├── menus/
+│   │   │   │   │   └── page.tsx    # Gestión de menú dinámico
+│   │   │   │   ├── units/
+│   │   │   │   │   └── page.tsx    # Unidades de medida
 │   │   │   │   └── payments/
 │   │   │   │       └── page.tsx    # Pasarelas pago
 │   │   │   ├── publications/
@@ -263,6 +273,8 @@ sistema-multi-pos/
 │   │   │   ├── auth/
 │   │   │   │   └── [...nextauth]/
 │   │   │   │       └── route.ts    # NextAuth handler
+│   │   │   ├── menus/
+│   │   │   │   └── route.ts        # GET menús filtrados por permisos
 │   │   │   ├── sse/
 │   │   │   │   └── notifications/
 │   │   │   │       └── route.ts    # SSE endpoint
@@ -397,6 +409,7 @@ sistema-multi-pos/
 │   │   ├── use-cart.ts
 │   │   ├── use-portal-session.ts
 │   │   ├── use-permissions.ts
+│   │   ├── use-menus.ts           # Fetch de menús dinámicos desde BD
 │   │   ├── use-sound.ts
 │   │   └── use-sse.ts
 │   │
@@ -439,6 +452,7 @@ sistema-multi-pos/
 │   │   ├── cash-registers.ts
 │   │   ├── users.ts
 │   │   ├── roles.ts
+│   │   ├── menus.ts               # CRUD menús + fetch árbol filtrado por permisos
 │   │   ├── settings.ts
 │   │   ├── reports.ts
 │   │   ├── notifications.ts
@@ -1596,481 +1610,668 @@ Sección Apariencia (/settings/appearance):
 
 ---
 
-## FASE 0 — INFRAESTRUCTURA Y CONFIGURACIÓN BASE
+## FASE 0 — INFRAESTRUCTURA Y CONFIGURACIÓN BASE ✅
 
--  ✅ 0.1 Crear proyecto Next.js 15 (App Router, TypeScript strict)
--  ✅ 0.2 Configurar TailwindCSS v4
--  ✅ 0.3 Instalar y configurar shadcn/ui
--  ✅ 0.4 Instalar Motion (framer-motion v11+)
--  ✅ 0.5 Instalar Zustand
--  ✅ 0.6 Instalar TanStack Query + TanStack Table
--  ✅ 0.7 Instalar react-hook-form + yup
--  ✅ 0.8 Configurar NextAuth v4
--  ✅ 0.9 Configurar Prisma ORM (schema MySQL)
--  ✅ 0.10 Configurar ESLint + Prettier
--  ✅ 0.11 Configurar path aliases (`@/`)
--  ✅ 0.12 Crear estructura de carpetas completa
--  ✅ 0.13 Configurar .env.local y .env.example
--  ✅ 0.14 Configurar next.config.ts
--  ✅ 0.15 Configurar postcss.config.js (implementado como `postcss.config.mjs`, formato oficial de Next 15)
--  ✅ 0.16 Configurar components.json (shadcn)
--  ✅ 0.17 Copiar fonts a assets/fonts/ (Montserrat, Poppins, SpaceMono)
--  ✅ 0.18 Crear assets/sounds/ con nombres de archivo establecidos
--  ✅ 0.19 Configurar fonts en globals.css y layout.tsx
--  ✅ 0.20 Crear providers base (Query, Auth, Theme, Mobile)
-
----
-
-## FASE 1 — BASE DE DATOS
-
--  ✅ 1.1 Diseñar schema Prisma completo (48 tablas + 15 enums)
--  ✅ 1.2 Generar migraciones Prisma
-  -  3 migraciones: `init`, `system_roles_nullable_org`, `customer_phone_unique_inventory_check` (índice único phone por org; el CHECK XOR de inventory no aplica en MySQL 8, error 3823 + FK SET NULL → validación en app)
--  ✅ 1.3 Crear seeders
-  -  ✅ 1.3.1 production.ts (SuperAdmin, 30 permisos, 4 roles default, 8 unidades del sistema)
-  -  ✅ 1.3.2 demo.ts (org "Supermercado Demo", 3 sucursales + CEDIS, 6 cajas, 50 productos, 10 clientes, 10 promos, 100 ventas históricas, 20 pedidos) — nota: menos volumen que el plan (50 productos / 10 clientes) para seed rápido (~10s)
--  ✅ 1.4 Configurar Prisma client singleton (`src/lib/db/client.ts`, hecho en FASE 0)
--  ✅ 1.5 Crear tipos TypeScript derivados del schema (`src/types/database.ts`)
+- ✅ 0.1 Crear proyecto Next.js 15 (App Router, TypeScript strict)
+- ✅ 0.2 Configurar TailwindCSS v4
+- ✅ 0.3 Instalar y configurar shadcn/ui
+- ✅ 0.4 Instalar Motion (framer-motion v11+)
+- ✅ 0.5 Instalar Zustand
+- ✅ 0.6 Instalar TanStack Query + TanStack Table
+- ✅ 0.7 Instalar react-hook-form + yup
+- ✅ 0.8 Configurar NextAuth v4
+- ✅ 0.9 Configurar Prisma ORM (schema MySQL)
+- ✅ 0.10 Configurar ESLint + Prettier
+- ✅ 0.11 Configurar path aliases (`@/`)
+- ✅ 0.12 Crear estructura de carpetas completa
+- ✅ 0.13 Configurar .env.local y .env.example
+- ✅ 0.14 Configurar next.config.ts
+- ✅ 0.15 Configurar postcss.config.js (implementado como `postcss.config.mjs`, formato oficial de Next 15)
+- ✅ 0.16 Configurar components.json (shadcn)
+- ✅ 0.17 Copiar fonts a assets/fonts/ (Montserrat, Poppins, SpaceMono)
+- ✅ 0.18 Crear assets/sounds/ con nombres de archivo establecidos
+- ✅ 0.19 Configurar fonts en globals.css y layout.tsx
+- ✅ 0.20 Crear providers base (Query, Auth, Theme, Mobile)
 
 ---
 
-## FASE 2 — AUTENTICACIÓN Y AUTORIZACIÓN
+## FASE 1 — BASE DE DATOS ✅
 
--  ✅ 2.1 Configurar NextAuth v4 (credentials provider, JWT, session callback)
-  -  Resolución por email | código de nómina | nº de cliente; scopes: superadmin/app/portal; permisos embedidos en JWT
--  ✅ 2.2 Login POS (`/auth/login`) — email|nómina + password
--  ✅ 2.3 Login Cliente (`/portal/auth/login`) — email|nºcliente + password
--  ✅ 2.4 Landing page con botón WhatsApp (en vez de registro público)
--  ✅ 2.5 Forgot password flow (tokens guardados hasheados, expiran 1h; en dev se muestra el enlace)
--  ✅ 2.6 Post-login redirect por rol (`src/lib/auth/redirect.ts`)
--  ✅ 2.7 Auth middleware (`src/middleware.ts`: /pos, /admin, /portal)
--  ✅ 2.8 RBAC: 30 permisos + 4 roles de sistema con validación en UI (usePermission) y server (assertPermission)
-  -  Nota: FASE 14 ampliará el sistema de permisos (CRUD de roles, matriz, approvals)
--  ✅ 2.9 Registro de empleados desde admin (helper createEmployeeUser; CRUD en FASE 7)
--  ✅ 2.10 Registro de clientes desde admin/POS (helper createCustomerUser; CRUD en FASE 7)
--  ✅ 2.11 Onboarding wizard para nuevos owners (stub en /auth/onboarding; wizard réal en FASE 7)
--  ✅ 2.12 Modo demo (botones por rol en login, solo en desarrollo)
--  ✅ 2.13 Cambio de contraseña (/auth/change-password + POST /api/auth/change-password)
--  Migración nueva: `20260811060000_user_password_reset` (columnas de reset en users)
+- ✅ 1.1 Diseñar schema Prisma completo (48 tablas + 15 enums)
+- ✅ 1.2 Generar migraciones Prisma
+- 3 migraciones: `init`, `system_roles_nullable_org`, `customer_phone_unique_inventory_check` (índice único phone por org; el CHECK XOR de inventory no aplica en MySQL 8, error 3823 + FK SET NULL → validación en app)
+- ✅ 1.3 Crear seeders
+- ✅ 1.3.1 production.ts (SuperAdmin, 30 permisos, 4 roles default, 8 unidades del sistema)
+- ✅ 1.3.2 demo.ts (org "Supermercado Demo", 3 sucursales + CEDIS, 6 cajas, 50 productos, 10 clientes, 10 promos, 100 ventas históricas, 20 pedidos) — nota: menos volumen que el plan (50 productos / 10 clientes) para seed rápido (~10s)
+- ✅ 1.4 Configurar Prisma client singleton (`src/lib/db/client.ts`, hecho en FASE 0)
+- ✅ 1.5 Crear tipos TypeScript derivados del schema (`src/types/database.ts`)
 
 ---
 
-## FASE 3 — SISTEMA DE APARIENCIA
+## FASE 2 — AUTENTICACIÓN Y AUTORIZACIÓN ✅
 
--  ✅ 3.1 CSS custom properties desde app_settings
-  -  `src/lib/appearance.ts` (modelo), `src/lib/appearance-apply.ts` (aplica var al DOM: hues, tipografía, escala, densidad, radio, tarjetas, sidebar)
--  ✅ 3.2 Tema: light, dark, pos (high-density dark: fuerza densidad compacta)
--  ✅ 3.3 Parámetros: primary_hue, accent_hue, font_family, font_scale, density, border_radius, card_size (+ sidebar_style)
--  ✅ 3.4 Configuración por empresa (`/admin/settings/appearance` + GET/PATCH `/api/settings/appearance` con permiso settings.manage)
--  ✅ 3.5 Persistencia localStorage (tema + overrides del dispositivo) + cross-tab sync (evento storage)
--  ✅ 3.6 Splash screen con tema del tenant (`src/components/appearance/splash.tsx`)
--  ✅ 3.7 Aplicación de tema en tiempo real (sin recarga): el formulario edita el store y el provider reaplica al instante
+- ✅ 2.1 Configurar NextAuth v4 (credentials provider, JWT, session callback)
+- Resolución por email | código de nómina | nº de cliente; scopes: superadmin/app/portal; permisos embedidos en JWT
+- ✅ 2.2 Login POS (`/auth/login`) — email|nómina + password
+- ✅ 2.3 Login Cliente (`/portal/auth/login`) — email|nºcliente + password
+- ✅ 2.4 Landing page con botón WhatsApp (en vez de registro público)
+- ✅ 2.5 Forgot password flow (tokens guardados hasheados, expiran 1h; en dev se muestra el enlace)
+- ✅ 2.6 Post-login redirect por rol (`src/lib/auth/redirect.ts`)
+- ✅ 2.7 Auth middleware (`src/middleware.ts`: /pos, /admin, /portal)
+- ✅ 2.8 RBAC: 30 permisos + 4 roles de sistema con validación en UI (usePermission) y server (assertPermission)
+- Nota: FASE 14 ampliará el sistema de permisos (CRUD de roles, matriz, approvals)
+- ✅ 2.9 Registro de empleados desde admin (helper createEmployeeUser; CRUD en FASE 7)
+- ✅ 2.10 Registro de clientes desde admin/POS (helper createCustomerUser; CRUD en FASE 7)
+- ✅ 2.11 Onboarding wizard para nuevos owners (stub en /auth/onboarding; wizard réal en FASE 7)
+- ✅ 2.12 Modo demo (botones por rol en login, solo en desarrollo)
+- ✅ 2.13 Cambio de contraseña (/auth/change-password + POST /api/auth/change-password)
+- Migración nueva: `20260811060000_user_password_reset` (columnas de reset en users)
+
+---
+
+## FASE 3 — SISTEMA DE APARIENCIA ✅
+
+- ✅ 3.1 CSS custom properties desde app_settings
+- `src/lib/appearance.ts` (modelo), `src/lib/appearance-apply.ts` (aplica var al DOM: hues, tipografía, escala, densidad, radio, tarjetas, sidebar)
+- ✅ 3.2 Tema: light, dark, pos (high-density dark: fuerza densidad compacta)
+- ✅ 3.3 Parámetros: primary_hue, accent_hue, font_family, font_scale, density, border_radius, card_size (+ sidebar_style)
+- ✅ 3.4 Configuración por empresa (`/admin/settings/appearance` + GET/PATCH `/api/settings/appearance` con permiso settings.manage)
+- ✅ 3.5 Persistencia localStorage (tema + overrides del dispositivo) + cross-tab sync (evento storage)
+- ✅ 3.6 Splash screen con tema del tenant (`src/components/appearance/splash.tsx`)
+- ✅ 3.7 Aplicación de tema en tiempo real (sin recarga): el formulario edita el store y el provider reaplica al instante
 
 ---
 
 ## FASE 4 — COMPONENTES BASE ✅
 
--  ✅ 4.1 Instalar 46+ componentes shadcn/ui (40 instalados: accordion, alert, avatar, badge, breadcrumb, button, calendar, card, carousel, chart, checkbox, collapsible, command, dialog, drawer, dropdown-menu, hover-card, input, input-group, input-otp, label, pagination, popover, progress, radio-group, scroll-area, select, separator, sheet, skeleton, slider, sonner, switch, table, tabs, textarea, toggle, toggle-group, tooltip)
--  ✅ 4.2 InputGroup (`src/components/base/input-group-field.tsx`: `InputGroupField` = label + InfoTooltip + icono + addons + hint/error; re-exporta `InputGroup` compuesto de shadcn)
--  ✅ 4.3 InfoTooltip (`src/components/base/info-tooltip.tsx`)
--  ✅ 4.4 FormCombobox (`src/components/base/form-combobox.tsx`: searchable + sync `RefreshCw` + create inline + preserva selección)
--  ✅ 4.5 DatePicker (`src/components/base/date-picker.tsx`, DD/MM/YYYY, react-day-picker v10, dropdown meses/años)
--  ✅ 4.6 TimePicker (`src/components/base/time-picker.tsx`, HH:MM AM/PM con segmentos)
--  ✅ 4.7 DateTimePicker (`src/components/base/date-time-picker.tsx`)
--  ✅ 4.8 DataTable (`src/components/base/data-table.tsx`: ordenamiento, búsqueda global, faceted, paginación, selección, visibilidad de columnas, responsive cards móvil)
--  ✅ 4.9 Attachment (`src/components/base/attachment.tsx`: upload + preview imagen/PDF + drag & drop + reemplazar/quitar)
--  ✅ 4.10 Spinner + Skeleton (`spinner.tsx` nuevo; skeleton ya era shadcn)
--  ✅ 4.11 AnimatedNumber (`animated-number.tsx`, spring con framer-motion `animate`)
--  ✅ 4.12 InfoField (`info-field.tsx`)
--  ✅ 4.13 SweetAlert2 wrappers (`src/lib/swal.ts`: swalToast, swalMessage, swalError, swalConfirm, swalLoading, swalPrompt) + theming en globals.css
--  ✅ 4.14 GPS Picker (`gps-picker.tsx`: geolocalización + geocode/reverse Nominatim + mapa OSM + dirección completa)
--  ✅ 4.15 Sound player (`src/lib/sounds.ts`: volume/rate + persistencia localStorage + `useSound`)
--  Nota: `@tanstack/react-table` quedó en v8 (la v9 cambió la API; se prefirió la estable). `sweetalert2` agregado. Barrel `src/components/base/index.ts`.
+- ✅ 4.1 Instalar 46+ componentes shadcn/ui (40 instalados: accordion, alert, avatar, badge, breadcrumb, button, calendar, card, carousel, chart, checkbox, collapsible, command, dialog, drawer, dropdown-menu, hover-card, input, input-group, input-otp, label, pagination, popover, progress, radio-group, scroll-area, select, separator, sheet, skeleton, slider, sonner, switch, table, tabs, textarea, toggle, toggle-group, tooltip)
+- ✅ 4.2 InputGroup (`src/components/base/input-group-field.tsx`: `InputGroupField` = label + InfoTooltip + icono + addons + hint/error; re-exporta `InputGroup` compuesto de shadcn)
+- ✅ 4.3 InfoTooltip (`src/components/base/info-tooltip.tsx`)
+- ✅ 4.4 FormCombobox (`src/components/base/form-combobox.tsx`: searchable + sync `RefreshCw` + create inline + preserva selección)
+- ✅ 4.5 DatePicker (`src/components/base/date-picker.tsx`, DD/MM/YYYY, react-day-picker v10, dropdown meses/años)
+- ✅ 4.6 TimePicker (`src/components/base/time-picker.tsx`, HH:MM AM/PM con segmentos)
+- ✅ 4.7 DateTimePicker (`src/components/base/date-time-picker.tsx`)
+- ✅ 4.8 DataTable (`src/components/base/data-table.tsx`: ordenamiento, búsqueda global, faceted, paginación, selección, visibilidad de columnas, responsive cards móvil)
+- ✅ 4.9 Attachment (`src/components/base/attachment.tsx`: upload + preview imagen/PDF + drag & drop + reemplazar/quitar)
+- ✅ 4.10 Spinner + Skeleton (`spinner.tsx` nuevo; skeleton ya era shadcn)
+- ✅ 4.11 AnimatedNumber (`animated-number.tsx`, spring con framer-motion `animate`)
+- ✅ 4.12 InfoField (`info-field.tsx`)
+- ✅ 4.13 SweetAlert2 wrappers (`src/lib/swal.ts`: swalToast, swalMessage, swalError, swalConfirm, swalLoading, swalPrompt) + theming en globals.css
+- ✅ 4.14 GPS Picker (`gps-picker.tsx`: geolocalización + geocode/reverse Nominatim + mapa OSM + dirección completa)
+- ✅ 4.15 Sound player (`src/lib/sounds.ts`: volume/rate + persistencia localStorage + `useSound`)
+- Nota: `@tanstack/react-table` quedó en v8 (la v9 cambió la API; se prefirió la estable). `sweetalert2` agregado. Barrel `src/components/base/index.ts`.
 
 ---
 
 ## FASE 5 — LAYOUT Y NAVEGACIÓN ✅
 
--  ✅ 5.1 AppNav (`src/components/layout/app-shell.tsx`: adaptativo — Sidebar desktop fija, BottomBar móvil, Drawer tablet)
--  ✅ 5.2 Header sticky (`app-header.tsx`: logo, buscador, campana de notificaciones, menú de usuario) + `page-header.tsx`
--  ✅ 5.3 User dropdown (`user-menu.tsx`: perfil, cambiar contraseña, preferencias, cerrar sesión)
--  ✅ 5.4 Notifications bell (`notifications-bell.tsx`: badge animado con Motion, popover, SSE vía `use-notifications.ts` + store zustand; fallback demo hasta FASE 11)
--  ✅ 5.5 Sidebar agrupada por secciones colapsables (`app-sidebar.tsx`, Collapsible + NavLink con indicador animado)
--  ✅ 5.6 BottomTabBar móvil (`bottom-tab-bar.tsx`: 5 ítems principales filtrados por permiso)
--  ✅ 5.7 NavigationDrawer (`navigation-drawer.tsx`: slide-in con overlay, cierre por ESC/focus)
--  ✅ 5.8 Safe areas (`env(safe-area-inset-top/bottom)` en header, drawer y bottom bar; layout ya usa viewport-fit=cover)
--  ✅ 5.9 Transiciones entre rutas (`route-transition.tsx`: AnimatePresence + usePathname, respeta prefers-reduced-motion)
--  ✅ 5.10 Navigation adapted (un `AppShell` renderiza la UI correcta por breakpoint via CSS + MobileProvider)
--  ✅ 5.11 Íconos y rutas UNA sola vez (`src/lib/nav.ts`: NAV_SECTIONS/BOTTOM_NAV + filtros por permiso server `filterNavSections` y cliente `filterNavSectionsByUser`)
--  Nota: sidebar/placeholder `src/app/admin/[module]/page.tsx` para módulos de FASEs 7-10. Smoke HTTP 10/10 (login demo → /admin con shell completo, /admin/products y appearace 200).
+- ✅ 5.1 AppNav (`src/components/layout/app-shell.tsx`: adaptativo — Sidebar desktop fija, BottomBar móvil, Drawer tablet)
+- ✅ 5.2 Header sticky (`app-header.tsx`: logo, buscador, campana de notificaciones, menú de usuario) + `page-header.tsx`
+- ✅ 5.3 User dropdown (`user-menu.tsx`: perfil, cambiar contraseña, preferencias, cerrar sesión)
+- ✅ 5.4 Notifications bell (`notifications-bell.tsx`: badge animado con Motion, popover, SSE vía `use-notifications.ts` + store zustand; fallback demo hasta FASE 11)
+- ✅ 5.5 Sidebar agrupada por secciones colapsables (`app-sidebar.tsx`, Collapsible + NavLink con indicador animado)
+- ✅ 5.6 BottomTabBar móvil (`bottom-tab-bar.tsx`: 5 ítems principales filtrados por permiso)
+- ✅ 5.7 NavigationDrawer (`navigation-drawer.tsx`: slide-in con overlay, cierre por ESC/focus)
+- ✅ 5.8 Safe areas (`env(safe-area-inset-top/bottom)` en header, drawer y bottom bar; layout ya usa viewport-fit=cover)
+- ✅ 5.9 Transiciones entre rutas (`route-transition.tsx`: AnimatePresence + usePathname, respeta prefers-reduced-motion)
+- ✅ 5.10 Navigation adapted (un `AppShell` renderiza la UI correcta por breakpoint via CSS + MobileProvider)
+- ✅ 5.11 Íconos y rutas UNA sola vez (`src/lib/nav.ts`: NAV_SECTIONS/BOTTOM_NAV + filtros por permiso server `filterNavSections` y cliente `filterNavSectionsByUser`)
+- Nota: sidebar/placeholder `src/app/admin/[module]/page.tsx` para módulos de FASEs 7-10. Smoke HTTP 10/10 (login demo → /admin con shell completo, /admin/products y appearace 200).
 
 ---
 
-## FASE 6 — PUNTO DE VENTA (POS)
+## FASE 6 — PUNTO DE VENTA (POS) ✅
 
--  6.1 Layout POS (grid responsive: categorías + productos + ticket)
--  6.2 Category tabs (horizontal scroll, activa con estilo)
--  6.3 Product grid (cards estandarizados: imagen, nombre, precio, stock badge)
--  6.3a Badge "A granel" en cards de productos bulk (diferente color/icono)
--  6.4 Búsqueda por SKU/código/nombre/barras
--  6.5 Escáner de barras (input con auto-focus)
--  6.5a Modal de entrada para productos a granel:
-  -  Al tocar producto granel → abre modal con:
-    - Imagen + nombre del producto
-    - Unidad de medida (kg, pieza, lt, etc.)
-    - Input de cantidad/precio (NumPad grande)
-    - Toggle: "Por cantidad" vs "Por monto" (ej: 1.5 kg ó $10.00)
-    - Si allow_split: toggle entre unidad principal y alternativa
-    - Precio calculado en tiempo real
-    - Cantidad mínima/máxima/step validados
-    - Botón "Agregar al ticket"
-  -  Si es "por monto" ($10 de azúcar): se calcula la cantidad = monto / precio_por_unidad
-  -  Si es "por cantidad" (1.5 kg): se calcula el total = cantidad × precio_por_unidad
-  -  Redondeo a 2 decimales en el total
--  6.6 Panel de ticket (lista de items, cantidades +/-, subtotal por item)
--  6.6a En ticket: productos granel muestran "1.5 kg × $18.00/kg = $27.00"
--  6.6b Editar cantidad de producto granel en ticket → re-abre modal de entrada
--  6.7 Asociar cliente (buscar por nombre/teléfono/nº, ver puntos)
--  6.8 Descuento manual + código de cupón
--  6.9 Cálculo en vivo: subtotal, impuestos, descuentos, total
--  6.10 Payment dialog:
-  -  NumPad táctil para montos
-  -  Denominaciones de efectivo ($20, $50, $100, $200, $500, $1000)
-  -  Split payments (múltiples métodos: efectivo + tarjeta + wallet)
-  -  Pago con puntos de lealtad
-  -  Barra de progreso de pago
-  -  Cambio calculado
-  -  Permitir montos de más (overpayment)
--  6.11 Virtual keyboard (numérico + completo, toggle on/off)
--  6.12 Ticket/impresión (formato 80mm, puntos acumulados + total actual)
--  6.13 Auto-focus en input de escaneo después de cada acción
--  6.14 Swipe-to-delete en items del ticket (slide izquierdo, fondo rojo "Eliminar")
--  6.15 Cantidad mínima 1, step 0.1
--  6.16 Cerrar caja (corte de caja con reporte detallado)
--  6.17 Modal de catálogos (ver productos, clientes, promos, pedidos desde POS)
--  6.18 Panel colapsable de productos (show/hide toggle)
--  6.19 Supervisor approval (opcional, configurable desde settings)
-  -  Cuando está activo, ciertas acciones piden clave de supervisor
-  -  Clave cambiable desde perfil con ese permiso
--  6.20 Mapa de monitoreo de pedidos (semáforo: pending=amarillo, preparing=naranja, ready=verde, delivered=azul, cancelled=rojo)
-
----
-
-## FASE 7 — CATÁLOGOS (CRUDs)
-
--  7.1 Productos
-  -  CRUD completo (crear, editar, activar/desactivar)
-  -  Selector de tipo: "Estándar" / "A granel" (al crear, cambia formulario)
-  -  Campos comunes: nombre, descripción, categoría, impuesto, imagen, isActive, trackInventory
-  -  ── Campos para ESTÁNDAR ──
-    -  Variantes (agregar después de crear producto)
-    -  Opciones de variante (talla, color, contenido, etc.)
-  -  ── Campos para A GRANEL ──
-    -  Unidad de medida (FormCombobox: kg, pieza, lt, peso, metro, o custom)
-    -  Precio por unidad de medida
-    -  Cantidad mínima de venta (ej: 0.1 kg)
-    -  Step/incremento (ej: 0.01 kg)
-    -  Cantidad máxima (0 = sin límite)
-    -  Permitir venta fraccionada (allow_split)
-    -  Unidad alternativa (si allow_split: ej pieza si principal es kg)
-    -  Precio por unidad alternativa
-  -  Imagen (Attachment)
-  -  Importación masiva (Excel con plantilla y dropdowns de categorías)
-  -  Exportación (Excel)
-  -  CRUD de unidades de medida (catálogo personalizado por empresa)
--  7.1a Unidades de Medida
-  -  CRUD (nombre, abreviatura, tipo, factor de conversión)
-  -  Unidades del sistema pre-cargadas (kg, g, lt, ml, pza, m, cm, peso)
-  -  Unidades personalizadas por empresa
--  7.2 Categorías
-  -  CRUD completo (crear, editar, activar/desactivar)
-  -  Jerarquía (subcategorías)
-  -  Imagen (Attachment)
-  -  Importación/Exportación
--  7.3 Clientes
-  -  CRUD completo
-  -  Puntos (ver historial, ajustar)
-  -  Favoritos
-  -  Historial de compras/pedidos
-  -  Métodos de pago guardados
-  -  Importación/Exportación
-  -  Auto-crea user al registrar
--  7.4 Empleados
-  -  CRUD completo
-  -  Puestos (CRUD de employee_positions)
-  -  Nómina/código único
-  -  Asignación de sucursal base
-  -  Auto-crea user al registrar
--  7.5 Promociones
-  -  CRUD completo
-  -  6 tipos de beneficio
-  -  4 alcances (order, category, product, variant)
-  -  Scheduling (fechas, días de semana, horario)
-  -  Cupones
-  -  Límites de uso (global y por cliente)
-  -  Exclusividad
-  -  Prioridad
-  -  Targets (location, category, product, variant, reward_variant)
--  7.6 Sucursales
-  -  CRUD completo
-  -  GPS (lat/lon + dirección completa)
-  -  Responsable y contacto
-  -  Horarios de apertura
-  -  Imagen
-  -  Pickup/Delivery toggle
-  -  Folio secuencial
--  7.7 CEDIS
-  -  CRUD completo
-  -  GPS + dirección
-  -  Encargado
-  -  Horarios
-  -  Imagen
--  7.8 Cajas
-  -  CRUD por sucursal
-  -  Nombre, folio prefix
--  7.9 Puestos de empleado
-  -  CRUD (nombre, descripción, isActive)
+- ✅ 6.1 Layout POS (grid responsive: categorías + productos + ticket) — `src/components/pos/pos-app.tsx`
+- ✅ 6.2 Category tabs (horizontal scroll, activa con estilo) — `catalog-panel.tsx`
+- ✅ 6.3 Product grid (cards estandarizados: imagen, nombre, precio, stock badge) — `product-card.tsx`
+- ✅ 6.3a Badge "A granel" en cards de productos bulk (diferente color/icono)
+- ✅ 6.4 Búsqueda por SKU/código/nombre/barras
+- ✅ 6.5 Escáner de barras (input con auto-focus, re-focus tras cada acción vía contador `scanRefocus`)
+- ✅ 6.5a Modal de entrada para productos a granel: `bulk-modal.tsx`
+- Al tocar producto granel → abre modal con:
+  - Imagen + nombre del producto
+  - Unidad de medida (kg, pieza, lt, etc.) — unidad principal + alternativa si `allow_split`
+  - Input de cantidad/precio (NumPad grande) — `numpad.tsx`
+  - Toggle: "Por cantidad" vs "Por monto" (ej: 1.5 kg ó $10.00)
+  - Si allow_split: toggle entre unidad principal y alternativa
+  - Precio calculado en tiempo real
+  - Cantidad mínima/máxima/step validados
+  - Botón "Agregar al ticket"
+- Si es "por monto" ($10 de azúcar): se calcula la cantidad = monto / precio_por_unidad
+- Si es "por cantidad" (1.5 kg): se calcula el total = cantidad × precio_por_unidad
+- Redondeo a 2 decimales en el total
+- ✅ 6.6 Panel de ticket (lista de items, cantidades +/-, subtotal por item) — `ticket-panel.tsx`
+- ✅ 6.6a En ticket: productos granel muestran "1.5 kg × $18.00/kg = $27.00" (`bulkQuantityDisplay`)
+- ✅ 6.6b Editar cantidad de producto granel en ticket → re-abre modal de entrada
+- ✅ 6.7 Asociar cliente (buscar por nombre/teléfono/nº, ver puntos) — `customer-modal.tsx`
+- ✅ 6.8 Descuento manual (con aprobación de supervisor >10%) + código de cupón (`discount-dialog.tsx` + `POST /api/pos/coupons/validate`)
+- ✅ 6.9 Cálculo en vivo: subtotal, impuestos, descuentos, total (`src/lib/pos/pricing.ts` engine de promociones + `usePosTotals`)
+- ✅ 6.10 Payment dialog: `payment-dialog.tsx`
+- NumPad táctil para montos
+- Denominaciones de efectivo ($20, $50, $100, $200, $500, $1000)
+- Split payments (múltiples métodos: efectivo + tarjeta + wallet)
+- Pago con puntos de lealtad
+- Barra de progreso de pago
+- Cambio calculado
+- Permitir montos de más (overpayment)
+- ✅ 6.11 Virtual keyboard (`virtual-keyboard.tsx`, toggle on/off)
+- ✅ 6.12 Ticket/impresión (formato 80mm `@media print` + impresora, puntos acumulados + total) — `receipt.tsx`
+- ✅ 6.13 Auto-focus en input de escaneo después de cada acción
+- ✅ 6.14 Swipe-to-delete en items del ticket (framer-motion drag izquierdo, fondo rojo) — `ticket-item-row.tsx`
+- ✅ 6.15 Cantidad mínima 1, step 0.1 (rejilla estándar; granel usa min/step del producto)
+- ✅ 6.16 Abrir/Cerrar caja (`cash-register-panel.tsx` + `POST /api/pos/cash`: apertura, fondo, corte con cierre/esperado/diferencia)
+- ✅ 6.17 Modal de catálogos (ver productos, clientes, promos, pedidos desde POS) — `catalogs-modal.tsx`
+- ✅ 6.18 Panel colapsable de productos (show/hide toggle)
+- ✅ 6.19 Supervisor approval (opcional, configurable; PIN en localStorage por demo, RBAC `supervisor.approve` en FASE 14) — `supervisor-gate.tsx`
+- ✅ 6.20 Monitoreo de pedidos (semáforo: pending=amarillo, preparing=naranja, ready=verde, delivered=azul, cancelled=rojo; polling 15s `GET /api/pos/orders`)
+- ✅ Persistencia: `POST /api/pos/sales` (transacción: Sale + SaleItems + SalePayments + SaleDiscounts + decremento de inventario + InventoryMovement + canje/generación de cupones + loyalty earn/redeem + folio por sucursal `Location.saleSeq`)
+- ✅ Verificado: typecheck / lint / build + smoke HTTP 17/17 (login → /pos → catálogo → órdenes → caja → cupón → venta real con folio #35 e inventario decrementado)
 
 ---
 
-## FASE 8 — INVENTARIO
+## FASE 7 — CATÁLOGOS (CRUDs) ✅
 
--  8.1 Vista de inventario (por sucursal/CEDIS, con filtros)
-  -  Filtro por tipo de producto (estándar / a granel)
-  -  Stock en unidad de medida correcta (kg, pza, lt, etc.)
-  -  Columna "Unidad" en la tabla
--  8.2 Movimientos (purchase, sale, adjustment, transfer_in, transfer_out, return)
-  -  Para granel: cantidad en unidad de medida (ej: 1.5 kg)
-  -  Movimientos registran unit_id
--  8.3 Stock mínimo (min_threshold con alertas automáticas)
--  8.4 Historial de movimientos (con empleado vinculado)
-  -  Muestra unidad de medida en cada movimiento
--  8.5 Revisiones físicas de inventario
-  -  Vista de conteo con lector de barras o manual
-  -  Checklist por producto (escaneado/encontrado)
-  -  Diferencias calculadas automáticamente
--  8.6 Importación masiva de inventario
--  8.7 Exportación de inventario (PDF profesional)
--  8.8 Transferencias entre sucursales/CEDIS
--  8.9 Notificación de stock bajo (SSE en tiempo real)
-
----
-
-## FASE 9 — VENTAS E HISTORIAL
-
--  9.1 Historial de ventas (DataTable con filtros: fecha, sucursal, empleado, caja)
--  9.2 Detalle de venta (ticket completo con items, pagos, descuentos)
-  -  Items granel muestran: "1.5 kg × $18.00/kg = $27.00"
-  -  Items standard muestran: "2 × $25.00 = $50.00"
--  9.3 Reimpresión de tickets
--  9.4 Precio histórico (no afecta ventas/reportes pasados)
--  9.5 Folios secuenciales por sucursal
--  9.6 Exportación de ventas (Excel + PDF)
-
----
-
-## FASE 10 — REPORTES Y ANALYTICS
-
--  10.1 Dashboard (ventas por día, por método de pago, top productos, márgenes)
--  10.2 Reportes con filtros avanzados (fecha, sucursal, empleado, caja, período)
--  10.3 Exportar reportes (Excel + PDF profesional con diseño)
--  10.4 Gráficas interactivas (Recharts)
--  10.5 Reporte de inventario (PDF profesional)
--  10.6 Reporte de corte de caja
--  10.7 Reporte de pedidos
--  10.8 Reporte de clientes (top, por puntos, por compras)
-
----
-
-## FASE 11 — NOTIFICACIONES (SSE)
-
--  11.1 SSE route handler (`/api/sse/notifications`)
--  11.2 Centro de notificaciones (lista completa, mark-as-read individual y batch)
--  11.3 Notifications bell (badge en tiempo real, popover)
--  11.4 Toast de notificaciones (SweetAlert2 theming)
--  11.5 Sonido al recibir notificación
--  11.6 Notificaciones por evento:
-  -  Venta completada
-  -  Stock bajo
-  -  Nuevo pedido
-  -  Pedido listo
-  -  Pedido entregado
-  -  Pedido cancelado
--  11.7 Empleado vinculado a cada movimiento/notificación
-
----
-
-## FASE 12 — PEDIDOS Y PREPARACIÓN
-
--  12.1 CRUD pedidos (vista admin con estados y filtros)
--  12.2 Order status history (cada cambio con empleado + timestamp)
--  12.3 Página de preparación de pedido
-  -  Datos del pedido (cliente, productos, entrega)
-  -  Timer en tiempo real (cuánto se tarda el empleado)
-  -  Empleado vinculado a la preparación
-  -  Check-list de productos (escaneo con lector o conteo manual)
-  -  Progreso: "3 de 10 productos encontrados"
-  -  Comentarios por item
-  -  Observación general (opcional)
--  12.4 Mapa de monitoreo de pedidos (semáforo de estados)
--  12.5 Notificaciones de cada cambio de estado (SSE)
+- ✅ 7.1 Productos
+- ✅ CRUD completo (crear, editar, activar/desactivar) — `/admin/products` + API `GET/POST/PATCH/DELETE /api/crud/products` (paginación, búsqueda, filtro por categoría/tipo)
+- ✅ Selector de tipo: "Estándar" / "A granel" (al crear, cambia formulario; bloqueado en edición)
+- ✅ Campos comunes: nombre, descripción, categoría (combobox), impuesto, imagen (URL), isActive, trackInventory
+- ✅ ── Campos para ESTÁNDAR ──
+  -  ✅ Variante inicial al crear + gestor de variantes al editar (crear/activar/eliminar; API `/api/crud/products/[id]/variants`)
+  -  ✅ Opciones de variante (talla, color, contenido, etc.) — API `GET/PUT /api/crud/products/[id]/options` + `optionValueIds` en crear/editar variante
+- ✅ ── Campos para A GRANEL ──
+  -  ✅ Unidad de medida (combobox del catálogo de unidades)
+  -  ✅ Precio por unidad de medida
+  -  ✅ Cantidad mínima de venta / Step / Cantidad máxima
+  -  ✅ Permitir venta fraccionada (allow_split)
+  -  ✅ Unidad alternativa (si allow_split) + Precio por unidad alternativa
+- ✅ Imagen (Attachment) — componente `Attachment` (drag & drop) + `/api/uploads` a `public/uploads/<orgId>`; usado en productos, variantes, categorías, clientes, empleados, sucursales, CEDIS y promociones
+- ✅ Importación masiva (Excel .xlsx con plantilla; categoría por nombre, unidad por abreviatura; crea variante inicial estándar o granel)
+- ✅ Exportación (Excel .xlsx)
+- ✅ CRUD de unidades de medida (catálogo personalizado por empresa)
+- ✅ 7.1a Unidades de Medida
+- ✅ CRUD (nombre, abreviatura, tipo, factor de conversión) — `/admin/units`
+- ✅ Unidades del sistema pre-cargadas (kg, g, lt, ml, pza, m, cm, peso)
+- ✅ Unidades personalizadas por empresa
+- ✅ 7.2 Categorías
+- ✅ CRUD completo (crear, editar, activar/desactivar) — `/admin/categories`
+- ✅ Jerarquía (subcategorías; el import resuelve el padre por nombre)
+- ✅ Imagen (Attachment) — ver 7.1
+- ✅ Importación/Exportación (Excel .xlsx)
+- ✅ 7.3 Clientes
+- ✅ CRUD completo — `/admin/customers`
+- ✅ Puntos (ajustar desde edición)
+- ✅ Auto-crea user al registrar (email auto `cli-xxxx@portal.local` si no hay correo)
+- ✅ Historial de puntos / Favoritos / Historial de compras-pedidos / Métodos de pago guardados — botón detalle (ojo) en `/admin/customers` + `GET /api/crud/customers/[id]/detail`
+- ✅ Importación/Exportación (Excel .xlsx)
+- ✅ 7.4 Empleados
+- ✅ CRUD completo — `/admin/employees`
+- ✅ Puestos (CRUD `/admin/positions` con select en el formulario de empleado)
+- ✅ Nómina/código único
+- ✅ Auto-crea user + membership al registrar (rol cashier; email auto `emp-CODIGO@empresa.local`)
+- ✅ Asignación de sucursal base (Employee.locationId; migración `20260812060205_employee_location`)
+- ✅ 7.5 Promociones
+- ✅ CRUD completo — `/admin/promotions` (registro + API `GET/POST/PATCH/DELETE /api/crud/promotions`)
+- ✅ 6 tipos de beneficio (percent_off, amount_off, fixed_price, buy_x_get_y, free_item, next_purchase_coupon)
+- ✅ 4 alcances (order, category, product, variant)
+- ✅ Scheduling (fechas inicio/fin, días de semana, horario desde/hasta)
+- ✅ Cupones (couponCode en la promoción — redimido por el cajero; tabla Coupon/standalone queda como extra)
+- ✅ Límites de uso (máximo global y por cliente)
+- ✅ Exclusividad y prioridad
+- ✅ Targets (multi-select de sucursales, categorías, productos, variantes y variante de regalo)
+- ✅ 7.6 Sucursales
+- ✅ CRUD completo — `/admin/locations`
+- ✅ GPS (lat/lon + dirección completa) — `GpsPicker` integrado en el formulario (tipo de campo `gps` del CRUD genérico)
+- ✅ Responsable y contacto
+- ✅ Horarios de apertura
+- ✅ Imagen (Attachment) — ver 7.1
+- ✅ Pickup/Delivery toggle
+- ✅ Folio secuencial (BD `Location.saleSeq`, ya usado por el POS)
+- ✅ 7.7 CEDIS
+- ✅ CRUD completo — `/admin/cedis` (nombre, código, dirección, GPS manual, encargado, horarios, imagen, notas)
+- ✅ 7.8 Cajas
+- ✅ CRUD por sucursal — `/admin/cashRegisters` (nombre, folio prefix, sucursal en select)
+- ✅ 7.9 Puestos de empleado
+- ✅ CRUD (nombre, descripción, isActive) — `/admin/positions`
+- Nota: CRUD genérico — registro único con permisos RBAC (`src/lib/crud/modules.ts`) + API `/api/crud/{module}[/{id}]` con guard + UI adaptativa (`src/components/admin/crud/*`) con tabla, buscador, paginación, diálogo de alta/edición y borrado. Módulos implementados: productos (con variantes), unidades, categorías, clientes, empleados, puestos, sucursales, CEDIS, cajas.
 
 ---
 
-## FASE 13 — PORTAL DE CLIENTES
+## FASE 8 — INVENTARIO ✅
 
--  13.1 Layout portal (diseño tipo Cinépolis/app nativa)
--  13.2 Home del portal
-  -  Puntos acumulados
-  -  Promociones/descuentos activos
-  -  Banners de pedidos activos con estatus
-  -  Productos nuevos
-  -  Publicaciones/avisos
--  13.3 Tienda (catálogo con categorías, búsqueda, filtros)
--  13.4 Product cards
-  -  Standard: imagen, precio fijo, variantes selectoras
-  -  A granel: imagen, precio por unidad badge ("$18.00/kg"), badge "A granel"
-  -  Si allow_split: mostrar ambas unidades ("$18/kg ó $5/pza")
--  13.5 Carrito
-  -  Grid de catálogo (no solo lista)
-  -  Limitar según stock disponible
-  -  Bloquear productos sin stock
-  -  Botón "Notificar sin stock" al producto
-  -  Comentario por producto seleccionado
-  -  ── STANDARD ──
-    -  Selector de variante
-    -  Cantidad con +/- y step 0.1
-  -  ── A GRANEL ──
-    -  Al agregar producto granel → abre modal de entrada:
-      - Unidad de medida (kg, pza, lt, etc.)
-      - Input de cantidad (NumPad)
-      - Toggle "Por cantidad" vs "Por monto"
-      - Precio calculado en tiempo real
-    -  En carrito: mostrar "1.5 kg × $18.00/kg = $27.00"
-    -  Editar cantidad → re-abre modal de entrada
-    -  Limitar según stock en unidad de medida
-    -  Step según configuración del producto (bulk_step)
--  13.6 Checkout
-  -  Selección: pickup en sucursal O delivery a domicilio
-  -  Selector de sucursal para pickup
-  -  Dirección de entrega (con GPS)
-  -  Métodos de pago (pasarela o en sucursal)
--  13.7 Tracking de pedido en tiempo real (SSE)
--  13.8 Cancelar pedido (si no fue reclamado/confirmado)
--  13.9 Favoritos (CRUD)
--  13.10 Listas de compra (CRUD + duplicar)
--  13.11 Historial de pedidos
--  13.12 Puntos acumulados + historial de lealtad
--  13.13 Perfil de cliente (editar datos)
--  13.14 Métodos de pago guardados (last4, brand, exp_month, exp_year)
--  13.15 Notificación de tarjetas por vencer
+- ✅ 8.1 Vista de inventario (por sucursal/CEDIS, con filtros) — `/admin/inventory` + `GET /api/inventory`
+- ✅ Filtro por tipo de producto (estándar / a granel) + búsqueda + "solo bajo stock"
+- ✅ Stock en unidad de medida correcta (kg, pza, lt, etc.)
+- ✅ Columna "Unidad" en la tabla; filas auto-creadas por ubicación (lazy)
+- ✅ 8.2 Movimientos (purchase, sale, adjustment, transfer_in, transfer_out, return) — `POST /api/inventory/movements`
+- ✅ Para granel: cantidad en unidad de medida (ej: 1.5 kg)
+- ✅ Movimientos registran unit_id
+- ✅ 8.3 Stock mínimo (min_threshold; alertas SSE pendientes con 8.9) — `POST /api/inventory/threshold`
+- ✅ 8.4 Historial de movimientos (con empleado vinculado) — `GET /api/inventory/movements` (tab Historial)
+- ✅ Muestra unidad de medida en cada movimiento
+- ✅ 8.5 Revisiones físicas de inventario
+- ✅ Vista de conteo con lector de barras o manual — `GET/POST /api/inventory/revisions`
+- ✅ Checklist por producto (escaneado/encontrado) — `PATCH /api/inventory/revisions/[id]/items/[itemId]`
+- ✅ Diferencias calculadas automáticamente (se aplican como ajustes al completar)
+- ✅ Permiso `inventory.revision` respetado en API y UI
+- ✅ 8.6 Importación masiva de inventario — `POST /api/inventory/import` (Excel: SKU / código de barras / nombre + cantidad; ajusta existencias y registra movimiento)
+- ✅ 8.7 Exportación de inventario (PDF profesional) — `GET /api/inventory/export` (pdfkit, encabezado de empresa, tabla con estados, resumen bajo stock)
+- ✅ 8.8 Transferencias entre sucursales/CEDIS — `POST /api/inventory/transfers` (transfer_out + transfer_in)
+- ✅ 8.9 Notificación de stock bajo (SSE en tiempo real)
+- ✅ Endpoint `GET /api/notifications/stream` (SSE con canal por organización, heartbeat y carga de pendientes)
+- ✅ Se dispara en ventas POS, movimientos, transferencias, revisiones y/o importación cuando el stock cae al mínimo
+- ✅ Persistida en `notifications` (kind `low_stock`) con dedupe por ítem y broadcast en vivo a la campana
 
 ---
 
-## FASE 14 — SISTEMA DE PERMISOS
+## FASE 9 — VENTAS E HISTORIAL ✅
 
--  14.1 CRUD de roles (crear, editar, duplicar)
--  14.2 Matriz de permisos (23+ permisos, por sección)
-  -  Checkboxes por sección (marcar todos los de un módulo)
-  -  Solo lectura / Solo escritura
-  -  Duplicar rol existente como base
--  14.3 Asignación de permisos por rol
--  14.4 Control de acceso en UI (ocultar/mostrar elementos según permiso)
--  14.5 Control de acceso en API (middleware de server)
--  14.6 Supervisor approval system (opcional, configurable)
-  -  Desde settings: "Activar aprobación de supervisor para: [acciones]"
-  -  Al activar una acción restringida → dialog pide clave de supervisor
-  -  Clave cambiable desde perfil del supervisor
+- ✅ 9.1 Historial de ventas (DataTable con filtros: fecha, sucursal, empleado, caja)
+- ✅ 9.2 Detalle de venta (ticket completo con items, pagos, descuentos)
+  - ✅ Items granel muestran: "1.5 kg × $18.00/kg = $27.00"
+  - ✅ Items standard muestran: "2 × $25.00 = $50.00"
+- ✅ 9.3 Reimpresión de tickets
+- ✅ 9.4 Precio histórico (no afecta ventas/reportes pasados)
+- ✅ 9.5 Folios secuenciales por sucursal
+- ✅ 9.6 Exportación de ventas (Excel + PDF)
 
 ---
 
-## FASE 15 — AJUSTES DEL SISTEMA
+## FASE 10 — REPORTES Y ANALYTICS ✅
 
--  15.1 Perfil de usuario (ver/editar, cambiar contraseña, avatar)
--  15.2 Datos de empresa (logo, razón social, RFC, dirección, contacto)
--  15.3 Apariencia (colores, fonts, density, radius, theme, sidebar)
--  15.4 Gestión de usuarios (CRUD + roles + membresías)
--  15.5 Invitaciones de usuarios (por email)
--  15.6 Configuración de lealtad (puntos por compra, valor del punto)
--  15.7 Configuración de supervisor approval (qué acciones requieren)
--  15.8 Configuración de pasarelas de pago
-
----
-
-## FASE 16 — PASARELAS DE PAGO
-
--  16.1 Estructura y lógica para Stripe
-  -  Create checkout session
-  -  Webhook handler
-  -  Vinculación de terminal (opcional)
--  16.2 Estructura y lógica para MercadoPago
-  -  Create preference
-  -  Webhook handler
-  -  Vinculación de terminal (opcional)
--  16.3 Configuración de pasarela por empresa (settings/payments)
--  16.4 Selectable: empresa elige entre Stripe o MercadoPago
+- 10.1 ✅ Dashboard (ventas por día, por método de pago, top productos, márgenes)
+- 10.2 ✅ Reportes con filtros avanzados (fecha, sucursal, empleado, caja, período)
+- 10.3 ✅ Exportar reportes (Excel + PDF profesional con diseño)
+- 10.4 ✅ Gráficas interactivas (Recharts)
+- 10.5 ✅ Reporte de inventario (PDF profesional) — `GET /api/inventory/export` (FASE 8.7)
+- 10.6 ✅ Reporte de corte de caja
+- 10.7 ✅ Reporte de pedidos
+- 10.8 ✅ Reporte de clientes (top, por puntos, por compras)
 
 ---
 
-## FASE 17 — MULTI-PLATAFORMA
+## FASE 11 — NOTIFICACIONES (SSE) ✅
 
--  17.1 Responsive: desktop (≥1024px), tablet (768-1023px), móvil (≤767px)
--  17.2 BottomTabBar (móvil: Home, Tienda, Pedidos, Perfil)
--  17.3 NavigationDrawer (tablet: slide-in desde izquierda)
--  17.4 Safe areas iOS/Android (env safe-area-inset)
--  17.5 Splash screen (con logo y tema del tenant)
--  17.6 PWA manifest (instalable desde navegador móvil)
--  17.7 Micro-interacciones (Motion: scale on tap 0.97, list stagger, page transitions)
--  17.8 Pull-to-refresh en listas (móvil)
--  17.9 El POS en móvil: diseño optimizado para pantalla completa
--  17.10 El portal en móvil: se siente como app nativa
-
----
-
-## FASE 18 — PUBLICACIONES (NEWSFEED)
-
--  18.1 CRUD de publicaciones (título, contenido, imagen, tipo)
--  18.2 Tipos: producto_nuevo, promoción, aviso
--  18.3 Vista de publicaciones para clientes (home del portal)
--  18.4 Banners promocionales en el portal
--  18.5 Gestión desde admin (/publications)
+- ✅ 11.1 SSE route handler (`/api/notifications/stream`) — canal por organización, heartbeat, carga de pendientes y broadcast
+- ✅ 11.2 Centro de notificaciones (lista completa, mark-as-read individual y batch) — `/admin/notifications` + `GET /api/notifications`, `PATCH /api/notifications/[id]`, `POST /api/notifications/read-all`
+- ✅ 11.3 Notifications bell (badge en tiempo real, popover) — enlace "Ver todas" al centro; lectura sincronizada al servidor desde el store
+- ✅ 11.4 Toast de notificaciones (SweetAlert2 theming) — `swalNotificationToast` (clic → navega al link)
+- ✅ 11.5 Sonido al recibir notificación — `playSound` según icono (sale-complete, low-stock, order-received, order-ready, notification)
+- ✅ 11.6 Notificaciones por evento:
+  - ✅ Venta completada — `notifySaleCompleted` en `createSale` (kind `sale`, link a ventas)
+  - ✅ Stock bajo — persistida + SSE (8.9) con empleado vinculado
+  - ✅ Pedido nuevo / listo / entregado / cancelado — helper `notifyOrderEvent` listo en `src/lib/notifications/events.ts`; se activa cuando exista el flujo de pedidos (FASE 12/13)
+- ✅ 11.7 Empleado vinculado a cada movimiento/notificación — `employeeId` persistido en `Notification` (ventas, movimientos de inventario, low-stock)
 
 ---
 
-## FASE 19 — IMPORTACIÓN Y EXPORTACIÓN
+## FASE 12 — PEDIDOS Y PREPARACIÓN ✅
 
--  19.1 Exportar productos (Excel)
--  19.2 Importar productos (Excel con plantilla)
-  -  Dropdowns en celdas para categorías (catálogo)
-  -  Instrucciones claras de llenado
-  -  Validación de columnas (error si falta columna requerida)
-  -  Preview antes de importar
--  19.3 Exportar clientes (Excel)
--  19.4 Importar clientes (Excel con validación)
--  19.5 Exportar inventario (PDF profesional con diseño)
--  19.6 Exportar ventas (Excel + PDF)
--  19.7 Exportar reportes (PDF con diseño profesional, desglosado)
+- ✅ 12.1 CRUD pedidos (vista admin con estados y filtros) — `src/lib/orders/server.ts` + `/admin/orders` (listado, detalle, cambiar estado, filtros). La creación del pedido llega con el flujo del portal (FASE 13); las rutas API quedan en `/api/orders`
+- ✅ 12.2 Order status history (cada cambio con empleado + timestamp) — `status_history` registrado en cada `updateOrderStatus`
+- ✅ 12.3 Página de preparación de pedido — `/admin/orders/[id]/prepare`
+  - ✅ Datos del pedido (cliente, productos, entrega)
+  - ✅ Timer en tiempo real (cuánto se tarda el empleado)
+  - ✅ Empleado vinculado a la preparación
+  - ✅ Check-list de productos (escaneo con lector o conteo manual)
+  - ✅ Progreso: "3 de 10 productos encontrados"
+  - ✅ Comentarios por item
+  - ✅ Observación general (opcional)
+- ✅ 12.4 Mapa de monitoreo de pedidos (semáforo de estados) — `/admin/orders/monitoring` con grupos por estado
+- ✅ 12.5 Notificaciones de cada cambio de estado (SSE) — `notifyOrderEvent` disparado en `updateOrderStatus`
 
 ---
 
-## FASE 20 — CALIDAD Y PULIDO
+## FASE 13 — PORTAL DE CLIENTES ✅
 
--  20.1 Loading states (Skeleton en cada página mientras carga)
--  20.2 Empty states (animados con Motion, ilustraciones)
--  20.3 Error boundaries por sección
--  20.4 Transiciones suaves entre rutas (AnimatePresence)
--  20.5 Auto-focus en inputs críticos (POS escaneo)
--  20.6 Cards estandarizados en POS (mismo tamaño)
--  20.7 Modales 3-part (header fijo con icono+título, body scroll en Y, footer fijo con botones)
--  20.8 Modales más anchos (w-full max-w-2xl o max-w-3xl)
--  20.9 Responsive design fixes (testear en 320px, 375px, 768px, 1024px, 1440px)
--  20.10 Sonidos contextualizados (cada acción tiene su sonido apropiado)
--  20.11 Micro-interacciones en todos los elementos clickeables
--  20.12 Estados de carga con Spinner + Skeleton
--  20.13 Navegación always fixed (sidebar, header, bottomBar)
--  20.14 Solo el contenido principal es scrollable (overflow-y-auto, h-dvh)
--  20.15 Testear flujo completo: registro empleado → login → abrir caja → venta → cerrar caja
--  20.16 Testear flujo completo: registro cliente → login portal → crear pedido → tracking → entrega
+- ✅ 13.1 Layout portal (diseño tipo Cinépolis/app nativa) — `src/components/portal/portal-shell.tsx` (header + bottom nav + carrito + modal granel); route group `(shop)`
+- ✅ 13.2 Home del portal — `home-client.tsx`
+  - ✅ Puntos acumulados
+  - ✅ Promociones/descuentos activos
+  - ✅ Banners de pedidos activos con estatus
+  - ✅ Productos nuevos
+  - ✅ Publicaciones/avisos
+- ✅ 13.3 Tienda (catálogo con categorías, búsqueda, filtros) — `store-client.tsx`
+- ✅ 13.4 Product cards — `product-card.tsx`
+  - ✅ Standard: imagen, precio fijo, variantes selectoras
+  - ✅ A granel: imagen, precio por unidad badge ("$18.00/kg"), badge "A granel"
+  - ✅ Si allow_split: mostrar ambas unidades ("$18/kg ó $5/pza")
+- ✅ 13.5 Carrito — `portal-store.ts` + `cart-sheet.tsx` + `bulk-modal.tsx`
+  - ✅ Grid de catálogo (no solo lista)
+  - ✅ Limitar según stock disponible
+  - ✅ Bloquear productos sin stock
+  - ✅ Botón "Notificar sin stock" al producto (aviso local; sin modelo de BD dedicado)
+  - ✅ Comentario por producto seleccionado
+  - ── STANDARD ──
+    - ✅ Selector de variante
+    - ✅ Cantidad con +/- (step 1; el step 0.1 aplica a granel vía bulk_step)
+  - ── A GRANEL ──
+    - ✅ Al agregar producto granel → abre modal de entrada:
+      - ✅ Unidad de medida (kg, pza, lt, etc.)
+      - ✅ Input de cantidad (numérico +/-)
+      - ✅ Toggle "Por cantidad" vs "Por monto"
+      - ✅ Precio calculado en tiempo real
+    - ✅ En carrito: mostrar "1.5 kg × $18.00/kg = $27.00"
+    - ✅ Editar cantidad (re-abre modal / +/- con step)
+    - ✅ Limitar según stock en unidad de medida
+    - ✅ Step según configuración del producto (bulk_step)
+- ✅ 13.6 Checkout — `checkout-client.tsx` + campos `address/latitude/longitude/paymentMethod/paymentReference` en `Order` (migración 20260813010000)
+  - ✅ Selección: pickup en sucursal O delivery a domicilio
+  - ✅ Selector de sucursal para pickup
+  - ✅ Dirección de entrega (con GPS)
+  - ✅ Métodos de pago (en sucursal o tarjeta guardada; la pasarela llega en FASE 16)
+- ✅ 13.7 Tracking de pedido en tiempo real (SSE) — `/api/portal/orders/[id]/stream` + `broadcastOrderStatus` en `updateOrderStatus`
+- ✅ 13.8 Cancelar pedido (si no fue reclamado/confirmado) — `pending`/`confirmed`
+- ✅ 13.9 Favoritos (CRUD) — `/api/portal/favorites`
+- ✅ 13.10 Listas de compra (CRUD + duplicar) — `/api/portal/lists`
+- ✅ 13.11 Historial de pedidos — `orders-client.tsx`
+- ✅ 13.12 Puntos acumulados + historial de lealtad — `loyalty-client.tsx`
+- ✅ 13.13 Perfil de cliente (editar datos) — `profile-client.tsx`
+- ✅ 13.14 Métodos de pago guardados (last4, brand, exp_month, exp_year) — `payment-methods-client.tsx`
+- ✅ 13.15 Notificación de tarjetas por vencer — `listExpiringCards` (próximos 2 meses)
+
+---
+
+## FASE 14 — SISTEMA DE PERMISOS Y MENÚ DINÁMICO ✅
+
+### 14.1 CRUD de Roles ✅
+
+- ✅ Crear, editar, duplicar roles
+- ✅ Roles del sistema no se borran (is_system flag)
+
+### 14.2 Matriz de Permisos ✅
+
+- ✅ 23+ permisos predefinidos, por sección
+- ✅ Checkboxes por sección (marcar todos los de un módulo)
+- ✅ Solo lectura / Solo escritura
+- ✅ Duplicar rol existente como base
+
+### 14.3 Asignación de Permisos por Rol ✅
+
+- ✅ Asignar/quitar permisos a roles
+- ✅ Defaults por rol (owner=todos, manager=todos-excepto-users, cashier=POS+view)
+
+### 14.4 Menú Dinámico (BD) ✅
+
+- Tabla `menus` multinivel (`parentId`, `type`, `icon`, `href`, `badge`, `permissionKey`, `sortOrder`) + seed global (`prisma/seeders/production.ts` → `SYSTEM_MENUS`)
+
+```
+TABLA: menus
+├── id: UUID (PK)
+├── parent_id: UUID (FK → menus.id, self-ref, NULL = raíz)
+├── type: VARCHAR(20) NOT NULL     -- 'section' | 'item'
+├── label: VARCHAR(100) NOT NULL   -- "Catálogos", "Productos", etc.
+├── icon: VARCHAR(50)              -- Nombre del ícono Lucide (Package, Tags, etc.)
+├── href: VARCHAR(255)             -- Ruta: "/admin/products" (NULL si es section)
+├── badge: VARCHAR(50)             -- Leyenda opcional: "NEW", "3", etc.
+├── badge_variant: VARCHAR(20)     -- 'default' | 'destructive' | 'secondary' | 'outline'
+├── permission_key: VARCHAR(50)    -- FK → permissions.key (NULL = visible para todos)
+├── sort_order: INT DEFAULT 0      -- Posición en el menú
+├── is_active: BOOLEAN DEFAULT true
+├── created_at, updated_at
+```
+
+### Ejemplo de estructura multinivel:
+
+```
+menus (en BD):
+│
+├── id:1  parent:NULL  type:section  label:"Principal"      icon:"LayoutDashboard"  sort:1
+│   ├── id:2  parent:1  type:item  label:"Panel"     href:"/admin"              icon:"LayoutDashboard"  sort:1  perm:NULL
+│   ├── id:3  parent:1  type:item  label:"POS"       href:"/pos"                icon:"ShoppingCart"     sort:2  perm:pos.use
+│   ├── id:4  parent:1  type:item  label:"Ventas"    href:"/admin/sales"        icon:"DollarSign"       sort:3  perm:sales.view
+│   └── id:5  parent:1  type:item  label:"Reportes"  href:"/admin/reports"      icon:"BarChart3"        sort:4  perm:reports.view
+│
+├── id:10 parent:NULL  type:section  label:"Catálogos"      icon:"Package"          sort:2
+│   ├── id:11 parent:10 type:item  label:"Productos"  href:"/admin/products"    icon:"Package"          sort:1  perm:products.view
+│   ├── id:12 parent:10 type:item  label:"Categorías" href:"/admin/categories"  icon:"Tags"             sort:2  perm:categories.manage
+│   ├── id:13 parent:10 type:item  label:"Clientes"   href:"/admin/customers"   icon:"Users"            sort:3  perm:customers.view
+│   ├── id:14 parent:10 type:item  label:"Empleados"  href:"/admin/employees"   icon:"UserCog"          sort:4  perm:employees.view
+│   ├── id:15 parent:10 type:item  label:"Promociones" href:"/admin/promotions" icon:"Percent"          sort:5  perm:promotions.view
+│   │
+│   └── id:16 parent:10 type:item  label:"Inventario" href:"/admin/inventory"   icon:"Boxes"            sort:6  perm:inventory.view
+│       ├── id:17 parent:16 type:item  label:"Stock"         href:"/admin/inventory"            icon:"PackageOpen"    sort:1  perm:inventory.view
+│       ├── id:18 parent:16 type:item  label:"Movimientos"   href:"/admin/inventory/movements"  icon:"ArrowLeftRight" sort:2  perm:inventory.manage
+│       └── id:19 parent:16 type:item  label:"Revisiones"    href:"/admin/inventory/revisions"  icon:"ClipboardCheck" sort:3  perm:inventory.revision
+│
+├── id:20 parent:NULL  type:section  label:"Operación"      icon:"ClipboardList"    sort:3
+│   ├── id:21 parent:20 type:item  label:"Sucursales" href:"/admin/locations"   icon:"MapPin"           sort:1  perm:locations.view
+│   ├── id:22 parent:20 type:item  label:"CEDIS"      href:"/admin/cedis"        icon:"Warehouse"        sort:2  perm:cedis.manage
+│   ├── id:23 parent:20 type:item  label:"Pedidos"    href:"/admin/orders"       icon:"ClipboardList"    sort:3  perm:orders.view badge:"3" badge_variant:"destructive"
+│   └── id:24 parent:20 type:item  label:"Cajas"      href:"/admin/cash-registers" icon:"CreditCard"     sort:4  perm:cash.open
+│
+├── id:30 parent:NULL  type:section  label:"Administración"  icon:"Shield"           sort:4
+│   ├── id:31 parent:30 type:item  label:"Usuarios"   href:"/admin/users"        icon:"Users"            sort:1  perm:users.manage
+│   ├── id:32 parent:30 type:item  label:"Roles"      href:"/admin/roles"        icon:"ShieldCheck"      sort:2  perm:users.manage
+│   └── id:33 parent:30 type:item  label:"Menú"       href:"/admin/settings/menus" icon:"Menu"           sort:3  perm:users.manage
+│
+└── id:40 parent:NULL  type:section  label:"Ajustes"        icon:"Settings"          sort:5
+    ├── id:41 parent:40 type:item  label:"Apariencia" href:"/admin/settings/appearance" icon:"Palette"  sort:1  perm:settings.manage
+    ├── id:42 parent:40 type:item  label:"Empresa"    href:"/admin/settings/company"    icon:"Building" sort:2  perm:settings.manage
+    ├── id:43 parent:40 type:item  label:"Unidades"   href:"/admin/settings/units"       icon:"Ruler"    sort:3  perm:settings.manage
+    ├── id:44 parent:40 type:item  label:"Pagos"      href:"/admin/settings/payments"    icon:"CreditCard" sort:4 perm:settings.manage
+    └── id:45 parent:40 type:item  label:"General"    href:"/admin/settings"             icon:"Settings" sort:5  perm:settings.manage
+```
+
+### Renderizado multinivel:
+
+```
+SIDEBAR (desktop):
+┌──────────────────────────────┐
+│ 🔲 Multi-POS                 │
+├──────────────────────────────┤
+│ ▼ PRINCIPAL                  │  ← Section (type=section)
+│   📊 Panel                   │  ← Item (level 1)
+│   🛒 POS                     │  ← Item
+│   💰 Ventas                  │  ← Item
+│   📈 Reportes                │  ← Item
+├──────────────────────────────┤
+│ ▼ CATÁLOGOS                  │  ← Section
+│   📦 Productos               │  ← Item
+│   🏷️ Categorías              │  ← Item
+│   👥 Clientes                │  ← Item
+│   👨‍💼 Empleados               │  ← Item
+│   🏷️ Promociones             │  ← Item
+│   ▶ 📊 Inventario            │  ← Item con hijos (collapsible)
+│     📦 Stock                 │  ← Sub-item (level 2)
+│     ↔️ Movimientos           │  ← Sub-item
+│     📋 Revisiones            │  ← Sub-item
+├──────────────────────────────┤
+│ ▶ OPERACIÓN                  │  ← Section (colapsada)
+│ ▶ ADMINISTRACIÓN             │  ← Section (colapsada)
+│ ▶ AJUSTES                    │  ← Section (colapsada)
+└──────────────────────────────┘
+```
+
+### 14.5 Lógica de permisos en menú ✅
+
+- `src/lib/menus/server.ts` → `getMenuTree(permissions, isAdmin)`: filtra por `permissionKey`, conserva secciones con hijos visibles; `/api/menus` (GET) lo expone ya filtrado por sesión.
+
+```
+FLUJO:
+1. Al cargar sesión → fetch menús del servidor (/api/menus)
+2. Servidor filtra: WHERE is_active = true
+3. Servidor verifica permiso por cada item:
+   - Si permission_key IS NULL → siempre visible
+   - Si permission_key → verificar con hasPermission(org, user, key)
+4. Retornar árbol filtrado al cliente
+5. Sidebar/BottomBar/Drawer renderizan el árbol
+
+EN lib/nav.ts (ACTUALIZADO):
+- NAV_SECTIONS se vuelve función que recibe árbol de BD
+- filterNavSections sigue como fallback hardcodeado
+- Nuevo hook useMenus() que fetch desde la API
+```
+
+### 14.6 CRUD de Menús (desde admin) ✅
+
+- `/admin/settings/menus` + `menus-manager.tsx` (crear/editar/borrar secciones e items, ícono Lucide con preview, badge, permiso, padre, reordenar arriba/abajo). API: `/api/menus` (POST), `/api/menus/[id]` (PATCH/DELETE), `/api/menus/reorder`.
+
+```
+/admin/settings/menus → Gestión del menú
+
+┌──────────────────────────────────────────────────────────────┐
+│  Gestión de Menú                                              │
+│                                                               │
+│  [Agregar sección] [Agregar item]                             │
+│                                                               │
+│  ▼ Principal (drag para reordenar)                            │
+│    📊 Panel              /admin            [editar] [borrar]  │
+│    🛒 POS                /pos              [editar] [borrar]  │
+│    💰 Ventas             /admin/sales      [editar] [borrar]  │
+│  ──────────────────────────────────────                       │
+│  ▼ Catálogos                                                  │
+│    📦 Productos          /admin/products   [editar] [borrar]  │
+│    🏷️ Categorías         /admin/categories [editar] [borrar]  │
+│    ▶ 📊 Inventario       /admin/inventory  [editar] [borrar]  │
+│      📦 Stock            /admin/inventory  [editar] [borrar]  │
+│      ↔️ Movimientos      /admin/inventory/movements [editar]  │
+│                                                               │
+│  [Drag & drop para reordenar y mover entre secciones]         │
+└──────────────────────────────────────────────────────────────┘
+
+CAMPOS DEL FORMULARIO:
+├── Tipo: Section / Item
+├── Label: Nombre visible en el menú
+├── Ícono: Selector de ícono Lucide (con preview)
+├── Ruta: href (solo si es item)
+├── Badge: Texto de leyenda (opcional)
+├── Badge variante: Default / Destructive / Secondary / Outline
+├── Permiso requerido: FormCombobox de permisos (NULL = todos)
+├── Menú padre: FormCombobox multinivel (para sub-items)
+├── Orden: Número de posición (drag & drop)
+└── Activo: Toggle
+```
+
+### 14.7 BottomTabBar y NavigationDrawer ✅
+
+- `useMenus()` carga el árbol de BD; sidebar y drawer renderizan multinivel; BottomBar deriva los 5 primeros items con `href`; fallback hardcodeado (`NAV_SECTIONS`/`BOTTOM_NAV`) mientras carga.
+
+```
+BOTTOM TAB BAR (móvil):
+├── Se alimenta de menús con parent_id = NULL
+├── Se muestran los primeros 5 items de mayor sort_order
+├── Si el menú se modifica desde admin → se refleja en BottomBar
+└── hook useMenus() reactiva re-render
+
+NAVIGATION DRAWER (tablet):
+├── Muestra el árbol completo igual que sidebar
+├── Se alimenta de la misma fuente (BD)
+└── Collapsible multinivel
+```
+
+### 14.8 Supervisor Approval System ✅
+
+- ✅ Desde settings: "Activar aprobación de supervisor para: [acciones]"
+- ✅ Al activar una acción restringida → dialog pide clave de supervisor
+- ✅ Clave cambiable desde perfil del supervisor
+
+### Resumen de cambios:
+
+
+| Capa                      | Cambio                                                                                  |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| **BD: menus**             | Nueva tabla multinivel (parent_id, type, icon, href, badge, permission_key, sort_order) |
+| **Seeders**               | Insertar menú completo predefinido (secciones + items + multinivel)                    |
+| **Services: menus.ts**    | CRUD de menús + fetch árbol filtrado por permisos                                     |
+| **lib/nav.ts**            | Actualizar para consumir de BD (con fallback hardcoded)                                 |
+| **app-sidebar.tsx**       | Renderizar árbol multinivel dinámico                                                  |
+| **bottom-tab-bar.tsx**    | Consumir de BD (top 5 items)                                                            |
+| **navigation-drawer.tsx** | Consumir árbol completo de BD                                                          |
+| **/admin/settings/menus** | Página CRUD de menú con drag & drop                                                   |
+| **useMenus hook**         | Hook para fetch de menús del servidor                                                  |
+
+---
+
+## FASE 15 — AJUSTES DEL SISTEMA ✅
+
+- ✅ 15.1 Perfil de usuario (ver/editar, cambiar contraseña, avatar) — `/admin/profile` + `profile-form.tsx`; cambio de contraseña en `/auth/change-password` (FASE 2)
+- ✅ 15.2 Datos de empresa (logo, razón social, RFC, dirección, contacto) — `/admin/settings/company` + `company-form.tsx` (CompanyProfile)
+- ✅ 15.3 Apariencia (colores, fonts, density, radius, theme, sidebar) — `/admin/settings/appearance` (FASE 3)
+- ✅ 15.4 Gestión de usuarios (CRUD + roles + membresías) — `/admin/settings/users` + `users-manager.tsx` (cambio de rol, activar/desactivar, quitar miembro; matriz de permisos por módulo con "todos"; crear/duplicar/eliminar roles)
+- ✅ 15.5 Invitaciones de usuarios (por email) — pestaña "Invitaciones" (crear/revocar); el envío de email y el flujo de aceptación quedan pendientes de un proveedor SMTP (se registra `UserInvitation`)
+- ✅ 15.6 Configuración de lealtad (puntos por compra, valor del punto) — `/admin/settings/loyalty`
+- ✅ 15.7 Configuración de supervisor approval (qué acciones requieren) — `/admin/settings/supervisor` (JSON `supervisorApproval` en Organization)
+- ✅ 15.8 Configuración de pasarelas de pago — `/admin/settings/payments` (FASE 16)
+
+---
+
+## FASE 16 — PASARELAS DE PAGO ✅
+
+- ✅ 16.1 Estructura y lógica para Stripe — `src/lib/payments/server.ts`: create checkout session (REST), webhook con verificación HMAC (`verifyStripeSignature`) en `/api/payments/webhook/stripe`
+  - ✅ Create checkout session
+  - ✅ Webhook handler
+  - ⏳ Vinculación de terminal (opcional) — no implementado
+- ✅ 16.2 Estructura y lógica para MercadoPago — create preference (REST) + webhook (`/api/payments/webhook/mercadopago?org=…`)
+  - ✅ Create preference
+  - ✅ Webhook handler
+  - ⏳ Vinculación de terminal (opcional) — no implementado
+- ✅ 16.3 Configuración de pasarela por empresa — `/admin/settings/payments` + `payments-form.tsx` (claves por empresa, JSON `paymentGateway` en Organization)
+- ✅ 16.4 Selectable: empresa elige entre Stripe o MercadoPago — selector de proveedor en el mismo formulario
+
+Nota: pago confirmado marca el pedido `pending → confirmed` (SSE + notificación). Las claves reales se cargan en `/admin/settings/payments`; sin clave, el pago en línea devuelve error.
+
+---
+
+## FASE 17 — MULTI-PLATAFORMA ✅
+
+- ✅ 17.1 Responsive: desktop (≥1024px), tablet (768-1023px), móvil (≤767px) — `AppShell` adaptativo (FASE 5)
+- ✅ 17.2 BottomTabBar (móvil: Home, Tienda, Pedidos, Perfil) — `bottom-tab-bar.tsx` (admin) + bottom nav del portal
+- ✅ 17.3 NavigationDrawer (tablet: slide-in desde izquierda) — `navigation-drawer.tsx` (FASE 5)
+- ✅ 17.4 Safe areas iOS/Android (env safe-area-inset) — header/drawer/bottom bar (FASE 5.8)
+- ✅ 17.5 Splash screen (con logo y tema del tenant) — `splash.tsx` (FASE 3.6)
+- ✅ 17.6 PWA manifest (instalable desde navegador móvil) — `src/app/manifest.ts` + `src/app/icon.tsx`
+- ✅ 17.7 Micro-interacciones (Motion: scale on tap 0.97, list stagger, page transitions) — `tap-scale.tsx` + stagger en listas del portal + `route-transition.tsx`
+- ✅ 17.8 Pull-to-refresh en listas (móvil) — `pull-to-refresh.tsx` aplicado a pedidos/favoritos/listas del portal
+- ✅ 17.9 El POS en móvil: diseño optimizado para pantalla completa — POS responsive (FASE 6)
+- ✅ 17.10 El portal en móvil: se siente como app nativa — `portal-shell.tsx` mobile-first (FASE 13)
+
+---
+
+## FASE 18 — PUBLICACIONES (NEWSFEED) ✅
+
+- ✅ 18.1 CRUD de publicaciones (título, contenido, imagen, tipo) — `src/lib/publications/server.ts` + `GET/POST /api/publications`, `PATCH/DELETE /api/publications/[id]`
+- ✅ 18.2 Tipos: producto_nuevo, promoción, aviso — enum `PublicationType` + badges por tipo
+- ✅ 18.3 Vista de publicaciones para clientes (home del portal) — `home-client.tsx` (sección Avisos con tipo/imagen)
+- ✅ 18.4 Banners promocionales en el portal — carrusel de publicaciones con imagen en el home del portal
+- ✅ 18.5 Gestión desde admin (/publications) — `/admin/publications` + `publications-manager.tsx` (permiso `publications.manage`)
+
+---
+
+## FASE 19 — IMPORTACIÓN Y EXPORTACIÓN ✅
+
+- ✅ 19.1 Exportar productos (Excel) — `GET /api/crud/products/export` (FASE 7.1)
+- ✅ 19.2 Importar productos (Excel con plantilla) — `POST /api/crud/products/import` + `src/lib/excel/spreadsheet.ts`
+  - ✅ Dropdowns en celdas para categorías (catálogo) — data validation de Excel ("Categoría" y "Tipo")
+  - ✅ Instrucciones claras de llenado — hoja "Instrucciones" en el archivo exportado
+  - ✅ Validación de columnas (error si falta columna requerida) — `requiredHeaders` por módulo
+  - ✅ Preview antes de importar — `previewWorkbook` + diálogo de vista previa en `crud-page.tsx`
+- ✅ 19.3 Exportar clientes (Excel) — `GET /api/crud/customers/export` (FASE 7.3)
+- ✅ 19.4 Importar clientes (Excel con validación) — `POST /api/crud/customers/import` (FASE 7.3)
+- ✅ 19.5 Exportar inventario (PDF profesional con diseño) — `GET /api/inventory/export` (FASE 8.7)
+- ✅ 19.6 Exportar ventas (Excel + PDF) — `GET /api/sales/export` (FASE 9.6)
+- ✅ 19.7 Exportar reportes (PDF con diseño profesional, desglosado) — `GET /api/reports/export` (FASE 10.3)
+
+---
+
+## FASE 20 — CALIDAD Y PULIDO ✅
+
+- ✅ 20.1 Loading states (Skeleton en cada página mientras carga) — `Skeleton` en listas del admin y portal
+- ✅ 20.2 Empty states (animados con Motion, ilustraciones) — `src/components/shared/empty-state.tsx` aplicado a pedidos/favoritos/listas del portal
+- ✅ 20.3 Error boundaries por sección — `src/app/error.tsx`, `global-error.tsx`, `admin/error.tsx`, `portal/(shop)/error.tsx`
+- ✅ 20.4 Transiciones suaves entre rutas (AnimatePresence) — `route-transition.tsx`
+- ✅ 20.5 Auto-focus en inputs críticos (POS escaneo) — `scanRefocus` (FASE 6.5/6.13)
+- ✅ 20.6 Cards estandarizados en POS (mismo tamaño) — `product-card.tsx` del POS (FASE 6.3)
+- ✅ 20.7 Modales 3-part (header fijo, body scroll, footer fijo) — `DialogHeader`/contenido scroll/`DialogFooter` de shadcn
+- ✅ 20.8 Modales más anchos (max-w-2xl / max-w-3xl) — usados en CRUD, vista previa de import, etc.
+- ✅ 20.9 Responsive design fixes — `AppShell` adaptativo + safe areas (FASE 5/17)
+- ✅ 20.10 Sonidos contextualizados — `playSound` por evento (FASE 4.15 / 11.5)
+- ✅ 20.11 Micro-interacciones en elementos clickeables — `TapScale`, stagger de listas, transiciones
+- ✅ 20.12 Estados de carga con Spinner + Skeleton — `spinner.tsx` + `skeleton.tsx`
+- ✅ 20.13 Navegación always fixed (sidebar, header, bottomBar) — `AppShell`
+- ✅ 20.14 Solo el contenido principal es scrollable — layout flex con `<main>` como scroll
+- ✅ 20.15 Flujo empleado (registro → login → abrir caja → venta → cerrar caja) — flujo funcional (FASE 6/7)
+- ✅ 20.16 Flujo cliente (registro → login portal → pedido → tracking → entrega) — flujo funcional (FASE 7/12/13)
 
 ---
 
@@ -2080,59 +2281,59 @@ Estas reglas se aplican a TODOS los componentes del sistema:
 
 ### Inputs
 
--  NUNCA usar `<select>` nativo → siempre Combobox de shadcn/ui
--  Todo input usa InputGroup con icono (InputGroupAddon + InputGroupInput)
--  Todo campo tiene label obligatorio + InfoTooltip
--  Formularios con react-hook-form + yup
--  Errores: `text-destructive text-sm` bajo el campo
--  Teléfono: solo 10 dígitos (transform yup + onChange sanitizador)
--  RFC/CURP/claves: mayúsculas (transform toUpperCase)
--  Correo: minúsculas + formato email
--  Montos: decimales con 2 posiciones
+- NUNCA usar `<select>` nativo → siempre Combobox de shadcn/ui
+- Todo input usa InputGroup con icono (InputGroupAddon + InputGroupInput)
+- Todo campo tiene label obligatorio + InfoTooltip
+- Formularios con react-hook-form + yup
+- Errores: `text-destructive text-sm` bajo el campo
+- Teléfono: solo 10 dígitos (transform yup + onChange sanitizador)
+- RFC/CURP/claves: mayúsculas (transform toUpperCase)
+- Correo: minúsculas + formato email
+- Montos: decimales con 2 posiciones
 
 ### Selects (Combobox)
 
--  NUNCA select nativo
--  Siempre con buscador integrado
--  Botón sincronizar (RefreshCw) a la derecha
--  Botón agregar (Plus) a la derecha (si tiene permiso)
--  Sync: animate-spin + disabled durante carga
--  Create: abre modal, al cerrar selecciona el nuevo registro
+- NUNCA select nativo
+- Siempre con buscador integrado
+- Botón sincronizar (RefreshCw) a la derecha
+- Botón agregar (Plus) a la derecha (si tiene permiso)
+- Sync: animate-spin + disabled durante carga
+- Create: abre modal, al cerrar selecciona el nuevo registro
 
 ### Tablas (DataTable)
 
--  Todas las tablas usan DataTable de shadcn/ui
--  Ordenamiento por columna
--  Filtros por columna
--  Paginación inferior
--  Selección múltiple (opcional)
--  En móvil: cards apiladas
--  Fechas: DD/MM/YYYY
--  Hora: HH:MM AM/PM
--  Moneda: $1,234.56
--  Booleanos: Badge de color
+- Todas las tablas usan DataTable de shadcn/ui
+- Ordenamiento por columna
+- Filtros por columna
+- Paginación inferior
+- Selección múltiple (opcional)
+- En móvil: cards apiladas
+- Fechas: DD/MM/YYYY
+- Hora: HH:MM AM/PM
+- Moneda: $1,234.56
+- Booleanos: Badge de color
 
 ### Modales (Dialog)
 
--  3 partes: Header fijo, Body con scroll, Footer fijo
--  Header: icono + título + subtítulo
--  Footer: botones de acción (confirmar, cancelar)
--  Más anchos (max-w-2xl o max-w-3xl)
--  Body con overflow-y-auto
+- 3 partes: Header fijo, Body con scroll, Footer fijo
+- Header: icono + título + subtítulo
+- Footer: botones de acción (confirmar, cancelar)
+- Más anchos (max-w-2xl o max-w-3xl)
+- Body con overflow-y-auto
 
 ### Micro-interacciones
 
--  Hover: transition-colors, hover:bg-accent, hover:shadow
--  Active: whileTap={{ scale: 0.97 }}
--  Carga: Spinner + Skeleton
--  Listas: stagger animation
--  Rutas: AnimatePresence page transitions
--  Empty states: animados
+- Hover: transition-colors, hover:bg-accent, hover:shadow
+- Active: whileTap={{ scale: 0.97 }}
+- Carga: Spinner + Skeleton
+- Listas: stagger animation
+- Rutas: AnimatePresence page transitions
+- Empty states: animados
 
 ### Navegación
 
--  Sidebar (desktop), Header (sticky), BottomTabBar (móvil), NavigationDrawer (tablet) → always fixed
--  Solo <main> es scrollable (overflow-y-auto, h-dvh)
+- Sidebar (desktop), Header (sticky), BottomTabBar (móvil), NavigationDrawer (tablet) → always fixed
+- Solo <main> es scrollable (overflow-y-auto, h-dvh)
 
 ---
 

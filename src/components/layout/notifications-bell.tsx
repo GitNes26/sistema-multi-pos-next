@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -133,7 +134,13 @@ export function NotificationsBell() {
         <div className="border-t px-3 py-2 text-center text-[0.65rem] text-muted-foreground">
           {connected
             ? "Conectado al servidor de eventos."
-            : "Sin conexión SSE: mostrando ejemplos (FASE 11)."}
+            : "Sin conexión SSE: reintentando…"}
+        </div>
+        <div className="border-t px-3 py-1.5 text-center">
+          <Link href="/admin/notifications" className="inline-flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-foreground/80 transition-colors hover:bg-accent">
+            <Bell className="size-3.5" />
+            Ver todas las notificaciones
+          </Link>
         </div>
       </PopoverContent>
     </Popover>

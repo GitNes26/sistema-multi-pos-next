@@ -8,6 +8,7 @@ import {
   filterNavSectionsByUser,
 } from "@/lib/nav";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
+import { useMenus } from "@/hooks/use-menus";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { NavigationDrawer } from "@/components/layout/navigation-drawer";
@@ -21,13 +22,17 @@ export interface AppShellProps {
   children: React.ReactNode;
 }
 
-// FASE 5.1 / 5.10 — Un solo shell adaptativo:
-// desktop (>=1024px) = Sidebar fija · tablet (768-1023px) = Drawer · móvil (<768) = BottomBar.
+// FASE 5.1 / 5.10 / 14.7 — Un solo shell adaptativo.
+// El menú viene de la BD (useMenus) y cae al fallback hardcodeado mientras carga.
 export function AppShell({ user, permissions, children }: AppShellProps) {
-  const sections = React.useMemo(
+  const { sections: dbSections, bottomItems } = useMenus();
+
+  const fallbackSections = React.useMemo(
     () => filterNavSectionsByUser({ user: { role: user.role, permissions } }, NAV_SECTIONS),
     [user.role, permissions]
   );
+  const sections = dbSections ?? fallbackSections;
+  const bottomNav = bottomItems ?? BOTTOM_NAV;
 
   return (
     <div className="flex min-h-svh bg-background">
@@ -45,7 +50,7 @@ export function AppShell({ user, permissions, children }: AppShellProps) {
 
       <NavigationDrawer sections={sections} />
       <BottomTabBar
-        items={BOTTOM_NAV}
+        items={bottomNav}
         permissions={permissions}
         role={user.role}
       />

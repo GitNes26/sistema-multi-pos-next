@@ -2,12 +2,23 @@
 
 import * as React from "react";
 import { useNotificationStore, type AppNotification } from "@/stores/notifications-store";
+import { playSound } from "@/lib/sounds";
+import { swalNotificationToast } from "@/lib/swal";
 
 // FASE 5.4 / 11 — Cliente SSE para notificaciones en tiempo real.
-// Se conecta a `/api/notifications/stream`; reintenta con backoff. Si el
-// endpoint aún no existe (FASE 11) cae en modo demo para validar el UI.
+// Conecta a `/api/notifications/stream`; reintenta con backoff. Al recibir una
+// notificación individual reproduce su sonido (11.5) y muestra toast (11.4).
 
 const MAX_RETRIES = 6;
+
+const SOUND_BY_ICON: Record<string, Parameters<typeof playSound>[0]> = {
+  "sale-complete": "sale-complete",
+  "low-stock": "low-stock",
+  "order-received": "order-received",
+  "order-ready": "order-ready",
+  notification: "notification",
+  success: "sale-complete",
+};
 
 export function useNotificationSse(enabled = true) {
   const seeded = React.useRef(false);
@@ -36,7 +47,7 @@ export function useNotificationSse(enabled = true) {
           if (Array.isArray(data.items)) {
             store().setItems(data.items);
           } else if (data.id && data.title) {
-            store().push({
+            const n: AppNotification = {
               id: data.id,
               title: data.title,
               description: data.description,
@@ -44,7 +55,10 @@ export function useNotificationSse(enabled = true) {
               href: data.href,
               read: false,
               createdAt: data.createdAt ?? new Date().toISOString(),
-            });
+            };
+            store().push(n);
+            playSound(SOUND_BY_ICON[n.icon ?? ""] ?? "notification", { volume: 0.7 });
+            swalNotificationToast(n);
           }
         } catch {
           // Ignorar mensajes no JSON

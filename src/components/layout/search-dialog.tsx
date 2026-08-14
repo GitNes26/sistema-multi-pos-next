@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { CornerDownLeft, Search } from "lucide-react";
 
-import { NavSection } from "@/lib/nav";
+import { NavItem, NavSection } from "@/lib/nav";
 import { useUiStore } from "@/stores/ui-store";
 import {
   CommandDialog,
@@ -15,7 +15,9 @@ import {
   CommandList,
 } from "@/components/ui/command";
 
-// FASE 5.2 — Búsqueda global de navegación (Cmd/Ctrl+K).
+type SearchItem = NavItem & { group: string; href: string };
+
+// FASE 5.2 / 14.7 — Búsqueda global de navegación (Cmd/Ctrl+K).
 export function SearchDialog({ sections }: { sections: NavSection[] }) {
   const router = useRouter();
   const searchOpen = useUiStore((s) => s.searchOpen);
@@ -32,8 +34,21 @@ export function SearchDialog({ sections }: { sections: NavSection[] }) {
     return () => window.removeEventListener("keydown", handler);
   }, [setSearchOpen]);
 
-  const items = sections.flatMap((s) =>
-    s.items.map((item) => ({ ...item, group: s.title ?? "General" }))
+  const items = React.useMemo(() => {
+    const out: SearchItem[] = [];
+    const walk = (list: NavItem[], group: string) => {
+      for (const it of list) {
+        if (it.href) out.push({ ...it, group, href: it.href });
+        if (it.children) walk(it.children, group);
+      }
+    };
+    for (const s of sections) walk(s.items, s.title ?? "General");
+    return out;
+  }, [sections]);
+
+  const groups = React.useMemo(
+    () => Array.from(new Set(items.map((i) => i.group))),
+    [items]
   );
 
   return (
@@ -41,10 +56,10 @@ export function SearchDialog({ sections }: { sections: NavSection[] }) {
       <CommandInput placeholder="Buscar página o acción…" />
       <CommandList>
         <CommandEmpty>Sin resultados.</CommandEmpty>
-        {items.map((item) => (
-          <CommandGroup key={item.group} heading={item.group}>
+        {groups.map((group) => (
+          <CommandGroup key={group} heading={group}>
             {items
-              .filter((i) => i.group === item.group)
+              .filter((i) => i.group === group)
               .map((i) => (
                 <CommandItem
                   key={i.href}

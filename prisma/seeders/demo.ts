@@ -153,14 +153,14 @@ async function cleanupDemo(orgId: string, emails: string[]) {
   await d.inventoryMovement.deleteMany();
   await d.inventory.deleteMany();
   await d.variantOptionValue.deleteMany();
+  await d.shoppingListItem.deleteMany();
+  await d.shoppingList.deleteMany();
+  await d.customerFavorite.deleteMany();
   await d.productVariant.deleteMany();
   await d.productOptionValue.deleteMany();
   await d.productOption.deleteMany();
   await d.product.deleteMany();
   await d.category.deleteMany();
-  await d.shoppingListItem.deleteMany();
-  await d.shoppingList.deleteMany();
-  await d.customerFavorite.deleteMany();
   await d.customerPaymentMethod.deleteMany();
   await d.customer.deleteMany();
   await d.cashSession.deleteMany();

@@ -27,7 +27,9 @@ export function BottomTabBar({ items, permissions = [], role }: BottomTabBarProp
 
   const visible = React.useMemo(
     () =>
-      filterNavItems({ user: { role, permissions } }, items),
+      filterNavItems({ user: { role, permissions } }, items).filter(
+        (i): i is NavItem & { href: string } => Boolean(i.href)
+      ),
     [items, permissions, role]
   );
 

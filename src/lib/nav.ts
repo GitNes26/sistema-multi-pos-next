@@ -1,16 +1,25 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
+  Banknote,
+  BellRing,
   Boxes,
+  Briefcase,
+  Building2,
   ClipboardList,
+  CreditCard,
   LayoutDashboard,
   MapPin,
+  Megaphone,
+  Menu,
   Package,
   Palette,
   Percent,
+  Ruler,
   Settings,
   ShieldCheck,
   ShoppingCart,
+  Sparkles,
   Tags,
   UserCog,
   Users,
@@ -19,16 +28,22 @@ import {
 import type { Session } from "next-auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
+import type { MenuNode } from "@/lib/menus/server";
+import { resolveMenuIcon } from "@/lib/menu-icons";
 
-// FASE 5.11 — Rutas + íconos + permisos definidos UNA sola vez.
-// Sidebar, BottomBar y Drawer consumen esta especificación.
+// FASE 5.11 + FASE 14 — Rutas + íconos + permisos definidos UNA sola vez.
+// Sidebar, BottomBar y Drawer consumen esta especificación (fallback hardcoded)
+// o el árbol dinámico de BD (useMenus → menuTreeToSections).
 
 export interface NavItem {
-  href: string;
+  href?: string;
   label: string;
   icon: LucideIcon;
   permission?: PermissionKey;
   match?: RegExp;
+  badge?: string;
+  badgeVariant?: string;
+  children?: NavItem[];
 }
 
 export interface NavSection {
@@ -53,6 +68,11 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: BarChart3,
         permission: "reports.view",
       },
+      {
+        href: "/admin/notifications",
+        label: "Notificaciones",
+        icon: BellRing,
+      },
     ],
   },
   {
@@ -71,6 +91,12 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: "categories.manage",
       },
       {
+        href: "/admin/units",
+        label: "Medidas",
+        icon: Ruler,
+        permission: "products.manage",
+      },
+      {
         href: "/admin/customers",
         label: "Clientes",
         icon: Users,
@@ -83,10 +109,22 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: "employees.view",
       },
       {
+        href: "/admin/positions",
+        label: "Puestos",
+        icon: Briefcase,
+        permission: "employees.view",
+      },
+      {
         href: "/admin/promotions",
         label: "Promociones",
         icon: Percent,
         permission: "promotions.view",
+      },
+      {
+        href: "/admin/publications",
+        label: "Publicaciones",
+        icon: Megaphone,
+        permission: "publications.manage",
       },
     ],
   },
@@ -103,6 +141,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/admin/locations",
         label: "Sucursales",
         icon: MapPin,
+        permission: "locations.view",
+      },
+      {
+        href: "/admin/cashRegisters",
+        label: "Cajas",
+        icon: Banknote,
         permission: "locations.view",
       },
       {
@@ -129,6 +173,30 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: "settings.manage",
       },
       {
+        href: "/admin/settings/company",
+        label: "Empresa",
+        icon: Building2,
+        permission: "settings.manage",
+      },
+      {
+        href: "/admin/settings/loyalty",
+        label: "Lealtad",
+        icon: Sparkles,
+        permission: "settings.manage",
+      },
+      {
+        href: "/admin/settings/supervisor",
+        label: "Supervisor",
+        icon: ShieldCheck,
+        permission: "settings.manage",
+      },
+      {
+        href: "/admin/settings/payments",
+        label: "Pagos",
+        icon: CreditCard,
+        permission: "settings.manage",
+      },
+      {
         href: "/admin/settings",
         label: "Ajustes",
         icon: Settings,
@@ -138,6 +206,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/admin/settings/users",
         label: "Usuarios y permisos",
         icon: ShieldCheck,
+        permission: "users.manage",
+      },
+      {
+        href: "/admin/settings/menus",
+        label: "Menú",
+        icon: Menu,
         permission: "users.manage",
       },
     ],
@@ -224,9 +298,52 @@ export function filterNavItems(
   return items.filter((item) => navUserHasPermission(navUser, item.permission));
 }
 
-/** ¿La ruta actual coincide con el item? */
+/** ¿La ruta actual coincide con el item? (considera hijos) */
 export function isNavActive(item: NavItem, pathname: string): boolean {
   if (item.match) return item.match.test(pathname);
+  if (item.children?.length) {
+    if (item.children.some((c) => isNavActive(c, pathname))) return true;
+  }
+  if (!item.href) return false;
   if (item.href === "/admin") return pathname === "/admin";
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
+
+/** Convierte el árbol de BD (MenuNode) a NavSection[] con íconos resueltos. */
+function mapMenuItem(n: MenuNode): NavItem {
+  return {
+    href: n.href ?? undefined,
+    label: n.label,
+    icon: resolveMenuIcon(n.icon),
+    permission: (n.permissionKey as PermissionKey | null) ?? undefined,
+    badge: n.badge ?? undefined,
+    badgeVariant: n.badgeVariant ?? undefined,
+    children: n.children.length ? n.children.map(mapMenuItem) : undefined,
+  };
+}
+
+export function menuTreeToSections(tree: MenuNode[]): NavSection[] {
+  return tree.map((n) => {
+    if (n.type === "section") {
+      return { title: n.label, items: n.children.map(mapMenuItem) };
+    }
+    return { items: [mapMenuItem(n)] };
+  });
+}
+
+/** Aplana los items (con href) del árbol para la BottomTabBar. */
+export function menuTreeToBottomItems(tree: MenuNode[], limit = 5): NavItem[] {
+  const out: NavItem[] = [];
+  const walk = (nodes: MenuNode[]) => {
+    for (const n of nodes) {
+      if (n.type === "item" && n.href) {
+        out.push(mapMenuItem(n));
+        if (out.length >= limit) return;
+      }
+      walk(n.children);
+      if (out.length >= limit) return;
+    }
+  };
+  walk(tree);
+  return out.slice(0, limit);
 }

@@ -1,44 +1,46 @@
 import type { Metadata } from "next";
-import { Construction } from "lucide-react";
+import { getServerSession } from "next-auth";
+import { MapPin, Package, Percent, Ruler, Tags, Users, Warehouse, UserCog, Banknote, Briefcase, Construction } from "lucide-react";
+import { authOptions } from "@/lib/auth/options";
+import { hasPermission } from "@/lib/auth/permissions";
+import { CRUD_KEYS, getCrudEntry } from "@/lib/crud/modules";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CrudPage } from "@/components/admin/crud/crud-page";
 
-// FASE 5 — Placeholder para módulos aún no implementados (FASEs 7-10).
-export const metadata: Metadata = { title: "Módulo" };
+// FASE 7 — Página CRUD genérica del admin.
+// Los módulos registrados en CRUD_KEYS renderizan el CRUD real; el resto quedan como placeholder.
 
-const TITLES: Record<string, { title: string; description: string }> = {
-  products: { title: "Productos", description: "Catálogo de productos del POS." },
-  categories: { title: "Categorías", description: "Organiza tus productos por categorías." },
-  customers: { title: "Clientes", description: "Gestiona clientes y puntos de lealtad." },
-  employees: { title: "Empleados", description: "Equipo y accesos de la sucursal." },
-  promotions: { title: "Promociones", description: "Ofertas y códigos de descuento." },
+const MODULE_ICONS: Record<string, React.ReactNode> = {
+  products: <Package className="size-5" />,
+  categories: <Tags className="size-5" />,
+  customers: <Users className="size-5" />,
+  locations: <MapPin className="size-5" />,
+  units: <Ruler className="size-5" />,
+  positions: <Briefcase className="size-5" />,
+  employees: <UserCog className="size-5" />,
+  cashRegisters: <Banknote className="size-5" />,
+  cedis: <Warehouse className="size-5" />,
+  promotions: <Percent className="size-5" />,
+};
+
+const PLACEHOLDER_TITLES: Record<string, { title: string; description: string }> = {
   inventory: { title: "Inventario", description: "Existencias, movimientos y revisiones." },
-  locations: { title: "Sucursales", description: "Ubicaciones y CEDIS del negocio." },
   orders: { title: "Pedidos", description: "Pedidos en línea y su preparación." },
-  cedis: { title: "CEDIS", description: "Centros de distribución." },
   sales: { title: "Ventas", description: "Historial de ventas del POS." },
   reports: { title: "Reportes", description: "Analítica y reportes exportables." },
   profile: { title: "Mi perfil", description: "Tu información y preferencias." },
 };
 
-const DEFAULT = { title: "Sección", description: "Módulo en desarrollo." };
-
-export default async function AdminModulePlaceholder({
-  params,
-}: {
-  params: Promise<{ module: string }>;
-}) {
-  const { module } = await params;
-  const meta = TITLES[module] ?? DEFAULT;
-
+function Placeholder({ module }: { module: string }) {
+  const meta = PLACEHOLDER_TITLES[module] ?? {
+    title: "Sección",
+    description: "Módulo en desarrollo.",
+  };
   return (
     <>
-      <PageHeader
-        icon={<Construction className="size-5" />}
-        title={meta.title}
-        description={meta.description}
-      />
+      <PageHeader icon={<Construction className="size-5" />} title={meta.title} description={meta.description} />
       <Card>
         <CardHeader>
           <CardTitle className="text-base">En construcción</CardTitle>
@@ -52,4 +54,50 @@ export default async function AdminModulePlaceholder({
       </Card>
     </>
   );
+}
+
+async function resolveFlags(module: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || session.user.scope === "portal") {
+    return { canManage: false, canDelete: false };
+  }
+  const entry = getCrudEntry(module);
+  if (!entry) return { canManage: false, canDelete: false };
+  return {
+    canManage: hasPermission(session, entry.permissionManage),
+    canDelete: hasPermission(session, entry.permissionDelete ?? entry.permissionManage),
+  };
+}
+
+export default async function AdminModulePage({
+  params,
+}: {
+  params: Promise<{ module: string }>;
+}) {
+  const { module } = await params;
+
+  if (!CRUD_KEYS.includes(module)) {
+    return <Placeholder module={module} />;
+  }
+
+  const { canManage, canDelete } = await resolveFlags(module);
+
+  return (
+    <CrudPage
+      moduleKey={module}
+      canManage={canManage}
+      canDelete={canDelete}
+      icon={MODULE_ICONS[module]}
+    />
+  );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ module: string }>;
+}): Promise<Metadata> {
+  const { module } = await params;
+  const entry = getCrudEntry(module);
+  return { title: entry?.title ?? PLACEHOLDER_TITLES[module]?.title ?? "Módulo" };
 }

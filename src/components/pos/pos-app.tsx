@@ -1,0 +1,198 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { CheckCircle2, Printer } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { usePosStore } from "@/stores/pos-store";
+import type { PosCatalog, PosLineItem, PosProduct, PosSalePayload } from "@/types/pos";
+import { swalToast, swalError } from "@/lib/swal";
+import { bulkDisplay } from "@/stores/pos-store";
+import { usePosRefresh } from "@/hooks/use-pos-refresh";
+import { SupervisorProvider } from "./supervisor-gate";
+import { PosHeader } from "./pos-header";
+import { CatalogPanel } from "./catalog-panel";
+import { TicketPanel } from "./ticket-panel";
+import { BulkModal, type BulkDraft } from "./bulk-modal";
+import { CustomerModal } from "./customer-modal";
+import { DiscountDialog } from "./discount-dialog";
+import { PaymentDialog } from "./payment-dialog";
+import { CashRegisterPanel } from "./cash-register-panel";
+import { CatalogsModal } from "./catalogs-modal";
+import { Receipt } from "./receipt";
+import { cn } from "@/lib/utils";
+
+interface PosAppProps {
+  catalog: PosCatalog;
+}
+
+type BulkTarget = {
+  product: PosProduct;
+  editing?: { key: string; draft: BulkDraft };
+};
+
+export function PosApp({ catalog }: PosAppProps) {
+  const setCatalog = usePosStore((s) => s.setCatalog);
+  const products = usePosStore((s) => s.products);
+  const addProduct = usePosStore((s) => s.addProduct);
+  const addBulk = usePosStore((s) => s.addBulk);
+  const editItem = usePosStore((s) => s.editItem);
+  const clearTicket = usePosStore((s) => s.clearTicket);
+  const refresh = usePosRefresh();
+
+  const [catalogCollapsed, setCatalogCollapsed] = useState(false);
+  const [bulkTarget, setBulkTarget] = useState<BulkTarget | null>(null);
+  const [customerOpen, setCustomerOpen] = useState(false);
+  const [discountOpen, setDiscountOpen] = useState(false);
+  const [cashOpen, setCashOpen] = useState(false);
+  const [catalogsOpen, setCatalogsOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [lastSale, setLastSale] = useState<{
+    sale: { id: string; saleNumber: string; locationName: string };
+    payload: PosSalePayload;
+  } | null>(null);
+
+  useEffect(() => {
+    setCatalog(catalog);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog]);
+
+  const selectProduct = (product: PosProduct) => {
+    if (product.trackInventory && product.stock <= 0) {
+      swalError("Sin stock", `${product.name} no tiene existencias en esta sucursal.`);
+      return;
+    }
+    if (product.bulk) {
+      setBulkTarget({ product });
+      return;
+    }
+    addProduct(product);
+  };
+
+  const openBulkEdit = (line: PosLineItem) => {
+    const product = products.find((p) => p.productId === line.productId);
+    if (!product || !product.bulk) return;
+    setBulkTarget({
+      product,
+      editing: {
+        key: line.key,
+        draft: {
+          qty: line.qty,
+          unitId: line.unitId ?? product.bulk.unitId,
+          pricePerUnit: line.unitPrice,
+          abbrev: line.unitAbbrev,
+          unitName: line.unitAbbrev,
+        },
+      },
+    });
+  };
+
+  const confirmBulk = (product: PosProduct, draft: BulkDraft, editingKey?: string) => {
+    if (editingKey) {
+      editItem(editingKey, {
+        qty: draft.qty,
+        unitPrice: draft.pricePerUnit,
+        unitId: draft.unitId,
+        unitAbbrev: draft.abbrev,
+        bulkQuantityDisplay: bulkDisplay(draft.qty, draft.abbrev, draft.pricePerUnit),
+      });
+    } else {
+      addBulk(product, draft);
+    }
+    setBulkTarget(null);
+  };
+
+  const onSaleSuccess = async (
+    sale: { id: string; saleNumber: string; locationName: string },
+    payload: PosSalePayload
+  ) => {
+    setPaymentOpen(false);
+    clearTicket();
+    setLastSale({ sale, payload });
+    void refresh();
+    swalToast(`Venta ${sale.saleNumber} registrada`);
+  };
+
+  const printReceipt = () => {
+    window.print();
+  };
+
+  return (
+    <SupervisorProvider>
+      <div className="flex h-svh flex-col bg-background text-foreground">
+        <PosHeader onOpenCatalogs={() => setCatalogsOpen(true)} onOpenCash={() => setCashOpen(true)} />
+
+        <main className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          <section
+            className={cn(
+              "shrink-0 overflow-hidden border-b bg-background lg:border-b-0 lg:border-r",
+              catalogCollapsed
+                ? "h-0 lg:h-auto lg:w-40"
+                : "h-[45svh] lg:h-auto lg:flex-1"
+            )}
+          >
+            <CatalogPanel
+              onSelect={selectProduct}
+              collapsed={catalogCollapsed}
+              onToggleCollapsed={() => setCatalogCollapsed((v) => !v)}
+            />
+          </section>
+
+          <section className="scrollbar-none min-h-0 flex-1 overflow-y-auto">
+            <TicketPanel
+              onEditBulk={openBulkEdit}
+              onOpenCustomer={() => setCustomerOpen(true)}
+              onOpenDiscount={() => setDiscountOpen(true)}
+              onCheckout={() => setPaymentOpen(true)}
+            />
+          </section>
+        </main>
+      </div>
+
+      <BulkModal
+        open={!!bulkTarget}
+        product={bulkTarget?.product ?? null}
+        editing={bulkTarget?.editing}
+        onClose={() => setBulkTarget(null)}
+        onConfirm={confirmBulk}
+      />
+
+      <CustomerModal open={customerOpen} onClose={() => setCustomerOpen(false)} />
+      <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} />
+      <PaymentDialog open={paymentOpen} onClose={() => setPaymentOpen(false)} onSuccess={onSaleSuccess} />
+      <CashRegisterPanel open={cashOpen} onClose={() => setCashOpen(false)} />
+      <CatalogsModal open={catalogsOpen} onClose={() => setCatalogsOpen(false)} onSelectProduct={selectProduct} />
+
+      <Dialog open={!!lastSale} onOpenChange={(o) => !o && setLastSale(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="size-5 text-emerald-600" /> Venta completada
+            </DialogTitle>
+          </DialogHeader>
+          {lastSale && (
+            <Receipt
+              sale={lastSale.sale}
+              payload={lastSale.payload}
+              cashierName={catalog.cashier.name}
+            />
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={printReceipt} className="flex-1">
+              <Printer className="size-4" /> Imprimir
+            </Button>
+            <Button onClick={() => setLastSale(null)} className="flex-1">
+              Nuevo ticket
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </SupervisorProvider>
+  );
+}

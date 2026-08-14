@@ -16,7 +16,7 @@ export interface NavLinkProps {
   showActiveBar?: boolean;
 }
 
-// FASE 5.5 — Enlace de navegación con estado activo animado.
+// FASE 5.5 / 14.7 — Enlace de navegación con estado activo animado y badge.
 export function NavLink({
   item,
   onNavigate,
@@ -28,20 +28,8 @@ export function NavLink({
   const active = isNavActive(item, pathname);
   const Icon = item.icon;
 
-  return (
-    <Link
-      href={item.href}
-      onClick={() => {
-        setNavOpen(false);
-        onNavigate?.();
-      }}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        active && "bg-sidebar-accent text-sidebar-accent-foreground",
-        className
-      )}
-    >
+  const content = (
+    <>
       {showActiveBar && active && (
         <motion.span
           layoutId="nav-active-bar"
@@ -56,6 +44,46 @@ export function NavLink({
         )}
       />
       <span className="truncate">{item.label}</span>
+      {item.badge && (
+        <span
+          className={cn(
+            "ml-auto rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium leading-none",
+            item.badgeVariant === "destructive"
+              ? "bg-destructive text-white"
+              : item.badgeVariant === "secondary"
+                ? "bg-secondary text-secondary-foreground"
+                : item.badgeVariant === "outline"
+                  ? "border text-muted-foreground"
+                  : "bg-primary text-primary-foreground"
+          )}
+        >
+          {item.badge}
+        </span>
+      )}
+    </>
+  );
+
+  const classNameMerged = cn(
+    "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+    active && "bg-sidebar-accent text-sidebar-accent-foreground",
+    className
+  );
+
+  if (!item.href) {
+    return <div className={classNameMerged}>{content}</div>;
+  }
+
+  return (
+    <Link
+      href={item.href}
+      onClick={() => {
+        setNavOpen(false);
+        onNavigate?.();
+      }}
+      aria-current={active ? "page" : undefined}
+      className={classNameMerged}
+    >
+      {content}
     </Link>
   );
 }
