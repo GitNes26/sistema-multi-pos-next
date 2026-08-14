@@ -9,7 +9,6 @@ import { Command as CommandPrimitive } from "cmdk"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { InfoTooltip } from "@/components/base/info-tooltip"
 
 export interface ComboboxOption {
@@ -168,12 +167,13 @@ export function FormCombobox({
         {open && (
           <PopoverContent
             align="start"
-            className={cn("w-full min-w-[--radix-popover-trigger-width] p-0", contentClassName)}
+            className={cn("w-full min-w-[--radix-popover-trigger-width] overflow-hidden p-0", contentClassName)}
             onCloseAutoFocus={(e) => e.preventDefault()}
           >
             <CommandPrimitive
               shouldFilter={false}
               value={selected?.value ?? ""}
+              className="flex max-h-[min(22rem,var(--radix-popover-content-available-height))] flex-col overflow-hidden"
             >
               {searchable && (
                 <div className="border-b p-2">
@@ -187,7 +187,7 @@ export function FormCombobox({
                 </div>
               )}
 
-              <ScrollArea className="max-h-64">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <CommandPrimitive.List className="p-1">
                   {filtered.length === 0 && !creating && (
                     <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
@@ -291,7 +291,7 @@ export function FormCombobox({
                     </p>
                   )}
                 </CommandPrimitive.List>
-              </ScrollArea>
+              </div>
 
               {(onSync || onCreate) && (
                 <div className="flex items-center justify-between gap-2 border-t p-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, Scale } from "lucide-react";
 import { usePortalStore } from "@/stores/portal-store";
 import { money, round2, round3, snapToStep } from "@/lib/pos/money";
 import { Button } from "@/components/ui/button";
@@ -108,7 +108,10 @@ export function BulkModal() {
     <Dialog open onOpenChange={(o) => !o && setBulkProduct(null)}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{product.name}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Scale className="size-4 text-primary" />
+            {product.name}
+          </DialogTitle>
           <DialogDescription>A granel — selecciona la cantidad</DialogDescription>
         </DialogHeader>
 

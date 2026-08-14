@@ -1,13 +1,26 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  Barcode,
+  Check,
+  DollarSign,
+  Hash,
+  Loader2,
+  Pencil,
+  Percent,
+  Plus,
+  Trash2,
+  Type,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { InputGroupField } from "@/components/base/input-group-field";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +64,26 @@ function FieldRow({
       <Label className="text-sm">{label}</Label>
       {children}
     </div>
+  );
+}
+
+function InputField({
+  label,
+  icon,
+  full,
+  ...props
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  full?: boolean;
+} & React.ComponentProps<typeof Input>) {
+  return (
+    <InputGroupField
+      label={label}
+      leftIcon={icon}
+      containerClassName={full ? "sm:col-span-2" : undefined}
+      {...props}
+    />
   );
 }
 
@@ -316,9 +349,15 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
         <TypeToggle value={productType} onChange={setProductType} disabled={isEdit} />
       </FieldRow>
 
-      <FieldRow label="Nombre" full>
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Arroz 1kg" required />
-      </FieldRow>
+      <InputField
+        label="Nombre"
+        full
+        required
+        icon={<Type className="size-4" />}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Ej. Arroz 1kg"
+      />
 
       <FieldRow label="Descripción" full>
         <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional" />
@@ -328,9 +367,15 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
         <OptionSelect field={categoryField} value={categoryId} onChange={setCategoryId} />
       </FieldRow>
 
-      <FieldRow label="IVA / Impuesto (%)">
-        <Input type="number" step="any" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} placeholder="0.16" />
-      </FieldRow>
+      <InputField
+        label="IVA / Impuesto (%)"
+        icon={<Percent className="size-4" />}
+        type="number"
+        step="any"
+        value={taxRate}
+        onChange={(e) => setTaxRate(e.target.value)}
+        placeholder="0.16"
+      />
 
       <FieldRow label="Imagen" full>
         <Attachment
@@ -360,18 +405,10 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
           <FieldRow label="Unidad de medida">
             <OptionSelect field={unitField} value={bulkUnitId} onChange={setBulkUnitId} />
           </FieldRow>
-          <FieldRow label="Precio por unidad ($)">
-            <Input type="number" step="0.01" value={bulkPricePerUnit} onChange={(e) => setBulkPrice(e.target.value)} placeholder="0.00" />
-          </FieldRow>
-          <FieldRow label="Cantidad mínima">
-            <Input type="number" step="any" value={bulkMinQuantity} onChange={(e) => setBulkMin(e.target.value)} placeholder="0" />
-          </FieldRow>
-          <FieldRow label="Cantidad máxima">
-            <Input type="number" step="any" value={bulkMaxQuantity} onChange={(e) => setBulkMax(e.target.value)} placeholder="0" />
-          </FieldRow>
-          <FieldRow label="Incremento sugerido">
-            <Input type="number" step="any" value={bulkStep} onChange={(e) => setBulkStep(e.target.value)} placeholder="0.01" />
-          </FieldRow>
+          <InputField label="Precio por unidad ($)" icon={<DollarSign className="size-4" />} type="number" step="0.01" value={bulkPricePerUnit} onChange={(e) => setBulkPrice(e.target.value)} placeholder="0.00" />
+          <InputField label="Cantidad mínima" icon={<Hash className="size-4" />} type="number" step="any" value={bulkMinQuantity} onChange={(e) => setBulkMin(e.target.value)} placeholder="0" />
+          <InputField label="Cantidad máxima" icon={<Hash className="size-4" />} type="number" step="any" value={bulkMaxQuantity} onChange={(e) => setBulkMax(e.target.value)} placeholder="0" />
+          <InputField label="Incremento sugerido" icon={<Hash className="size-4" />} type="number" step="any" value={bulkStep} onChange={(e) => setBulkStep(e.target.value)} placeholder="0.01" />
           <div className="flex items-center gap-2 sm:col-span-2">
             <Switch checked={allowSplit} onCheckedChange={setAllowSplit} />
             <span className="text-sm">Permitir por pieza (venta dividida)</span>
@@ -381,9 +418,7 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
               <FieldRow label="Unidad por pieza">
                 <OptionSelect field={unitField} value={splitUnitId} onChange={setSplitUnitId} />
               </FieldRow>
-              <FieldRow label="Precio por pieza ($)">
-                <Input type="number" step="0.01" value={splitPricePerUnit} onChange={(e) => setSplitPrice(e.target.value)} placeholder="0.00" />
-              </FieldRow>
+              <InputField label="Precio por pieza ($)" icon={<DollarSign className="size-4" />} type="number" step="0.01" value={splitPricePerUnit} onChange={(e) => setSplitPrice(e.target.value)} placeholder="0.00" />
             </>
           )}
         </>
@@ -394,21 +429,11 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
               Crea una variante base para que el producto aparezca en el POS.
             </p>
           </FieldRow>
-          <FieldRow label="Nombre de variante">
-            <Input value={variantName} onChange={(e) => setVariantName(e.target.value)} />
-          </FieldRow>
-          <FieldRow label="Precio de venta ($)">
-            <Input type="number" step="0.01" value={variantPrice} onChange={(e) => setVariantPrice(e.target.value)} />
-          </FieldRow>
-          <FieldRow label="Costo ($)">
-            <Input type="number" step="0.01" value={variantCost} onChange={(e) => setVariantCost(e.target.value)} />
-          </FieldRow>
-          <FieldRow label="SKU">
-            <Input value={variantSku} onChange={(e) => setVariantSku(e.target.value)} />
-          </FieldRow>
-          <FieldRow label="Código de barras">
-            <Input value={variantBarcode} onChange={(e) => setVariantBarcode(e.target.value)} />
-          </FieldRow>
+          <InputField label="Nombre de variante" icon={<Type className="size-4" />} value={variantName} onChange={(e) => setVariantName(e.target.value)} />
+          <InputField label="Precio de venta ($)" icon={<DollarSign className="size-4" />} type="number" step="0.01" value={variantPrice} onChange={(e) => setVariantPrice(e.target.value)} />
+          <InputField label="Costo ($)" icon={<DollarSign className="size-4" />} type="number" step="0.01" value={variantCost} onChange={(e) => setVariantCost(e.target.value)} />
+          <InputField label="SKU" icon={<Hash className="size-4" />} value={variantSku} onChange={(e) => setVariantSku(e.target.value)} />
+          <InputField label="Código de barras" icon={<Barcode className="size-4" />} value={variantBarcode} onChange={(e) => setVariantBarcode(e.target.value)} />
         </>
       ) : (
         <>
@@ -430,10 +455,10 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
                   <Badge variant={v.isActive ? "default" : "secondary"} className="hidden sm:inline-flex">
                     {v.isActive ? "Activa" : "Inactiva"}
                   </Badge>
-                  <Button variant="ghost" size="icon" className="size-8" onClick={() => setEditVariant(v)}>
+                  <Button type="button" variant="ghost" size="icon" className="size-8" onClick={() => setEditVariant(v)}>
                     <Pencil className="size-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="size-8 text-destructive" onClick={() => removeVariant(v)}>
+                  <Button type="button" variant="ghost" size="icon" className="size-8 text-destructive" onClick={() => removeVariant(v)}>
                     <Trash2 className="size-4" />
                   </Button>
                 </div>
@@ -461,7 +486,7 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
                       placeholder="Ej. Talla"
                       className="h-7"
                     />
-                    <Button variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => removeOption(i)}>
+                    <Button type="button" variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => removeOption(i)}>
                       <Trash2 className="size-3.5" />
                     </Button>
                   </div>
@@ -474,12 +499,12 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
                           placeholder="Valor"
                           className="h-6 w-24 border-0 bg-transparent px-1 text-xs focus-visible:ring-0"
                         />
-                        <Button variant="ghost" size="icon" className="size-5 text-muted-foreground" onClick={() => removeValue(i, vi)}>
+                        <Button type="button" variant="ghost" size="icon" className="size-5 text-muted-foreground" onClick={() => removeValue(i, vi)}>
                           <X className="size-3" />
                         </Button>
                       </div>
                     ))}
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => addOptionValue(i)}>
+                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => addOptionValue(i)}>
                       <Plus className="size-3" /> Valor
                     </Button>
                   </div>

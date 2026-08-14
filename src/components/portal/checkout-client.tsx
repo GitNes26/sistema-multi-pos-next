@@ -10,11 +10,11 @@ import type { PortalLocation, PaymentMethodView } from "@/lib/portal/server";
 import { money } from "@/lib/pos/money";
 import { swalError, swalLoading, swalClose } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { cn } from "@/lib/utils";
 
 export function CheckoutClient() {
@@ -202,8 +202,9 @@ export function CheckoutClient() {
 
             {deliveryMethod === "delivery" && (
               <div className="space-y-2">
-                <Input
+                <InputGroupField
                   placeholder="Calle, número, colonia, ciudad…"
+                  leftIcon={<MapPin className="size-4" />}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                 />

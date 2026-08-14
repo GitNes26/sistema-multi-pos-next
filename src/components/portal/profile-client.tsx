@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { ChevronRight, CreditCard, Heart, LogOut, Sparkles } from "lucide-react";
+import { ChevronRight, CreditCard, Heart, LogOut, Mail, MapPin, Phone, Sparkles, User } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import type { PortalCustomer } from "@/lib/portal/server";
 import { swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InputGroupField } from "@/components/base/input-group-field";
 
 const LINKS = [
   { href: "/portal/loyalty", label: "Puntos y lealtad", icon: Sparkles },
@@ -77,22 +76,33 @@ export function ProfileClient() {
       <h1 className="text-lg font-semibold">Mi perfil</h1>
 
       <section className="space-y-3 rounded-xl border p-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="p-name">Nombre</Label>
-          <Input id="p-name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="p-phone">Teléfono</Label>
-          <Input id="p-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="p-email">Email</Label>
-          <Input id="p-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="p-addr">Dirección</Label>
-          <Input id="p-addr" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-        </div>
+        <InputGroupField
+          label="Nombre"
+          leftIcon={<User className="size-4" />}
+          value={form.fullName}
+          onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+        />
+        <InputGroupField
+          label="Teléfono"
+          helper="Solo 10 dígitos."
+          inputMode="numeric"
+          leftIcon={<Phone className="size-4" />}
+          value={form.phone}
+          onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+        />
+        <InputGroupField
+          label="Email"
+          type="email"
+          leftIcon={<Mail className="size-4" />}
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value.toLowerCase() })}
+        />
+        <InputGroupField
+          label="Dirección"
+          leftIcon={<MapPin className="size-4" />}
+          value={form.address}
+          onChange={(e) => setForm({ ...form, address: e.target.value })}
+        />
         <Button className="w-full" onClick={save} disabled={saving}>
           {saving ? "Guardando…" : "Guardar cambios"}
         </Button>

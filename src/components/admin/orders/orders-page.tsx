@@ -200,6 +200,7 @@ export function OrdersPage({
             <div className="relative w-56">
               <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
+                type="search"
                 placeholder="Buscar # o cliente"
                 className="h-8 pl-8"
                 value={search}

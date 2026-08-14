@@ -1,5 +1,13 @@
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  DollarSign,
+  Hash,
+  Loader2,
+  Percent,
+  Type,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +18,7 @@ import { OptionSelect } from "./option-select";
 import { MultiSelect } from "./multi-select";
 import { Attachment } from "@/components/base/attachment";
 import { GpsPicker } from "@/components/base/gps-picker";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads";
 import type { CrudField, CrudUiConfig } from "./crud-config";
 
@@ -29,6 +38,25 @@ function defaultValue(field: CrudField, initial: Record<string, unknown> | null)
   if (field.type === "boolean") return false;
   if (field.type === "multiselect") return [] as string[];
   return "";
+}
+
+const INPUT_TYPES = ["text", "number", "money", "percent", "date", "time"];
+
+function fieldIcon(type: string): React.ReactNode {
+  switch (type) {
+    case "number":
+      return <Hash className="size-4" />;
+    case "money":
+      return <DollarSign className="size-4" />;
+    case "percent":
+      return <Percent className="size-4" />;
+    case "date":
+      return <CalendarDays className="size-4" />;
+    case "time":
+      return <Clock className="size-4" />;
+    default:
+      return <Type className="size-4" />;
+  }
 }
 
 export function CrudForm({
@@ -190,14 +218,49 @@ export function CrudForm({
           }
         };
 
+        if (INPUT_TYPES.includes(field.type)) {
+          return (
+            <div key={field.key} className={field.full ? "sm:col-span-2" : ""}>
+              <InputGroupField
+                label={field.label}
+                required={field.required}
+                helper={field.help}
+                leftIcon={fieldIcon(field.type)}
+                type={
+                  field.type === "date"
+                    ? "date"
+                    : field.type === "time"
+                      ? "time"
+                      : field.type === "number" || field.type === "money" || field.type === "percent"
+                        ? "number"
+                        : "text"
+                }
+                step={
+                  field.type === "percent" || field.type === "number"
+                    ? "any"
+                    : field.type === "money"
+                      ? "0.01"
+                      : undefined
+                }
+                placeholder={field.placeholder}
+                value={String(value ?? "")}
+                onChange={(e) => set(field.key, e.target.value)}
+              />
+            </div>
+          );
+        }
+
         return (
           <div key={field.key} className={field.full ? "sm:col-span-2 space-y-1.5" : "space-y-1.5"}>
             {field.type === "gps" ? (
-              control({ className: field.full ? "w-full" : "w-full" })
+              control({ className: "w-full" })
             ) : (
               <>
-                <Label htmlFor={`f-${field.key}`}>{field.label}</Label>
-                {control({ className: field.full ? "w-full" : "w-full" })}
+                <Label htmlFor={`f-${field.key}`}>
+                  {field.label}
+                  {field.required && <span className="text-destructive"> *</span>}
+                </Label>
+                {control({ className: "w-full" })}
                 {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
               </>
             )}

@@ -24,6 +24,8 @@ export interface PublicationInput {
   type: PublicationKind;
   isActive?: boolean;
   publishedAt?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
 }
 
 export interface PublicationRow {
@@ -34,6 +36,8 @@ export interface PublicationRow {
   type: string;
   isActive: boolean;
   publishedAt: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
   createdAt: string;
 }
 
@@ -45,6 +49,8 @@ function toRow(p: {
   type: $Enums.PublicationType;
   isActive: boolean;
   publishedAt: Date | null;
+  startsAt: Date | null;
+  endsAt: Date | null;
   createdAt: Date;
 }): PublicationRow {
   return {
@@ -55,6 +61,8 @@ function toRow(p: {
     type: p.type,
     isActive: p.isActive,
     publishedAt: p.publishedAt?.toISOString() ?? null,
+    startsAt: p.startsAt?.toISOString() ?? null,
+    endsAt: p.endsAt?.toISOString() ?? null,
     createdAt: p.createdAt.toISOString(),
   };
 }
@@ -81,6 +89,8 @@ export async function createPublication(
       type: input.type as $Enums.PublicationType,
       isActive: input.isActive ?? true,
       publishedAt: input.publishedAt ? new Date(input.publishedAt) : new Date(),
+      startsAt: input.startsAt ? new Date(input.startsAt) : null,
+      endsAt: input.endsAt ? new Date(input.endsAt) : null,
     },
   });
   return toRow(created);
@@ -104,6 +114,12 @@ export async function updatePublication(
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       ...(input.publishedAt !== undefined
         ? { publishedAt: input.publishedAt ? new Date(input.publishedAt) : null }
+        : {}),
+      ...(input.startsAt !== undefined
+        ? { startsAt: input.startsAt ? new Date(input.startsAt) : null }
+        : {}),
+      ...(input.endsAt !== undefined
+        ? { endsAt: input.endsAt ? new Date(input.endsAt) : null }
         : {}),
     },
   });

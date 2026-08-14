@@ -58,6 +58,7 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             autoFocus
+            type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por nombre, teléfono o nº de cliente"

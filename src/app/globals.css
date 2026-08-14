@@ -149,6 +149,7 @@
 
 /* === SweetAlert2 themed (FASE 4.13) === */
 .swal2-container-custom {
+  z-index: 9999;
   --swal2-backdrop-popup-space: 12px;
   backdrop-filter: blur(4px);
 }

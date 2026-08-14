@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Coins, DollarSign, Sparkles } from "lucide-react";
 import { settingsApi } from "@/lib/settings/client";
 import type { LoyaltySettings } from "@/lib/settings/server";
 import { swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InputGroupField } from "@/components/base/input-group-field";
 
 export function LoyaltyForm() {
   const [form, setForm] = useState<LoyaltySettings | null>(null);
@@ -52,32 +51,26 @@ export function LoyaltyForm() {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Puntos por unidad de moneda</Label>
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.pointsPerCurrency}
-            onChange={(e) => setForm({ ...form, pointsPerCurrency: Number(e.target.value) })}
-          />
-          <p className="text-xs text-muted-foreground">
-            Puntos ganados por cada unidad monetaria gastada.
-          </p>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Valor del punto</Label>
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.pointValue}
-            onChange={(e) => setForm({ ...form, pointValue: Number(e.target.value) })}
-          />
-          <p className="text-xs text-muted-foreground">
-            Valor monetario de cada punto al canjear.
-          </p>
-        </div>
+        <InputGroupField
+          label="Puntos por unidad de moneda"
+          helper="Puntos ganados por cada unidad monetaria gastada."
+          type="number"
+          min={0}
+          step="0.01"
+          leftIcon={<Coins className="size-4" />}
+          value={form.pointsPerCurrency}
+          onChange={(e) => setForm({ ...form, pointsPerCurrency: Number(e.target.value) })}
+        />
+        <InputGroupField
+          label="Valor del punto"
+          helper="Valor monetario de cada punto al canjear."
+          type="number"
+          min={0}
+          step="0.01"
+          leftIcon={<DollarSign className="size-4" />}
+          value={form.pointValue}
+          onChange={(e) => setForm({ ...form, pointValue: Number(e.target.value) })}
+        />
       </div>
 
       <div className="flex items-center justify-between rounded-lg border p-3">

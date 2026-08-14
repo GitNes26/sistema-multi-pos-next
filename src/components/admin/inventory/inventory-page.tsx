@@ -493,6 +493,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
             <div className="relative w-full max-w-56">
               <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
               <Input
+                type="search"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar producto, SKU…"

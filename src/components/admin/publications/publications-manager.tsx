@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
+import { Megaphone, Pencil, Plus, Trash2, Heading } from "lucide-react";
 import { publicationsApi } from "@/lib/publications/client";
 import {
   PUBLICATION_TYPES,
@@ -10,11 +10,16 @@ import {
   type PublicationKind,
   type PublicationRow,
 } from "@/lib/publications/server";
+import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FormCombobox } from "@/components/base/form-combobox";
+import { InputGroupField } from "@/components/base/input-group-field";
+import { Attachment } from "@/components/base/attachment";
+import { DatePicker } from "@/components/base/date-picker";
+import { TooltipButton } from "@/components/shared/tooltip-button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,6 +46,8 @@ const EMPTY_FORM: PublicationInput & { id?: string } = {
   type: "notice",
   isActive: true,
   publishedAt: null,
+  startsAt: null,
+  endsAt: null,
 };
 
 export function PublicationsManager() {
@@ -70,6 +77,8 @@ export function PublicationsManager() {
       type: p.type as PublicationKind,
       isActive: p.isActive,
       publishedAt: p.publishedAt,
+      startsAt: p.startsAt,
+      endsAt: p.endsAt,
     });
 
   const submit = async () => {
@@ -146,12 +155,12 @@ export function PublicationsManager() {
                 </div>
                 {p.content && <p className="truncate text-xs text-muted-foreground">{p.content}</p>}
               </div>
-              <Button variant="ghost" size="icon-xs" onClick={() => openEdit(p)} aria-label="Editar">
+              <TooltipButton label="Editar" variant="ghost" size="icon-xs" onClick={() => openEdit(p)}>
                 <Pencil className="size-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon-xs" onClick={() => remove(p)} aria-label="Eliminar">
+              </TooltipButton>
+              <TooltipButton label="Eliminar" variant="ghost" size="icon-xs" onClick={() => remove(p)}>
                 <Trash2 className="size-3.5 text-destructive" />
-              </Button>
+              </TooltipButton>
             </div>
           ))}
         </div>
@@ -160,16 +169,21 @@ export function PublicationsManager() {
       <Dialog open={form !== null} onOpenChange={(o) => !o && setForm(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{form?.id ? "Editar publicación" : "Nueva publicación"}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="size-4 text-primary" />
+              {form?.id ? "Editar publicación" : "Nueva publicación"}
+            </DialogTitle>
             <DialogDescription>Se mostrará a los clientes en el portal</DialogDescription>
           </DialogHeader>
 
           {form && (
             <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label>Título</Label>
-                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-              </div>
+              <InputGroupField
+                label="Título"
+                leftIcon={<Heading className="size-4" />}
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
               <div className="space-y-1.5">
                 <Label>Contenido</Label>
                 <Textarea
@@ -177,29 +191,36 @@ export function PublicationsManager() {
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
                 />
               </div>
+              <FormCombobox
+                label="Tipo"
+                value={form.type}
+                onChange={(v) => setForm({ ...form, type: v as PublicationKind })}
+                options={PUBLICATION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
+                searchable={false}
+                clearable={false}
+              />
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Imagen URL</Label>
-                  <Input
-                    value={form.imageUrl ?? ""}
-                    onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Tipo</Label>
-                  <select
-                    className="h-9 w-full rounded-lg border bg-background px-2 text-sm"
-                    value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value as PublicationKind })}
-                  >
-                    {PUBLICATION_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <DatePicker
+                  label="Fecha de inicio"
+                  helper="Cuándo empieza a mostrarse."
+                  value={form.startsAt ? new Date(form.startsAt) : null}
+                  onChange={(d) => setForm({ ...form, startsAt: d ? d.toISOString() : null })}
+                />
+                <DatePicker
+                  label="Fecha de fin"
+                  helper="Cuándo deja de mostrarse (opcional)."
+                  value={form.endsAt ? new Date(form.endsAt) : null}
+                  onChange={(d) => setForm({ ...form, endsAt: d ? d.toISOString() : null })}
+                />
               </div>
+              <Attachment
+                label="Imagen"
+                helper="Banner de la publicación."
+                value={form.imageUrl ?? ""}
+                onChange={(url) => setForm({ ...form, imageUrl: url ?? "" })}
+                upload={uploadFile}
+                accept={UPLOAD_IMAGE_ACCEPT}
+              />
               <div className="flex items-center justify-between rounded-lg border p-2.5">
                 <div>
                   <p className="text-sm font-medium">Activa</p>

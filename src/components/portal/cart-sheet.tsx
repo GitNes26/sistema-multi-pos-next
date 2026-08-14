@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Minus, MessageSquare, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { usePortalStore, cartSubtotal, cartTax, cartTotal } from "@/stores/portal-store";
 import { money, round3, snapToStep } from "@/lib/pos/money";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 
 export function CartSheet() {
@@ -92,9 +92,10 @@ export function CartSheet() {
                 </span>
               </div>
 
-              <Input
-                className="mt-2 h-8 text-xs"
+              <InputGroupField
+                className="mt-2"
                 placeholder="Comentario para este producto…"
+                leftIcon={<MessageSquare className="size-3.5" />}
                 value={item.comment ?? ""}
                 onChange={(e) => setComment(item.key, e.target.value)}
               />

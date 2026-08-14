@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Copy,
+  Mail,
   Plus,
   ShieldCheck,
   Trash2,
@@ -14,13 +15,14 @@ import type { InvitationRow, OrgUserRow, RoleRow } from "@/lib/settings/server";
 import { PERMISSIONS } from "@/lib/auth/permission-keys";
 import { swalConfirm, swalError, swalPrompt, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FormCombobox } from "@/components/base/form-combobox";
+import { InputGroupField } from "@/components/base/input-group-field";
+import { TooltipButton } from "@/components/shared/tooltip-button";
 import { cn } from "@/lib/utils";
 
 const ROLE_OPTIONS = [
@@ -139,24 +141,21 @@ function UsersTab() {
             </div>
             <p className="truncate text-xs text-muted-foreground">{u.email}</p>
           </div>
-          <select
-            className="h-8 rounded-md border bg-background px-2 text-sm"
+          <FormCombobox
+            className="w-36"
             value={u.role}
-            onChange={(e) => changeRole(u, e.target.value)}
-          >
-            {ROLE_OPTIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => changeRole(u, v)}
+            options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
+            searchable={false}
+            clearable={false}
+          />
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             Activo
             <Switch checked={u.isActive} onCheckedChange={(v) => toggleActive(u, v)} />
           </div>
-          <Button variant="ghost" size="icon-xs" onClick={() => remove(u)} aria-label="Quitar">
+          <TooltipButton label="Quitar" variant="ghost" size="icon-xs" onClick={() => remove(u)}>
             <UserX className="size-3.5 text-destructive" />
-          </Button>
+          </TooltipButton>
         </div>
       ))}
     </div>
@@ -184,7 +183,17 @@ function RolesTab() {
       setPerms(new Set());
       return;
     }
-    settingsApi.rolePermissions(selectedId).then((d) => setPerms(new Set(d.permissions))).catch(() => undefined);
+    let active = true;
+    setPerms(new Set());
+    settingsApi
+      .rolePermissions(selectedId)
+      .then((d) => {
+        if (active) setPerms(new Set(d.permissions));
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [selectedId]);
 
   const selected = roles?.find((r) => r.id === selectedId);
@@ -299,9 +308,9 @@ function RolesTab() {
                 )}
               </div>
               {!selected.isSystem && (
-                <Button variant="ghost" size="icon-xs" onClick={() => remove(selected)} aria-label="Eliminar rol">
+                <TooltipButton label="Eliminar rol" variant="ghost" size="icon-xs" onClick={() => remove(selected)}>
                   <Trash2 className="size-3.5 text-destructive" />
-                </Button>
+                </TooltipButton>
               )}
             </div>
 
@@ -383,28 +392,25 @@ function InvitationsTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2 rounded-lg border p-3">
-        <div className="min-w-48 flex-1 space-y-1.5">
-          <Label>Email</Label>
-          <Input
+        <div className="min-w-48 flex-1">
+          <InputGroupField
+            label="Email"
             type="email"
             placeholder="persona@correo.com"
+            leftIcon={<Mail className="size-4" />}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value.toLowerCase())}
           />
         </div>
         <div className="space-y-1.5">
-          <Label>Rol</Label>
-          <select
-            className="h-9 rounded-md border bg-background px-2 text-sm"
+          <FormCombobox
+            label="Rol"
             value={role}
-            onChange={(e) => setRole(e.target.value)}
-          >
-            {ROLE_OPTIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+            onChange={setRole}
+            options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
+            searchable={false}
+            clearable={false}
+          />
         </div>
         <Button onClick={send} disabled={sending}>
           <UserPlus className="size-4" /> {sending ? "Enviando…" : "Invitar"}

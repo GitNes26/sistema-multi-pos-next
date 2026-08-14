@@ -332,7 +332,12 @@ export async function getPortalHome(
       },
     }),
     prisma.publication.findMany({
-      where: { organizationId, isActive: true },
+      where: {
+        organizationId,
+        isActive: true,
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+      },
       orderBy: { publishedAt: "desc" },
       take: 10,
     }),

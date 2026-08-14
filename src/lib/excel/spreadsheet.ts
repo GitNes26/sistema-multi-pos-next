@@ -303,13 +303,18 @@ function addListValidation(ws: ExcelJS.Worksheet, headerName: string, options: s
   }
 }
 
-export async function exportWorkbook(orgId: string, module: string): Promise<{ buffer: Buffer; filename: string }> {
+export async function exportWorkbook(
+  orgId: string,
+  module: string,
+  opts: { template?: boolean } = {}
+): Promise<{ buffer: Buffer; filename: string }> {
   const spec = SPECS[module];
   if (!spec) throw new Error("Módulo sin exportación disponible");
 
   const pageSize = 100000;
-  const { rows } =
-    module === "products"
+  const { rows } = opts.template
+    ? { rows: [] as Record<string, unknown>[] }
+    : module === "products"
       ? await productsModule.list(orgId, { page: 1, pageSize })
       : module === "categories"
         ? await categoriesModule.list(orgId, { page: 1, pageSize })
@@ -326,8 +331,10 @@ export async function exportWorkbook(orgId: string, module: string): Promise<{ b
   ws.getRow(1).font = { bold: true };
   ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "F1F5F9" } };
   ws.views = [{ state: "frozen", ySplit: 1 }];
-  for (const row of rows) {
-    ws.addRow(spec.exportRow(row as unknown as Record<string, unknown>));
+  if (!opts.template) {
+    for (const row of rows) {
+      ws.addRow(spec.exportRow(row as unknown as Record<string, unknown>));
+    }
   }
 
   // Dropdowns en celdas (19.2).
@@ -343,7 +350,13 @@ export async function exportWorkbook(orgId: string, module: string): Promise<{ b
   addInstructionsSheet(wb, spec);
 
   const buffer = Buffer.from(await wb.xlsx.writeBuffer());
-  return { buffer, filename: `${spec.filename}-${new Date().toISOString().slice(0, 10)}.xlsx` };
+  const prefix = opts.template ? "plantilla" : spec.filename;
+  return { buffer, filename: `${prefix}-${new Date().toISOString().slice(0, 10)}.xlsx` };
+}
+
+/** Descarga la plantilla vacía (headers + instrucciones + dropdowns de catálogo). */
+export async function exportTemplate(orgId: string, module: string): Promise<{ buffer: Buffer; filename: string }> {
+  return exportWorkbook(orgId, module, { template: true });
 }
 
 interface ParsedWorkbook {

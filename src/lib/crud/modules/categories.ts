@@ -84,7 +84,7 @@ export const categoriesModule: CrudModule<CategoryDto> = {
       data: {
         organizationId,
         name: data.name.trim(),
-        parentId: data.parentId ?? null,
+        parentId: data.parentId ? data.parentId : null,
         imageUrl: data.imageUrl ?? null,
         isActive: data.isActive ?? true,
       },
@@ -108,7 +108,7 @@ export const categoriesModule: CrudModule<CategoryDto> = {
       where: { id },
       data: {
         ...(data.name !== undefined ? { name: data.name.trim() } : {}),
-        ...(data.parentId !== undefined ? { parentId: data.parentId } : {}),
+        ...(data.parentId !== undefined ? { parentId: data.parentId ? data.parentId : null } : {}),
         ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
       },

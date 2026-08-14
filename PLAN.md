@@ -2275,21 +2275,26 @@ Nota: pago confirmado marca el pedido `pending → confirmed` (SSE + notificaci�
 
 ---
 
-## REGLAS TRANSVERSALES DE UI
+## REGLAS TRANSVERSALES DE UI/UX
 
-Estas reglas se aplican a TODOS los componentes del sistema:
+Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 
 ### Inputs
 
-- NUNCA usar `<select>` nativo → siempre Combobox de shadcn/ui
-- Todo input usa InputGroup con icono (InputGroupAddon + InputGroupInput)
-- Todo campo tiene label obligatorio + InfoTooltip
+- TODO input (de cualquier tipo) usa `InputGroupField` (`src/components/base/input-group-field.tsx`): label + `InfoTooltip` + icono descriptivo + addons + hint/error
+- Todo campo tiene label obligatorio + `InfoTooltip` (helper)
+- Campo obligatorio: indicar con `*` al final del nombre (prop `required` en `InputGroupField`/`FormCombobox`)
+- Inputs de búsqueda/filtro: usar `type="search"` para habilitar el limpiado con la tecla Esc
+- NUNCA usar `<select>` nativo → siempre `FormCombobox` de shadcn/ui (`src/components/base/form-combobox.tsx`)
 - Formularios con react-hook-form + yup
 - Errores: `text-destructive text-sm` bajo el campo
 - Teléfono: solo 10 dígitos (transform yup + onChange sanitizador)
 - RFC/CURP/claves: mayúsculas (transform toUpperCase)
 - Correo: minúsculas + formato email
 - Montos: decimales con 2 posiciones
+- Códigos/PIN/clave corta (verificación, aprobación, supervisión) → `InputOTP` de shadcn/ui (`src/components/ui/input-otp.tsx`)
+- Archivos (imagen/logo/foto): NUNCA input de texto con URL → `Attachment` (`src/components/base/attachment.tsx`: upload + botón para tomar foto + editor de recorte de imagen)
+- Componentes base: `InputGroupField`, `InfoTooltip`, `FormCombobox`, `DatePicker` (DD/MM/YYYY), `TimePicker` (HH:MM AM/PM), `DateTimePicker`, `DataTable`, `Attachment`, `Spinner`, `Skeleton`, `AnimatedNumber`, `InfoField`, `GPS Picker` (geolocalización + Nominatim + mapa OSM), SweetAlert2 wrappers (`src/lib/swal.ts`), sound player (`src/lib/sounds.ts`). Detalle en FASE 4.
 
 ### Selects (Combobox)
 
@@ -2315,6 +2320,7 @@ Estas reglas se aplican a TODOS los componentes del sistema:
 
 ### Modales (Dialog)
 
+- Cualquier modal → siempre `Dialog` de shadcn/ui
 - 3 partes: Header fijo, Body con scroll, Footer fijo
 - Header: icono + título + subtítulo
 - Footer: botones de acción (confirmar, cancelar)
@@ -2323,7 +2329,7 @@ Estas reglas se aplican a TODOS los componentes del sistema:
 
 ### Micro-interacciones
 
-- Hover: transition-colors, hover:bg-accent, hover:shadow
+- Hover: transition-colors, hover:bg-accent, hover:shadow, cursor:pointer; transición suave (scale 0.9 o leve elevación, lo que se vea mejor)
 - Active: whileTap={{ scale: 0.97 }}
 - Carga: Spinner + Skeleton
 - Listas: stagger animation
@@ -2334,6 +2340,7 @@ Estas reglas se aplican a TODOS los componentes del sistema:
 
 - Sidebar (desktop), Header (sticky), BottomTabBar (móvil), NavigationDrawer (tablet) → always fixed
 - Solo <main> es scrollable (overflow-y-auto, h-dvh)
+- En el Navbar (header, a la derecha): icono toggle del tema + icono de notificaciones + avatar de usuario (en ese orden)
 
 ---
 

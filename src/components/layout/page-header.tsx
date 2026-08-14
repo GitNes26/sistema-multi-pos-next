@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { InfoTooltip } from "@/components/base/info-tooltip";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -63,7 +64,10 @@ export function PageHeader({
             </span>
           )}
           <div>
-            <h1 className="text-lg font-bold leading-tight">{title}</h1>
+            <h1 className="flex items-center gap-1.5 text-lg font-bold leading-tight">
+              {title}
+              {description && <InfoTooltip text={description} className="align-middle" />}
+            </h1>
             {description && (
               <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
             )}

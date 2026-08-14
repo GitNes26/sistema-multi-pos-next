@@ -483,16 +483,15 @@ export const reportsApi = {
 
 // ── Excel (import/export masivo) ──────────────────────────────────────────────
 
-export async function exportExcel(module: string) {
-  const res = await fetch(`/api/crud/${module}/export`);
+async function downloadResponse(res: Response, fallbackName: string) {
   if (!res.ok) {
     const data = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new ApiError(data?.error ?? "Error al exportar", res.status);
+    throw new ApiError(data?.error ?? "Error al descargar", res.status);
   }
   const blob = await res.blob();
   const disposition = res.headers.get("Content-Disposition") ?? "";
   const match = /filename="?([^";]+)"?/.exec(disposition);
-  const filename = match?.[1] ?? `${module}.xlsx`;
+  const filename = match?.[1] ?? fallbackName;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -501,6 +500,15 @@ export async function exportExcel(module: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+export async function exportExcel(module: string) {
+  await downloadResponse(await fetch(`/api/crud/${module}/export`), `${module}.xlsx`);
+}
+
+/** Descarga la plantilla vacía (con instrucciones y dropdowns de catálogo). */
+export async function exportTemplate(module: string) {
+  await downloadResponse(await fetch(`/api/crud/${module}/export?template=1`), `plantilla-${module}.xlsx`);
 }
 
 export interface ExcelImportResult {

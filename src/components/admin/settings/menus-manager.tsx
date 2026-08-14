@@ -5,10 +5,13 @@ import {
   ChevronDown,
   ChevronUp,
   FolderPlus,
+  Link2,
   Menu,
   Pencil,
   Plus,
+  Tag,
   Trash2,
+  Type,
 } from "lucide-react";
 import { menusApi } from "@/lib/menus/client";
 import type { MenuNode, MenuInput } from "@/lib/menus/server";
@@ -16,11 +19,12 @@ import { MENU_ICON_NAMES, resolveMenuIcon } from "@/lib/menu-icons";
 import { PERMISSIONS } from "@/lib/auth/permission-keys";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FormCombobox } from "@/components/base/form-combobox";
+import { InputGroupField } from "@/components/base/input-group-field";
+import { TooltipButton } from "@/components/shared/tooltip-button";
 import {
   Dialog,
   DialogContent,
@@ -201,12 +205,12 @@ export function MenusManager() {
           style={{ marginLeft: depth * 16 }}
         >
           <div className="flex flex-col">
-            <Button variant="ghost" size="icon-xs" onClick={() => move(node, -1)} aria-label="Subir">
+            <TooltipButton label="Subir" variant="ghost" size="icon-xs" onClick={() => move(node, -1)}>
               <ChevronUp className="size-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon-xs" onClick={() => move(node, 1)} aria-label="Bajar">
+            </TooltipButton>
+            <TooltipButton label="Bajar" variant="ghost" size="icon-xs" onClick={() => move(node, 1)}>
               <ChevronDown className="size-3.5" />
-            </Button>
+            </TooltipButton>
           </div>
           <Icon className="size-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
@@ -226,16 +230,16 @@ export function MenusManager() {
             </div>
           </div>
           {node.type === "item" && (
-            <Button variant="ghost" size="icon-xs" onClick={() => openCreate(node.id)} aria-label="Agregar sub-item">
+            <TooltipButton label="Agregar sub-item" variant="ghost" size="icon-xs" onClick={() => openCreate(node.id)}>
               <Plus className="size-3.5" />
-            </Button>
+            </TooltipButton>
           )}
-          <Button variant="ghost" size="icon-xs" onClick={() => openEdit(node)} aria-label="Editar">
+          <TooltipButton label="Editar" variant="ghost" size="icon-xs" onClick={() => openEdit(node)}>
             <Pencil className="size-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon-xs" onClick={() => remove(node)} aria-label="Eliminar">
+          </TooltipButton>
+          <TooltipButton label="Eliminar" variant="ghost" size="icon-xs" onClick={() => remove(node)}>
             <Trash2 className="size-3.5 text-destructive" />
-          </Button>
+          </TooltipButton>
         </div>
         {node.children.map((c) => renderNode(c, depth + 1))}
       </div>
@@ -261,62 +265,58 @@ export function MenusManager() {
       <Dialog open={form !== null} onOpenChange={(o) => !o && setForm(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{form?.id ? "Editar menú" : "Nuevo menú"}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Menu className="size-4 text-primary" />
+              {form?.id ? "Editar menú" : "Nuevo menú"}
+            </DialogTitle>
             <DialogDescription>Configura el elemento de navegación</DialogDescription>
           </DialogHeader>
 
           {form && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Tipo</Label>
-                  <select
-                    className="h-9 w-full rounded-lg border bg-background px-2 text-sm"
-                    value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value as "section" | "item" })}
-                  >
-                    <option value="item">Item</option>
-                    <option value="section">Sección</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Menú padre</Label>
-                  <select
-                    className="h-9 w-full rounded-lg border bg-background px-2 text-sm"
-                    value={form.parentId ?? ""}
-                    onChange={(e) => setForm({ ...form, parentId: e.target.value })}
-                  >
-                    <option value="">— Raíz —</option>
-                    {parentOptions.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.type === "section" ? "▸ " : "· "}
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <FormCombobox
+                  label="Tipo"
+                  value={form.type}
+                  onChange={(v) => setForm({ ...form, type: v as "section" | "item" })}
+                  options={[
+                    { value: "item", label: "Item" },
+                    { value: "section", label: "Sección" },
+                  ]}
+                  searchable={false}
+                  clearable={false}
+                />
+                <FormCombobox
+                  label="Menú padre"
+                  value={form.parentId ?? ""}
+                  onChange={(v) => setForm({ ...form, parentId: v || null })}
+                  options={[
+                    { value: "", label: "— Raíz —" },
+                    ...parentOptions.map((p) => ({
+                      value: p.id,
+                      label: `${p.type === "section" ? "▸ " : "· "}${p.label}`,
+                    })),
+                  ]}
+                  clearable={false}
+                />
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Label</Label>
-                <Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
-              </div>
+              <InputGroupField
+                label="Label"
+                helper="Nombre visible en el menú."
+                leftIcon={<Type className="size-4" />}
+                value={form.label}
+                onChange={(e) => setForm({ ...form, label: e.target.value })}
+              />
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Ícono</Label>
-                  <select
-                    className="h-9 w-full rounded-lg border bg-background px-2 text-sm"
-                    value={form.icon ?? "Circle"}
-                    onChange={(e) => setForm({ ...form, icon: e.target.value })}
-                  >
-                    {MENU_ICON_NAMES.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <FormCombobox
+                  label="Ícono"
+                  value={form.icon ?? "Circle"}
+                  onChange={(v) => setForm({ ...form, icon: v })}
+                  options={MENU_ICON_NAMES.map((name) => ({ value: name, label: name }))}
+                  clearable={false}
+                />
                 <div className="flex items-end gap-2">
                   {(() => {
                     const PIcon = resolveMenuIcon(form.icon);
@@ -327,56 +327,47 @@ export function MenusManager() {
               </div>
 
               {form.type === "item" && (
-                <div className="space-y-1.5">
-                  <Label>Ruta (href)</Label>
-                  <Input
-                    placeholder="/admin/products"
-                    value={form.href ?? ""}
-                    onChange={(e) => setForm({ ...form, href: e.target.value })}
-                  />
-                </div>
+                <InputGroupField
+                  label="Ruta (href)"
+                  placeholder="/admin/products"
+                  leftIcon={<Link2 className="size-4" />}
+                  value={form.href ?? ""}
+                  onChange={(e) => setForm({ ...form, href: e.target.value })}
+                />
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Badge (opcional)</Label>
-                  <Input
-                    placeholder="NEW"
-                    value={form.badge ?? ""}
-                    onChange={(e) => setForm({ ...form, badge: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Badge variante</Label>
-                  <select
-                    className="h-9 w-full rounded-lg border bg-background px-2 text-sm"
-                    value={form.badgeVariant ?? "default"}
-                    onChange={(e) => setForm({ ...form, badgeVariant: e.target.value })}
-                  >
-                    {BADGE_VARIANTS.map((b) => (
-                      <option key={b.value} value={b.value}>
-                        {b.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <InputGroupField
+                  label="Badge (opcional)"
+                  placeholder="NEW"
+                  leftIcon={<Tag className="size-4" />}
+                  value={form.badge ?? ""}
+                  onChange={(e) => setForm({ ...form, badge: e.target.value })}
+                />
+                <FormCombobox
+                  label="Badge variante"
+                  value={form.badgeVariant ?? "default"}
+                  onChange={(v) => setForm({ ...form, badgeVariant: v })}
+                  options={BADGE_VARIANTS.map((b) => ({ value: b.value, label: b.label }))}
+                  searchable={false}
+                  clearable={false}
+                />
               </div>
 
-              <div className="space-y-1.5">
-                <Label>Permiso requerido</Label>
-                <select
-                  className="h-9 w-full rounded-lg border bg-background px-2 text-sm"
-                  value={form.permissionKey ?? ""}
-                  onChange={(e) => setForm({ ...form, permissionKey: e.target.value })}
-                >
-                  <option value="">— Visible para todos —</option>
-                  {PERMISSIONS.map((p) => (
-                    <option key={p.key} value={p.key}>
-                      {p.key} — {p.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <FormCombobox
+                label="Permiso requerido"
+                value={form.permissionKey ?? ""}
+                onChange={(v) => setForm({ ...form, permissionKey: v || null })}
+                options={[
+                  { value: "", label: "— Visible para todos —" },
+                  ...PERMISSIONS.map((p) => ({
+                    value: p.key,
+                    label: p.key,
+                    meta: p.label,
+                  })),
+                ]}
+                clearable={false}
+              />
 
               <div className="flex items-center justify-between rounded-lg border p-2.5">
                 <div>

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardCrud } from "../../guard";
 import { exportWorkbook } from "@/lib/excel/spreadsheet";
 
-// FASE 7.10 — Exportación masiva de un módulo a Excel (.xlsx).
-// GET /api/crud/[module]/export
+// FASE 7.10 / 19 — Exportación masiva de un módulo a Excel (.xlsx).
+// GET /api/crud/[module]/export?template=1 → plantilla vacía con instrucciones.
 
 export async function GET(req: NextRequest) {
   const segments = req.nextUrl.pathname.split("/");
@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
   const { organizationId } = guard;
 
   try {
-    const { buffer, filename } = await exportWorkbook(organizationId, moduleKey);
+    const template = req.nextUrl.searchParams.get("template") === "1";
+    const { buffer, filename } = await exportWorkbook(organizationId, moduleKey, { template });
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Globe, KeyRound, ShieldCheck } from "lucide-react";
 import { paymentsApi } from "@/lib/payments/client";
 import type { GatewayConfig, GatewayProvider } from "@/lib/payments/server";
 import { swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { cn } from "@/lib/utils";
 
 const PROVIDERS: { value: GatewayProvider; label: string }[] = [
@@ -60,7 +59,7 @@ export function PaymentsForm() {
             type="button"
             onClick={() => setConfig({ ...config, provider: p.value })}
             className={cn(
-              "rounded-lg border p-3 text-sm font-medium transition-colors",
+              "cursor-pointer rounded-lg border p-3 text-sm font-medium transition-all hover:-translate-y-0.5 hover:shadow-sm",
               config.provider === p.value
                 ? "border-primary bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-muted"
@@ -74,73 +73,77 @@ export function PaymentsForm() {
       {config.provider === "stripe" && (
         <div className="space-y-3 rounded-lg border p-4">
           <p className="text-sm font-semibold">Stripe</p>
-          <Field label="Clave secreta (sk_live_…)">
-            <Input
-              type="password"
-              value={config.stripe.secretKey}
-              onChange={(e) =>
-                setConfig({ ...config, stripe: { ...config.stripe, secretKey: e.target.value } })
-              }
-            />
-          </Field>
-          <Field label="Clave pública (pk_live_…)">
-            <Input
-              value={config.stripe.publicKey}
-              onChange={(e) =>
-                setConfig({ ...config, stripe: { ...config.stripe, publicKey: e.target.value } })
-              }
-            />
-          </Field>
-          <Field label="Webhook secret (whsec_…)">
-            <Input
-              type="password"
-              value={config.stripe.webhookSecret}
-              onChange={(e) =>
-                setConfig({ ...config, stripe: { ...config.stripe, webhookSecret: e.target.value } })
-              }
-            />
-          </Field>
+          <InputGroupField
+            label="Clave secreta"
+            helper="sk_live_…"
+            type="password"
+            leftIcon={<KeyRound className="size-4" />}
+            value={config.stripe.secretKey}
+            onChange={(e) =>
+              setConfig({ ...config, stripe: { ...config.stripe, secretKey: e.target.value } })
+            }
+          />
+          <InputGroupField
+            label="Clave pública"
+            helper="pk_live_…"
+            leftIcon={<Globe className="size-4" />}
+            value={config.stripe.publicKey}
+            onChange={(e) =>
+              setConfig({ ...config, stripe: { ...config.stripe, publicKey: e.target.value } })
+            }
+          />
+          <InputGroupField
+            label="Webhook secret"
+            helper="whsec_…"
+            type="password"
+            leftIcon={<ShieldCheck className="size-4" />}
+            value={config.stripe.webhookSecret}
+            onChange={(e) =>
+              setConfig({ ...config, stripe: { ...config.stripe, webhookSecret: e.target.value } })
+            }
+          />
         </div>
       )}
 
       {config.provider === "mercadopago" && (
         <div className="space-y-3 rounded-lg border p-4">
           <p className="text-sm font-semibold">MercadoPago</p>
-          <Field label="Access token (APP_USR-…)">
-            <Input
-              type="password"
-              value={config.mercadopago.accessToken}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  mercadopago: { ...config.mercadopago, accessToken: e.target.value },
-                })
-              }
-            />
-          </Field>
-          <Field label="Clave pública">
-            <Input
-              value={config.mercadopago.publicKey}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  mercadopago: { ...config.mercadopago, publicKey: e.target.value },
-                })
-              }
-            />
-          </Field>
-          <Field label="Webhook secret">
-            <Input
-              type="password"
-              value={config.mercadopago.webhookSecret}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  mercadopago: { ...config.mercadopago, webhookSecret: e.target.value },
-                })
-              }
-            />
-          </Field>
+          <InputGroupField
+            label="Access token"
+            helper="APP_USR-…"
+            type="password"
+            leftIcon={<KeyRound className="size-4" />}
+            value={config.mercadopago.accessToken}
+            onChange={(e) =>
+              setConfig({
+                ...config,
+                mercadopago: { ...config.mercadopago, accessToken: e.target.value },
+              })
+            }
+          />
+          <InputGroupField
+            label="Clave pública"
+            leftIcon={<Globe className="size-4" />}
+            value={config.mercadopago.publicKey}
+            onChange={(e) =>
+              setConfig({
+                ...config,
+                mercadopago: { ...config.mercadopago, publicKey: e.target.value },
+              })
+            }
+          />
+          <InputGroupField
+            label="Webhook secret"
+            type="password"
+            leftIcon={<ShieldCheck className="size-4" />}
+            value={config.mercadopago.webhookSecret}
+            onChange={(e) =>
+              setConfig({
+                ...config,
+                mercadopago: { ...config.mercadopago, webhookSecret: e.target.value },
+              })
+            }
+          />
         </div>
       )}
 
@@ -155,15 +158,6 @@ export function PaymentsForm() {
       <Button onClick={save} disabled={saving}>
         <CreditCard className="size-4" /> {saving ? "Guardando…" : "Guardar cambios"}
       </Button>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
     </div>
   );
 }

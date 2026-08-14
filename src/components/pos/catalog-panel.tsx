@@ -94,6 +94,7 @@ export function CatalogPanel({ onSelect, collapsed, onToggleCollapsed }: Catalog
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             ref={inputRef}
+            type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addFirst()}

@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Download,
   Eye,
+  FileSpreadsheet,
   Loader2,
   Plus,
   Pencil,
@@ -28,11 +29,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable } from "@/components/base/data-table";
-import { crudApi, exportExcel, importExcel, previewExcel, getCustomerActivity, type CustomerActivityData, type ExcelPreviewResult } from "@/lib/api";
+import { crudApi, exportExcel, exportTemplate, importExcel, previewExcel, getCustomerActivity, type CustomerActivityData, type ExcelPreviewResult } from "@/lib/api";
 import { money } from "@/lib/pos/money";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { CrudForm } from "./crud-form";
 import { ProductsForm } from "./products-form";
+import { TooltipButton } from "@/components/shared/tooltip-button";
 import { getCrudUi, CRUD_PRODUCTS_TITLE, type CrudColumn, type CrudUiConfig } from "./crud-config";
 
 interface CrudPageProps {
@@ -272,6 +274,19 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
     }
   };
 
+  const handleTemplate = async () => {
+    if (excelBusy) return;
+    setExcelBusy("export");
+    try {
+      await exportTemplate(moduleKey);
+      swalToast("Plantilla descargada");
+    } catch (err) {
+      swalError("No se pudo descargar la plantilla", err instanceof Error ? err.message : undefined);
+    } finally {
+      setExcelBusy(null);
+    }
+  };
+
   const handleImportFile = async (file: File) => {
     setExcelBusy("import");
     try {
@@ -369,15 +384,27 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                     {excelBusy === "export" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                     Exportar
                   </Button>
-                  <Button
+                  <TooltipButton
+                    label="Plantilla vacía con instrucciones y catálogos (descárgala cada vez que vayas a importar)"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTemplate}
+                    disabled={excelBusy !== null}
+                  >
+                    <FileSpreadsheet className="size-4" />
+                    Descargar plantilla
+                  </TooltipButton>
+                  <TooltipButton
+                    label="1) Descarga la plantilla · 2) llena las filas · 3) sube el archivo para ver la vista previa · 4) confirma. Descarga la plantilla cada vez, por si se agregaron valores nuevos a los catálogos."
                     variant="outline"
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={excelBusy !== null}
+                    side="bottom"
                   >
                     {excelBusy === "import" ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
                     Importar
-                  </Button>
+                  </TooltipButton>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -422,6 +449,8 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
             loading={loading}
             emptyMessage="Sin resultados"
             rowKey={(r) => String(r.id)}
+            onRefresh={() => load()}
+            refreshing={loading}
           />
 
           {!loading && total > 0 && (
@@ -487,6 +516,11 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
               {preview ? `Se importarán ${preview.total} fila(s).` : ""}
             </DialogDescription>
           </DialogHeader>
+
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700">
+            Descarga la plantilla cada vez que vayas a importar: los catálogos (categorías, unidades, etc.)
+            pueden tener valores nuevos que no están en una plantilla descargada anteriormente.
+          </div>
 
           {preview && preview.missingColumns.length > 0 && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">

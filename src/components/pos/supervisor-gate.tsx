@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { ShieldCheck } from "lucide-react";
 import {
   POS_SUPERVISOR_PIN_DEFAULT,
@@ -72,11 +72,11 @@ export function SupervisorProvider({ children }: { children: ReactNode }) {
     resolver.current = null;
   };
 
-  const confirm = () => {
+  const confirm = (value?: string) => {
     const expected =
       (typeof window !== "undefined" && localStorage.getItem(POS_SUPERVISOR_STORAGE_KEY)) ||
       POS_SUPERVISOR_PIN_DEFAULT;
-    if (pin === expected) {
+    if ((value ?? pin) === expected) {
       finish(true);
     } else {
       setError(true);
@@ -98,26 +98,29 @@ export function SupervisorProvider({ children }: { children: ReactNode }) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Input
-              type="password"
-              inputMode="numeric"
-              autoFocus
+            <InputOTP
               maxLength={6}
-              placeholder="PIN del supervisor"
               value={pin}
-              onChange={(e) => {
-                setPin(e.target.value.replace(/\D/g, ""));
+              autoFocus
+              onChange={(v) => {
+                setPin(v.replace(/\D/g, ""));
                 setError(false);
               }}
-              onKeyDown={(e) => e.key === "Enter" && confirm()}
-            />
+              onComplete={confirm}
+            >
+              <InputOTPGroup>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <InputOTPSlot key={i} index={i} />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
             {error && <p className="text-xs text-destructive">PIN incorrecto</p>}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => finish(false)}>
               Cancelar
             </Button>
-            <Button onClick={confirm}>Autorizar</Button>
+            <Button onClick={() => confirm()}>Autorizar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

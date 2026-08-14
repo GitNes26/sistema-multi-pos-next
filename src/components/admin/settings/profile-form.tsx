@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { KeyRound, Save } from "lucide-react";
+import { KeyRound, Mail, Phone, Save, User } from "lucide-react";
 import { settingsApi, type MyProfileView } from "@/lib/settings/client";
+import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads";
 import { swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InputGroupField } from "@/components/base/input-group-field";
+import { Attachment } from "@/components/base/attachment";
 
 export function ProfileForm() {
   const [form, setForm] = useState<MyProfileView | null>(null);
@@ -52,22 +53,36 @@ export function ProfileForm() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label>Nombre</Label>
-        <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Email</Label>
-        <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Teléfono</Label>
-        <Input value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-      </div>
-      <div className="space-y-1.5">
-        <Label>Avatar URL</Label>
-        <Input value={form.avatarUrl ?? ""} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} />
-      </div>
+      <InputGroupField
+        label="Nombre"
+        leftIcon={<User className="size-4" />}
+        value={form.fullName}
+        onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+      />
+      <InputGroupField
+        label="Email"
+        helper="Se guarda en minúsculas."
+        type="email"
+        leftIcon={<Mail className="size-4" />}
+        value={form.email}
+        onChange={(e) => setForm({ ...form, email: e.target.value.toLowerCase() })}
+      />
+      <InputGroupField
+        label="Teléfono"
+        helper="Solo 10 dígitos."
+        inputMode="numeric"
+        leftIcon={<Phone className="size-4" />}
+        value={form.phone ?? ""}
+        onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+      />
+      <Attachment
+        label="Avatar"
+        helper="Tu foto de perfil."
+        value={form.avatarUrl ?? ""}
+        onChange={(url) => setForm({ ...form, avatarUrl: url ?? "" })}
+        upload={uploadFile}
+        accept={UPLOAD_IMAGE_ACCEPT}
+      />
 
       <div className="flex flex-wrap gap-2">
         <Button onClick={save} disabled={saving}>

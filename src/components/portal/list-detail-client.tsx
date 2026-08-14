@@ -215,7 +215,7 @@ export function ListDetailClient({ listId }: { listId: string }) {
           </DialogHeader>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9" placeholder="Buscar…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input type="search" className="pl-9" placeholder="Buscar…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <div className="max-h-72 space-y-2 overflow-y-auto">
             {searchResults.map((p) => (

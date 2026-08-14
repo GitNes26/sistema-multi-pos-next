@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreditCard, Plus, Star, Trash2, TriangleAlert } from "lucide-react";
+import { Calendar, CreditCard, Hash, Plus, Star, Trash2, TriangleAlert } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import type { ExpiringCardView, PaymentMethodView } from "@/lib/portal/server";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { cn } from "@/lib/utils";
 
 export function PaymentMethodsClient() {
@@ -104,23 +103,42 @@ export function PaymentMethodsClient() {
 
       {showForm && (
         <div className="space-y-3 rounded-xl border p-4">
-          <div className="space-y-1.5">
-            <Label>Marca (opcional)</Label>
-            <Input placeholder="Visa, Mastercard…" value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Últimos 4 dígitos</Label>
-            <Input maxLength={4} placeholder="4242" value={form.last4} onChange={(e) => setForm({ ...form, last4: e.target.value.replace(/\D/g, "") })} />
-          </div>
+          <InputGroupField
+            label="Marca (opcional)"
+            leftIcon={<CreditCard className="size-4" />}
+            placeholder="Visa, Mastercard…"
+            value={form.brand}
+            onChange={(e) => setForm({ ...form, brand: e.target.value })}
+          />
+          <InputGroupField
+            label="Últimos 4 dígitos"
+            helper="Solo 4 dígitos."
+            inputMode="numeric"
+            leftIcon={<Hash className="size-4" />}
+            maxLength={4}
+            placeholder="4242"
+            value={form.last4}
+            onChange={(e) => setForm({ ...form, last4: e.target.value.replace(/\D/g, "").slice(0, 4) })}
+          />
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Mes</Label>
-              <Input type="number" min={1} max={12} placeholder="MM" value={form.expMonth} onChange={(e) => setForm({ ...form, expMonth: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Año</Label>
-              <Input type="number" placeholder="YYYY" value={form.expYear} onChange={(e) => setForm({ ...form, expYear: e.target.value })} />
-            </div>
+            <InputGroupField
+              label="Mes"
+              type="number"
+              min={1}
+              max={12}
+              leftIcon={<Calendar className="size-4" />}
+              placeholder="MM"
+              value={form.expMonth}
+              onChange={(e) => setForm({ ...form, expMonth: e.target.value })}
+            />
+            <InputGroupField
+              label="Año"
+              type="number"
+              leftIcon={<Calendar className="size-4" />}
+              placeholder="YYYY"
+              value={form.expYear}
+              onChange={(e) => setForm({ ...form, expYear: e.target.value })}
+            />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input

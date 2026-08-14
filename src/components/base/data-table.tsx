@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   EyeOff,
+  RefreshCw,
   Search,
 } from "lucide-react"
 
@@ -37,6 +38,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -72,6 +79,8 @@ export interface DataTableProps<TData, TValue> {
   showPagination?: boolean
   showColumnVisibility?: boolean
   toolbarSlot?: React.ReactNode
+  onRefresh?: () => void
+  refreshing?: boolean
   renderCard?: (row: TData) => React.ReactNode
   className?: string
   tableClassName?: string
@@ -93,6 +102,8 @@ export function DataTable<TData, TValue>({
   showPagination = true,
   showColumnVisibility = true,
   toolbarSlot,
+  onRefresh,
+  refreshing = false,
   renderCard,
   className,
   tableClassName,
@@ -225,13 +236,14 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className={cn("w-full space-y-3", className)}>
-      {(searchable || showColumnVisibility || toolbarSlot) && (
+      {(searchable || showColumnVisibility || toolbarSlot || onRefresh) && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-1 items-center gap-2">
             {searchable && (
               <div className="relative w-full max-w-60">
                 <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
                 <Input
+                  type="search"
                   value={globalFilter}
                   onChange={(e) => setGlobalFilter(e.target.value)}
                   placeholder={searchPlaceholder}
@@ -241,6 +253,24 @@ export function DataTable<TData, TValue>({
             )}
             {toolbarSlot}
           </div>
+          {onRefresh && (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={onRefresh}
+                    aria-label="Refrescar"
+                  >
+                    <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Refrescar</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {showColumnVisibility && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
