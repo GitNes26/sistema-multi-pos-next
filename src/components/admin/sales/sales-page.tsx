@@ -75,6 +75,13 @@ export function SalesPage({ canView, icon }: SalesPageProps) {
     return () => clearTimeout(t);
   }, [q]);
 
+  // Deep link desde notificaciones: ?q=<folio> precarga la búsqueda.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const initial = params.get("q");
+    if (initial) setQ(initial);
+  }, []);
+
   useEffect(() => {
     setPage(1);
   }, [debouncedQ, filters]);

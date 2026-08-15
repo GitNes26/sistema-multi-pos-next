@@ -63,13 +63,13 @@ export function SupervisorForm() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between rounded-lg border p-3">
-        <div>
-          <p className="text-sm font-medium">Requerir aprobación de supervisor</p>
-          <p className="text-xs text-muted-foreground">
+        <label htmlFor="sup-required" className="cursor-pointer">
+          <span className="block text-sm font-medium">Requerir aprobación de supervisor</span>
+          <span className="block text-xs text-muted-foreground">
             Activa la verificación para las acciones seleccionadas.
-          </p>
-        </div>
-        <Switch checked={form.required} onCheckedChange={(v) => setForm({ ...form, required: v })} />
+          </span>
+        </label>
+        <Switch id="sup-required" checked={form.required} onCheckedChange={(v) => setForm({ ...form, required: v })} />
       </div>
 
       <div className="space-y-2">

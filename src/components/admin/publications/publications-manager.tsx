@@ -224,11 +224,12 @@ export function PublicationsManager() {
                 accept={UPLOAD_IMAGE_ACCEPT}
               />
               <div className="flex items-center justify-between rounded-lg border p-2.5">
-                <div>
-                  <p className="text-sm font-medium">Activa</p>
-                  <p className="text-xs text-muted-foreground">Visible en el portal</p>
-                </div>
+                <label htmlFor="pub-active" className="cursor-pointer">
+                  <span className="block text-sm font-medium">Activa</span>
+                  <span className="block text-xs text-muted-foreground">Visible en el portal</span>
+                </label>
                 <Switch
+                  id="pub-active"
                   checked={form.isActive}
                   onCheckedChange={(v) => setForm({ ...form, isActive: v })}
                 />

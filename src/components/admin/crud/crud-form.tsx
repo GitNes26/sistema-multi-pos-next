@@ -115,25 +115,27 @@ export function CrudForm({
       {visibleFields.map((field) => {
         if (field.showIf && !field.showIf(values)) return null;
         const value = values[field.key];
-        const control = ({ className }: { className?: string }) => {
+        const control = ({ className, id }: { className?: string; id?: string }) => {
           switch (field.type) {
             case "boolean":
               return (
                 <div className={className}>
                   <div className="flex h-9 items-center gap-2">
                     <Switch
+                      id={id}
                       checked={Boolean(value)}
                       onCheckedChange={(c) => set(field.key, c)}
                     />
-                    <span className="text-sm text-muted-foreground">
+                    <label htmlFor={id} className="cursor-pointer text-sm text-muted-foreground">
                       {value ? "Sí" : "No"}
-                    </span>
+                    </label>
                   </div>
                 </div>
               );
             case "textarea":
               return (
                 <Textarea
+                  id={id}
                   value={String(value ?? "")}
                   onChange={(e) => set(field.key, e.target.value)}
                   placeholder={field.placeholder}
@@ -193,6 +195,7 @@ export function CrudForm({
             default:
               return (
                 <Input
+                  id={id}
                   type={
                     field.type === "date"
                       ? "date"
@@ -222,6 +225,7 @@ export function CrudForm({
           return (
             <div key={field.key} className={field.full ? "sm:col-span-2" : ""}>
               <InputGroupField
+                id={`f-${field.key}`}
                 label={field.label}
                 required={field.required}
                 helper={field.help}
@@ -260,7 +264,7 @@ export function CrudForm({
                   {field.label}
                   {field.required && <span className="text-destructive"> *</span>}
                 </Label>
-                {control({ className: "w-full" })}
+                {control({ className: "w-full", id: `f-${field.key}` })}
                 {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
               </>
             )}

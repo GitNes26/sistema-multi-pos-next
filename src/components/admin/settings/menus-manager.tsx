@@ -370,11 +370,11 @@ export function MenusManager() {
               />
 
               <div className="flex items-center justify-between rounded-lg border p-2.5">
-                <div>
-                  <p className="text-sm font-medium">Activo</p>
-                  <p className="text-xs text-muted-foreground">Visible en el menú</p>
-                </div>
-                <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
+                <label htmlFor="menu-active" className="cursor-pointer">
+                  <span className="block text-sm font-medium">Activo</span>
+                  <span className="block text-xs text-muted-foreground">Visible en el menú</span>
+                </label>
+                <Switch id="menu-active" checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
               </div>
             </div>
           )}

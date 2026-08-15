@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotificationStore, type AppNotification } from "@/stores/notifications-store";
 import { useNotificationSse } from "@/hooks/use-notifications";
 
@@ -47,7 +46,7 @@ export function NotificationsBell() {
           variant="ghost"
           size="icon"
           aria-label={`Notificaciones${unread ? ` (${unread} sin leer)` : ""}`}
-          className="relative"
+          className="relative cursor-pointer hover:-translate-y-0.5 hover:shadow-md"
         >
           <AnimatePresence>
             {unread > 0 ? (
@@ -114,7 +113,7 @@ export function NotificationsBell() {
           )}
         </div>
 
-        <ScrollArea className="max-h-80">
+        <div className="max-h-80 overflow-y-auto overscroll-contain">
           {items.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
               <Sparkles className="size-6 text-muted-foreground/60" />
@@ -125,11 +124,11 @@ export function NotificationsBell() {
           ) : (
             <ul className="divide-y">
               {items.map((n) => (
-                <NotificationRow key={n.id} n={n} onMark={markRead} />
+                <NotificationRow key={n.id} n={n} onMark={markRead} onNavigate={() => setOpen(false)} />
               ))}
             </ul>
           )}
-        </ScrollArea>
+        </div>
 
         <div className="border-t px-3 py-2 text-center text-[0.65rem] text-muted-foreground">
           {connected
@@ -150,18 +149,14 @@ export function NotificationsBell() {
 function NotificationRow({
   n,
   onMark,
+  onNavigate,
 }: {
   n: AppNotification;
   onMark: (id: string) => void;
+  onNavigate?: () => void;
 }) {
-  return (
-    <li
-      className={cn(
-        "flex cursor-pointer items-start gap-2.5 px-3 py-2.5 transition-colors hover:bg-accent/60",
-        !n.read && "bg-primary/[0.03]"
-      )}
-      onClick={() => onMark(n.id)}
-    >
+  const content = (
+    <>
       <span
         className={cn(
           "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg",
@@ -187,6 +182,34 @@ function NotificationRow({
           })}
         </time>
       </span>
+    </>
+  );
+
+  const rowClass = cn(
+    "flex cursor-pointer items-start gap-2.5 px-3 py-2.5 transition-colors hover:bg-accent/60",
+    !n.read && "bg-primary/[0.03]"
+  );
+
+  if (n.href) {
+    return (
+      <li>
+        <Link
+          href={n.href}
+          className={rowClass}
+          onClick={() => {
+            onMark(n.id);
+            onNavigate?.();
+          }}
+        >
+          {content}
+        </Link>
+      </li>
+    );
+  }
+
+  return (
+    <li className={rowClass} onClick={() => onMark(n.id)}>
+      {content}
     </li>
   );
 }

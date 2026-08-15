@@ -6,6 +6,7 @@ import {
   Barcode,
   ClipboardCheck,
   FileDown,
+  FileSpreadsheet,
   Loader2,
   PackageSearch,
   ScanLine,
@@ -31,6 +32,7 @@ import { DialogComponent } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { crudApi, inventoryApi, type InventoryRow, type InventoryMovement, type InventoryRevision, type RevisionDetailData, type RevisionItem, type RevisionStatus } from "@/lib/api";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
+import { playSound } from "@/lib/sounds";
 
 interface InventoryPageProps {
   canManage: boolean;
@@ -370,6 +372,12 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
   const [productType, setProductType] = useState("");
   const [lowOnly, setLowOnly] = useState(false);
 
+  const [mType, setMType] = useState("");
+  const [mFrom, setMFrom] = useState("");
+  const [mTo, setMTo] = useState("");
+
+  const [exportBusy, setExportBusy] = useState<"pdf" | "xlsx" | "movements" | null>(null);
+
   const [active, setActive] = useState<InventoryRow | null>(null);
   const [dialog, setDialog] = useState<"movement" | "threshold" | "transfer" | null>(null);
 
@@ -422,7 +430,15 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
         });
         setRows(res.rows);
       } else if (tab === "movements") {
-        const res = await inventoryApi.movements({ locationType, locationId, q: debouncedQ || undefined, pageSize: 50 });
+        const res = await inventoryApi.movements({
+          locationType,
+          locationId,
+          q: debouncedQ || undefined,
+          type: mType || undefined,
+          from: mFrom || undefined,
+          to: mTo || undefined,
+          pageSize: 50,
+        });
         setMovements(res.rows);
         setMTotal(res.total);
       } else {
@@ -435,7 +451,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
     } finally {
       setLoading(false);
     }
-  }, [locationType, locationId, tab, debouncedQ, productType, lowOnly]);
+  }, [locationType, locationId, tab, debouncedQ, productType, lowOnly, mType, mFrom, mTo]);
 
   useEffect(() => {
     load();
@@ -508,6 +524,48 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
             >
               <TriangleAlert className="size-4" /> Solo bajo stock {lowCount > 0 && `(${lowCount})`}
             </Button>
+            {locationId && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={exportBusy !== null}
+                  onClick={async () => {
+                    setExportBusy("xlsx");
+                    try {
+                      await inventoryApi.exportXlsx({ locationType, locationId });
+                    } catch (err) {
+                      swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
+                    } finally {
+                      setExportBusy(null);
+                    }
+                  }}
+                  title="Exportar listado en Excel (.xlsx)"
+                >
+                  {exportBusy === "xlsx" ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
+                  XLSX
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={exportBusy !== null}
+                  onClick={async () => {
+                    setExportBusy("pdf");
+                    try {
+                      await inventoryApi.exportPdf({ locationType, locationId });
+                    } catch (err) {
+                      swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
+                    } finally {
+                      setExportBusy(null);
+                    }
+                  }}
+                  title="Exportar inventario en PDF"
+                >
+                  {exportBusy === "pdf" ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
+                  PDF
+                </Button>
+              </>
+            )}
             {canManage && locationId && (
               <>
                 <input
@@ -530,21 +588,78 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                   {importing ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
                   Importar
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      await inventoryApi.exportPdf({ locationType, locationId });
-                    } catch (err) {
-                      swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
-                    }
-                  }}
-                  title="Exportar inventario en PDF"
-                >
-                  <FileDown className="size-4" /> PDF
-                </Button>
               </>
+            )}
+          </>
+        )}
+
+        {tab === "movements" && (
+          <>
+            <div className="relative w-full max-w-56">
+              <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
+              <Input
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Buscar producto, SKU…"
+                className="h-8 pl-9"
+              />
+            </div>
+            <Select value={mType} onValueChange={setMType}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Todos los tipos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todos</SelectItem>
+                {MOVEMENT_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+                <SelectItem value="transfer_in">Transferencia +</SelectItem>
+                <SelectItem value="transfer_out">Transferencia −</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              type="date"
+              value={mFrom}
+              onChange={(e) => setMFrom(e.target.value)}
+              className="h-8 w-auto"
+              title="Desde"
+            />
+            <Input
+              type="date"
+              value={mTo}
+              onChange={(e) => setMTo(e.target.value)}
+              className="h-8 w-auto"
+              title="Hasta"
+            />
+            {locationId && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={exportBusy !== null}
+                onClick={async () => {
+                  setExportBusy("movements");
+                  try {
+                    await inventoryApi.exportMovementsXlsx({
+                      locationType,
+                      locationId,
+                      type: mType || undefined,
+                      from: mFrom || undefined,
+                      to: mTo || undefined,
+                    });
+                  } catch (err) {
+                    swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
+                  } finally {
+                    setExportBusy(null);
+                  }
+                }}
+                title="Exportar historial de movimientos en Excel (.xlsx)"
+              >
+                {exportBusy === "movements" ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
+                XLSX
+              </Button>
             )}
           </>
         )}
@@ -732,7 +847,21 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                           </td>
                           <td className="py-2 pr-3">{r.performedBy ?? "—"}</td>
                           <td className="py-2">
-                            <div className="flex justify-end">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Exportar reporte en PDF"
+                                onClick={async () => {
+                                  try {
+                                    await inventoryApi.exportRevisionPdf(r.id);
+                                  } catch (err) {
+                                    swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
+                                  }
+                                }}
+                              >
+                                <FileDown className="size-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -876,23 +1005,46 @@ function RevisionDialog({
   const [scanQ, setScanQ] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [notes, setNotes] = useState(revision.notes ?? "");
 
-  const commit = async (item: RevisionItem, countedQuantity: number, scanned: boolean) => {
-    setBusy(item.id);
-    try {
-      await inventoryApi.setRevisionCount(revision.id, item.id, { countedQuantity, scanned });
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === item.id
-            ? { ...i, countedQuantity, difference: Math.round((countedQuantity - i.expectedQuantity) * 1000) / 1000, scanned }
-            : i
-        )
-      );
-    } catch (err) {
-      swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
-    } finally {
-      setBusy(null);
-    }
+  // Fuente de verdad síncrona para conteos rápidos por escaneo (evita perder lecturas).
+  const countsRef = useRef<Map<string, number>>(new Map());
+  const persistTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+  const applyCount = (itemId: string, counted: number, scanned: boolean, expected: number) =>
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId
+          ? { ...i, countedQuantity: counted, difference: round3(counted - expected), scanned }
+          : i
+      )
+    );
+
+  // Persistencia con debounce: las ráfagas de escaneo se envían con el valor final acumulado.
+  const schedulePersist = (itemId: string, counted: number, scanned: boolean) => {
+    const prevTimer = persistTimersRef.current.get(itemId);
+    if (prevTimer) clearTimeout(prevTimer);
+    persistTimersRef.current.set(
+      itemId,
+      setTimeout(() => {
+        persistTimersRef.current.delete(itemId);
+        inventoryApi
+          .setRevisionCount(revision.id, itemId, { countedQuantity: counted, scanned })
+          .catch((err) => swalError("No se pudo guardar", err instanceof Error ? err.message : undefined));
+      }, 300)
+    );
+  };
+
+  const bump = (item: RevisionItem) => {
+    const prev = countsRef.current.get(item.id) ?? item.countedQuantity ?? 0;
+    const next = round3(prev + 1);
+    countsRef.current.set(item.id, next);
+    applyCount(item.id, next, true, item.expectedQuantity);
+    playSound("scan");
+    schedulePersist(item.id, next, true);
   };
 
   const handleScan = () => {
@@ -906,12 +1058,35 @@ function RevisionDialog({
         (i.variantName ?? "").toLowerCase().includes(q)
     );
     if (!item) {
+      playSound("error");
       swalError("No encontrado", "No hay un producto con ese código o búsqueda.");
       return;
     }
-    const next = Math.round(((item.countedQuantity ?? 0) + 1) * 1000) / 1000;
-    commit(item, next, true);
+    bump(item);
     setScanQ("");
+  };
+
+  const commitManual = async (item: RevisionItem, countedQuantity: number) => {
+    setBusy(item.id);
+    try {
+      await inventoryApi.setRevisionCount(revision.id, item.id, { countedQuantity, scanned: false });
+      countsRef.current.set(item.id, countedQuantity);
+      applyCount(item.id, countedQuantity, false, item.expectedQuantity);
+    } catch (err) {
+      swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleNotesChange = (v: string) => {
+    setNotes(v);
+    if (notesTimerRef.current) clearTimeout(notesTimerRef.current);
+    notesTimerRef.current = setTimeout(() => {
+      inventoryApi
+        .updateRevisionNotes(revision.id, v)
+        .catch((err) => swalError("No se pudieron guardar las notas", err instanceof Error ? err.message : undefined));
+    }, 400);
   };
 
   const finish = (action: "complete" | "cancel") => async () => {
@@ -971,21 +1146,44 @@ function RevisionDialog({
       }
     >
         {editable && (
-          <div className="flex items-center gap-2 rounded-lg border bg-muted/40 p-3">
-            <ScanLine className="size-4 shrink-0 text-muted-foreground" />
-            <Barcode className="size-4 shrink-0 text-muted-foreground" />
-            <Input
-              value={scanQ}
-              onChange={(e) => setScanQ(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleScan();
-                }
-              }}
-              placeholder="Escanear o buscar por código / nombre… (suma 1)"
-              className="flex-1"
-            />
+          <>
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/40 p-3">
+              <ScanLine className="size-4 shrink-0 text-muted-foreground" />
+              <Barcode className="size-4 shrink-0 text-muted-foreground" />
+              <Input
+                value={scanQ}
+                onChange={(e) => setScanQ(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleScan();
+                  }
+                }}
+                placeholder="Escanear o buscar por código / nombre… (suma 1)"
+                className="flex-1"
+                autoFocus
+              />
+            </div>
+            <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+              <ClipboardCheck className="size-3.5 shrink-0" />
+              El conteo se guarda automáticamente al escanear o escribir; no requiere presionar ningún botón.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="revisionNotes">Notas (opcional)</Label>
+              <Textarea
+                id="revisionNotes"
+                rows={2}
+                value={notes}
+                onChange={(e) => handleNotesChange(e.target.value)}
+                placeholder="Ej. conteo de fin de mes, incidencias…"
+              />
+            </div>
+          </>
+        )}
+        {!editable && notes && (
+          <div className="rounded-lg border bg-muted/40 px-3 py-2">
+            <p className="text-xs font-medium text-muted-foreground">Notas</p>
+            <p className="mt-0.5 text-sm">{notes}</p>
           </div>
         )}
 
@@ -1031,13 +1229,13 @@ function RevisionDialog({
                             }}
                             onBlur={(e) => {
                               const v = Number(e.target.value);
-                              if (Number.isFinite(v) && v >= 0) commit(item, v, false);
+                              if (Number.isFinite(v) && v >= 0) commitManual(item, v);
                             }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
                                 const v = Number((e.target as HTMLInputElement).value);
-                                if (Number.isFinite(v) && v >= 0) commit(item, v, false);
+                                if (Number.isFinite(v) && v >= 0) commitManual(item, v);
                               }
                             }}
                           />

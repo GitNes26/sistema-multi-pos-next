@@ -61,9 +61,18 @@ export function Numpad({ onKey, onEnter, className, disabled }: NumpadProps) {
   };
 
   // Vínculo con el teclado físico: cada tecla anima su equivalente virtual.
+  // No interfiere cuando el foco está en un campo de texto (referencia, puntos, etc.).
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (disabledRef.current) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (
+        target &&
+        (tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable)
+      ) {
+        return;
+      }
       if (e.key === "Enter") {
         e.preventDefault();
         onEnterRef.current?.();

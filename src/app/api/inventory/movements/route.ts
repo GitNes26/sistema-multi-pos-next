@@ -20,6 +20,9 @@ export async function GET(req: NextRequest) {
       locationType,
       locationId,
       q: req.nextUrl.searchParams.get("q") ?? undefined,
+      type: req.nextUrl.searchParams.get("type") ?? undefined,
+      from: req.nextUrl.searchParams.get("from") ?? undefined,
+      to: req.nextUrl.searchParams.get("to") ?? undefined,
       page: Number(req.nextUrl.searchParams.get("page")) || 1,
       pageSize: Number(req.nextUrl.searchParams.get("pageSize")) || 20,
     });

@@ -385,12 +385,12 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
 
       <div className="flex flex-wrap gap-6 sm:col-span-2">
         <div className="flex items-center gap-2">
-          <Switch checked={isActive} onCheckedChange={setIsActive} />
-          <span className="text-sm">Activo</span>
+          <Switch id="prod-active" checked={isActive} onCheckedChange={setIsActive} />
+          <label htmlFor="prod-active" className="cursor-pointer text-sm">Activo</label>
         </div>
         <div className="flex items-center gap-2">
-          <Switch checked={trackInventory} onCheckedChange={setTrackInventory} />
-          <span className="text-sm">Controlar inventario</span>
+          <Switch id="prod-track" checked={trackInventory} onCheckedChange={setTrackInventory} />
+          <label htmlFor="prod-track" className="cursor-pointer text-sm">Controlar inventario</label>
         </div>
       </div>
 
@@ -404,8 +404,8 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
           <InputField label="Cantidad máxima" icon={<Hash className="size-4" />} type="number" step="any" value={bulkMaxQuantity} onChange={(e) => setBulkMax(e.target.value)} placeholder="0" />
           <InputField label="Incremento sugerido" icon={<Hash className="size-4" />} type="number" step="any" value={bulkStep} onChange={(e) => setBulkStep(e.target.value)} placeholder="0.01" />
           <div className="flex items-center gap-2 sm:col-span-2">
-            <Switch checked={allowSplit} onCheckedChange={setAllowSplit} />
-            <span className="text-sm">Permitir por pieza (venta dividida)</span>
+            <Switch id="prod-split" checked={allowSplit} onCheckedChange={setAllowSplit} />
+            <label htmlFor="prod-split" className="cursor-pointer text-sm">Permitir por pieza (venta dividida)</label>
           </div>
           {allowSplit && (
             <>

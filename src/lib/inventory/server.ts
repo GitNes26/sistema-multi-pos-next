@@ -390,25 +390,33 @@ export async function transferStock(
   return { ok: true, from: originNext, to: destNext };
 }
 
-/** Historial de movimientos de una ubicación. */
-export async function listMovements(
-  organizationId: string,
-  params: {
-    locationType: $Enums.LocationType;
-    locationId: string;
-    q?: string;
-    page?: number;
-    pageSize?: number;
-  }
-): Promise<{ rows: MovementRow[]; total: number }> {
-  const page = Math.max(1, params.page ?? 1);
-  const pageSize = Math.min(100, params.pageSize ?? 20);
-  const q = params.q?.trim() ?? "";
+export const MOVEMENT_TYPE_LABELS: Record<$Enums.MovementType, string> = {
+  purchase: "Compra (entrada)",
+  adjustment: "Ajuste (±)",
+  sale: "Venta (salida)",
+  return: "Devolución (entrada)",
+  transfer_in: "Transferencia (entrada)",
+  transfer_out: "Transferencia (salida)",
+};
 
-  const where: Prisma.InventoryMovementWhereInput = {
+export interface MovementFilter {
+  locationType: $Enums.LocationType;
+  locationId: string;
+  q?: string;
+  type?: string;
+  from?: string;
+  to?: string;
+}
+
+function movementWhere(
+  organizationId: string,
+  f: MovementFilter
+): Prisma.InventoryMovementWhereInput {
+  const q = f.q?.trim() ?? "";
+  return {
     organizationId,
-    locationId: params.locationId,
-    locationType: params.locationType,
+    locationId: f.locationId,
+    locationType: f.locationType,
     ...(q
       ? {
           OR: [
@@ -418,17 +426,62 @@ export async function listMovements(
           ],
         }
       : {}),
+    ...(f.type ? { type: f.type as $Enums.MovementType } : {}),
+    ...(f.from || f.to
+      ? {
+          createdAt: {
+            ...(f.from ? { gte: new Date(`${f.from}T00:00:00`) } : {}),
+            ...(f.to ? { lte: new Date(`${f.to}T23:59:59.999`) } : {}),
+          },
+        }
+      : {}),
   };
+}
+
+const movementInclude = {
+  product: { select: { name: true } },
+  variant: { select: { name: true } },
+  unit: { select: { abbreviation: true } },
+  employee: { select: { fullName: true } },
+} as const;
+
+function mapMovement(m: {
+  id: string;
+  type: $Enums.MovementType;
+  quantity: Dec;
+  reason: string | null;
+  createdAt: Date;
+  product: { name: string } | null;
+  variant: { name: string } | null;
+  unit: { abbreviation: string } | null;
+  employee: { fullName: string } | null;
+}): MovementRow {
+  return {
+    id: m.id,
+    type: m.type,
+    quantity: num(m.quantity),
+    reason: m.reason,
+    productName: m.product?.name ?? "—",
+    variantName: m.variant?.name ?? null,
+    unit: m.unit?.abbreviation ?? null,
+    performer: m.employee?.fullName ?? null,
+    createdAt: m.createdAt.toISOString(),
+  };
+}
+
+/** Historial de movimientos de una ubicación. */
+export async function listMovements(
+  organizationId: string,
+  params: MovementFilter & { page?: number; pageSize?: number }
+): Promise<{ rows: MovementRow[]; total: number }> {
+  const page = Math.max(1, params.page ?? 1);
+  const pageSize = Math.min(100, params.pageSize ?? 20);
+  const where = movementWhere(organizationId, params);
 
   const [rows, total] = await Promise.all([
     prisma.inventoryMovement.findMany({
       where,
-      include: {
-        product: { select: { name: true } },
-        variant: { select: { name: true } },
-        unit: { select: { abbreviation: true } },
-        employee: { select: { fullName: true } },
-      },
+      include: movementInclude,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -436,20 +489,91 @@ export async function listMovements(
     prisma.inventoryMovement.count({ where }),
   ]);
 
-  return {
-    rows: rows.map((m) => ({
-      id: m.id,
-      type: m.type,
-      quantity: num(m.quantity),
-      reason: m.reason,
-      productName: m.product?.name ?? "—",
-      variantName: m.variant?.name ?? null,
-      unit: m.unit?.abbreviation ?? null,
-      performer: m.employee?.fullName ?? null,
-      createdAt: m.createdAt.toISOString(),
-    })),
-    total,
-  };
+  return { rows: rows.map(mapMovement), total };
+}
+
+/** Exporta el historial de movimientos a Excel (.xlsx). */
+export async function exportMovementsXlsx(organizationId: string, f: MovementFilter) {
+  const rows = await prisma.inventoryMovement.findMany({
+    where: movementWhere(organizationId, f),
+    include: movementInclude,
+    orderBy: { createdAt: "desc" },
+  });
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Movimientos");
+  ws.columns = [
+    { header: "Fecha", width: 20 },
+    { header: "Tipo", width: 24 },
+    { header: "Producto", width: 28 },
+    { header: "Variante", width: 20 },
+    { header: "Cantidad", width: 12 },
+    { header: "Unidad", width: 10 },
+    { header: "Responsable", width: 22 },
+    { header: "Motivo", width: 30 },
+  ];
+  ws.getRow(1).font = { bold: true };
+  ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "F1F5F9" } };
+  ws.views = [{ state: "frozen", ySplit: 1 }];
+
+  for (const m of rows) {
+    ws.addRow([
+      new Date(m.createdAt).toLocaleString("es-MX"),
+      MOVEMENT_TYPE_LABELS[m.type] ?? m.type,
+      m.product?.name ?? "—",
+      m.variant?.name ?? "",
+      num(m.quantity),
+      m.unit?.abbreviation ?? "pza",
+      m.employee?.fullName ?? "—",
+      m.reason ?? "—",
+    ]);
+  }
+
+  const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+  return { buffer, filename: `movimientos-inventario-${new Date().toISOString().slice(0, 10)}.xlsx` };
+}
+
+/** Exporta el snapshot de existencias a Excel (.xlsx). */
+export async function exportInventoryXlsx(
+  organizationId: string,
+  params: { locationType: $Enums.LocationType; locationId: string; q?: string; productType?: string; lowOnly?: boolean }
+) {
+  const rows = await inventorySnapshot(organizationId, params);
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Existencias");
+  ws.columns = [
+    { header: "Producto", width: 28 },
+    { header: "Variante", width: 20 },
+    { header: "SKU", width: 16 },
+    { header: "Código de barras", width: 20 },
+    { header: "Tipo", width: 12 },
+    { header: "Stock", width: 12 },
+    { header: "Unidad", width: 10 },
+    { header: "Mínimo", width: 12 },
+    { header: "Estado", width: 14 },
+  ];
+  ws.getRow(1).font = { bold: true };
+  ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "F1F5F9" } };
+  ws.views = [{ state: "frozen", ySplit: 1 }];
+
+  const STATUS_LABEL: Record<string, string> = { ok: "OK", low: "Bajo", empty: "Sin stock" };
+  for (const r of rows) {
+    ws.addRow([
+      r.productName,
+      r.variantName ?? "",
+      r.sku ?? "",
+      r.barcode ?? "",
+      r.productType === "bulk" ? "Granel" : "Estándar",
+      r.quantity,
+      r.unit ?? "pza",
+      r.minThreshold,
+      STATUS_LABEL[r.status] ?? r.status,
+    ]);
+  }
+
+  const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+  return { buffer, filename: `inventario-${new Date().toISOString().slice(0, 10)}.xlsx` };
 }
 
 // ── Revisiones físicas (FASE 8.5) ─────────────────────────────────────────────
@@ -686,6 +810,23 @@ export async function setRevisionItemCount(
   });
 
   return { ok: true, counted, difference };
+}
+
+export async function updateRevisionNotes(
+  organizationId: string,
+  revisionId: string,
+  notes: string | null
+) {
+  const revision = await findRevision(organizationId, revisionId);
+  if (revision.status === "completed" || revision.status === "cancelled") {
+    throw new CrudError("La revisión ya fue finalizada", 409);
+  }
+  const value = notes?.trim() ? notes.trim() : null;
+  await prisma.inventoryRevision.update({
+    where: { id: revision.id },
+    data: { notes: value },
+  });
+  return { ok: true, notes: value };
 }
 
 export async function completeRevision(organizationId: string, userId: string, revisionId: string) {

@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import type { $Enums } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { inventoryGuard } from "../guard";
-import { inventorySnapshot } from "@/lib/inventory/server";
+import { inventorySnapshot, exportInventoryXlsx } from "@/lib/inventory/server";
 import { buildInventoryPdf } from "@/lib/pdf";
 
-// FASE 8.7 — Exportación de inventario en PDF profesional.
-// GET /api/inventory/export?locationType=location&locationId=xxx
+// FASE 8.7 — Exportación de inventario en PDF/XLSX profesional.
+// GET /api/inventory/export?locationType=location&locationId=xxx&format=pdf|xlsx
 
 export async function GET(req: NextRequest) {
   const guard = await inventoryGuard("inventory.view");
@@ -18,8 +18,26 @@ export async function GET(req: NextRequest) {
   if (!locationId) {
     return NextResponse.json({ ok: false, error: "Falta la ubicación" }, { status: 400 });
   }
+  const format = req.nextUrl.searchParams.get("format") ?? "pdf";
 
   try {
+    if (format === "xlsx") {
+      const { buffer, filename } = await exportInventoryXlsx(organizationId, {
+        locationType,
+        locationId,
+        q: req.nextUrl.searchParams.get("q") ?? undefined,
+        productType: req.nextUrl.searchParams.get("productType") ?? undefined,
+        lowOnly: req.nextUrl.searchParams.get("lowOnly") === "true",
+      });
+      return new NextResponse(new Uint8Array(buffer), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+        },
+      });
+    }
+
     const [snapshot, organization, location] = await Promise.all([
       inventorySnapshot(organizationId, { locationType, locationId }),
       prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }),
@@ -53,6 +71,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error("[inventory/export]", err);
-    return NextResponse.json({ ok: false, error: "Error al generar el PDF" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Error al generar el reporte" }, { status: 500 });
   }
 }

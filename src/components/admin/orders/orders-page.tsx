@@ -84,6 +84,13 @@ export function OrdersPage({
     }
   }, [status, method, locationId, search, from, to, activeOnly]);
 
+  // Deep link desde notificaciones: ?q=<nº pedido> precarga la búsqueda.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const initial = params.get("q");
+    if (initial) setSearch(initial);
+  }, []);
+
   useEffect(() => {
     load();
   }, [load]);

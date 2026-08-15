@@ -26,7 +26,7 @@ export async function notifySaleCompleted(
     severity: "success",
     title: "Venta completada",
     body: `#${Number(sale.locationSaleNumber) ?? sale.saleNumber} por ${money(sale.total)} — ${sale.locationName}`,
-    link: "/admin/sales",
+    link: `/admin/sales?q=${sale.locationSaleNumber ?? sale.saleNumber}`,
     metadata: { event: "sale" },
   });
 }
@@ -68,7 +68,7 @@ export async function notifyOrderEvent(
     severity: c.severity,
     title: c.title,
     body: `#${order.orderNumber}${who} por ${money(order.total)}`,
-    link: "/admin/orders",
+    link: `/admin/orders?q=${order.orderNumber}`,
     metadata: { event: "order", status: order.status, sound: c.sound },
   });
 }

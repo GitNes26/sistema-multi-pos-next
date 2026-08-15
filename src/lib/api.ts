@@ -159,6 +159,30 @@ async function inventoryRequest<T>(url: string, init?: RequestInit): Promise<T> 
   return data as T;
 }
 
+async function downloadBlob(url: string, fallbackName: string) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const data = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new ApiError(data?.error ?? "Error al exportar", res.status);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^";]+)"?/.exec(disposition);
+  const filename = match?.[1] ?? fallbackName;
+  const urlObj = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = urlObj;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(urlObj);
+}
+
+function downloadInventoryExport(params: Record<string, string>, fallbackName: string) {
+  return downloadBlob(`/api/inventory/export?${new URLSearchParams(params)}`, fallbackName);
+}
+
 export const inventoryApi = {
   snapshot: (params: { locationType: string; locationId: string; q?: string; productType?: string; lowOnly?: boolean }) =>
     inventoryRequest<{ ok: boolean; rows: InventoryRow[] }>(
@@ -166,7 +190,7 @@ export const inventoryApi = {
         Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
       )}`
     ),
-  movements: (params: { locationType: string; locationId: string; q?: string; page?: number; pageSize?: number }) =>
+  movements: (params: { locationType: string; locationId: string; q?: string; type?: string; from?: string; to?: string; page?: number; pageSize?: number }) =>
     inventoryRequest<{ ok: boolean; rows: InventoryMovement[]; total: number }>(
       `/api/inventory/movements?${new URLSearchParams(
         Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
@@ -213,6 +237,11 @@ export const inventoryApi = {
     }),
   finishRevision: (id: string, action: "complete" | "cancel") =>
     inventoryRequest<{ ok: boolean }>(`/api/inventory/revisions/${id}/${action}`, { method: "POST" }),
+  updateRevisionNotes: (id: string, notes: string | null) =>
+    inventoryRequest<{ ok: boolean; notes: string | null }>(`/api/inventory/revisions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ notes }),
+    }),
   importStock: async (params: {
     locationType: string;
     locationId: string;
@@ -234,27 +263,18 @@ export const inventoryApi = {
     if (!data?.result) throw new ApiError("Respuesta inválida del servidor", 500);
     return data.result;
   },
-  exportPdf: async (params: { locationType: string; locationId: string }) => {
-    const res = await fetch(
-      `/api/inventory/export?${new URLSearchParams(params as Record<string, string>)}`
-    );
-    if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      throw new ApiError(data?.error ?? "Error al exportar", res.status);
-    }
-    const blob = await res.blob();
-    const disposition = res.headers.get("Content-Disposition") ?? "";
-    const match = /filename="?([^";]+)"?/.exec(disposition);
-    const filename = match?.[1] ?? "inventario.pdf";
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  },
+  exportPdf: (params: { locationType: string; locationId: string }) =>
+    downloadInventoryExport({ ...params, format: "pdf" }, "inventario.pdf"),
+  exportXlsx: (params: { locationType: string; locationId: string }) =>
+    downloadInventoryExport({ ...params, format: "xlsx" }, "inventario.xlsx"),
+  exportMovementsXlsx: (params: { locationType: string; locationId: string; type?: string; from?: string; to?: string }) =>
+    downloadBlob(
+      `/api/inventory/movements/export?${new URLSearchParams(
+        Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
+      )}`,
+      "movimientos-inventario.xlsx"
+    ),
+  exportRevisionPdf: (id: string) => downloadBlob(`/api/inventory/revisions/${id}/export`, `revision-${id}.pdf`),
 };
 
 // ── Ventas (FASE 9) ───────────────────────────────────────────────────────────

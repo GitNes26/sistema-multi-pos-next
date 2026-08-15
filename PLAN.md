@@ -2283,8 +2283,10 @@ Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 
 - TODO input (de cualquier tipo) usa `InputGroupField` (`src/components/base/input-group-field.tsx`): label + `InfoTooltip` + icono descriptivo + addons + hint/error
 - Todo campo tiene label obligatorio + `InfoTooltip` (helper)
+- **Ligadura label ↔ input**: todo control debe estar asociado a su label con `htmlFor`/`id` (mismo valor) para que al hacer clic en el texto el control reaccione. Aplica **especialmente** a `Switch`, `Checkbox` y `RadioGroupItem`: el texto (título y descripción) debe ser un `<label htmlFor={id} className="cursor-pointer">` y el control llevar `id={id}`. Para `Switch`/`Checkbox` (botones) usar asociación explícita `htmlFor`+`id` (no anidar el control dentro del `<label>`).
 - Campo obligatorio: indicar con `*` al final del nombre (prop `required` en `InputGroupField`/`FormCombobox`)
 - Inputs de búsqueda/filtro: usar `type="search"` para habilitar el limpiado con la tecla Esc
+- Listeners globales de teclado (p.ej. el `Numpad` del POS) deben ignorar los eventos cuando el foco está en un `input`/`textarea`/`select`/`contenteditable`, para no robar las teclas al campo (referencia, puntos, etc.)
 - NUNCA usar `<select>` nativo → siempre `FormCombobox` de shadcn/ui (`src/components/base/form-combobox.tsx`)
 - Formularios con react-hook-form + yup
 - Errores: `text-destructive text-sm` bajo el campo
@@ -2331,17 +2333,28 @@ Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 ### Micro-interacciones
 
 - Hover: transition-colors, hover:bg-accent, hover:shadow, cursor:pointer; transición suave (scale 0.9 o leve elevación, lo que se vea mejor)
+- Iconos del Navbar (toggle de tema, campana de notificaciones): hover con elevación (`hover:-translate-y-0.5` + `hover:shadow-md`) y `cursor-pointer`
 - Active: whileTap={{ scale: 0.97 }}
 - Carga: Spinner + Skeleton
 - Listas: stagger animation
 - Rutas: AnimatePresence page transitions
 - Empty states: animados
 
+### Scrollbars
+
+- Barras de scroll discretas y sutiles en todo el sistema (definidas en `globals.css`): track transparente, thumb redondeado semitransparente con `--foreground` (se adapta a tema claro/oscuro), ancho delgado y más intenso al hover
+- Paneles táctiles del POS usan `scrollbar-none` para ocultarlas
+
 ### Navegación
 
 - Sidebar (desktop), Header (sticky), BottomTabBar (móvil), NavigationDrawer (tablet) → always fixed
 - Solo <main> es scrollable (overflow-y-auto, h-dvh)
 - En el Navbar (header, a la derecha): icono toggle del tema + icono de notificaciones + avatar de usuario (en ese orden)
+
+### Notificaciones
+
+- Cada notificación enlaza (deep link) a la página filtrada que la origina (p.ej. venta → `/admin/sales?q=<folio>`, pedido → `/admin/orders?q=<nº>`); la página destino lee el query param y precarga la búsqueda
+- Clic en una notificación (campana y centro) marca como leída y navega a su destino
 
 ---
 

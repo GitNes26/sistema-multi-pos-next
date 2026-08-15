@@ -74,11 +74,12 @@ export function LoyaltyForm() {
       </div>
 
       <div className="flex items-center justify-between rounded-lg border p-3">
-        <div>
-          <p className="text-sm font-medium">Lealtad habilitada</p>
-          <p className="text-xs text-muted-foreground">Acumular y canjear puntos</p>
-        </div>
+        <label htmlFor="loyalty-enabled" className="cursor-pointer">
+          <span className="block text-sm font-medium">Lealtad habilitada</span>
+          <span className="block text-xs text-muted-foreground">Acumular y canjear puntos</span>
+        </label>
         <Switch
+          id="loyalty-enabled"
           checked={form.loyaltyEnabled}
           onCheckedChange={(v) => setForm({ ...form, loyaltyEnabled: v })}
         />

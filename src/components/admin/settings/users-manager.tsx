@@ -150,8 +150,8 @@ function UsersTab() {
             clearable={false}
           />
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            Activo
-            <Switch checked={u.isActive} onCheckedChange={(v) => toggleActive(u, v)} />
+            <label htmlFor={`user-active-${u.membershipId}`} className="cursor-pointer">Activo</label>
+            <Switch id={`user-active-${u.membershipId}`} checked={u.isActive} onCheckedChange={(v) => toggleActive(u, v)} />
           </div>
           <TooltipButton label="Quitar" variant="ghost" size="icon-xs" onClick={() => remove(u)}>
             <UserX className="size-3.5 text-destructive" />
