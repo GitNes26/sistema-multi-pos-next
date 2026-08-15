@@ -2,15 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CornerDownLeft, Layers, Search } from "lucide-react";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { PosProduct, PosVariant } from "@/types/pos";
@@ -75,16 +67,26 @@ export function VariantDialog({
   };
 
   return (
-    <Dialog open={!!product} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Layers className="size-5 text-primary" /> {product?.name}
-          </DialogTitle>
-          <DialogDescription>Elige una variante para agregar al ticket.</DialogDescription>
-        </DialogHeader>
-
-        <DialogBody className="space-y-3">
+    <DialogComponent
+      open={!!product}
+      onOpenChange={(o) => !o && onClose()}
+      icon={<Layers className="size-5 text-primary" />}
+      title={product?.name}
+      description="Elige una variante para agregar al ticket."
+      className="sm:max-w-md"
+      bodyClassName="space-y-3"
+      footerClassName="flex items-center justify-between gap-2"
+      footer={
+        <>
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CornerDownLeft className="size-3.5" /> Enter para agregar · flechas para navegar
+          </p>
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Cancelar
+          </Button>
+        </>
+      }
+    >
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -134,17 +136,6 @@ export function VariantDialog({
               <p className="py-6 text-center text-sm text-muted-foreground">Sin variantes que coincidan</p>
             )}
           </div>
-        </DialogBody>
-
-        <DialogFooter className="flex items-center justify-between gap-2">
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CornerDownLeft className="size-3.5" /> Enter para agregar · flechas para navegar
-          </p>
-          <Button variant="outline" size="sm" onClick={onClose}>
-            Cancelar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }

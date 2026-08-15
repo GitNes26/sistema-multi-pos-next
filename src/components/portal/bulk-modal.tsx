@@ -6,14 +6,7 @@ import { usePortalStore } from "@/stores/portal-store";
 import { money, round2, round3, snapToStep } from "@/lib/pos/money";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
@@ -105,17 +98,20 @@ export function BulkModal() {
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && setBulkProduct(null)}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Scale className="size-4 text-primary" />
-            {product.name}
-          </DialogTitle>
-          <DialogDescription>A granel — selecciona la cantidad</DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
+    <DialogComponent
+      open
+      onOpenChange={(o) => !o && setBulkProduct(null)}
+      icon={<Scale className="size-4 text-primary" />}
+      title={product.name}
+      description="A granel — selecciona la cantidad"
+      className="sm:max-w-sm"
+      bodyClassName="space-y-4"
+      footer={
+        <Button className="w-full" onClick={handleAdd} disabled={effectiveQty <= 0}>
+          Agregar al carrito
+        </Button>
+      }
+    >
           {units.length > 1 && (
             <div>
               <p className="mb-1.5 text-xs font-medium text-muted-foreground">Unidad de medida</p>
@@ -195,14 +191,6 @@ export function BulkModal() {
               <span>{money(total)}</span>
             </div>
           </div>
-        </div>
-
-        <DialogFooter>
-          <Button className="w-full" onClick={handleAdd} disabled={effectiveQty <= 0}>
-            Agregar al carrito
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }

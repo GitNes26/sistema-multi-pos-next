@@ -21,13 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { InputGroupField } from "@/components/base/input-group-field";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -597,12 +591,24 @@ function VariantEditDialog({
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Editar variante</DialogTitle>
-          <DialogDescription>{variant.name}</DialogDescription>
-        </DialogHeader>
+    <DialogComponent
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="Editar variante"
+      description={variant.name}
+      className="sm:max-w-md"
+      footerClassName="gap-2"
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button size="sm" onClick={submit} disabled={saving}>
+            {saving && <Loader2 className="size-4 animate-spin" />} Guardar
+          </Button>
+        </>
+      }
+    >
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Nombre</Label>
@@ -646,15 +652,6 @@ function VariantEditDialog({
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button size="sm" onClick={submit} disabled={saving}>
-            {saving && <Loader2 className="size-4 animate-spin" />} Guardar
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }

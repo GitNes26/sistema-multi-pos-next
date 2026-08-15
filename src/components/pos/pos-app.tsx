@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, Printer } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { usePosStore, selectCustomer } from "@/stores/pos-store";
 import type { PosCatalog, PosLineItem, PosProduct, PosSalePayload } from "@/types/pos";
@@ -187,16 +180,25 @@ export function PosApp({ catalog }: PosAppProps) {
       <CashRegisterPanel open={cashOpen} onClose={() => setCashOpen(false)} />
       <CatalogsModal open={catalogsOpen} onClose={() => setCatalogsOpen(false)} onSelectProduct={selectProduct} />
 
-      <Dialog open={!!lastSale} onOpenChange={(o) => !o && setLastSale(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="size-5 text-emerald-600" /> Venta completada
-            </DialogTitle>
-            <DialogDescription>
-              Revisa el ticket e imprime o continúa con un nuevo ticket.
-            </DialogDescription>
-          </DialogHeader>
+      <DialogComponent
+        open={!!lastSale}
+        onOpenChange={(o) => !o && setLastSale(null)}
+        icon={<CheckCircle2 className="size-5 text-emerald-600" />}
+        title="Venta completada"
+        description="Revisa el ticket e imprime o continúa con un nuevo ticket."
+        className="sm:max-w-sm"
+        footerClassName="gap-2"
+        footer={
+          <>
+            <Button variant="outline" onClick={printReceipt} className="flex-1">
+              <Printer className="size-4" /> Imprimir
+            </Button>
+            <Button onClick={() => setLastSale(null)} className="flex-1">
+              Nuevo ticket
+            </Button>
+          </>
+        }
+      >
           {lastSale && (
             <Receipt
               sale={lastSale.sale}
@@ -207,16 +209,7 @@ export function PosApp({ catalog }: PosAppProps) {
               customer={selectCustomer(lastSale.payload.customerId ?? null)}
             />
           )}
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={printReceipt} className="flex-1">
-              <Printer className="size-4" /> Imprimir
-            </Button>
-            <Button onClick={() => setLastSale(null)} className="flex-1">
-              Nuevo ticket
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DialogComponent>
     </SupervisorProvider>
   );
 }

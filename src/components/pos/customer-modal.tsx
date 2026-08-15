@@ -2,15 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Search, Trash2, UserRound } from "lucide-react";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/stores/pos-store";
@@ -43,16 +35,28 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserRound className="size-5 text-primary" /> Asociar cliente
-          </DialogTitle>
-          <DialogDescription>Selecciona un cliente para asociarlo al ticket.</DialogDescription>
-        </DialogHeader>
-
-        <DialogBody className="space-y-3">
+    <DialogComponent
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      icon={<UserRound className="size-5 text-primary" />}
+      title="Asociar cliente"
+      description="Selecciona un cliente para asociarlo al ticket."
+      className="sm:max-w-md"
+      bodyClassName="space-y-3"
+      footerClassName="gap-2"
+      footer={
+        <>
+          {customerId && (
+            <Button variant="outline" onClick={() => setCustomer(null)} className="text-destructive">
+              <Trash2 className="size-4" /> Quitar cliente
+            </Button>
+          )}
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+        </>
+      }
+    >
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -99,19 +103,6 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
               ))
             )}
           </div>
-        </DialogBody>
-
-        <DialogFooter className="gap-2">
-          {customerId && (
-            <Button variant="outline" onClick={() => setCustomer(null)} className="text-destructive">
-              <Trash2 className="size-4" /> Quitar cliente
-            </Button>
-          )}
-          <Button variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }

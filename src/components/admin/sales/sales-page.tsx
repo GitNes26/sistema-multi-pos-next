@@ -20,13 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable } from "@/components/base/data-table";
 import { crudApi, salesApi, type SaleRow, type SaleDetail } from "@/lib/api";
@@ -409,8 +403,18 @@ function SaleDetailDialog({ sale, open, onClose }: { sale: SaleDetail; open: boo
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+    <DialogComponent
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      className="sm:max-w-md"
+      icon={printing ? undefined : <ReceiptText className="size-5" />}
+      title={printing ? undefined : `Venta #${sale.locationSaleNumber ?? sale.saleNumber}`}
+      description={
+        printing
+          ? undefined
+          : `${sale.locationName} · ${new Date(sale.createdAt).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}`
+      }
+    >
         {printing ? (
           <>
             <PrintReceipt sale={sale} />
@@ -424,18 +428,6 @@ function SaleDetailDialog({ sale, open, onClose }: { sale: SaleDetail; open: boo
           </>
         ) : (
           <>
-        <DialogHeader>
-          <DialogTitle>
-            <span className="flex items-center gap-2">
-              <ReceiptText className="size-5" />
-              Venta #{sale.locationSaleNumber ?? sale.saleNumber}
-            </span>
-          </DialogTitle>
-          <DialogDescription>
-            {sale.locationName} · {new Date(sale.createdAt).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}
-          </DialogDescription>
-        </DialogHeader>
-
         <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Cajero</span>
@@ -540,8 +532,7 @@ function SaleDetailDialog({ sale, open, onClose }: { sale: SaleDetail; open: boo
             </Button>
           </>
         )}
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }
 

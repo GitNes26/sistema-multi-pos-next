@@ -2,15 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LockKeyhole, Unlock } from "lucide-react";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -127,26 +119,32 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
     : 0;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {session ? (
-              <>
-                <Unlock className="size-5 text-emerald-600" /> Caja abierta
-              </>
-            ) : (
-              <>
-                <LockKeyhole className="size-5 text-primary" /> Abrir caja
-              </>
-            )}
-          </DialogTitle>
-          <DialogDescription>
-            Sucursal {usePosStore.getState().location.name} · {stats?.todayCount ?? 0} ventas hoy · {money(stats?.todaySales ?? 0)}
-          </DialogDescription>
-        </DialogHeader>
-
-        <DialogBody className="space-y-3">
+    <DialogComponent
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      icon={session ? <Unlock className="size-5 text-emerald-600" /> : <LockKeyhole className="size-5 text-primary" />}
+      title={session ? "Caja abierta" : "Abrir caja"}
+      description={`Sucursal ${usePosStore.getState().location.name} · ${stats?.todayCount ?? 0} ventas hoy · ${money(stats?.todaySales ?? 0)}`}
+      className="sm:max-w-md"
+      bodyClassName="space-y-3"
+      footerClassName="gap-2"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          {session ? (
+            <Button className="flex-1" onClick={doClose} disabled={loading}>
+              {loading ? "Contabilizando…" : "Cerrar caja y cortar"}
+            </Button>
+          ) : (
+            <Button className="flex-1" onClick={doOpen} disabled={loading || !registerId}>
+              {loading ? "Abriendo…" : "Abrir caja"}
+            </Button>
+          )}
+        </>
+      }
+    >
           {session ? (
           <div className="space-y-3">
             <div className="rounded-xl border bg-card p-3 text-sm">
@@ -213,24 +211,7 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
               />
             </div>
           </div>
-        )}
-        </DialogBody>
-
-        <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          {session ? (
-            <Button className="flex-1" onClick={doClose} disabled={loading}>
-              {loading ? "Contabilizando…" : "Cerrar caja y cortar"}
-            </Button>
-          ) : (
-            <Button className="flex-1" onClick={doOpen} disabled={loading || !registerId}>
-              {loading ? "Abriendo…" : "Abrir caja"}
-            </Button>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }

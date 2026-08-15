@@ -27,13 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { crudApi, inventoryApi, type InventoryRow, type InventoryMovement, type InventoryRevision, type RevisionDetailData, type RevisionItem, type RevisionStatus } from "@/lib/api";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
@@ -122,15 +116,24 @@ function MovementDialog({
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Registrar movimiento</DialogTitle>
-          <DialogDescription>
-            {row.variantName ?? row.productName} · stock actual: {row.quantity} {row.unit ?? ""}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
+    <DialogComponent
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="Registrar movimiento"
+      description={`${row.variantName ?? row.productName} · stock actual: ${row.quantity} ${row.unit ?? ""}`}
+      className="sm:max-w-md"
+      bodyClassName="space-y-3"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} disabled={saving}>
+            {saving && <Loader2 className="size-4 animate-spin" />} Registrar
+          </Button>
+        </>
+      }
+    >
           <div className="space-y-1.5">
             <Label>Tipo</Label>
             <Select value={type} onValueChange={setType}>
@@ -156,17 +159,7 @@ function MovementDialog({
             <Label>Motivo (opcional)</Label>
             <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. reposición de inventario" />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={onClose} disabled={saving}>
-              Cancelar
-            </Button>
-            <Button onClick={submit} disabled={saving}>
-              {saving && <Loader2 className="size-4 animate-spin" />} Registrar
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }
 
@@ -197,30 +190,29 @@ function ThresholdDialog({
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Stock mínimo</DialogTitle>
-          <DialogDescription>
-            {row.variantName ?? row.productName} · te avisaremos si baja de este umbral.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
+    <DialogComponent
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="Stock mínimo"
+      description={`${row.variantName ?? row.productName} · te avisaremos si baja de este umbral.`}
+      className="sm:max-w-sm"
+      bodyClassName="space-y-3"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} disabled={saving}>
+            {saving && <Loader2 className="size-4 animate-spin" />} Guardar
+          </Button>
+        </>
+      }
+    >
           <div className="space-y-1.5">
             <Label>Mínimo ({row.unit ?? "pza"})</Label>
             <Input type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={onClose} disabled={saving}>
-              Cancelar
-            </Button>
-            <Button onClick={submit} disabled={saving}>
-              {saving && <Loader2 className="size-4 animate-spin" />} Guardar
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }
 
@@ -275,15 +267,24 @@ function TransferDialog({
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Transferir stock</DialogTitle>
-          <DialogDescription>
-            {row.variantName ?? row.productName} · disponible: {row.quantity} {row.unit ?? ""}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
+    <DialogComponent
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="Transferir stock"
+      description={`${row.variantName ?? row.productName} · disponible: ${row.quantity} ${row.unit ?? ""}`}
+      className="sm:max-w-md"
+      bodyClassName="space-y-3"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} disabled={saving}>
+            {saving && <Loader2 className="size-4 animate-spin" />} Transferir
+          </Button>
+        </>
+      }
+    >
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Destino tipo</Label>
@@ -324,17 +325,7 @@ function TransferDialog({
             <Label>Motivo (opcional)</Label>
             <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. traslado de mercancía" />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={onClose} disabled={saving}>
-              Cancelar
-            </Button>
-            <Button onClick={submit} disabled={saving}>
-              {saving && <Loader2 className="size-4 animate-spin" />} Transferir
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }
 
@@ -843,30 +834,29 @@ function NewRevisionDialog({
   };
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Nueva revisión física</DialogTitle>
-          <DialogDescription>
-            Se generará el checklist con el stock esperado de todos los productos de esta ubicación.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
+    <DialogComponent
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="Nueva revisión física"
+      description="Se generará el checklist con el stock esperado de todos los productos de esta ubicación."
+      className="sm:max-w-md"
+      bodyClassName="space-y-3"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} disabled={saving}>
+            {saving && <Loader2 className="size-4 animate-spin" />} Crear revisión
+          </Button>
+        </>
+      }
+    >
           <div className="space-y-1.5">
             <Label>Notas (opcional)</Label>
             <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej. inventario de fin de mes" />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={onClose} disabled={saving}>
-              Cancelar
-            </Button>
-            <Button onClick={submit} disabled={saving}>
-              {saving && <Loader2 className="size-4 animate-spin" />} Crear revisión
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }
 
@@ -952,18 +942,34 @@ function RevisionDialog({
   const withDiff = items.filter((i) => i.difference != null && i.difference !== 0).length;
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>
-            Revisión #{revision.revisionNumber} {revisionStatusBadge(revision.status)}
-          </DialogTitle>
-          <DialogDescription>
-            {new Date(revision.startedAt ?? revision.createdAt).toLocaleString()} · {counted}/{items.length} contados
-            {withDiff > 0 && <span className="text-amber-600"> · {withDiff} con diferencia</span>}
-          </DialogDescription>
-        </DialogHeader>
-
+    <DialogComponent
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={
+        <>
+          Revisión #{revision.revisionNumber} {revisionStatusBadge(revision.status)}
+        </>
+      }
+      description={
+        <>
+          {new Date(revision.startedAt ?? revision.createdAt).toLocaleString()} · {counted}/{items.length} contados
+          {withDiff > 0 && <span className="text-amber-600"> · {withDiff} con diferencia</span>}
+        </>
+      }
+      className="sm:max-w-4xl"
+      footer={
+        editable ? (
+          <>
+            <Button variant="outline" onClick={finish("cancel")} disabled={actionBusy}>
+              Cancelar revisión
+            </Button>
+            <Button onClick={finish("complete")} disabled={actionBusy}>
+              {actionBusy && <Loader2 className="size-4 animate-spin" />} Completar y aplicar
+            </Button>
+          </>
+        ) : undefined
+      }
+    >
         {editable && (
           <div className="flex items-center gap-2 rounded-lg border bg-muted/40 p-3">
             <ScanLine className="size-4 shrink-0 text-muted-foreground" />
@@ -1072,18 +1078,6 @@ function RevisionDialog({
         {items.length === 0 && (
           <p className="py-6 text-center text-sm text-muted-foreground">Esta revisión no tiene productos.</p>
         )}
-
-        {editable && (
-          <div className="flex items-center justify-end gap-2 border-t pt-3">
-            <Button variant="outline" onClick={finish("cancel")} disabled={actionBusy}>
-              Cancelar revisión
-            </Button>
-            <Button onClick={finish("complete")} disabled={actionBusy}>
-              {actionBusy && <Loader2 className="size-4 animate-spin" />} Completar y aplicar
-            </Button>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }

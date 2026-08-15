@@ -10,7 +10,7 @@ import { usePortalStore } from "@/stores/portal-store";
 import { swalError, swalPrompt, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface DraftItem {
@@ -207,17 +207,19 @@ export function ListDetailClient({ listId }: { listId: string }) {
         <Save className="size-4" /> {saving ? "Guardando…" : "Guardar lista"}
       </Button>
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Agregar productos</DialogTitle>
-            <DialogDescription>Busca un producto y elige su variante</DialogDescription>
-          </DialogHeader>
+      <DialogComponent
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        title="Agregar productos"
+        description="Busca un producto y elige su variante"
+        className="sm:max-w-sm"
+        bodyClassName="space-y-2"
+      >
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input type="search" className="pl-9" placeholder="Buscar…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <div className="max-h-72 space-y-2 overflow-y-auto">
+          <div className="space-y-2">
             {searchResults.map((p) => (
               <div key={p.id} className="rounded-lg border p-2">
                 <p className="text-sm font-medium">{p.name}</p>
@@ -243,8 +245,7 @@ export function ListDetailClient({ listId }: { listId: string }) {
               <p className="py-6 text-center text-xs text-muted-foreground">Sin resultados</p>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+      </DialogComponent>
     </div>
   );
 }

@@ -2,15 +2,7 @@
 
 import { useState } from "react";
 import { BadgePercent, TicketPercent, X } from "lucide-react";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -92,16 +84,20 @@ export function DiscountDialog({ open, onClose }: DiscountDialogProps) {
       : money(manualDiscount?.value ?? 0);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <TicketPercent className="size-5 text-primary" /> Descuentos y cupones
-          </DialogTitle>
-          <DialogDescription>Aplica un descuento manual o un código de cupón.</DialogDescription>
-        </DialogHeader>
-
-        <DialogBody className="space-y-4">
+    <DialogComponent
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      icon={<TicketPercent className="size-5 text-primary" />}
+      title="Descuentos y cupones"
+      description="Aplica un descuento manual o un código de cupón."
+      className="sm:max-w-sm"
+      bodyClassName="space-y-4"
+      footer={
+        <Button variant="ghost" onClick={onClose}>
+          Cerrar
+        </Button>
+      }
+    >
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Descuento manual
@@ -200,14 +196,6 @@ export function DiscountDialog({ open, onClose }: DiscountDialogProps) {
               <p className="text-xs text-destructive">{coupon.error}</p>
             )}
           </div>
-        </DialogBody>
-
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Cerrar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }

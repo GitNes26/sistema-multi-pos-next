@@ -25,14 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FormCombobox } from "@/components/base/form-combobox";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { TooltipButton } from "@/components/shared/tooltip-button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 const BADGE_VARIANTS = [
@@ -262,16 +255,23 @@ export function MenusManager() {
         </div>
       )}
 
-      <Dialog open={form !== null} onOpenChange={(o) => !o && setForm(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Menu className="size-4 text-primary" />
-              {form?.id ? "Editar menú" : "Nuevo menú"}
-            </DialogTitle>
-            <DialogDescription>Configura el elemento de navegación</DialogDescription>
-          </DialogHeader>
-
+      <DialogComponent
+        open={form !== null}
+        onOpenChange={(o) => !o && setForm(null)}
+        icon={<Menu className="size-4 text-primary" />}
+        title={form?.id ? "Editar menú" : "Nuevo menú"}
+        description="Configura el elemento de navegación"
+        className="sm:max-w-md"
+        bodyClassName="space-y-3"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setForm(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={submit}>Guardar</Button>
+          </>
+        }
+      >
           {form && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -378,15 +378,7 @@ export function MenusManager() {
               </div>
             </div>
           )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setForm(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={submit}>Guardar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DialogComponent>
 
       <div className="flex gap-2">
         <Button variant="outline" onClick={() => openCreate(null)}>

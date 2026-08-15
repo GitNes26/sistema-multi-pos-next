@@ -18,13 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
@@ -474,12 +468,13 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         </CardContent>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={(o) => !o && setDialogOpen(false)}>
-        <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Editar" : "Nuevo"}</DialogTitle>
-            <DialogDescription>{meta.title}</DialogDescription>
-          </DialogHeader>
+      <DialogComponent
+        open={dialogOpen}
+        onOpenChange={(o) => !o && setDialogOpen(false)}
+        title={editing ? "Editar" : "Nuevo"}
+        description={meta.title}
+        className="sm:max-w-xl"
+      >
           {isProducts(moduleKey) ? (
             <ProductsForm
               key={editing ? String(editing.id) : "new"}
@@ -497,8 +492,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
             />
           ) : null}
           {loading && <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />}
-        </DialogContent>
-      </Dialog>
+      </DialogComponent>
 
       <CustomerActivityDialog
         open={Boolean(activityCustomer)}
@@ -508,14 +502,27 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         onClose={() => setActivityCustomer(null)}
       />
 
-      <Dialog open={preview !== null} onOpenChange={(o) => !o && (setPreview(null), setPendingFile(null))}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Vista previa de importación</DialogTitle>
-            <DialogDescription>
-              {preview ? `Se importarán ${preview.total} fila(s).` : ""}
-            </DialogDescription>
-          </DialogHeader>
+      <DialogComponent
+        open={preview !== null}
+        onOpenChange={(o) => !o && (setPreview(null), setPendingFile(null))}
+        title="Vista previa de importación"
+        description={preview ? `Se importarán ${preview.total} fila(s).` : ""}
+        className="sm:max-w-3xl"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => (setPreview(null), setPendingFile(null))}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmImport}
+              disabled={excelBusy !== null || (preview?.missingColumns.length ?? 0) > 0}
+            >
+              {excelBusy === "import" ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+              Confirmar importación
+            </Button>
+          </>
+        }
+      >
 
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700">
             Descarga la plantilla cada vez que vayas a importar: los catálogos (categorías, unidades, etc.)
@@ -558,21 +565,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
               </table>
             </div>
           )}
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => (setPreview(null), setPendingFile(null))}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={confirmImport}
-              disabled={excelBusy !== null || (preview?.missingColumns.length ?? 0) > 0}
-            >
-              {excelBusy === "import" ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-              Confirmar importación
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      </DialogComponent>
     </>
   );
 }
@@ -591,21 +584,23 @@ function CustomerActivityDialog({
   onClose: () => void;
 }) {
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{customer ? String(customer.fullName) : "Cliente"}</DialogTitle>
-          <DialogDescription>
-            {customer?.customerCode ? <code className="text-xs">{String(customer.customerCode)}</code> : null}
-            <span className="ml-2">{customer?.phone ? String(customer.phone) : ""}</span>
-            {activity && (
-              <span className="ml-2 font-medium text-foreground">
-                · {activity.points.toFixed(2)} puntos
-              </span>
-            )}
-          </DialogDescription>
-        </DialogHeader>
-
+    <DialogComponent
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      title={customer ? String(customer.fullName) : "Cliente"}
+      description={
+        <>
+          {customer?.customerCode ? <code className="text-xs">{String(customer.customerCode)}</code> : null}
+          <span className="ml-2">{customer?.phone ? String(customer.phone) : ""}</span>
+          {activity && (
+            <span className="ml-2 font-medium text-foreground">
+              · {activity.points.toFixed(2)} puntos
+            </span>
+          )}
+        </>
+      }
+      className="sm:max-w-2xl"
+    >
         {loading ? (
           <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
         ) : !activity ? (
@@ -746,7 +741,6 @@ function CustomerActivityDialog({
             </TabsContent>
           </Tabs>
         )}
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }

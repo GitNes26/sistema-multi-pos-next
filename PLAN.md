@@ -2321,11 +2321,11 @@ Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 ### Modales (Dialog)
 
 - Cualquier modal → siempre `Dialog` de shadcn/ui
-- 3 partes: Header fijo, Body con scroll, Footer fijo
-- Header: icono + título + subtítulo
+- Estructura fija de 3 partes: Header fijo, Body con scroll, Footer fijo
+- **Componente base `DialogComponent`** (`@/components/ui/dialog`): encapsula la estructura fija y se usa en TODO el sistema. Props: `open`, `onOpenChange`, `title`, `icon?`, `description?`, `className?` (ancho), `bodyClassName?`, `footer?`, `footerClassName?`, `showCloseButton?`, `children` (cuerpo). No se usa `Dialog`/`DialogContent`/`DialogHeader`/`DialogBody`/`DialogFooter` sueltos en las vistas.
+- Header: icono + título + subtítulo (`description`)
 - Footer: botones de acción (confirmar, cancelar)
-- Más anchos (max-w-2xl o max-w-3xl)
-- Body con `overflow-y-auto`
+- Más anchos (max-w-2xl o max-w-3xl) vía `className`
 - El diálogo nunca excede la altura visible de la pantalla: `DialogContent` usa `max-h-[calc(100vh-2rem)]` y layout flex; el **header** y el **footer** quedan siempre visibles (`shrink-0`) y solo el **body** (`DialogBody`) se vuelve scrolleable al llegar al límite de altura (`vh`)
 
 ### Micro-interacciones

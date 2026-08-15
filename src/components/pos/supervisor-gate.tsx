@@ -1,14 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { ShieldCheck } from "lucide-react";
@@ -87,43 +80,46 @@ export function SupervisorProvider({ children }: { children: ReactNode }) {
   return (
     <SupervisorContext.Provider value={{ required, setRequired, setPin, requestSupervisor }}>
       {children}
-      <Dialog open={open} onOpenChange={(o) => !o && finish(false)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShieldCheck className="size-5 text-primary" /> Aprobación de supervisor
-            </DialogTitle>
-            <DialogDescription>
-              Se requiere autorización para: <span className="font-semibold text-foreground">{action}</span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <InputOTP
-              maxLength={6}
-              value={pin}
-              autoFocus
-              onChange={(v) => {
-                setPin(v.replace(/\D/g, ""));
-                setError(false);
-              }}
-              onComplete={confirm}
-            >
-              <InputOTPGroup>
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <InputOTPSlot key={i} index={i} />
-                ))}
-              </InputOTPGroup>
-            </InputOTP>
-            {error && <p className="text-xs text-destructive">PIN incorrecto</p>}
-          </div>
-          <DialogFooter className="gap-2">
+      <DialogComponent
+        open={open}
+        onOpenChange={(o) => !o && finish(false)}
+        icon={<ShieldCheck className="size-5 text-primary" />}
+        title="Aprobación de supervisor"
+        description={
+          <>
+            Se requiere autorización para: <span className="font-semibold text-foreground">{action}</span>
+          </>
+        }
+        className="sm:max-w-sm"
+        bodyClassName="space-y-2"
+        footerClassName="gap-2"
+        footer={
+          <>
             <Button variant="outline" onClick={() => finish(false)}>
               Cancelar
             </Button>
             <Button onClick={() => confirm()}>Autorizar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+          <InputOTP
+            maxLength={6}
+            value={pin}
+            autoFocus
+            onChange={(v) => {
+              setPin(v.replace(/\D/g, ""));
+              setError(false);
+            }}
+            onComplete={confirm}
+          >
+            <InputOTPGroup>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <InputOTPSlot key={i} index={i} />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
+          {error && <p className="text-xs text-destructive">PIN incorrecto</p>}
+      </DialogComponent>
     </SupervisorContext.Provider>
   );
 }

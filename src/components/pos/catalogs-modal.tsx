@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ClipboardList, Star } from "lucide-react";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { usePosStore } from "@/stores/pos-store";
@@ -60,15 +54,13 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
   }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ClipboardList className="size-5 text-primary" /> Catálogos y pedidos
-          </DialogTitle>
-        </DialogHeader>
-
-        <DialogBody>
+    <DialogComponent
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      icon={<ClipboardList className="size-5 text-primary" />}
+      title="Catálogos y pedidos"
+      className="sm:max-w-2xl"
+    >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-1">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
@@ -186,8 +178,6 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
             </div>
           </TabsContent>
           </Tabs>
-        </DialogBody>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }

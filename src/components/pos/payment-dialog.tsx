@@ -14,15 +14,7 @@ import {
   Trash2,
   Wallet,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -152,7 +144,7 @@ export function PaymentDialog({ open, onClose, onSuccess }: PaymentDialogProps) 
   };
 
   return (
-    <Dialog
+    <DialogComponent
       open={open}
       onOpenChange={(o) => {
         if (!o && !loading) {
@@ -160,21 +152,30 @@ export function PaymentDialog({ open, onClose, onSuccess }: PaymentDialogProps) 
           onClose();
         }
       }}
+      icon={<ReceiptText className="size-5 text-primary" />}
+      title="Cobro de venta"
+      description={
+        <>
+          {t.pointsRedeemed > 0 && (
+            <>Aplicando {t.pointsRedeemed} pts ({money(t.pointsRedeemedValue)}) en puntos · </>
+          )}
+          Restante a pagar: {money(t.payable)}
+        </>
+      }
+      className="sm:max-w-lg"
+      bodyClassName="space-y-3"
+      footer={
+        <Button
+          size="lg"
+          className="w-full"
+          disabled={loading || paid - t.payable < -0.01}
+          onClick={complete}
+        >
+          <BadgeCheck className="size-4" />
+          {loading ? "Registrando…" : `Completar venta · ${money(t.payable)}`}
+        </Button>
+      }
     >
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ReceiptText className="size-5 text-primary" /> Cobro de venta
-          </DialogTitle>
-          <DialogDescription>
-            {t.pointsRedeemed > 0 && (
-              <>Aplicando {t.pointsRedeemed} pts ({money(t.pointsRedeemedValue)}) en puntos · </>
-            )}
-            Restante a pagar: {money(t.payable)}
-          </DialogDescription>
-        </DialogHeader>
-
-        <DialogBody className="space-y-3">
           {/* Total + progreso */}
           <div className="rounded-xl border bg-muted/30 p-4">
             <div className="flex items-end justify-between">
@@ -335,20 +336,6 @@ export function PaymentDialog({ open, onClose, onSuccess }: PaymentDialogProps) 
           </Tabs>
 
           {error && <p className="text-center text-xs text-destructive">{error}</p>}
-        </DialogBody>
-
-        <DialogFooter className="gap-2">
-          <Button
-            size="lg"
-            className="w-full"
-            disabled={loading || paid - t.payable < -0.01}
-            onClick={complete}
-          >
-            <BadgeCheck className="size-4" />
-            {loading ? "Registrando…" : `Completar venta · ${money(t.payable)}`}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }

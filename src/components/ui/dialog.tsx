@@ -164,10 +164,59 @@ function DialogDescription({
   )
 }
 
+type DialogComponentProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title?: React.ReactNode
+  description?: React.ReactNode
+  icon?: React.ReactNode
+  className?: string
+  bodyClassName?: string
+  footerClassName?: string
+  footer?: React.ReactNode
+  showCloseButton?: boolean
+  children?: React.ReactNode
+}
+
+function DialogComponent({
+  open,
+  onOpenChange,
+  title,
+  description,
+  icon,
+  className,
+  bodyClassName,
+  footerClassName,
+  footer,
+  showCloseButton,
+  children,
+}: DialogComponentProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={className} showCloseButton={showCloseButton}>
+        {title || description ? (
+          <DialogHeader>
+            {title ? (
+              <DialogTitle className="flex items-center gap-2">
+                {icon}
+                {title}
+              </DialogTitle>
+            ) : null}
+            {description ? <DialogDescription>{description}</DialogDescription> : null}
+          </DialogHeader>
+        ) : null}
+        {children ? <DialogBody className={bodyClassName}>{children}</DialogBody> : null}
+        {footer ? <DialogFooter className={footerClassName}>{footer}</DialogFooter> : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export {
   Dialog,
   DialogBody,
   DialogClose,
+  DialogComponent,
   DialogContent,
   DialogDescription,
   DialogFooter,

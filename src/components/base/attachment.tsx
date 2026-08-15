@@ -17,14 +17,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { DialogComponent } from "@/components/ui/dialog"
 import { InfoTooltip } from "@/components/base/info-tooltip"
 
 export interface AttachmentProps {
@@ -311,13 +304,25 @@ export function Attachment({
       {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
       {error && <p className="text-xs leading-relaxed text-destructive">{error}</p>}
 
-      <Dialog open={cropOpen} onOpenChange={(o) => !o && setCropOpen(false)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Recortar imagen</DialogTitle>
-            <DialogDescription>Ajusta el encuadre; puedes recortar solo la parte que quieras.</DialogDescription>
-          </DialogHeader>
-
+      <DialogComponent
+        open={cropOpen}
+        onOpenChange={(o) => !o && setCropOpen(false)}
+        title="Recortar imagen"
+        description="Ajusta el encuadre; puedes recortar solo la parte que quieras."
+        className="sm:max-w-lg"
+        bodyClassName="space-y-3"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setCropOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="outline" onClick={() => void skipCrop()}>
+              Usar completa
+            </Button>
+            <Button onClick={() => void confirmCrop()}>Recortar</Button>
+          </>
+        }
+      >
           <div className="relative h-72 w-full overflow-hidden rounded-lg bg-black/60">
             <Cropper
               image={cropSrc}
@@ -340,18 +345,7 @@ export function Attachment({
               onValueChange={(v) => setZoom(v[0])}
             />
           </div>
-
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCropOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant="outline" onClick={() => void skipCrop()}>
-              Usar completa
-            </Button>
-            <Button onClick={() => void confirmCrop()}>Recortar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DialogComponent>
     </div>
   )
 }

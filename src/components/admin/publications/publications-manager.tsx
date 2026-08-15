@@ -23,14 +23,7 @@ import { TooltipButton } from "@/components/shared/tooltip-button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 
 const TYPE_COLORS: Record<string, string> = {
   product_new: "bg-emerald-500 text-white",
@@ -166,16 +159,25 @@ export function PublicationsManager() {
         </div>
       )}
 
-      <Dialog open={form !== null} onOpenChange={(o) => !o && setForm(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Megaphone className="size-4 text-primary" />
-              {form?.id ? "Editar publicación" : "Nueva publicación"}
-            </DialogTitle>
-            <DialogDescription>Se mostrará a los clientes en el portal</DialogDescription>
-          </DialogHeader>
-
+      <DialogComponent
+        open={form !== null}
+        onOpenChange={(o) => !o && setForm(null)}
+        icon={<Megaphone className="size-4 text-primary" />}
+        title={form?.id ? "Editar publicación" : "Nueva publicación"}
+        description="Se mostrará a los clientes en el portal"
+        className="sm:max-w-md"
+        bodyClassName="space-y-3"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setForm(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={submit} disabled={saving}>
+              {saving ? "Guardando…" : "Guardar"}
+            </Button>
+          </>
+        }
+      >
           {form && (
             <div className="space-y-3">
               <InputGroupField
@@ -233,17 +235,7 @@ export function PublicationsManager() {
               </div>
             </div>
           )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setForm(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={submit} disabled={saving}>
-              {saving ? "Guardando…" : "Guardar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DialogComponent>
     </div>
   );
 }

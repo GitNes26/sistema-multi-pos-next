@@ -10,7 +10,7 @@ import {
   Truck,
   X,
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -96,19 +96,21 @@ export function OrderDetailDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={openChange}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Pedido #{order?.orderNumber ?? ""}
-            {order && (
-              <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${ORDER_STATUS_COLORS[order.status as keyof typeof ORDER_STATUS_COLORS] ?? "bg-muted text-muted-foreground"}`}>
-                {ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}
-              </span>
-            )}
-          </DialogTitle>
-        </DialogHeader>
-
+    <DialogComponent
+      open={open}
+      onOpenChange={openChange}
+      className="sm:max-w-2xl"
+      title={
+        <>
+          Pedido #{order?.orderNumber ?? ""}
+          {order && (
+            <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${ORDER_STATUS_COLORS[order.status as keyof typeof ORDER_STATUS_COLORS] ?? "bg-muted text-muted-foreground"}`}>
+              {ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}
+            </span>
+          )}
+        </>
+      }
+    >
         {loading && !order ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
@@ -222,8 +224,7 @@ export function OrderDetailDialog({
             )}
           </div>
         ) : null}
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }
 

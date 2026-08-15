@@ -2,15 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Scale } from "lucide-react";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Numpad, type NumpadKey } from "./numpad";
@@ -134,19 +126,30 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
   const presets = [minQty, 0.25, 0.5, 0.75, 1, 2].filter((v) => v >= minQty);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Scale className="size-5 text-violet-600" />
-            {product.name}
-          </DialogTitle>
-          <DialogDescription>
-            Precio: <span className="font-semibold text-foreground">{money(pricePerUnit)}</span> / {unitName} (min {minQty} {abbrev}, paso {step})
-          </DialogDescription>
-        </DialogHeader>
-
-        <DialogBody className="space-y-3">
+    <DialogComponent
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      icon={<Scale className="size-5 text-violet-600" />}
+      title={product.name}
+      description={
+        <>
+          Precio: <span className="font-semibold text-foreground">{money(pricePerUnit)}</span> / {unitName} (min {minQty} {abbrev}, paso {step})
+        </>
+      }
+      className="sm:max-w-sm"
+      bodyClassName="space-y-3"
+      footerClassName="gap-2"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={confirm} size="lg" className="flex-1">
+            {editing ? "Guardar cambios" : `Agregar · ${money(liveAmount)}`}
+          </Button>
+        </>
+      }
+    >
           {units.length > 1 && (
           <div className="flex items-center gap-1 rounded-xl border bg-muted/40 p-1">
             {units.map((u) => (
@@ -217,17 +220,6 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
         )}
 
           <Numpad onKey={onKey} onEnter={confirm} />
-        </DialogBody>
-
-        <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button onClick={confirm} size="lg" className="flex-1">
-            {editing ? "Guardar cambios" : `Agregar · ${money(liveAmount)}`}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </DialogComponent>
   );
 }
