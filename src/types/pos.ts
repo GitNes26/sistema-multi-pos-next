@@ -13,6 +13,15 @@ export interface PosBulkInfo {
   split: { unitId: string; unitName: string; unitAbbrev: string; price: number } | null;
 }
 
+export interface PosVariant {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl: string | null;
+  stock: number;
+  isActive: boolean;
+}
+
 export interface PosProduct {
   id: string;
   productId: string;
@@ -29,6 +38,8 @@ export interface PosProduct {
   trackInventory: boolean;
   stock: number;
   bulk: PosBulkInfo | null;
+  variantCount: number;
+  variants: PosVariant[];
 }
 
 export interface PosCategory {
@@ -90,6 +101,8 @@ export interface PosLocation {
   id: string;
   name: string;
   code: string | null;
+  address: string | null;
+  phone: string | null;
 }
 
 export interface PosCashSession {
@@ -116,6 +129,7 @@ export interface PosOrder {
 
 export interface PosCatalog {
   location: PosLocation;
+  company: { name: string | null; address: string | null; city: string | null; phone: string | null };
   products: PosProduct[];
   categories: PosCategory[];
   customers: PosCustomer[];
@@ -131,6 +145,7 @@ export interface PosLineItem {
   variantId: string | null;
   kind: PosProductKind;
   name: string;
+  imageUrl?: string | null;
   categoryId: string | null;
   unitPrice: number;
   unitAbbrev: string;

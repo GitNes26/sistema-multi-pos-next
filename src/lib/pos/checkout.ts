@@ -7,6 +7,7 @@ import { round2 } from "./money";
 export interface PaymentEntry {
   method: $Enums.PaymentMethod;
   amount: number;
+  reference?: string;
 }
 
 /**
@@ -55,7 +56,7 @@ export function buildSalePayload(
     pointsEarned: customer ? totals.pointsEarned : 0,
     pointsRedeemed: totals.pointsRedeemed,
     pointsRedeemedValue: totals.pointsRedeemedValue,
-    payments: entries.map((e) => ({ method: e.method, amount: round2(e.amount) })),
+    payments: entries.map((e) => ({ method: e.method, amount: round2(e.amount), reference: e.reference })),
     discounts: totals.discounts.map((d) => ({
       label: d.label,
       amount: d.amount,

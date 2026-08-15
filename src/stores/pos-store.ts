@@ -4,8 +4,10 @@ import type {
   PosCustomer,
   PosLineItem,
   PosProduct,
+  PosVariant,
 } from "@/types/pos";
 import { round2, round3 } from "@/lib/pos/money";
+import { playSound } from "@/lib/sounds";
 
 export interface BulkEditOptions {
   qty: number;
@@ -45,7 +47,7 @@ interface PosState extends PosCatalog {
   bumpScan: () => void;
   setKeyboardOpen: (open: boolean) => void;
 
-  addProduct: (product: PosProduct, opts?: { qty?: number }) => void;
+  addProduct: (product: PosProduct, opts?: { qty?: number; variant?: PosVariant }) => void;
   addBulk: (product: PosProduct, opts: BulkEditOptions) => void;
   editItem: (key: string, patch: Partial<PosLineItem>) => void;
   setQty: (key: string, qty: number) => void;
@@ -70,7 +72,8 @@ export function bulkDisplay(qty: number, abbrev: string, price: number): string 
 }
 
 export const usePosStore = create<PosState>()((set, get) => ({
-  location: { id: "", name: "", code: null },
+  location: { id: "", name: "", code: null, address: null, phone: null },
+  company: { name: null, address: null, city: null, phone: null },
   products: [],
   categories: [],
   customers: [],
@@ -104,7 +107,8 @@ export const usePosStore = create<PosState>()((set, get) => ({
 
   addProduct: (product, opts) => {
     set((s) => {
-      const key = lineKey(product, null);
+      const v = opts?.variant;
+      const key = v ? v.id : product.id;
       const existing = s.items.find((i) => i.key === key);
       if (existing) {
         return {
@@ -114,23 +118,26 @@ export const usePosStore = create<PosState>()((set, get) => ({
         };
       }
       const qty = Math.max(1, opts?.qty ?? 1);
+      const displayName = v ? (v.name === "Default" ? product.name : `${product.name} ${v.name}`) : product.name;
       const line: PosLineItem = {
         key,
         productId: product.productId,
-        variantId: product.variantId,
+        variantId: v ? v.id : product.variantId,
         kind: product.kind,
-        name: product.name,
+        name: displayName,
+        imageUrl: v?.imageUrl ?? product.imageUrl,
         categoryId: product.categoryId,
-        unitPrice: product.price,
+        unitPrice: v ? v.price : product.price,
         unitAbbrev: "pza",
         qty,
         taxRate: product.taxRate,
         unitId: null,
         trackInventory: product.trackInventory,
-        stock: product.stock,
+        stock: v ? v.stock : product.stock,
       };
       return { items: [...s.items, line] };
     });
+    playSound("scan");
   },
 
   addBulk: (product, opts) => {
@@ -143,6 +150,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
         variantId: null,
         kind: "bulk",
         name: product.name,
+        imageUrl: product.imageUrl,
         categoryId: product.categoryId,
         unitPrice: opts.pricePerUnit,
         unitAbbrev: opts.abbrev,
@@ -160,6 +168,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
           : [...s.items, line],
       };
     });
+    playSound("scan");
   },
 
   editItem: (key, patch) =>
@@ -167,12 +176,17 @@ export const usePosStore = create<PosState>()((set, get) => ({
       items: s.items.map((i) => (i.key === key ? { ...i, ...patch } : i)),
     })),
 
-  setQty: (key, qty) =>
+  setQty: (key, qty) => {
     set((s) => ({
       items: s.items.map((i) => (i.key === key ? { ...i, qty: Math.max(1, round3(qty)) } : i)),
-    })),
+    }));
+    playSound("scan");
+  },
 
-  removeItem: (key) => set((s) => ({ items: s.items.filter((i) => i.key !== key) })),
+  removeItem: (key) => {
+    set((s) => ({ items: s.items.filter((i) => i.key !== key) }));
+    playSound("scan");
+  },
 
   clearTicket: () =>
     set({

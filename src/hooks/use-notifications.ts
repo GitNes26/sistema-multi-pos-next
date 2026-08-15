@@ -43,6 +43,7 @@ export function useNotificationSse(enabled = true) {
         try {
           const data = JSON.parse(event.data) as Partial<AppNotification> & {
             items?: AppNotification[];
+            sound?: string;
           };
           if (Array.isArray(data.items)) {
             store().setItems(data.items);
@@ -57,7 +58,12 @@ export function useNotificationSse(enabled = true) {
               createdAt: data.createdAt ?? new Date().toISOString(),
             };
             store().push(n);
-            playSound(SOUND_BY_ICON[n.icon ?? ""] ?? "notification", { volume: 0.7 });
+            playSound(
+              (data.sound as Parameters<typeof playSound>[0] | undefined) ??
+                SOUND_BY_ICON[n.icon ?? ""] ??
+                "notification",
+              { volume: 0.7 }
+            );
             swalNotificationToast(n);
           }
         } catch {

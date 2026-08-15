@@ -2325,7 +2325,8 @@ Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 - Header: icono + título + subtítulo
 - Footer: botones de acción (confirmar, cancelar)
 - Más anchos (max-w-2xl o max-w-3xl)
-- Body con overflow-y-auto
+- Body con `overflow-y-auto`
+- El diálogo nunca excede la altura visible de la pantalla: `DialogContent` usa `max-h-[calc(100vh-2rem)]` y layout flex; el **header** y el **footer** quedan siempre visibles (`shrink-0`) y solo el **body** (`DialogBody`) se vuelve scrolleable al llegar al límite de altura (`vh`)
 
 ### Micro-interacciones
 

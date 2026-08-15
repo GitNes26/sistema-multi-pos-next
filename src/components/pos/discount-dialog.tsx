@@ -4,7 +4,10 @@ import { useState } from "react";
 import { BadgePercent, TicketPercent, X } from "lucide-react";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -95,9 +98,10 @@ export function DiscountDialog({ open, onClose }: DiscountDialogProps) {
           <DialogTitle className="flex items-center gap-2">
             <TicketPercent className="size-5 text-primary" /> Descuentos y cupones
           </DialogTitle>
+          <DialogDescription>Aplica un descuento manual o un código de cupón.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <DialogBody className="space-y-4">
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Descuento manual
@@ -196,7 +200,13 @@ export function DiscountDialog({ open, onClose }: DiscountDialogProps) {
               <p className="text-xs text-destructive">{coupon.error}</p>
             )}
           </div>
-        </div>
+        </DialogBody>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cerrar
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

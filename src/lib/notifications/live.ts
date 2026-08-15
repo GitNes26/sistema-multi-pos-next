@@ -8,6 +8,7 @@ export interface LiveNotificationPayload {
   title: string;
   description?: string;
   icon?: string;
+  sound?: string;
   href?: string;
   read: boolean;
   createdAt: string;

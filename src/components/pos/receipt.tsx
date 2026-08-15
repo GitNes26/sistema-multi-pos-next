@@ -1,24 +1,45 @@
-"use client";
+"use client"
 
-import type { PosSalePayload } from "@/types/pos";
-import { money, qty } from "@/lib/pos/money";
-import { PAYMENT_METHOD_LABELS, RECEIPT_WIDTH } from "@/lib/pos/config";
+import type { PosCustomer, PosSalePayload } from "@/types/pos"
+import { money, qty } from "@/lib/pos/money"
+import { PAYMENT_METHOD_LABELS, RECEIPT_WIDTH } from "@/lib/pos/config"
 
 interface ReceiptProps {
-  sale: { id: string; saleNumber: string; locationName: string };
-  payload: PosSalePayload;
-  cashierName: string;
+  sale: { id: string; saleNumber: string; locationName: string }
+  payload: PosSalePayload
+  cashierName: string
+  registerName?: string
+  company?: {
+    name: string | null
+    address: string | null
+    city: string | null
+    phone: string | null
+  }
+  customer?: PosCustomer | null
 }
 
 /**
- * 6.12 – Ticket térmico de 80mm. El área con `id="receipt-print"` es la única
- * que se imprime (ver @media print en globals.css).
+ * 6.12 – Ticket térmico de 80mm (rediseñado): empresa + sucursal, caja,
+ * cajero, cliente y puntos.
  */
-export function Receipt({ sale, payload, cashierName }: ReceiptProps) {
+export function Receipt({
+  sale,
+  payload,
+  cashierName,
+  registerName,
+  company,
+  customer,
+}: ReceiptProps) {
   const date = new Date().toLocaleString("es-MX", {
     dateStyle: "short",
     timeStyle: "short",
-  });
+  })
+
+  const newPoints = customer
+    ? Math.floor(
+        customer.points + payload.pointsEarned - payload.pointsRedeemed
+      )
+    : null
 
   return (
     <div
@@ -27,18 +48,44 @@ export function Receipt({ sale, payload, cashierName }: ReceiptProps) {
       style={{ width: RECEIPT_WIDTH }}
     >
       <div className="text-center">
-        <p className="text-sm font-bold uppercase leading-tight">{sale.locationName}</p>
-        <p>Ticket: {sale.saleNumber}</p>
+        <p className="text-sm font-bold uppercase leading-tight">
+          {company?.name ?? "Empresa"} - {sale.locationName}
+        </p>
+        {company?.address && (
+          <p>
+            {company.address}
+            {company.city ? `, ${company.city}` : ""}
+          </p>
+        )}
+        {company?.phone && <p>Tel: {company.phone}</p>}
+        <p className="mt-1">Ticket: {sale.saleNumber}</p>
         <p>{date}</p>
+        {registerName && <p>Caja: {registerName}</p>}
         <p>Cajero: {cashierName || "—"}</p>
       </div>
 
       <div className="my-2 border-t border-dashed border-black/60" />
 
+      {customer && (
+        <>
+          <div className="mb-2">
+            <p className="font-bold">Cliente:</p>
+            <p>{customer.fullName}</p>
+            {customer.customerCode && (
+              <p>Nº cliente: {customer.customerCode}</p>
+            )}
+          </div>
+
+          <div className="my-2 border-t border-dashed border-black/60" />
+        </>
+      )}
+
       {payload.items.map((i, idx) => (
         <div key={idx} className="mb-1">
           <p className="font-semibold leading-tight">{i.productName}</p>
-          {i.bulkQuantityDisplay && <p className="text-[9px] text-black/70">{i.bulkQuantityDisplay}</p>}
+          {i.bulkQuantityDisplay && (
+            <p className="text-[9px] text-black/70">{i.bulkQuantityDisplay}</p>
+          )}
           <div className="flex justify-between">
             <span className="text-[9px]">
               {qty(i.quantity)} × {money(i.unitPrice)}
@@ -67,7 +114,7 @@ export function Receipt({ sale, payload, cashierName }: ReceiptProps) {
         </div>
         {payload.pointsRedeemedValue > 0 && (
           <div className="flex justify-between">
-            <span>Puntos canjeados</span>
+            <span>Puntos canjeados ({payload.pointsRedeemed})</span>
             <span>-{money(payload.pointsRedeemedValue)}</span>
           </div>
         )}
@@ -94,16 +141,25 @@ export function Receipt({ sale, payload, cashierName }: ReceiptProps) {
         ))}
       </div>
 
-      {payload.customerId && (
-        <p className="mt-1">
-          Puntos por esta compra:{" "}
-          <span className="font-bold">{Math.floor(payload.pointsEarned)}</span>
-        </p>
+      {customer && (
+        <div className="mt-1 space-y-0.5">
+          <p>
+            Puntos ganados:{" "}
+            <span className="font-bold">
+              {Math.floor(payload.pointsEarned)}
+            </span>
+          </p>
+          {newPoints !== null && (
+            <p>
+              Puntos totales: <span className="font-bold">{newPoints}</span>
+            </p>
+          )}
+        </div>
       )}
 
       <div className="mt-3 text-center">
         <p>¡Gracias por su compra!</p>
       </div>
     </div>
-  );
+  )
 }

@@ -276,3 +276,18 @@
     print-color-adjust: exact;
   }
 }
+
+/* === Resaltado de línea modificada en el ticket (POS) === */
+@keyframes ticket-flash {
+  0% {
+    background-color: color-mix(in oklab, var(--primary) 28%, var(--card));
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+  100% {
+    background-color: var(--card);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+.ticket-flash {
+  animation: ticket-flash 0.9s ease-out;
+}

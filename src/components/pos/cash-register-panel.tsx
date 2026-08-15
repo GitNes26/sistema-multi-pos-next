@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { LockKeyhole, Unlock } from "lucide-react";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -15,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { usePosStore } from "@/stores/pos-store";
 import { money } from "@/lib/pos/money";
+import { playSound } from "@/lib/sounds";
 import { swalToast, swalError } from "@/lib/swal";
 import { usePosRefresh } from "@/hooks/use-pos-refresh";
 
@@ -71,6 +74,7 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
         return;
       }
       await refresh();
+      playSound("cash-open");
       swalToast(data.created ? "Caja abierta" : "Caja ya abierta");
       onClose();
     } finally {
@@ -103,6 +107,7 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
         return;
       }
       await refresh();
+      playSound("cash-close");
       const s = data.summary;
       const diff = s.difference;
       swalToast(
@@ -141,7 +146,8 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
           </DialogDescription>
         </DialogHeader>
 
-        {session ? (
+        <DialogBody className="space-y-3">
+          {session ? (
           <div className="space-y-3">
             <div className="rounded-xl border bg-card p-3 text-sm">
               <div className="flex justify-between">
@@ -176,9 +182,6 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Notas del corte (opcional)"
               />
-              <Button className="w-full" onClick={doClose} disabled={loading}>
-                {loading ? "Contabilizando…" : "Cerrar caja y cortar"}
-              </Button>
             </div>
           </div>
         ) : (
@@ -209,11 +212,24 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
                 inputMode="decimal"
               />
             </div>
-            <Button className="w-full" onClick={doOpen} disabled={loading || !registerId}>
-              {loading ? "Abriendo…" : "Abrir caja"}
-            </Button>
           </div>
         )}
+        </DialogBody>
+
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          {session ? (
+            <Button className="flex-1" onClick={doClose} disabled={loading}>
+              {loading ? "Contabilizando…" : "Cerrar caja y cortar"}
+            </Button>
+          ) : (
+            <Button className="flex-1" onClick={doOpen} disabled={loading || !registerId}>
+              {loading ? "Abriendo…" : "Abrir caja"}
+            </Button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

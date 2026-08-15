@@ -5,12 +5,13 @@ import { CheckCircle2, Printer } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { usePosStore } from "@/stores/pos-store";
+import { usePosStore, selectCustomer } from "@/stores/pos-store";
 import type { PosCatalog, PosLineItem, PosProduct, PosSalePayload } from "@/types/pos";
 import { swalToast, swalError } from "@/lib/swal";
 import { bulkDisplay } from "@/stores/pos-store";
@@ -20,13 +21,18 @@ import { PosHeader } from "./pos-header";
 import { CatalogPanel } from "./catalog-panel";
 import { TicketPanel } from "./ticket-panel";
 import { BulkModal, type BulkDraft } from "./bulk-modal";
+import { VariantDialog } from "./variant-dialog";
 import { CustomerModal } from "./customer-modal";
 import { DiscountDialog } from "./discount-dialog";
 import { PaymentDialog } from "./payment-dialog";
 import { CashRegisterPanel } from "./cash-register-panel";
 import { CatalogsModal } from "./catalogs-modal";
 import { Receipt } from "./receipt";
-import { cn } from "@/lib/utils";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 
 interface PosAppProps {
   catalog: PosCatalog;
@@ -48,6 +54,7 @@ export function PosApp({ catalog }: PosAppProps) {
 
   const [catalogCollapsed, setCatalogCollapsed] = useState(false);
   const [bulkTarget, setBulkTarget] = useState<BulkTarget | null>(null);
+  const [variantTarget, setVariantTarget] = useState<PosProduct | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
   const [discountOpen, setDiscountOpen] = useState(false);
   const [cashOpen, setCashOpen] = useState(false);
@@ -70,6 +77,10 @@ export function PosApp({ catalog }: PosAppProps) {
     }
     if (product.bulk) {
       setBulkTarget({ product });
+      return;
+    }
+    if (product.variantCount > 1) {
+      setVariantTarget(product);
       return;
     }
     addProduct(product);
@@ -120,7 +131,9 @@ export function PosApp({ catalog }: PosAppProps) {
   };
 
   const printReceipt = () => {
-    window.print();
+    if (lastSale) {
+      window.open(`/api/pos/ticket/${lastSale.sale.id}`, "_blank");
+    }
   };
 
   return (
@@ -128,30 +141,27 @@ export function PosApp({ catalog }: PosAppProps) {
       <div className="flex h-svh flex-col bg-background text-foreground">
         <PosHeader onOpenCatalogs={() => setCatalogsOpen(true)} onOpenCash={() => setCashOpen(true)} />
 
-        <main className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <section
-            className={cn(
-              "shrink-0 overflow-hidden border-b bg-background lg:border-b-0 lg:border-r",
-              catalogCollapsed
-                ? "h-0 lg:h-auto lg:w-40"
-                : "h-[45svh] lg:h-auto lg:flex-1"
-            )}
-          >
-            <CatalogPanel
-              onSelect={selectProduct}
-              collapsed={catalogCollapsed}
-              onToggleCollapsed={() => setCatalogCollapsed((v) => !v)}
-            />
-          </section>
-
-          <section className="scrollbar-none min-h-0 flex-1 overflow-y-auto">
-            <TicketPanel
-              onEditBulk={openBulkEdit}
-              onOpenCustomer={() => setCustomerOpen(true)}
-              onOpenDiscount={() => setDiscountOpen(true)}
-              onCheckout={() => setPaymentOpen(true)}
-            />
-          </section>
+        <main className="flex min-h-0 flex-1">
+          <ResizablePanelGroup orientation="horizontal" className="gap-0">
+            <ResizablePanel defaultSize="65" minSize="35" className="min-w-0">
+              <CatalogPanel
+                onSelect={selectProduct}
+                collapsed={catalogCollapsed}
+                onToggleCollapsed={() => setCatalogCollapsed((v) => !v)}
+              />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize="35" minSize="25" className="min-w-0">
+              <section className="scrollbar-none h-full overflow-y-auto">
+                <TicketPanel
+                  onEditBulk={openBulkEdit}
+                  onOpenCustomer={() => setCustomerOpen(true)}
+                  onOpenDiscount={() => setDiscountOpen(true)}
+                  onCheckout={() => setPaymentOpen(true)}
+                />
+              </section>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </main>
       </div>
 
@@ -161,6 +171,14 @@ export function PosApp({ catalog }: PosAppProps) {
         editing={bulkTarget?.editing}
         onClose={() => setBulkTarget(null)}
         onConfirm={confirmBulk}
+      />
+
+      <VariantDialog
+        product={variantTarget}
+        onClose={() => setVariantTarget(null)}
+        onSelect={(variant) => {
+          if (variantTarget) addProduct(variantTarget, { variant });
+        }}
       />
 
       <CustomerModal open={customerOpen} onClose={() => setCustomerOpen(false)} />
@@ -175,12 +193,18 @@ export function PosApp({ catalog }: PosAppProps) {
             <DialogTitle className="flex items-center gap-2">
               <CheckCircle2 className="size-5 text-emerald-600" /> Venta completada
             </DialogTitle>
+            <DialogDescription>
+              Revisa el ticket e imprime o continúa con un nuevo ticket.
+            </DialogDescription>
           </DialogHeader>
           {lastSale && (
             <Receipt
               sale={lastSale.sale}
               payload={lastSale.payload}
               cashierName={catalog.cashier.name}
+              registerName={catalog.session?.registerName}
+              company={catalog.company}
+              customer={selectCustomer(lastSale.payload.customerId ?? null)}
             />
           )}
           <DialogFooter className="gap-2">

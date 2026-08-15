@@ -1,12 +1,14 @@
 "use client";
 
-import { RotateCcw, TicketPercent, UserRound, Wallet } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, RotateCcw, TicketPercent, UserRound, Wallet } from "lucide-react";
 import { usePosStore, selectCustomer } from "@/stores/pos-store";
 import { usePosTotals } from "@/hooks/use-pos-totals";
 import type { PosLineItem } from "@/types/pos";
 import { money } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { AnimatedNumber } from "@/components/base/animated-number";
 import { TicketItemRow } from "./ticket-item-row";
 
 interface TicketPanelProps {
@@ -31,6 +33,26 @@ export function TicketPanel({
   const t = usePosTotals();
   const customer = selectCustomer(customerId);
 
+  const listRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const prevCountRef = useRef(0);
+  const [flash, setFlash] = useState<{ key: string; nonce: number }>({ key: "", nonce: 0 });
+
+  // Auto-scroll al fondo solo cuando se AGREGA un producto nuevo (no al cambiar cantidades).
+  useEffect(() => {
+    const el = listRef.current;
+    if (el && items.length > prevCountRef.current) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
+    prevCountRef.current = items.length;
+  }, [items]);
+
+  // Al modificar un ítem existente: lo trae a la vista y lo resalta con un pulso.
+  const notifyChange = (key: string) => {
+    setFlash((prev) => ({ key, nonce: prev.nonce + 1 }));
+    rowRefs.current[key]?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+
   const increment = (key: string) => {
     const item = items.find((i) => i.key === key);
     if (!item) return;
@@ -41,6 +63,7 @@ export function TicketPanel({
     }
     if (item.trackInventory && item.qty + 1 > Math.floor(item.stock)) return;
     setQty(key, item.qty + 1);
+    notifyChange(key);
   };
 
   const decrement = (key: string) => {
@@ -51,6 +74,7 @@ export function TicketPanel({
       return;
     }
     setQty(key, item.qty - 1);
+    notifyChange(key);
   };
 
   return (
@@ -76,7 +100,7 @@ export function TicketPanel({
         </Button>
       </div>
 
-      <div className="scrollbar-none flex-1 space-y-2 overflow-y-auto p-3">
+      <div ref={listRef} className="scrollbar-none flex-1 space-y-2 overflow-y-auto p-3">
         {items.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
             <Wallet className="size-8" />
@@ -87,6 +111,10 @@ export function TicketPanel({
             <TicketItemRow
               key={item.key}
               item={item}
+              itemRef={(el) => {
+                rowRefs.current[item.key] = el;
+              }}
+              flashNonce={flash.key === item.key ? flash.nonce : 0}
               onIncrement={increment}
               onDecrement={decrement}
               onRemove={removeItem}
@@ -101,10 +129,11 @@ export function TicketPanel({
           <button
             type="button"
             onClick={onOpenCustomer}
-            className="flex w-full items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2 text-left transition hover:bg-muted"
+            className="flex w-full items-center gap-2 rounded-xl border border-accent bg-accent/10 px-3 py-2 text-left transition hover:bg-accent/15"
           >
-            <UserRound className="size-4 shrink-0 text-primary" />
+            <UserRound className="size-4 shrink-0 text-accent-foreground" />
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{customer.fullName}</span>
+            <CheckCircle2 className="size-4 shrink-0 text-accent-foreground" />
             <span className="shrink-0 text-xs font-semibold text-amber-600">
               {Math.floor(customer.points)} pts
             </span>
@@ -141,7 +170,7 @@ export function TicketPanel({
           </div>
           <div className="flex items-center justify-between pt-1 text-lg font-bold">
             <span>Total</span>
-            <span className="tabular-nums">{money(t.total)}</span>
+            <AnimatedNumber value={t.total} format={money} className="tabular-nums" />
           </div>
         </div>
 
@@ -162,7 +191,7 @@ export function TicketPanel({
           onClick={onCheckout}
           className={cn("w-full", t.payable > 0 && "shadow-lg")}
         >
-          Cobrar · {money(t.payable)}
+          Cobrar · <AnimatedNumber value={t.payable} format={money} className="tabular-nums" />
         </Button>
       </div>
     </div>

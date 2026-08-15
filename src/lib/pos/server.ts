@@ -37,12 +37,12 @@ export async function getPosCatalog(
   organizationId: string,
   userId: string
 ): Promise<PosCatalog> {
-  const [locations, productsRaw, bulkRaw, categories, customers, promotions, registers, employee, userData, cashSession] =
+  const [locations, productsRaw, bulkRaw, categories, customers, promotions, registers, employee, userData, cashSession, companyProfile] =
     await Promise.all([
       prisma.location.findMany({
         where: { organizationId },
         orderBy: { createdAt: "asc" },
-        select: { id: true, name: true, code: true, isActive: true },
+        select: { id: true, name: true, code: true, isActive: true, address: true, phone: true },
       }),
       prisma.productVariant.findMany({
         where: { organizationId, isActive: true, product: { isActive: true } },
@@ -94,6 +94,10 @@ export async function getPosCatalog(
         include: { cashRegister: { select: { id: true, name: true } } },
         orderBy: { openedAt: "desc" },
       }),
+      prisma.companyProfile.findUnique({
+        where: { organizationId },
+        select: { tradeName: true, legalName: true, address: true, city: true, phone: true },
+      }),
     ]);
 
   const location = firstActiveLocation(locations);
@@ -119,27 +123,59 @@ export async function getPosCatalog(
 
   const products: PosProduct[] = [];
 
+  // Agrupar variantes estándar por producto (una card por producto).
+  const stdByProduct = new Map<string, PosProduct>();
   for (const v of productsRaw) {
     const p = v.product;
-    const name =
-      v.name === "Default" ? p.name : `${p.name} ${v.name}`;
-    products.push({
+    let entry = stdByProduct.get(p.id);
+    if (!entry) {
+      entry = {
+        id: v.id,
+        productId: p.id,
+        variantId: v.id,
+        kind: "standard",
+        name: p.name,
+        sku: v.sku,
+        barcode: v.barcode,
+        price: toNum(v.price),
+        taxRate: toNum(p.taxRate),
+        categoryId: p.categoryId,
+        categoryName: p.category?.name ?? null,
+        imageUrl: v.imageUrl ?? p.imageUrl,
+        trackInventory: p.trackInventory,
+        stock: variantStock.get(v.id) ?? 0,
+        bulk: null,
+        variantCount: 0,
+        variants: [],
+      };
+      stdByProduct.set(p.id, entry);
+    }
+    entry.variants.push({
       id: v.id,
-      productId: p.id,
-      variantId: v.id,
-      kind: "standard",
-      name,
-      sku: v.sku,
-      barcode: v.barcode,
+      name: v.name,
       price: toNum(v.price),
-      taxRate: toNum(p.taxRate),
-      categoryId: p.categoryId,
-      categoryName: p.category?.name ?? null,
       imageUrl: v.imageUrl ?? p.imageUrl,
-      trackInventory: p.trackInventory,
       stock: variantStock.get(v.id) ?? 0,
-      bulk: null,
+      isActive: v.isActive,
     });
+  }
+  products.push(...stdByProduct.values());
+
+  // Elegir la variante "default" de cada producto (la activa "Default", o la primera activa).
+  for (const p of products) {
+    p.variantCount = p.variants.length;
+    const def =
+      p.variants.find((v) => v.name === "Default" && v.isActive) ??
+      p.variants.find((v) => v.isActive) ??
+      p.variants[0];
+    if (def) {
+      p.id = def.id;
+      p.variantId = def.id;
+      p.price = def.price;
+      p.imageUrl = def.imageUrl;
+      p.stock = def.stock;
+      p.name = def.name === "Default" ? p.name : `${p.name} ${def.name}`;
+    }
   }
 
   for (const p of bulkRaw) {
@@ -158,6 +194,8 @@ export async function getPosCatalog(
       imageUrl: p.imageUrl,
       trackInventory: p.trackInventory,
       stock: productStock.get(p.id) ?? 0,
+      variantCount: 0,
+      variants: [],
       bulk: {
         unitId: p.bulkUnitId ?? "",
         unitName: p.bulkUnit?.name ?? "Kilogramo",
@@ -215,6 +253,14 @@ export async function getPosCatalog(
       id: location.id,
       name: location.name,
       code: location.code,
+      address: location.address ?? null,
+      phone: location.phone ?? null,
+    },
+    company: {
+      name: companyProfile?.tradeName ?? companyProfile?.legalName ?? null,
+      address: companyProfile?.address ?? null,
+      city: companyProfile?.city ?? null,
+      phone: companyProfile?.phone ?? null,
     },
     products,
     categories: categoriesWithCount,

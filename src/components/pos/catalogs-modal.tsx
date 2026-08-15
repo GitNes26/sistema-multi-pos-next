@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ClipboardList, Star } from "lucide-react";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -60,14 +61,15 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="scrollbar-none flex max-h-[92svh] flex-col overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="size-5 text-primary" /> Catálogos y pedidos
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-1">
+        <DialogBody>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-1">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
             <TabsTrigger value="productos">Productos</TabsTrigger>
@@ -113,7 +115,7 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
           </TabsContent>
 
           <TabsContent value="productos">
-            <div className="scrollbar-none grid max-h-[50vh] grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2 overflow-y-auto">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
               {products.map((p) => (
                 <ProductCard key={p.id} product={p} onSelect={onSelectProduct} />
               ))}
@@ -121,7 +123,7 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
           </TabsContent>
 
           <TabsContent value="clientes">
-            <div className="scrollbar-none max-h-[50vh] space-y-1.5 overflow-y-auto">
+            <div className="space-y-1.5">
               {customers.map((c) => (
                 <div key={c.id} className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2">
                   <span className="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-bold">
@@ -142,7 +144,7 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
           </TabsContent>
 
           <TabsContent value="promos">
-            <div className="scrollbar-none max-h-[50vh] space-y-1.5 overflow-y-auto">
+            <div className="space-y-1.5">
               {promotions.map((p) => {
                 const scope =
                   p.scope === "order"
@@ -183,7 +185,8 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
               })}
             </div>
           </TabsContent>
-        </Tabs>
+          </Tabs>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

@@ -55,7 +55,7 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
           Vigente
         </span>
       )}
-      <div className="flex h-16 items-center justify-center rounded-xl bg-muted/40">
+      <div className="relative flex h-16 items-center justify-center rounded-xl bg-muted/40">
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -65,6 +65,11 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
           />
         ) : (
           <Package className="size-6 text-muted-foreground" />
+        )}
+        {product.variantCount > 1 && (
+          <span className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">
+            {product.variantCount} variantes
+          </span>
         )}
       </div>
       <div className="flex flex-1 flex-col justify-between gap-1">

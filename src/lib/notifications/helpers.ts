@@ -13,11 +13,14 @@ const SEVERITY_ICON: Record<string, string> = {
 };
 
 export function notificationToPayload(n: Notification): LiveNotificationPayload {
+  const meta = (n.metadata as Record<string, unknown> | null) ?? {};
+  const sound = typeof meta.sound === "string" ? meta.sound : undefined;
   return {
     id: n.id,
     title: n.title,
     description: n.body ?? undefined,
     icon: n.kind ? SEVERITY_ICON[n.kind] : SEVERITY_ICON[n.severity],
+    sound,
     href: n.link ?? undefined,
     read: Boolean(n.readAt),
     createdAt: n.createdAt.toISOString(),

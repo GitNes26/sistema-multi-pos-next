@@ -1,6 +1,7 @@
 "use client";
 
-import { ClipboardList, LogOut, Unlock, LockKeyhole } from "lucide-react";
+import { ArrowLeft, ClipboardList, LogOut, Unlock, LockKeyhole } from "lucide-react";
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { usePosStore } from "@/stores/pos-store";
 import { money } from "@/lib/pos/money";
@@ -20,6 +21,11 @@ export function PosHeader({ onOpenCatalogs, onOpenCash }: PosHeaderProps) {
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card/80 px-3 backdrop-blur lg:px-4">
+      <Button variant="ghost" size="icon" asChild className="shrink-0" aria-label="Volver al panel">
+        <Link href="/admin">
+          <ArrowLeft className="size-5" />
+        </Link>
+      </Button>
       <Logo className="h-8 w-auto" />
       <div className="hidden min-w-0 sm:block">
         <p className="text-sm font-bold leading-tight">Punto de venta</p>

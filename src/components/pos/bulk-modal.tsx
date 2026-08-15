@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Scale } from "lucide-react";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -144,7 +146,8 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
           </DialogDescription>
         </DialogHeader>
 
-        {units.length > 1 && (
+        <DialogBody className="space-y-3">
+          {units.length > 1 && (
           <div className="flex items-center gap-1 rounded-xl border bg-muted/40 p-1">
             {units.map((u) => (
               <button
@@ -213,11 +216,17 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
           </div>
         )}
 
-        <Numpad onKey={onKey} />
+          <Numpad onKey={onKey} onEnter={confirm} />
+        </DialogBody>
 
-        <Button onClick={confirm} size="lg" className="w-full">
-          {editing ? "Guardar cambios" : `Agregar · ${money(liveAmount)}`}
-        </Button>
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={confirm} size="lg" className="flex-1">
+            {editing ? "Guardar cambios" : `Agregar · ${money(liveAmount)}`}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
