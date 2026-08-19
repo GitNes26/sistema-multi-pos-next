@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
 import {
   KeyRound,
   LogOut,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 
 import type { AppRole } from "@/lib/auth/permissions";
+import { logout } from "@/lib/auth/logout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,7 +114,7 @@ export function UserMenu({ user }: { user: UserMenuUser }) {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
-          onSelect={() => void signOut({ callbackUrl: "/auth/login" })}
+          onSelect={() => void logout()}
         >
           <LogOut className="size-4" />
           Cerrar sesión

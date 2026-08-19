@@ -4,11 +4,9 @@ import {
   Clock,
   DollarSign,
   Hash,
-  Loader2,
   Percent,
   Type,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -25,9 +23,9 @@ import type { CrudField, CrudUiConfig } from "./crud-config";
 interface CrudFormProps {
   config: CrudUiConfig;
   initial: Record<string, unknown> | null;
-  submitLabel?: string;
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
-  onCancel?: () => void;
+  onSavingChange?: (saving: boolean) => void;
+  formId?: string;
 }
 
 function defaultValue(field: CrudField, initial: Record<string, unknown> | null) {
@@ -62,16 +60,15 @@ function fieldIcon(type: string): React.ReactNode {
 export function CrudForm({
   config,
   initial,
-  submitLabel = "Guardar",
   onSubmit,
-  onCancel,
+  onSavingChange,
+  formId = "crud-form",
 }: CrudFormProps) {
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const v: Record<string, unknown> = {};
     for (const f of config.fields) v[f.key] = defaultValue(f, initial);
     return v;
   });
-  const [saving, setSaving] = useState(false);
 
   const visibleFields = useMemo(() => config.fields, [config.fields]);
 
@@ -100,18 +97,18 @@ export function CrudForm({
       payload[field.key] = v;
     }
 
-    setSaving(true);
+    onSavingChange?.(true);
     try {
       await onSubmit(payload);
     } catch (err) {
       swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
     } finally {
-      setSaving(false);
+      onSavingChange?.(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+    <form id={formId} onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
       {visibleFields.map((field) => {
         if (field.showIf && !field.showIf(values)) return null;
         const value = values[field.key];
@@ -272,17 +269,6 @@ export function CrudForm({
         );
       })}
 
-      <div className="flex items-center justify-end gap-2 sm:col-span-2">
-        {onCancel && (
-          <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>
-            Cancelar
-          </Button>
-        )}
-        <Button type="submit" disabled={saving}>
-          {saving && <Loader2 className="size-4 animate-spin" />}
-          {submitLabel}
-        </Button>
-      </div>
     </form>
   );
 }

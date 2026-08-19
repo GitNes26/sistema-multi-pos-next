@@ -22,6 +22,7 @@ import {
   Legend,
   Pie,
   PieChart,
+  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -145,16 +146,18 @@ export function AdminDashboard() {
             <CardDescription>Últimos 30 días</CardDescription>
           </CardHeader>
           <CardContent className="h-64">
-            <BarChart
-              data={data.period.byDay}
-              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-              <XAxis dataKey="label" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))} />
-              <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
-              <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} />
-            </BarChart>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={data.period.byDay}
+                margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                <XAxis dataKey="label" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))} />
+                <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
+                <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
@@ -164,27 +167,29 @@ export function AdminDashboard() {
             <CardDescription>Últimos 30 días</CardDescription>
           </CardHeader>
           <CardContent className="h-64">
-            <PieChart>
-              <Pie
-                data={data.period.byPayment.map((p) => ({
-                  name: PAYMENT_LABELS[p.method] ?? p.method,
-                  value: p.amount,
-                }))}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={48}
-                outerRadius={80}
-                paddingAngle={2}
-              >
-                {data.period.byPayment.map((p, i) => (
-                  <Cell key={i} fill={PAYMENT_COLORS[p.method] ?? "#94a3b8"} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
-              <Legend />
-            </PieChart>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data.period.byPayment.map((p) => ({
+                    name: PAYMENT_LABELS[p.method] ?? p.method,
+                    value: p.amount,
+                  }))}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={48}
+                  outerRadius={80}
+                  paddingAngle={2}
+                >
+                  {data.period.byPayment.map((p, i) => (
+                    <Cell key={i} fill={PAYMENT_COLORS[p.method] ?? "#94a3b8"} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>

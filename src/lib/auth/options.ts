@@ -43,6 +43,9 @@ declare module "next-auth/jwt" {
     organizationId?: string | null;
     permissions?: PermissionKey[];
     scope?: AuthScope;
+    /** Sesión invalidada por re-validación en BD (usuario desactivado/eliminado). */
+    invalid?: boolean;
+    authCheckedAt?: number;
   }
 }
 
@@ -232,10 +235,30 @@ export const authOptions: NextAuthOptions = {
         token.name = user.name;
         token.email = user.email;
         token.picture = user.image ?? token.picture;
+        token.authCheckedAt = Date.now();
+        return token;
+      }
+
+      // Re-validación contra BD (throttle 60s): si el usuario fue desactivado o
+      // eliminado, se invalida la sesión para forzar el logout.
+      const lastCheck = typeof token.authCheckedAt === "number" ? token.authCheckedAt : 0;
+      if (Date.now() - lastCheck > 60_000) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id },
+          select: { id: true, isActive: true },
+        });
+        token.authCheckedAt = Date.now();
+        if (!dbUser || !dbUser.isActive) {
+          token.invalid = true;
+        }
       }
       return token;
     },
     async session({ session, token }) {
+      if (token.invalid || !token.id) {
+        session.user = null as unknown as SessionUser;
+        return session;
+      }
       session.user = {
         id: token.id,
         name: token.name ?? "",

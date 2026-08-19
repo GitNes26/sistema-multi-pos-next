@@ -180,6 +180,9 @@
   z-index: 9999;
   --swal2-backdrop-popup-space: 12px;
   backdrop-filter: blur(4px);
+  /* Evita que react-remove-scroll (Dialog de Radix) bloquee los clics cuando
+     un modal está abierto detrás de la alerta. */
+  pointer-events: auto;
 }
 .swal2-container-custom.swal2-backdrop-show {
   background: color-mix(in oklab, var(--background) 55%, transparent);

@@ -2,8 +2,8 @@
 
 import { ArrowLeft, ClipboardList, LogOut, Unlock, LockKeyhole } from "lucide-react";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
 import { usePosStore } from "@/stores/pos-store";
+import { logout } from "@/lib/auth/logout";
 import { money } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -70,7 +70,7 @@ export function PosHeader({ onOpenCatalogs, onOpenCash }: PosHeaderProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => void signOut({ callbackUrl: "/auth/login" })}
+          onClick={() => void logout()}
           className="text-muted-foreground"
         >
           <LogOut className="size-4" />

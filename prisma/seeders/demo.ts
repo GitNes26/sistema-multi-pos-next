@@ -1,20 +1,20 @@
-import { $Enums } from "@prisma/client";
-import { prisma } from "../../src/lib/db/client";
-import { seedProduction, SYSTEM_UNITS } from "./production";
+import { $Enums } from "@prisma/client"
+import { prisma } from "../../src/lib/db/client"
+import { seedProduction, SYSTEM_UNITS } from "./production"
 
 // FASE 1.3.2 — Seed de demo
 // Genera una organización completa con datos de ejemplo deterministas.
 
-const DEMO_ORG_NAME = "Supermercado Demo";
-const DEMO_PASSWORD = "demo1234";
+const DEMO_ORG_NAME = "Supermercado Demo"
+const DEMO_PASSWORD = "demo1234"
 
 type ProductDef = {
-  category: string;
-  name: string;
-  price: number;
-  bulk?: boolean;
-  variants?: { name: string; price: number }[];
-};
+  category: string
+  name: string
+  price: number
+  bulk?: boolean
+  variants?: { name: string; price: number }[]
+}
 
 const PRODUCTS: ProductDef[] = [
   // Abarrotes
@@ -53,14 +53,34 @@ const PRODUCTS: ProductDef[] = [
   },
   // Frutas y Verduras (a granel)
   { category: "Frutas y Verduras", name: "Tomate rojo", price: 28, bulk: true },
-  { category: "Frutas y Verduras", name: "Cebolla blanca", price: 22, bulk: true },
+  {
+    category: "Frutas y Verduras",
+    name: "Cebolla blanca",
+    price: 22,
+    bulk: true,
+  },
   { category: "Frutas y Verduras", name: "Papa", price: 20, bulk: true },
-  { category: "Frutas y Verduras", name: "Manzana roja", price: 35, bulk: true },
+  {
+    category: "Frutas y Verduras",
+    name: "Manzana roja",
+    price: 35,
+    bulk: true,
+  },
   { category: "Frutas y Verduras", name: "Plátano", price: 18, bulk: true },
   // Carnes
-  { category: "Carnes y Pescados", name: "Pechuga de pollo", price: 98, bulk: true },
+  {
+    category: "Carnes y Pescados",
+    name: "Pechuga de pollo",
+    price: 98,
+    bulk: true,
+  },
   { category: "Carnes y Pescados", name: "Res molida", price: 120, bulk: true },
-  { category: "Carnes y Pescados", name: "Chuleta de cerdo", price: 110, bulk: true },
+  {
+    category: "Carnes y Pescados",
+    name: "Chuleta de cerdo",
+    price: 110,
+    bulk: true,
+  },
   { category: "Carnes y Pescados", name: "Tilapia", price: 85 },
   { category: "Carnes y Pescados", name: "Tocino", price: 65 },
   // Panadería
@@ -102,7 +122,7 @@ const PRODUCTS: ProductDef[] = [
   { category: "Salud y Cuidado", name: "Jabón de tocador", price: 22 },
   { category: "Salud y Cuidado", name: "Cepillo dental", price: 28 },
   { category: "Salud y Cuidado", name: "Alcohol 70% 500ml", price: 25 },
-];
+]
 
 const CUSTOMERS = [
   { name: "María García", phone: "5512345678" },
@@ -115,105 +135,112 @@ const CUSTOMERS = [
   { name: "Roberto Torres", phone: "5589012345" },
   { name: "Patricia Ramírez", phone: "5590123456" },
   { name: "Andrés Castillo", phone: "5501234567" },
-];
+]
 
 // PRNG determinista
 function mulberry32(seed: number) {
   return function () {
-    let t = (seed += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+    let t = (seed += 0x6d2b79f5)
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
 }
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
+const round2 = (n: number) => Math.round(n * 100) / 100
 
-const pick = <T,>(arr: T[], rnd: () => number): T =>
-  arr[Math.floor(rnd() * arr.length)];
+const pick = <T>(arr: T[], rnd: () => number): T =>
+  arr[Math.floor(rnd() * arr.length)]
 
 async function cleanupDemo(orgId: string, emails: string[]) {
-  const d = prisma;
-  await d.orderPreparationItem.deleteMany();
-  await d.orderPreparation.deleteMany();
-  await d.orderStatusHistory.deleteMany();
-  await d.orderItem.deleteMany();
-  await d.order.deleteMany();
-  await d.saleDiscount.deleteMany();
-  await d.salePayment.deleteMany();
-  await d.saleItem.deleteMany();
-  await d.sale.deleteMany();
-  await d.coupon.deleteMany();
-  await d.loyaltyTransaction.deleteMany();
-  await d.promotionTarget.deleteMany();
-  await d.promotion.deleteMany();
-  await d.inventoryRevisionItem.deleteMany();
-  await d.inventoryRevision.deleteMany();
-  await d.variantPriceHistory.deleteMany();
-  await d.inventoryMovement.deleteMany();
-  await d.inventory.deleteMany();
-  await d.variantOptionValue.deleteMany();
-  await d.shoppingListItem.deleteMany();
-  await d.shoppingList.deleteMany();
-  await d.customerFavorite.deleteMany();
-  await d.productVariant.deleteMany();
-  await d.productOptionValue.deleteMany();
-  await d.productOption.deleteMany();
-  await d.product.deleteMany();
-  await d.category.deleteMany();
-  await d.customerPaymentMethod.deleteMany();
-  await d.customer.deleteMany();
-  await d.cashSession.deleteMany();
-  await d.cashRegister.deleteMany();
-  await d.cedi.deleteMany();
-  await d.location.deleteMany();
-  await d.employee.deleteMany();
-  await d.employeePosition.deleteMany();
-  await d.membership.deleteMany();
-  await d.userInvitation.deleteMany();
-  await d.notification.deleteMany();
-  await d.publication.deleteMany();
-  await d.companyProfile.deleteMany();
-  await d.appSettings.deleteMany();
-  await d.profile.deleteMany();
-  await d.organization.delete({ where: { id: orgId } });
-  await d.user.deleteMany({ where: { email: { in: emails } } });
+  const d = prisma
+  await d.orderPreparationItem.deleteMany()
+  await d.orderPreparation.deleteMany()
+  await d.orderStatusHistory.deleteMany()
+  await d.orderItem.deleteMany()
+  await d.order.deleteMany()
+  await d.saleDiscount.deleteMany()
+  await d.salePayment.deleteMany()
+  await d.saleItem.deleteMany()
+  await d.sale.deleteMany()
+  await d.coupon.deleteMany()
+  await d.loyaltyTransaction.deleteMany()
+  await d.promotionTarget.deleteMany()
+  await d.promotion.deleteMany()
+  await d.inventoryRevisionItem.deleteMany()
+  await d.inventoryRevision.deleteMany()
+  await d.variantPriceHistory.deleteMany()
+  await d.inventoryMovement.deleteMany()
+  await d.inventory.deleteMany()
+  await d.variantOptionValue.deleteMany()
+  await d.shoppingListItem.deleteMany()
+  await d.shoppingList.deleteMany()
+  await d.customerFavorite.deleteMany()
+  await d.productVariant.deleteMany()
+  await d.productOptionValue.deleteMany()
+  await d.productOption.deleteMany()
+  await d.product.deleteMany()
+  await d.category.deleteMany()
+  await d.customerPaymentMethod.deleteMany()
+  await d.customer.deleteMany()
+  await d.cashSession.deleteMany()
+  await d.cashRegister.deleteMany()
+  await d.cedi.deleteMany()
+  await d.location.deleteMany()
+  await d.employee.deleteMany()
+  await d.employeePosition.deleteMany()
+  await d.membership.deleteMany()
+  await d.userInvitation.deleteMany()
+  await d.notification.deleteMany()
+  await d.publication.deleteMany()
+  await d.companyProfile.deleteMany()
+  await d.appSettings.deleteMany()
+  await d.profile.deleteMany()
+  await d.organization.delete({ where: { id: orgId } })
+  await d.user.deleteMany({ where: { email: { in: emails } } })
 }
 
 export async function seedDemo() {
-  await seedProduction();
+  await seedProduction()
 
-  const rnd = mulberry32(2026);
+  const rnd = mulberry32(2026)
 
   // ── Limpieza (idempotencia) ──────────────────────────────────────────────
   const existingOrg = await prisma.organization.findFirst({
     where: { name: DEMO_ORG_NAME },
-  });
+  })
   const demoEmails = [
     "demo@multi-pos.com",
     "manager@demo.multi-pos.com",
     "cajero1@demo.multi-pos.com",
     "cajero2@demo.multi-pos.com",
     "repartidor@demo.multi-pos.com",
-    ...CUSTOMERS.map((_, i) => `cli-${String(i + 1).padStart(3, "0")}@portal.local`),
-  ];
+    ...CUSTOMERS.map(
+      (_, i) => `cli-${String(i + 1).padStart(3, "0")}@portal.local`
+    ),
+  ]
   if (existingOrg) {
-    await cleanupDemo(existingOrg.id, demoEmails);
+    await cleanupDemo(existingOrg.id, demoEmails)
   }
 
   // ── Usuarios del equipo ──────────────────────────────────────────────────
-  const passwordHash = await import("bcryptjs").then((m) => m.hash(DEMO_PASSWORD, 10));
+  const passwordHash = await import("bcryptjs").then((m) =>
+    m.hash(DEMO_PASSWORD, 10)
+  )
 
   const mkUser = async (email: string, fullName: string) =>
     prisma.user.create({
       data: { email, passwordHash, fullName, isActive: true },
-    });
+    })
 
-  const ownerUser = await mkUser("demo@multi-pos.com", "Ana López");
-  const managerUser = await mkUser("manager@demo.multi-pos.com", "Carlos Ruiz");
-  const cashier1User = await mkUser("cajero1@demo.multi-pos.com", "Luis Gómez");
-  const cashier2User = await mkUser("cajero2@demo.multi-pos.com", "María Pérez");
-  const repartidorUser = await mkUser("repartidor@demo.multi-pos.com", "Pedro Hernández");
+  const ownerUser = await mkUser("demo@multi-pos.com", "Ana López")
+  const managerUser = await mkUser("manager@demo.multi-pos.com", "Carlos Ruiz")
+  const cashier1User = await mkUser("cajero1@demo.multi-pos.com", "Luis Gómez")
+  const cashier2User = await mkUser("cajero2@demo.multi-pos.com", "María Pérez")
+  const repartidorUser = await mkUser(
+    "repartidor@demo.multi-pos.com",
+    "Pedro Hernández"
+  )
 
   // ── Organización ─────────────────────────────────────────────────────────
   const org = await prisma.organization.create({
@@ -225,7 +252,7 @@ export async function seedDemo() {
       pointValue: 0.1,
       loyaltyEnabled: true,
     },
-  });
+  })
 
   await prisma.companyProfile.create({
     data: {
@@ -242,7 +269,7 @@ export async function seedDemo() {
       website: "https://demo.multi-pos.com",
       ticketFooter: "¡Gracias por su compra!",
     },
-  });
+  })
 
   await prisma.appSettings.create({
     data: {
@@ -252,7 +279,7 @@ export async function seedDemo() {
       theme: "system",
       fontFamily: "montserrat",
     },
-  });
+  })
 
   // ── Memberships ──────────────────────────────────────────────────────────
   const membership = (
@@ -261,19 +288,25 @@ export async function seedDemo() {
   ) =>
     prisma.membership.create({
       data: { userId, organizationId: org.id, role },
-    });
-  await membership(ownerUser.id, "owner");
-  await membership(managerUser.id, "manager");
-  await membership(cashier1User.id, "cashier");
-  await membership(cashier2User.id, "cashier");
+    })
+  await membership(ownerUser.id, "owner")
+  await membership(managerUser.id, "manager")
+  await membership(cashier1User.id, "cashier")
+  await membership(cashier2User.id, "cashier")
 
   // ── Puestos y empleados ──────────────────────────────────────────────────
-  const positions: Record<string, string> = {};
-  for (const name of ["Cajero", "Supervisor", "Repartidor", "Almacenero", "Cocinero"]) {
+  const positions: Record<string, string> = {}
+  for (const name of [
+    "Cajero",
+    "Supervisor",
+    "Repartidor",
+    "Almacenero",
+    "Cocinero",
+  ]) {
     const p = await prisma.employeePosition.create({
       data: { organizationId: org.id, name },
-    });
-    positions[name] = p.id;
+    })
+    positions[name] = p.id
   }
 
   const employee = (
@@ -292,19 +325,67 @@ export async function seedDemo() {
         positionId: positions[position],
         phone,
       },
-    });
-  await employee(ownerUser.id, "EMP-001", "Ana López", "Supervisor", "5512340001");
-  await employee(managerUser.id, "EMP-002", "Carlos Ruiz", "Supervisor", "5512340002");
-  await employee(cashier1User.id, "EMP-003", "Luis Gómez", "Cajero", "5512340003");
-  await employee(cashier2User.id, "EMP-004", "María Pérez", "Cajero", "5512340004");
-  await employee(repartidorUser.id, "EMP-005", "Pedro Hernández", "Repartidor", "5512340005");
+    })
+  await employee(
+    ownerUser.id,
+    "EMP-001",
+    "Ana López",
+    "Supervisor",
+    "5512340001"
+  )
+  await employee(
+    managerUser.id,
+    "EMP-002",
+    "Carlos Ruiz",
+    "Supervisor",
+    "5512340002"
+  )
+  await employee(
+    cashier1User.id,
+    "EMP-003",
+    "Luis Gómez",
+    "Cajero",
+    "5512340003"
+  )
+  await employee(
+    cashier2User.id,
+    "EMP-004",
+    "María Pérez",
+    "Cajero",
+    "5512340004"
+  )
+  await employee(
+    repartidorUser.id,
+    "EMP-005",
+    "Pedro Hernández",
+    "Repartidor",
+    "5512340005"
+  )
 
   // ── Sucursales, CEDIS y cajas ────────────────────────────────────────────
   const locations = await Promise.all(
     [
-      { name: "Matriz", code: "LOC-001", latitude: 19.4326, longitude: -99.1332, allowsDelivery: true },
-      { name: "Sucursal 2", code: "LOC-002", latitude: 19.37, longitude: -99.1, allowsDelivery: true },
-      { name: "Sucursal 3", code: "LOC-003", latitude: 19.45, longitude: -99.2, allowsPickup: true },
+      {
+        name: "Matriz",
+        code: "LOC-001",
+        latitude: 19.4326,
+        longitude: -99.1332,
+        allowsDelivery: true,
+      },
+      {
+        name: "Sucursal 2",
+        code: "LOC-002",
+        latitude: 19.37,
+        longitude: -99.1,
+        allowsDelivery: true,
+      },
+      {
+        name: "Sucursal 3",
+        code: "LOC-003",
+        latitude: 19.45,
+        longitude: -99.2,
+        allowsPickup: true,
+      },
     ].map((loc) =>
       prisma.location.create({
         data: {
@@ -320,7 +401,7 @@ export async function seedDemo() {
         },
       })
     )
-  );
+  )
 
   await prisma.cedi.create({
     data: {
@@ -330,9 +411,9 @@ export async function seedDemo() {
       address: "Parque Industrial Norte",
       managerName: "Almacenero Demo",
     },
-  });
+  })
 
-  const registers: { id: string; locationId: string }[] = [];
+  const registers: { id: string; locationId: string }[] = []
   for (const loc of locations) {
     for (const name of ["Caja 1", "Caja 2"]) {
       const r = await prisma.cashRegister.create({
@@ -342,16 +423,16 @@ export async function seedDemo() {
           name,
           folioPrefix: name.replace(" ", ""),
         },
-      });
-      registers.push({ id: r.id, locationId: loc.id });
+      })
+      registers.push({ id: r.id, locationId: loc.id })
     }
   }
 
   // ── Clientes ─────────────────────────────────────────────────────────────
-  const customers = [];
+  const customers = []
   for (let i = 0; i < CUSTOMERS.length; i++) {
-    const c = CUSTOMERS[i];
-    const code = `CLI-${String(i + 1).padStart(3, "0")}`;
+    const c = CUSTOMERS[i]
+    const code = `CLI-${String(i + 1).padStart(3, "0")}`
     const user = await prisma.user.create({
       data: {
         email: `cli-${String(i + 1).padStart(3, "0")}@portal.local`,
@@ -359,7 +440,7 @@ export async function seedDemo() {
         fullName: c.name,
         isActive: true,
       },
-    });
+    })
     const customer = await prisma.customer.create({
       data: {
         organizationId: org.id,
@@ -369,47 +450,71 @@ export async function seedDemo() {
         phone: c.phone,
         points: round2(rnd() * 500),
       },
-    });
-    customers.push(customer);
+    })
+    customers.push(customer)
   }
 
   // ── Categorías (jerarquía) ───────────────────────────────────────────────
   const catAbarrotes = await prisma.category.create({
     data: { organizationId: org.id, name: "Abarrotes" },
-  });
+  })
   const catFrutas = await prisma.category.create({
     data: { organizationId: org.id, name: "Frutas y Verduras" },
-  });
+  })
   const categoryIds: Record<string, string> = {
     Abarrotes: catAbarrotes.id,
     "Frutas y Verduras": catFrutas.id,
-  };
-  for (const name of ["Bebidas", "Lácteos y Huevo", "Carnes y Pescados", "Panadería", "Limpieza", "Electrónica", "Ropa", "Salud y Cuidado"]) {
+  }
+  for (const name of [
+    "Bebidas",
+    "Lácteos y Huevo",
+    "Carnes y Pescados",
+    "Panadería",
+    "Limpieza",
+    "Electrónica",
+    "Ropa",
+    "Salud y Cuidado",
+  ]) {
     const cat = await prisma.category.create({
       data: {
         organizationId: org.id,
         name,
-        parentId: name === "Bebidas" || name === "Lácteos y Huevo" || name === "Panadería" ? catAbarrotes.id : undefined,
+        parentId:
+          name === "Bebidas" ||
+          name === "Lácteos y Huevo" ||
+          name === "Panadería"
+            ? catAbarrotes.id
+            : undefined,
       },
-    });
-    categoryIds[name] = cat.id;
+    })
+    categoryIds[name] = cat.id
   }
 
   // ── Unidades de medida (referencias del sistema) ─────────────────────────
   const units = await prisma.unitOfMeasure.findMany({
-    where: { organizationId: null, abbreviation: { in: SYSTEM_UNITS.map((u) => u.abbreviation) } },
-  });
-  const unitByAbbr = Object.fromEntries(units.map((u) => [u.abbreviation, u]));
-  const unitKg = unitByAbbr["kg"];
-  const unitPza = unitByAbbr["pza"];
+    where: {
+      organizationId: null,
+      abbreviation: { in: SYSTEM_UNITS.map((u) => u.abbreviation) },
+    },
+  })
+  const unitByAbbr = Object.fromEntries(units.map((u) => [u.abbreviation, u]))
+  const unitKg = unitByAbbr["kg"]
+  const unitPza = unitByAbbr["pza"]
 
   // ── Productos + variantes + inventario ───────────────────────────────────
-  const variants: { id: string; name: string; price: number; productId: string; productName: string; bulk: boolean }[] = [];
-  const bulkProducts: { id: string; name: string; price: number }[] = [];
+  const variants: {
+    id: string
+    name: string
+    price: number
+    productId: string
+    productName: string
+    bulk: boolean
+  }[] = []
+  const bulkProducts: { id: string; name: string; price: number }[] = []
 
   for (let i = 0; i < PRODUCTS.length; i++) {
-    const def = PRODUCTS[i];
-    const barcodeBase = `750${String(i + 1).padStart(8, "0")}`;
+    const def = PRODUCTS[i]
+    const barcodeBase = `750${String(i + 1).padStart(8, "0")}`
 
     const product = await prisma.product.create({
       data: {
@@ -426,16 +531,16 @@ export async function seedDemo() {
         bulkMaxQuantity: def.bulk ? 0 : undefined,
         allowSplit: false,
       },
-    });
+    })
 
     if (def.bulk) {
-      bulkProducts.push({ id: product.id, name: def.name, price: def.price });
-      continue;
+      bulkProducts.push({ id: product.id, name: def.name, price: def.price })
+      continue
     }
 
-    const variantDefs = def.variants ?? [{ name: "Default", price: def.price }];
+    const variantDefs = def.variants ?? [{ name: "Default", price: def.price }]
     for (let v = 0; v < variantDefs.length; v++) {
-      const vd = variantDefs[v];
+      const vd = variantDefs[v]
       const variant = await prisma.productVariant.create({
         data: {
           productId: product.id,
@@ -446,7 +551,7 @@ export async function seedDemo() {
           price: vd.price,
           cost: round2(vd.price * 0.62),
         },
-      });
+      })
       variants.push({
         id: variant.id,
         name: vd.name,
@@ -454,7 +559,7 @@ export async function seedDemo() {
         productId: product.id,
         productName: def.name,
         bulk: false,
-      });
+      })
     }
   }
 
@@ -471,7 +576,7 @@ export async function seedDemo() {
           unitId: unitPza?.id,
           minThreshold: 10,
         },
-      });
+      })
     }
     for (const bp of bulkProducts) {
       await prisma.inventory.create({
@@ -484,37 +589,91 @@ export async function seedDemo() {
           unitId: unitKg?.id,
           minThreshold: 5,
         },
-      });
+      })
     }
   }
 
   // ── Promociones ──────────────────────────────────────────────────────────
-  const colaVariant = variants.find((v) => v.productName === "Refresco cola 2L");
-  const lecheVariant = variants.find((v) => v.productName === "Leche entera 1L");
+  const colaVariant = variants.find((v) => v.productName === "Refresco cola 2L")
+  const lecheVariant = variants.find((v) => v.productName === "Leche entera 1L")
 
   const promoData: {
-  name: string;
-  benefit: $Enums.PromoBenefit;
-  scope: $Enums.PromoScope;
-  value?: number;
-  minAmount?: number;
-  buyQuantity?: number;
-  getQuantity?: number;
-  weekdays?: string;
-}[] = [
-    { name: "10% en tu pedido", benefit: "percent_off", scope: "order", value: 10 },
-    { name: "$20 de descuento +$300", benefit: "amount_off", scope: "order", value: 20, minAmount: 300 },
-    { name: "2x1 Refresco cola 2L", benefit: "buy_x_get_y", scope: "product", buyQuantity: 2, getQuantity: 1 },
-    { name: "Leche a $20", benefit: "fixed_price", scope: "product", value: 20 },
-    { name: "15% en frutas y verduras", benefit: "percent_off", scope: "category", value: 15 },
-    { name: "5% en electrónica", benefit: "percent_off", scope: "category", value: 5 },
-    { name: "Cupón próxima compra +$500", benefit: "next_purchase_coupon", scope: "order", minAmount: 500 },
-    { name: "Jueves de lácteos -10%", benefit: "percent_off", scope: "category", value: 10, weekdays: "[4]" },
-    { name: "Artículo gratis +$400", benefit: "free_item", scope: "order", minAmount: 400 },
-    { name: "$15 menos en Bebidas", benefit: "amount_off", scope: "category", value: 15, minAmount: 100 },
-  ];
+    name: string
+    benefit: $Enums.PromoBenefit
+    scope: $Enums.PromoScope
+    value?: number
+    minAmount?: number
+    buyQuantity?: number
+    getQuantity?: number
+    weekdays?: string
+  }[] = [
+    {
+      name: "10% en tu pedido",
+      benefit: "percent_off",
+      scope: "order",
+      value: 10,
+    },
+    {
+      name: "$20 de descuento +$300",
+      benefit: "amount_off",
+      scope: "order",
+      value: 20,
+      minAmount: 300,
+    },
+    {
+      name: "2x1 Refresco cola 2L",
+      benefit: "buy_x_get_y",
+      scope: "product",
+      buyQuantity: 2,
+      getQuantity: 1,
+    },
+    {
+      name: "Leche a $20",
+      benefit: "fixed_price",
+      scope: "product",
+      value: 20,
+    },
+    {
+      name: "15% en frutas y verduras",
+      benefit: "percent_off",
+      scope: "category",
+      value: 15,
+    },
+    {
+      name: "5% en electrónica",
+      benefit: "percent_off",
+      scope: "category",
+      value: 5,
+    },
+    {
+      name: "Cupón próxima compra +$500",
+      benefit: "next_purchase_coupon",
+      scope: "order",
+      minAmount: 500,
+    },
+    {
+      name: "Jueves de lácteos -10%",
+      benefit: "percent_off",
+      scope: "category",
+      value: 10,
+      weekdays: "[4]",
+    },
+    {
+      name: "Artículo gratis +$400",
+      benefit: "free_item",
+      scope: "order",
+      minAmount: 400,
+    },
+    {
+      name: "$15 menos en Bebidas",
+      benefit: "amount_off",
+      scope: "category",
+      value: 15,
+      minAmount: 100,
+    },
+  ]
 
-  const promotions: { id: string; name: string }[] = [];
+  const promotions: { id: string; name: string }[] = []
   for (const pd of promoData) {
     const promo = await prisma.promotion.create({
       data: {
@@ -532,56 +691,66 @@ export async function seedDemo() {
         startsAt: new Date(Date.now() - 30 * 86400000),
         endsAt: new Date(Date.now() + 60 * 86400000),
       },
-    });
-    promotions.push(promo);
+    })
+    promotions.push(promo)
   }
 
   // Targets de promociones
-  const promoTarget = (promotionName: string, kind: $Enums.PromotionTargetKind, targetId: string) =>
+  const promoTarget = (
+    promotionName: string,
+    kind: $Enums.PromotionTargetKind,
+    targetId: string
+  ) =>
     prisma.promotionTarget.create({
       data: {
         promotionId: promotions.find((p) => p.name === promotionName)!.id,
         kind,
         targetId,
       },
-    });
-  if (colaVariant) await promoTarget("2x1 Refresco cola 2L", "variant", colaVariant.id);
-  if (lecheVariant) await promoTarget("Leche a $20", "variant", lecheVariant.id);
-  await promoTarget("15% en frutas y verduras", "category", catFrutas.id);
-  await promoTarget("5% en electrónica", "category", categoryIds["Electrónica"]);
-  await promoTarget("$15 menos en Bebidas", "category", categoryIds["Bebidas"]);
+    })
+  if (colaVariant)
+    await promoTarget("2x1 Refresco cola 2L", "variant", colaVariant.id)
+  if (lecheVariant) await promoTarget("Leche a $20", "variant", lecheVariant.id)
+  await promoTarget("15% en frutas y verduras", "category", catFrutas.id)
+  await promoTarget("5% en electrónica", "category", categoryIds["Electrónica"])
+  await promoTarget("$15 menos en Bebidas", "category", categoryIds["Bebidas"])
 
   // ── Ventas históricas (100) ──────────────────────────────────────────────
   const cashiers = [
     { user: cashier1User, employeeId: undefined as string | undefined },
     { user: cashier2User, employeeId: undefined as string | undefined },
     { user: managerUser, employeeId: undefined as string | undefined },
-  ];
+  ]
   const empByUser = await prisma.employee.findMany({
     where: { organizationId: org.id },
-  });
-  const empIdByUserId = Object.fromEntries(empByUser.map((e) => [e.userId, e.id]));
+  })
+  const empIdByUserId = Object.fromEntries(
+    empByUser.map((e) => [e.userId, e.id])
+  )
 
-  const now = Date.now();
-  const saleSeqByLocation: Record<string, number> = {};
-  for (const loc of locations) saleSeqByLocation[loc.id] = 0;
+  const now = Date.now()
+  const saleSeqByLocation: Record<string, number> = {}
+  for (const loc of locations) saleSeqByLocation[loc.id] = 0
 
   for (let s = 0; s < 100; s++) {
-    const loc = pick(locations, rnd);
-    const reg = pick(registers.filter((r) => r.locationId === loc.id), rnd);
-    const cashier = pick(cashiers, rnd);
-    const customer = rnd() < 0.7 ? pick(customers, rnd) : null;
-    const saleDate = new Date(now - Math.floor(rnd() * 90) * 86400000);
-    saleDate.setHours(Math.floor(rnd() * 12) + 9, Math.floor(rnd() * 60), 0, 0);
+    const loc = pick(locations, rnd)
+    const reg = pick(
+      registers.filter((r) => r.locationId === loc.id),
+      rnd
+    )
+    const cashier = pick(cashiers, rnd)
+    const customer = rnd() < 0.7 ? pick(customers, rnd) : null
+    const saleDate = new Date(now - Math.floor(rnd() * 90) * 86400000)
+    saleDate.setHours(Math.floor(rnd() * 12) + 9, Math.floor(rnd() * 60), 0, 0)
 
-    const itemCount = 1 + Math.floor(rnd() * 7);
-    const items = [];
+    const itemCount = 1 + Math.floor(rnd() * 7)
+    const items = []
     for (let k = 0; k < itemCount; k++) {
       if (rnd() < 0.3 && bulkProducts.length) {
-        const bp = pick(bulkProducts, rnd);
-        const qty = round2(0.1 + rnd() * 3);
-        const unitPrice = bp.price;
-        const totalPrice = round2(qty * unitPrice);
+        const bp = pick(bulkProducts, rnd)
+        const qty = round2(0.1 + rnd() * 3)
+        const unitPrice = bp.price
+        const totalPrice = round2(qty * unitPrice)
         items.push({
           productId: bp.id,
           productName: bp.name,
@@ -592,11 +761,11 @@ export async function seedDemo() {
           totalPrice,
           lineTotal: totalPrice,
           bulkQuantityDisplay: `${qty} kg`,
-        });
+        })
       } else {
-        const v = pick(variants, rnd);
-        const qty = 1 + Math.floor(rnd() * 5);
-        const lineTotal = round2(qty * v.price);
+        const v = pick(variants, rnd)
+        const qty = 1 + Math.floor(rnd() * 5)
+        const lineTotal = round2(qty * v.price)
         items.push({
           variantId: v.id,
           productId: v.productId,
@@ -608,19 +777,21 @@ export async function seedDemo() {
           unitPrice: v.price,
           totalPrice: lineTotal,
           lineTotal,
-        });
+        })
       }
     }
 
-    const subtotal = round2(items.reduce((acc, it) => acc + (it.lineTotal as number), 0));
-    const hasDiscount = rnd() < 0.25;
-    const discount = hasDiscount ? round2(subtotal * (0.05 + rnd() * 0.1)) : 0;
-    const tax = round2((subtotal - discount) * 0.16);
-    const total = round2(subtotal - discount + tax);
-    const pointsEarned = customer ? round2(total) : 0;
+    const subtotal = round2(
+      items.reduce((acc, it) => acc + (it.lineTotal as number), 0)
+    )
+    const hasDiscount = rnd() < 0.25
+    const discount = hasDiscount ? round2(subtotal * (0.05 + rnd() * 0.1)) : 0
+    const tax = round2((subtotal - discount) * 0.16)
+    const total = round2(subtotal - discount + tax)
+    const pointsEarned = customer ? round2(total) : 0
 
-    saleSeqByLocation[loc.id] += 1;
-    const locationSaleNumber = BigInt(saleSeqByLocation[loc.id]);
+    saleSeqByLocation[loc.id] += 1
+    const locationSaleNumber = BigInt(saleSeqByLocation[loc.id])
 
     const sale = await prisma.sale.create({
       data: {
@@ -642,23 +813,33 @@ export async function seedDemo() {
         items: { create: items },
       },
       include: { items: true },
-    });
+    })
 
-    const payCash = rnd() < 0.6;
+    const payCash = rnd() < 0.6
     if (payCash) {
       await prisma.salePayment.create({
-        data: { saleId: sale.id, method: "cash", amount: total, reference: null },
-      });
+        data: {
+          saleId: sale.id,
+          method: "cash",
+          amount: total,
+          reference: null,
+        },
+      })
     } else {
       await prisma.salePayment.create({
-        data: { saleId: sale.id, method: "card", amount: total, reference: `AUTH-${100000 + s}` },
-      });
+        data: {
+          saleId: sale.id,
+          method: "card",
+          amount: total,
+          reference: `AUTH-${100000 + s}`,
+        },
+      })
     }
 
     if (hasDiscount) {
       await prisma.saleDiscount.create({
         data: { saleId: sale.id, label: "Descuento manual", amount: discount },
-      });
+      })
     }
 
     if (customer) {
@@ -671,7 +852,7 @@ export async function seedDemo() {
           points: pointsEarned,
           note: `Venta ${locationSaleNumber}`,
         },
-      });
+      })
     }
   }
 
@@ -680,7 +861,7 @@ export async function seedDemo() {
     await prisma.location.update({
       where: { id: loc.id },
       data: { saleSeq: BigInt(saleSeqByLocation[loc.id]) },
-    });
+    })
   }
 
   // ── Pedidos del portal (20) ──────────────────────────────────────────────
@@ -691,20 +872,20 @@ export async function seedDemo() {
     "ready",
     "delivered",
     "cancelled",
-  ] as const;
+  ] as const
   for (let o = 0; o < 20; o++) {
-    const loc = pick(locations, rnd);
-    const customer = customers[o % customers.length];
-    const status = statuses[Math.floor(rnd() * statuses.length)];
-    const deliveryMethod = rnd() < 0.5 ? "pickup" : "delivery";
-    const orderDate = new Date(now - Math.floor(rnd() * 60) * 86400000);
+    const loc = pick(locations, rnd)
+    const customer = customers[o % customers.length]
+    const status = statuses[Math.floor(rnd() * statuses.length)]
+    const deliveryMethod = rnd() < 0.5 ? "pickup" : "delivery"
+    const orderDate = new Date(now - Math.floor(rnd() * 60) * 86400000)
 
-    const itemCount = 1 + Math.floor(rnd() * 4);
-    const items = [];
+    const itemCount = 1 + Math.floor(rnd() * 4)
+    const items = []
     for (let k = 0; k < itemCount; k++) {
-      const v = pick(variants, rnd);
-      const qty = 1 + Math.floor(rnd() * 3);
-      const lineTotal = round2(qty * v.price);
+      const v = pick(variants, rnd)
+      const qty = 1 + Math.floor(rnd() * 3)
+      const lineTotal = round2(qty * v.price)
       items.push({
         productId: v.productId,
         variantId: v.id,
@@ -715,10 +896,12 @@ export async function seedDemo() {
         unitId: unitPza?.id,
         unitPrice: v.price,
         lineTotal,
-      });
+      })
     }
-    const subtotal = round2(items.reduce((acc, it) => acc + (it.lineTotal as number), 0));
-    const total = round2(subtotal * 1.16);
+    const subtotal = round2(
+      items.reduce((acc, it) => acc + (it.lineTotal as number), 0)
+    )
+    const total = round2(subtotal * 1.16)
 
     const order = await prisma.order.create({
       data: {
@@ -734,14 +917,21 @@ export async function seedDemo() {
         updatedAt: orderDate,
         items: { create: items },
       },
-    });
+    })
 
     // Historial de estados
-    const historyFlow: typeof statuses = ["pending", "confirmed", "preparing", "ready", "delivered", "cancelled"];
-    const flowIndex = statuses.indexOf(status);
+    const historyFlow: typeof statuses = [
+      "pending",
+      "confirmed",
+      "preparing",
+      "ready",
+      "delivered",
+      "cancelled",
+    ]
+    const flowIndex = statuses.indexOf(status)
     for (let hi = 0; hi <= Math.max(flowIndex, 0); hi++) {
-      const st = historyFlow[hi];
-await prisma.orderStatusHistory.create({
+      const st = historyFlow[hi]
+      await prisma.orderStatusHistory.create({
         data: {
           orderId: order.id,
           status: st,
@@ -749,20 +939,28 @@ await prisma.orderStatusHistory.create({
           userId: hi === 0 ? undefined : managerUser.id,
           notes: st === "delivered" ? "Entregado al cliente" : null,
         },
-      });
+      })
     }
 
     // Preparación para algunos
-    if (status === "preparing" || status === "ready" || status === "delivered") {
+    if (
+      status === "preparing" ||
+      status === "ready" ||
+      status === "delivered"
+    ) {
       await prisma.orderPreparation.create({
         data: {
           orderId: order.id,
           employeeId: empIdByUserId[cashier1User.id],
           startedAt: orderDate,
-          completedAt: status === "ready" || status === "delivered" ? new Date(orderDate.getTime() + 15 * 60000) : null,
-          elapsedSeconds: status === "ready" || status === "delivered" ? 900 : null,
+          completedAt:
+            status === "ready" || status === "delivered"
+              ? new Date(orderDate.getTime() + 15 * 60000)
+              : null,
+          elapsedSeconds:
+            status === "ready" || status === "delivered" ? 900 : null,
         },
-      });
+      })
     }
   }
 
@@ -797,7 +995,7 @@ await prisma.orderStatusHistory.create({
         link: "/sales",
       },
     ],
-  });
+  })
 
   // ── Publicaciones de ejemplo ─────────────────────────────────────────────
   await prisma.publication.createMany({
@@ -805,7 +1003,8 @@ await prisma.orderStatusHistory.create({
       {
         organizationId: org.id,
         title: "¡Nueva llegada! Bocina bluetooth",
-        content: "Ya está disponible la bocina bluetooth a un precio increíble.",
+        content:
+          "Ya está disponible la bocina bluetooth a un precio increíble.",
         type: "product_new",
         isActive: true,
         publishedAt: new Date(now - 2 * 86400000),
@@ -827,7 +1026,7 @@ await prisma.orderStatusHistory.create({
         publishedAt: new Date(now - 10 * 86400000),
       },
     ],
-  });
+  })
 
   return {
     org,
@@ -837,7 +1036,7 @@ await prisma.orderStatusHistory.create({
     cashier2User,
     locations,
     customers,
-  };
+  }
 }
 
-export { DEMO_ORG_NAME, DEMO_PASSWORD };
+export { DEMO_ORG_NAME, DEMO_PASSWORD }

@@ -252,21 +252,31 @@ export const productsModule: CrudModule<ProductDto> = {
     });
 
     // Variante inicial "Default" para productos estándar (así aparecen en el POS).
-    if (productType === "standard" && data.initialVariant) {
-      const v = data.initialVariant as Record<string, unknown>;
-      const variant = await prisma.productVariant.create({
-        data: {
-          productId: product.id,
-          organizationId,
-          name: v.name ? String(v.name) : "Default",
-          sku: v.sku ? String(v.sku) : null,
-          barcode: v.barcode ? String(v.barcode) : null,
-          price: Number(v.price) || 0,
-          cost: Number(v.cost) || 0,
-          isActive: true,
-        },
-      });
-      await syncVariantInventory(organizationId, product.id, variant.id);
+    if (productType === "standard") {
+      const options = parseOptions(data.options);
+      if (options.length > 0) {
+        // Opciones definidas → generar combinaciones de variantes automáticamente.
+        const base = data.initialVariant as Record<string, unknown> | undefined;
+        await createOptionsWithVariants(organizationId, product.id, options, {
+          price: Number(base?.price) || 0,
+          cost: Number(base?.cost) || 0,
+        });
+      } else if (data.initialVariant) {
+        const v = data.initialVariant as Record<string, unknown>;
+        const variant = await prisma.productVariant.create({
+          data: {
+            productId: product.id,
+            organizationId,
+            name: v.name ? String(v.name) : "Default",
+            sku: v.sku ? String(v.sku) : null,
+            barcode: v.barcode ? String(v.barcode) : null,
+            price: Number(v.price) || 0,
+            cost: Number(v.cost) || 0,
+            isActive: true,
+          },
+        });
+        await syncVariantInventory(organizationId, product.id, variant.id);
+      }
     }
 
     return serialize(
@@ -335,6 +345,70 @@ export const productsModule: CrudModule<ProductDto> = {
 };
 
 // ── Variantes ────────────────────────────────────────────────────────────────
+
+type OptionInput = { name: string; values: string[] };
+
+function parseOptions(raw: unknown): OptionInput[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((o) => {
+      if (!o || typeof o !== "object") return null;
+      const name = String((o as Record<string, unknown>).name ?? "").trim();
+      const values = Array.isArray((o as Record<string, unknown>).values)
+        ? ((o as Record<string, unknown>).values as unknown[]).map((v) => String(v).trim()).filter(Boolean)
+        : [];
+      return name && values.length > 0 ? { name, values } : null;
+    })
+    .filter((o): o is OptionInput => o !== null);
+}
+
+function cartesianProduct<T>(arrays: T[][]): T[][] {
+  return arrays.reduce<T[][]>((acc, arr) => acc.flatMap((a) => arr.map((b) => [...a, b])), [[]]);
+}
+
+/** Crea las opciones + valores y genera una variante por cada combinación de valores. */
+async function createOptionsWithVariants(
+  organizationId: string,
+  productId: string,
+  options: OptionInput[],
+  base: { price: number; cost: number }
+) {
+  const optionsWithValues: { name: string; values: { valueId: string; value: string }[] }[] = [];
+
+  let pos = 0;
+  for (const opt of options) {
+    pos += 1;
+    const option = await prisma.productOption.create({
+      data: { productId, name: opt.name, position: pos },
+    });
+    const values: { valueId: string; value: string }[] = [];
+    let vpos = 0;
+    for (const value of opt.values) {
+      vpos += 1;
+      const pv = await prisma.productOptionValue.create({
+        data: { optionId: option.id, value, position: vpos },
+      });
+      values.push({ valueId: pv.id, value });
+    }
+    optionsWithValues.push({ name: opt.name, values });
+  }
+
+  const combinations = cartesianProduct(optionsWithValues.map((o) => o.values));
+  for (const combo of combinations) {
+    const variant = await prisma.productVariant.create({
+      data: {
+        productId,
+        organizationId,
+        name: combo.map((v) => v.value).join(" · "),
+        price: base.price,
+        cost: base.cost,
+        isActive: true,
+        optionValues: { create: combo.map((v) => ({ optionValueId: v.valueId })) },
+      },
+    });
+    await syncVariantInventory(organizationId, productId, variant.id);
+  }
+}
 
 async function syncVariantInventory(organizationId: string, productId: string, variantId: string) {
   const locations = await prisma.location.findMany({

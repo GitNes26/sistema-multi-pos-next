@@ -22,18 +22,21 @@ export async function middleware(req: NextRequest) {
     return url;
   };
 
+  // Sesión inválida (usuario desactivado/eliminado) → tratar como sin sesión.
+  const authenticated = Boolean(token && !token.invalid);
+
   // Panel POS
   if (pathname.startsWith("/pos")) {
-    if (!token) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
-    if (token.scope === "portal")
+    if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    if (token!.scope === "portal")
       return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
     return NextResponse.next();
   }
 
   // Panel admin
   if (pathname.startsWith("/admin")) {
-    if (!token) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
-    if (token.scope === "portal" || !ADMIN_ONLY.includes((token.role as SessionRole) ?? "")) {
+    if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    if (token!.scope === "portal" || !ADMIN_ONLY.includes((token!.role as SessionRole) ?? "")) {
       return NextResponse.redirect(new URL("/pos", req.url));
     }
     return NextResponse.next();
@@ -41,7 +44,7 @@ export async function middleware(req: NextRequest) {
 
   // Portal de clientes (el login del portal es público)
   if (pathname.startsWith("/portal") && !pathname.startsWith("/portal/auth")) {
-    if (!token || token.scope !== "portal") {
+    if (!authenticated || token!.scope !== "portal") {
       return NextResponse.redirect(loginUrl("/portal/auth/login", pathname + search));
     }
     return NextResponse.next();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   Barcode,
   Check,
@@ -40,22 +40,24 @@ import type { CrudField } from "./crud-config";
 
 interface ProductFormProps {
   initial: Record<string, unknown> | null;
-  onCancel: () => void;
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
+  onSavingChange?: (saving: boolean) => void;
 }
 
 function FieldRow({
   label,
   children,
   full,
+  htmlFor,
 }: {
   label: string;
   children: React.ReactNode;
   full?: boolean;
+  htmlFor?: string;
 }) {
   return (
     <div className={cn("space-y-1.5", full && "sm:col-span-2")}>
-      <Label className="text-sm">{label}</Label>
+      <Label htmlFor={htmlFor} className="text-sm">{label}</Label>
       {children}
     </div>
   );
@@ -65,14 +67,17 @@ function InputField({
   label,
   icon,
   full,
+  id,
   ...props
 }: {
   label: string;
   icon?: React.ReactNode;
   full?: boolean;
 } & React.ComponentProps<typeof Input>) {
+  const autoId = useId();
   return (
     <InputGroupField
+      id={id ?? autoId}
       label={label}
       leftIcon={icon}
       containerClassName={full ? "sm:col-span-2" : undefined}
@@ -105,7 +110,7 @@ function TypeToggle({
           className={cn(
             "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition",
             value === opt.value
-              ? "bg-background text-foreground shadow-sm"
+              ? "bg-primary text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
             disabled && "cursor-not-allowed opacity-60"
           )}
@@ -121,7 +126,7 @@ function numOrEmpty(v: string): number | "" {
   return v === "" || v === undefined || v === null ? "" : Number(v);
 }
 
-export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) {
+export function ProductsForm({ initial, onSubmit, onSavingChange }: ProductFormProps) {
   const isEdit = Boolean(initial);
   const [productType, setProductType] = useState<"standard" | "bulk">(
     initial?.productType === "bulk" ? "bulk" : "standard"
@@ -144,7 +149,6 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
   const [splitUnitId, setSplitUnitId] = useState((initial?.splitUnitId as string) ?? "");
   const [splitPricePerUnit, setSplitPrice] = useState(String((initial?.splitPricePerUnit as number) ?? ""));
 
-  const [variantName, setVariantName] = useState("Default");
   const [variantSku, setVariantSku] = useState("");
   const [variantBarcode, setVariantBarcode] = useState("");
   const [variantPrice, setVariantPrice] = useState("");
@@ -159,7 +163,6 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
   );
   const [optionsBusy, setOptionsBusy] = useState(false);
 
-  const [saving, setSaving] = useState(false);
   const [vBusy, setVBusy] = useState(false);
   const [editVariant, setEditVariant] = useState<VariantRow | null>(null);
 
@@ -215,22 +218,33 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
         splitPricePerUnit: allowSplit ? numOrEmpty(splitPricePerUnit) : 0,
       });
     } else if (!isEdit) {
-      payload.initialVariant = {
-        name: variantName.trim() || "Default",
-        sku: variantSku.trim() || null,
-        barcode: variantBarcode.trim() || null,
-        price: numOrEmpty(variantPrice),
-        cost: numOrEmpty(variantCost),
-      };
+      const hasOptions = options.some((o) => o.name.trim() && o.values.some((v) => v.value.trim()));
+      if (hasOptions) {
+        payload.options = options
+          .filter((o) => o.name.trim() && o.values.some((v) => v.value.trim()))
+          .map((o) => ({
+            name: o.name.trim(),
+            values: o.values.map((v) => v.value.trim()).filter(Boolean),
+          }));
+        payload.initialVariant = { price: numOrEmpty(variantPrice), cost: numOrEmpty(variantCost) };
+      } else {
+        payload.initialVariant = {
+          name: "Default",
+          sku: variantSku.trim() || null,
+          barcode: variantBarcode.trim() || null,
+          price: numOrEmpty(variantPrice),
+          cost: numOrEmpty(variantCost),
+        };
+      }
     }
 
-    setSaving(true);
+    onSavingChange?.(true);
     try {
       await onSubmit(payload);
     } catch (err) {
       swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
     } finally {
-      setSaving(false);
+      onSavingChange?.(false);
     }
   };
 
@@ -279,6 +293,7 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
     barcode?: string;
     price?: number;
     cost?: number;
+    imageUrl?: string | null;
     optionValueIds?: string[];
   }) => {
     if (!initial?.id) return;
@@ -337,8 +352,10 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
     );
   };
 
+  const hasOptions = options.some((o) => o.name.trim() && o.values.some((v) => v.value.trim()));
+
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+    <form id="product-form" onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
       <FieldRow label="Tipo de producto" full>
         <TypeToggle value={productType} onChange={setProductType} disabled={isEdit} />
       </FieldRow>
@@ -353,12 +370,12 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
         placeholder="Ej. Arroz 1kg"
       />
 
-      <FieldRow label="Descripción" full>
-        <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional" />
+      <FieldRow label="Descripción" full htmlFor="product-description">
+        <Textarea id="product-description" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Opcional" />
       </FieldRow>
 
-      <FieldRow label="Categoría">
-        <OptionSelect field={categoryField} value={categoryId} onChange={setCategoryId} />
+      <FieldRow label="Categoría" htmlFor="product-category">
+        <OptionSelect id="product-category" field={categoryField} value={categoryId} onChange={setCategoryId} />
       </FieldRow>
 
       <InputField
@@ -396,8 +413,8 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
 
       {productType === "bulk" ? (
         <>
-          <FieldRow label="Unidad de medida">
-            <OptionSelect field={unitField} value={bulkUnitId} onChange={setBulkUnitId} />
+          <FieldRow label="Unidad de medida" htmlFor="product-unit">
+            <OptionSelect id="product-unit" field={unitField} value={bulkUnitId} onChange={setBulkUnitId} />
           </FieldRow>
           <InputField label="Precio por unidad ($)" icon={<DollarSign className="size-4" />} type="number" step="0.01" value={bulkPricePerUnit} onChange={(e) => setBulkPrice(e.target.value)} placeholder="0.00" />
           <InputField label="Cantidad mínima" icon={<Hash className="size-4" />} type="number" step="any" value={bulkMinQuantity} onChange={(e) => setBulkMin(e.target.value)} placeholder="0" />
@@ -409,66 +426,45 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
           </div>
           {allowSplit && (
             <>
-              <FieldRow label="Unidad por pieza">
-                <OptionSelect field={unitField} value={splitUnitId} onChange={setSplitUnitId} />
+              <FieldRow label="Unidad por pieza" htmlFor="product-split-unit">
+                <OptionSelect id="product-split-unit" field={unitField} value={splitUnitId} onChange={setSplitUnitId} />
               </FieldRow>
               <InputField label="Precio por pieza ($)" icon={<DollarSign className="size-4" />} type="number" step="0.01" value={splitPricePerUnit} onChange={(e) => setSplitPrice(e.target.value)} placeholder="0.00" />
             </>
           )}
         </>
-      ) : !isEdit ? (
-        <>
-          <FieldRow label="Variante inicial" full>
-            <p className="text-xs text-muted-foreground">
-              Crea una variante base para que el producto aparezca en el POS.
-            </p>
-          </FieldRow>
-          <InputField label="Nombre de variante" icon={<Type className="size-4" />} value={variantName} onChange={(e) => setVariantName(e.target.value)} />
-          <InputField label="Precio de venta ($)" icon={<DollarSign className="size-4" />} type="number" step="0.01" value={variantPrice} onChange={(e) => setVariantPrice(e.target.value)} />
-          <InputField label="Costo ($)" icon={<DollarSign className="size-4" />} type="number" step="0.01" value={variantCost} onChange={(e) => setVariantCost(e.target.value)} />
-          <InputField label="SKU" icon={<Hash className="size-4" />} value={variantSku} onChange={(e) => setVariantSku(e.target.value)} />
-          <InputField label="Código de barras" icon={<Barcode className="size-4" />} value={variantBarcode} onChange={(e) => setVariantBarcode(e.target.value)} />
-        </>
       ) : (
         <>
-          <FieldRow label={`Variantes (${variants.length})`} full>
-            <div className="space-y-2">
-              {variants.map((v) => (
-                <div key={v.id} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{v.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {v.sku ?? v.barcode ?? "—"} · {money(v.price)}
-                      {v.optionValues && v.optionValues.length > 0 && (
-                        <span className="ml-1 text-xs">
-                          · {v.optionValues.map((ov) => ov.value).join(", ")}
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                  <Badge variant={v.isActive ? "default" : "secondary"} className="hidden sm:inline-flex">
-                    {v.isActive ? "Activa" : "Inactiva"}
-                  </Badge>
-                  <Button type="button" variant="ghost" size="icon" className="size-8" onClick={() => setEditVariant(v)}>
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button type="button" variant="ghost" size="icon" className="size-8 text-destructive" onClick={() => removeVariant(v)}>
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" size="sm" disabled={vBusy} onClick={createVariant}>
-                {vBusy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-                Agregar variante
-              </Button>
-            </div>
-          </FieldRow>
+          {!isEdit && (
+            <>
+              <FieldRow label={hasOptions ? "Precio y costo base" : "Variante inicial"} full>
+                <p className="text-xs text-muted-foreground">
+                  {hasOptions
+                    ? "El precio y costo se aplican a todas las variantes generadas; luego podrás ajustarlos por variante."
+                    : "Crea una variante base para que el producto aparezca en el POS."}
+                </p>
+              </FieldRow>
+              <InputField label="Precio de venta ($)" icon={<DollarSign className="size-4" />} type="number" step="0.01" value={variantPrice} onChange={(e) => setVariantPrice(e.target.value)} />
+              <InputField label="Costo ($)" icon={<DollarSign className="size-4" />} type="number" step="0.01" value={variantCost} onChange={(e) => setVariantCost(e.target.value)} />
+              {!hasOptions && (
+                <>
+                  <InputField label="SKU" icon={<Hash className="size-4" />} value={variantSku} onChange={(e) => setVariantSku(e.target.value)} />
+                  <InputField label="Código de barras" icon={<Barcode className="size-4" />} value={variantBarcode} onChange={(e) => setVariantBarcode(e.target.value)} />
+                </>
+              )}
+            </>
+          )}
 
-          <FieldRow label="Opciones de variante (talla, color, contenido…)" full>
+          <FieldRow label="Opciones y variantes" full>
+            <p className="text-xs text-muted-foreground">
+              Ej: Tamaño (chico, mediano, grande), Sabor (fresa, limón). Se generarán las combinaciones automáticamente.
+            </p>
             <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
               {options.length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Define atributos como Talla o Color; luego asígnalos a cada variante.
+                  {isEdit
+                    ? "Define atributos como Talla o Color; luego asígnalos a cada variante."
+                    : "Añade opciones para generar variantes. Si no añades ninguna, el producto tendrá una sola variante."}
                 </p>
               )}
               {options.map((opt, i) => (
@@ -478,6 +474,7 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
                       value={opt.name}
                       onChange={(e) => updateOption(i, { name: e.target.value })}
                       placeholder="Ej. Talla"
+                      aria-label="Nombre de opción"
                       className="h-7"
                     />
                     <Button type="button" variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => removeOption(i)}>
@@ -491,6 +488,7 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
                           value={v.value}
                           onChange={(e) => updateValue(i, vi, e.target.value)}
                           placeholder="Valor"
+                          aria-label="Valor de opción"
                           className="h-6 w-24 border-0 bg-transparent px-1 text-xs focus-visible:ring-0"
                         />
                         <Button type="button" variant="ghost" size="icon" className="size-5 text-muted-foreground" onClick={() => removeValue(i, vi)}>
@@ -508,25 +506,52 @@ export function ProductsForm({ initial, onCancel, onSubmit }: ProductFormProps) 
                 <Button type="button" variant="outline" size="sm" onClick={addOption}>
                   <Plus className="size-4" /> Agregar opción
                 </Button>
-                <Button type="button" size="sm" variant="default" onClick={saveOptions} disabled={optionsBusy}>
-                  {optionsBusy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-                  Guardar opciones
-                </Button>
+                {isEdit && (
+                  <Button type="button" size="sm" variant="default" onClick={saveOptions} disabled={optionsBusy}>
+                    {optionsBusy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+                    Guardar opciones
+                  </Button>
+                )}
               </div>
             </div>
           </FieldRow>
+
+          {isEdit && (
+            <FieldRow label={`Variantes (${variants.length})`} full>
+              <div className="space-y-2">
+                {variants.map((v) => (
+                  <div key={v.id} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{v.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {v.sku ?? v.barcode ?? "—"} · {money(v.price)}
+                        {v.optionValues && v.optionValues.length > 0 && (
+                          <span className="ml-1 text-xs">
+                            · {v.optionValues.map((ov) => ov.value).join(", ")}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                    <Badge variant={v.isActive ? "default" : "secondary"} className="hidden sm:inline-flex">
+                      {v.isActive ? "Activa" : "Inactiva"}
+                    </Badge>
+                    <Button type="button" variant="ghost" size="icon" className="size-8" onClick={() => setEditVariant(v)}>
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon" className="size-8 text-destructive" onClick={() => removeVariant(v)}>
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" disabled={vBusy} onClick={createVariant}>
+                  {vBusy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                  Agregar variante
+                </Button>
+              </div>
+            </FieldRow>
+          )}
         </>
       )}
-
-      <div className="flex items-center justify-end gap-2 sm:col-span-2">
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={saving}>
-          {saving && <Loader2 className="size-4 animate-spin" />}
-          {isEdit ? "Guardar cambios" : "Crear producto"}
-        </Button>
-      </div>
 
       {editVariant && (
         <VariantEditDialog
@@ -553,13 +578,14 @@ function VariantEditDialog({
   onClose: () => void;
   onSave: (
     variantId: string,
-    data: { name?: string; sku?: string; price?: number; cost?: number; optionValueIds?: string[] }
+    data: { name?: string; sku?: string; price?: number; cost?: number; imageUrl?: string | null; optionValueIds?: string[] }
   ) => Promise<void>;
 }) {
   const [name, setName] = useState(variant.name);
   const [sku, setSku] = useState(variant.sku ?? "");
   const [price, setPrice] = useState(String(variant.price));
   const [cost, setCost] = useState(String(variant.cost));
+  const [imageUrl, setImageUrl] = useState(variant.imageUrl ?? "");
   const [selected, setSelected] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     for (const ov of variant.optionValues ?? []) map[ov.optionId] = ov.valueId;
@@ -579,6 +605,7 @@ function VariantEditDialog({
         sku: sku.trim() || undefined,
         price: Number(price) || 0,
         cost: Number(cost) || 0,
+        imageUrl: imageUrl || null,
         optionValueIds,
       });
       onClose();
@@ -611,20 +638,32 @@ function VariantEditDialog({
     >
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Nombre</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+            <Label htmlFor="v-name">Nombre</Label>
+            <Input id="v-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>SKU</Label>
-            <Input value={sku} onChange={(e) => setSku(e.target.value)} />
+            <Label htmlFor="v-sku">SKU</Label>
+            <Input id="v-sku" value={sku} onChange={(e) => setSku(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Precio ($)</Label>
-            <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <Label htmlFor="v-price">Precio ($)</Label>
+            <Input id="v-price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Costo ($)</Label>
-            <Input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
+            <Label htmlFor="v-cost">Costo ($)</Label>
+            <Input id="v-cost" type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>Imagen de la variante</Label>
+            <Attachment
+              value={imageUrl || null}
+              onChange={(v) => setImageUrl(v ?? "")}
+              upload={uploadFile}
+              accept={UPLOAD_IMAGE_ACCEPT}
+              label=""
+              widthClass="w-24"
+              heightClass="h-24"
+            />
           </div>
           {options.filter((o) => o.id && o.values.length > 0).length > 0 && (
             <div className="space-y-2 sm:col-span-2">

@@ -9,6 +9,7 @@ import {
   Eye,
   FileSpreadsheet,
   Loader2,
+  Package,
   Plus,
   Pencil,
   Search,
@@ -100,6 +101,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
   const debouncedQ = useDebounce(q);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
+  const [formSaving, setFormSaving] = useState(false);
   const [excelBusy, setExcelBusy] = useState<"export" | "import" | null>(null);
   const [preview, setPreview] = useState<ExcelPreviewResult | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -151,6 +153,21 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
 
   const productsColumns = useMemo<ColumnDef<Record<string, unknown>, unknown>[]>(
     () => [
+      {
+        id: "image",
+        header: "",
+        cell: ({ row }) => {
+          const img = String(row.original.imageUrl ?? "");
+          return img ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={img} alt="" className="size-10 rounded-md object-cover" />
+          ) : (
+            <span className="flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+              <Package className="size-4" />
+            </span>
+          );
+        },
+      },
       { id: "name", header: "Nombre", accessorKey: "name" },
       {
         id: "categoryName",
@@ -474,21 +491,37 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         title={editing ? "Editar" : "Nuevo"}
         description={meta.title}
         className="sm:max-w-xl"
+        footerClassName="gap-2"
+        footer={
+          <>
+            <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)} disabled={formSaving}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={isProducts(moduleKey) ? "product-form" : "crud-form"}
+              disabled={formSaving}
+            >
+              {formSaving && <Loader2 className="size-4 animate-spin" />}
+              {editing ? "Guardar cambios" : isProducts(moduleKey) ? "Crear producto" : "Crear"}
+            </Button>
+          </>
+        }
       >
           {isProducts(moduleKey) ? (
             <ProductsForm
               key={editing ? String(editing.id) : "new"}
               initial={editing}
-              onCancel={() => setDialogOpen(false)}
               onSubmit={handleSubmit}
+              onSavingChange={setFormSaving}
             />
           ) : config ? (
             <CrudForm
               key={editing ? String(editing.id) : "new"}
               config={config}
               initial={editing}
-              onCancel={() => setDialogOpen(false)}
               onSubmit={handleSubmit}
+              onSavingChange={setFormSaving}
             />
           ) : null}
           {loading && <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />}

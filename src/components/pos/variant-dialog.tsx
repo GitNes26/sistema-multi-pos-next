@@ -111,14 +111,22 @@ export function VariantDialog({
                   onClick={() => pick(v)}
                   onMouseEnter={() => setHighlighted(i)}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-xl border p-3 text-left transition",
+                    "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition",
                     out
                       ? "cursor-not-allowed opacity-50"
                       : "hover:bg-muted",
                     highlighted === i && "border-primary bg-muted ring-1 ring-primary"
                   )}
                 >
-                  <span className="min-w-0">
+                  <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/60">
+                    {v.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={v.imageUrl} alt={v.name} className="size-full object-cover" />
+                    ) : (
+                      <Layers className="size-5 text-muted-foreground" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">
                       {v.name === "Default" ? "Estándar" : v.name}
                     </span>

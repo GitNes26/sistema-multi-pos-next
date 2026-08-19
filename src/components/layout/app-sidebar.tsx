@@ -4,6 +4,7 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
+import packageJson from "../../../package.json";
 
 import { cn } from "@/lib/utils";
 import { isNavActive, type NavItem, type NavSection } from "@/lib/nav";
@@ -121,7 +122,7 @@ export function AppSidebar({ sections }: AppSidebarProps) {
 
       <div className="shrink-0 border-t p-3">
         <p className={cn("text-[0.65rem] text-sidebar-foreground/40", !expanded && "hidden")}>
-          Sistema Multi-POS v0.1
+          Sistema Multi-POS v{packageJson.version}
         </p>
       </div>
     </div>

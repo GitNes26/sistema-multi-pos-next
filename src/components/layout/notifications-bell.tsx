@@ -1,10 +1,10 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import * as React from "react"
+import Link from "next/link"
+import { motion, AnimatePresence } from "framer-motion"
+import { formatDistanceToNow } from "date-fns"
+import { es } from "date-fns/locale"
 import {
   AlertTriangle,
   Bell,
@@ -13,31 +13,38 @@ import {
   ClipboardList,
   ShoppingCart,
   Sparkles,
-} from "lucide-react";
+} from "lucide-react"
 
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useNotificationStore, type AppNotification } from "@/stores/notifications-store";
-import { useNotificationSse } from "@/hooks/use-notifications";
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  useNotificationStore,
+  type AppNotification,
+} from "@/stores/notifications-store"
+import { useNotificationSse } from "@/hooks/use-notifications"
 
 const ICONS: Record<string, React.ReactNode> = {
   "sale-complete": <ShoppingCart className="size-3.5" />,
   "low-stock": <AlertTriangle className="size-3.5" />,
   "order-received": <ClipboardList className="size-3.5" />,
-};
+}
 
 // FASE 5.4 — Campana de notificaciones: badge animado + popover + SSE.
 export function NotificationsBell() {
-  useNotificationSse();
+  useNotificationSse()
 
-  const items = useNotificationStore((s) => s.items);
-  const unread = useNotificationStore((s) => s.unread);
-  const connected = useNotificationStore((s) => s.connected);
-  const markRead = useNotificationStore((s) => s.markRead);
-  const markAllRead = useNotificationStore((s) => s.markAllRead);
-  const [open, setOpen] = React.useState(false);
+  const items = useNotificationStore((s) => s.items)
+  const unread = useNotificationStore((s) => s.unread)
+  const connected = useNotificationStore((s) => s.connected)
+  const markRead = useNotificationStore((s) => s.markRead)
+  const markAllRead = useNotificationStore((s) => s.markAllRead)
+  const [open, setOpen] = React.useState(false)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -95,7 +102,10 @@ export function NotificationsBell() {
             <span className="text-sm font-semibold">Notificaciones</span>
             <span className="flex items-center gap-1 text-[0.65rem] text-muted-foreground">
               <span
-                className={cn("size-1.5 rounded-full", connected ? "bg-emerald-500" : "bg-amber-500")}
+                className={cn(
+                  "size-1.5 rounded-full",
+                  connected ? "bg-emerald-500" : "bg-amber-500"
+                )}
               />
               {connected ? "en vivo" : "demo"}
             </span>
@@ -124,7 +134,12 @@ export function NotificationsBell() {
           ) : (
             <ul className="divide-y">
               {items.map((n) => (
-                <NotificationRow key={n.id} n={n} onMark={markRead} onNavigate={() => setOpen(false)} />
+                <NotificationRow
+                  key={n.id}
+                  n={n}
+                  onMark={markRead}
+                  onNavigate={() => setOpen(false)}
+                />
               ))}
             </ul>
           )}
@@ -136,14 +151,17 @@ export function NotificationsBell() {
             : "Sin conexión SSE: reintentando…"}
         </div>
         <div className="border-t px-3 py-1.5 text-center">
-          <Link href="/admin/notifications" className="inline-flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-foreground/80 transition-colors hover:bg-accent">
+          <Link
+            href="/admin/notifications"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-foreground/80 transition-colors hover:bg-accent"
+          >
             <Bell className="size-3.5" />
             Ver todas las notificaciones
           </Link>
         </div>
       </PopoverContent>
     </Popover>
-  );
+  )
 }
 
 function NotificationRow({
@@ -151,16 +169,18 @@ function NotificationRow({
   onMark,
   onNavigate,
 }: {
-  n: AppNotification;
-  onMark: (id: string) => void;
-  onNavigate?: () => void;
+  n: AppNotification
+  onMark: (id: string) => void
+  onNavigate?: () => void
 }) {
   const content = (
     <>
       <span
         className={cn(
           "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg",
-          n.read ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+          n.read
+            ? "bg-muted text-muted-foreground"
+            : "bg-primary/10 text-primary"
         )}
       >
         {ICONS[n.icon ?? ""] ?? <Bell className="size-3.5" />}
@@ -168,7 +188,9 @@ function NotificationRow({
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="truncate text-sm font-medium">{n.title}</span>
-          {!n.read && <span className="size-1.5 shrink-0 rounded-full bg-primary" />}
+          {!n.read && (
+            <span className="size-1.5 shrink-0 rounded-full bg-primary" />
+          )}
         </span>
         {n.description && (
           <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">
@@ -183,12 +205,12 @@ function NotificationRow({
         </time>
       </span>
     </>
-  );
+  )
 
   const rowClass = cn(
     "flex cursor-pointer items-start gap-2.5 px-3 py-2.5 transition-colors hover:bg-accent/60",
     !n.read && "bg-primary/[0.03]"
-  );
+  )
 
   if (n.href) {
     return (
@@ -197,19 +219,19 @@ function NotificationRow({
           href={n.href}
           className={rowClass}
           onClick={() => {
-            onMark(n.id);
-            onNavigate?.();
+            onMark(n.id)
+            onNavigate?.()
           }}
         >
           {content}
         </Link>
       </li>
-    );
+    )
   }
 
   return (
     <li className={rowClass} onClick={() => onMark(n.id)}>
       {content}
     </li>
-  );
+  )
 }

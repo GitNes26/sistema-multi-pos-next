@@ -12,19 +12,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable } from "@/components/base/data-table";
+import { FormCombobox } from "@/components/base/form-combobox";
+import { DatePicker } from "@/components/base/date-picker";
+import { CrudCreateDialog } from "@/components/admin/crud/crud-create-dialog";
 import {
   crudApi,
   reportsApi,
@@ -38,7 +33,7 @@ import {
 import { swalError, swalToast } from "@/lib/swal";
 import { money } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 // FASE 10.2/10.3/10.6/10.7/10.8 — Reportes con filtros avanzados y exportación.
 
@@ -74,6 +69,20 @@ interface ReportsFilters {
 
 const EMPTY_FILTERS: ReportsFilters = { from: "", to: "", locationId: "", employeeId: "", cashRegisterId: "", status: "" };
 
+function isoToLocalDate(s: string): Date | null {
+  if (!s) return null;
+  const [y, m, d] = s.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+function toISODate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
   const [tab, setTab] = useState<ReportTab>("sales");
   const [filters, setFilters] = useState<ReportsFilters>(EMPTY_FILTERS);
@@ -83,6 +92,7 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
     registers: [],
   });
   const [busy, setBusy] = useState<{ tab: ReportTab; format: "xlsx" | "pdf" } | null>(null);
+  const [createModule, setCreateModule] = useState<string | null>(null);
 
   // ── Datos por tab ──
   const [sales, setSales] = useState<SalesReportRow[]>([]);
@@ -177,7 +187,6 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
   };
 
   const hasActiveFilters = filters.from || filters.to || filters.locationId || filters.employeeId || filters.cashRegisterId || filters.status;
-  const chip = (active: boolean) => (active ? "bg-primary text-primary-foreground" : "");
 
   if (!canView) {
   return (
@@ -221,53 +230,50 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
             </TabsList>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Input
-                type="date"
-                value={filters.from}
-                onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
-                className="h-8 w-40"
-                aria-label="Desde"
+              <DatePicker
+                value={isoToLocalDate(filters.from)}
+                onChange={(d) => setFilters((f) => ({ ...f, from: d ? toISODate(d) : "" }))}
+                onClear={() => setFilters((f) => ({ ...f, from: "" }))}
+                placeholder="Desde"
+                className="w-44"
               />
-              <Input
-                type="date"
-                value={filters.to}
-                onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
-                className="h-8 w-40"
-                aria-label="Hasta"
+              <DatePicker
+                value={isoToLocalDate(filters.to)}
+                onChange={(d) => setFilters((f) => ({ ...f, to: d ? toISODate(d) : "" }))}
+                onClear={() => setFilters((f) => ({ ...f, to: "" }))}
+                placeholder="Hasta"
+                className="w-44"
               />
-              <Select value={filters.locationId} onValueChange={(v) => setFilters((f) => ({ ...f, locationId: v }))}>
-                <SelectTrigger className={cn("h-8 w-44 text-xs", chip(!!filters.locationId))}>
-                  <SelectValue placeholder="Sucursal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all">Todas las sucursales</SelectItem>
-                  {options.locations.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filters.employeeId} onValueChange={(v) => setFilters((f) => ({ ...f, employeeId: v }))}>
-                <SelectTrigger className={cn("h-8 w-44 text-xs", chip(!!filters.employeeId))}>
-                  <SelectValue placeholder="Empleado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all">Todos los empleados</SelectItem>
-                  {options.employees.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filters.cashRegisterId} onValueChange={(v) => setFilters((f) => ({ ...f, cashRegisterId: v }))}>
-                <SelectTrigger className={cn("h-8 w-44 text-xs", chip(!!filters.cashRegisterId))}>
-                  <SelectValue placeholder="Caja" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all">Todas las cajas</SelectItem>
-                  {options.registers.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormCombobox
+                options={options.locations.map((l) => ({ value: l.id, label: l.name }))}
+                value={filters.locationId || null}
+                onChange={(v) => setFilters((f) => ({ ...f, locationId: v }))}
+                onClear={() => setFilters((f) => ({ ...f, locationId: "" }))}
+                onSync={loadOptions}
+                onCreate={() => setCreateModule("locations")}
+                placeholder="Todas las sucursales"
+                className="w-44"
+              />
+              <FormCombobox
+                options={options.employees.map((e) => ({ value: e.id, label: e.name }))}
+                value={filters.employeeId || null}
+                onChange={(v) => setFilters((f) => ({ ...f, employeeId: v }))}
+                onClear={() => setFilters((f) => ({ ...f, employeeId: "" }))}
+                onSync={loadOptions}
+                onCreate={() => setCreateModule("employees")}
+                placeholder="Todos los empleados"
+                className="w-44"
+              />
+              <FormCombobox
+                options={options.registers.map((r) => ({ value: r.id, label: r.name }))}
+                value={filters.cashRegisterId || null}
+                onChange={(v) => setFilters((f) => ({ ...f, cashRegisterId: v }))}
+                onClear={() => setFilters((f) => ({ ...f, cashRegisterId: "" }))}
+                onSync={loadOptions}
+                onCreate={() => setCreateModule("cashRegisters")}
+                placeholder="Todas las cajas"
+                className="w-44"
+              />
               {hasActiveFilters && (
                 <Button variant="ghost" size="sm" className="h-8" onClick={() => setFilters(EMPTY_FILTERS)}>
                   Limpiar
@@ -286,6 +292,29 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                   { label: "Puntos ganados", value: String(Math.round(salesTotals.pointsEarned)) },
                 ]}
               />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Ventas por día</CardTitle>
+                  <CardDescription>Total vendido por fecha</CardDescription>
+                </CardHeader>
+                <CardContent className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={salesTrendData(sales)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                      <XAxis dataKey="date" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
+                      <Tooltip formatter={(v) => money(Number(v ?? 0))} />
+                      <Area type="monotone" dataKey="total" name="Ventas" stroke="#6366f1" strokeWidth={2} fill="url(#salesFill)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
               <DataTable
                 columns={salesColumns}
                 data={sales}
@@ -308,6 +337,23 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                   { label: "Esperado total", value: money(cashTotals.expectedCash) },
                 ]}
               />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Ventas por caja</CardTitle>
+                  <CardDescription>Total por sesión de caja</CardDescription>
+                </CardHeader>
+                <CardContent className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={cashChartData(cash)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
+                      <Tooltip formatter={(v) => money(Number(v ?? 0))} />
+                      <Bar dataKey="totalSales" name="Ventas" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
               <DataTable
                 columns={cashColumns}
                 data={cash}
@@ -336,24 +382,27 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                     <CardTitle className="text-base">Pedidos por estado</CardTitle>
                     <CardDescription>Distribución actual</CardDescription>
                   </CardHeader>
-                  <CardContent className="h-48">
-                    <PieChart>
-                      <Pie
-                        data={ordersByStatus.map((s) => ({ name: statusLabel(s.status), value: s.count }))}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={70}
-                        paddingAngle={2}
-                      >
-                        {ordersByStatus.map((s, i) => (
-                          <Cell key={i} fill={STATUS_COLORS[s.status] ?? "#94a3b8"} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
+                  <CardContent className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={ordersByStatus.map((s) => ({ name: statusLabel(s.status), value: s.count }))}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={80}
+                          paddingAngle={2}
+                        >
+                          {ordersByStatus.map((s, i) => (
+                            <Cell key={i} fill={STATUS_COLORS[s.status] ?? "#94a3b8"} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </CardContent>
                 </Card>
               </div>
@@ -371,13 +420,23 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
             </TabsContent>
 
             <TabsContent value="customers" className="mt-4 space-y-4">
-              <BarChart data={topCustomersChartData(customers)} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
-                <Bar dataKey="totalSpent" name="Total" fill="#6366f1" radius={[4, 4, 0, 0]} />
-              </BarChart>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Clientes con más compras</CardTitle>
+                  <CardDescription>Top 10 por total gastado</CardDescription>
+                </CardHeader>
+                <CardContent className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topCustomersChartData(customers)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
+                      <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
+                      <Bar dataKey="totalSpent" name="Total" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
               <DataTable
                 columns={customersColumns}
                 data={customers}
@@ -408,6 +467,23 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
           </Tabs>
         </CardContent>
       </Card>
+
+      {createModule && (
+        <CrudCreateDialog
+          module={createModule}
+          onClose={() => setCreateModule(null)}
+          onCreated={async (record) => {
+            const targetModule = createModule;
+            setCreateModule(null);
+            await loadOptions();
+            const id = String(record.id ?? "");
+            if (id) {
+              const key = targetModule === "employees" ? "employeeId" : targetModule === "cashRegisters" ? "cashRegisterId" : "locationId";
+              setFilters((f) => ({ ...f, [key]: id }));
+            }
+          }}
+        />
+      )}
     </>
   );
 }
@@ -448,6 +524,31 @@ function SummaryCards({ items }: { items: { label: string; value: string; accent
 
 function topCustomersChartData(rows: CustomersReportRow[]) {
   return rows.slice(0, 10).map((r) => ({ name: r.fullName, totalSpent: r.totalSpent }));
+}
+
+function salesTrendData(rows: SalesReportRow[]) {
+  const byDay = new Map<string, { total: number; count: number }>();
+  for (const r of rows) {
+    const day = r.date.slice(0, 10);
+    const cur = byDay.get(day) ?? { total: 0, count: 0 };
+    cur.total += r.total;
+    cur.count += 1;
+    byDay.set(day, cur);
+  }
+  return [...byDay.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([day, v]) => ({
+      date: new Date(`${day}T00:00:00`).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }),
+      total: Math.round(v.total * 100) / 100,
+    }));
+}
+
+function cashChartData(rows: CashReportRow[]) {
+  return rows.map((r) => ({
+    name: r.registerName ?? r.locationName,
+    totalSales: r.totalSales,
+    expected: r.expectedCash,
+  }));
 }
 
 const salesColumns = [

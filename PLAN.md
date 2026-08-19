@@ -1546,6 +1546,25 @@ PERMISOS (23+):
 └── supervisor.approve  Aprobar acciones (opcional, configurable)
 ```
 
+### 7.7 Consideración — Sesión activa, re-validación y logout
+
+- Para mostrar el sistema (POS/Admin o Portal) SIEMPRE debe existir un usuario logeado y autenticado; si no, se redirige automáticamente al login (o a la página principal según el rol).
+- La protección es en dos capas: `middleware.ts` (rápido, decodifica el JWT sin BD) y los guards/layouts (`getServerSession`).
+- La sesión es **JWT (estateless)**: el token no se guarda en la BD. Por eso el callback `jwt` **re-valida contra la BD** (throttle 60s) que el `User` siga existiendo y con `isActive = true`; si no, marca `token.invalid` y el callback `session` devuelve `user = null` (sesión inválida).
+- `logout()` (`src/lib/auth/logout.ts`) es la ÚNICA forma de cerrar sesión: elimina las credenciales/cookies y cierra la sesión de NextAuth. Si la sesión se invalida (usuario desactivado/eliminado), el flujo fuerza el logout → redirección al login.
+- NO llamar `signOut()` directamente en los componentes; usar siempre `logout()`.
+
+### 7.8 Consideración — Revocación de tokens/accesos (equivalente a `personal_access_tokens` de Laravel)
+
+- Objetivo: en Laravel la tabla `personal_access_tokens` liga cada token con su usuario. Al cerrar sesión se elimina ese token; al cambiar contraseña (propia o por admin) se eliminan **todos** los tokens del usuario. Aquí debe cumplirse lo mismo.
+- En Node/NextAuth hay dos equivalencias:
+  1. **Sesiones en base de datos (recomendado, más fiel a Laravel)**: `session.strategy = "database"` + adapter Prisma → tablas `Session` (`sessionToken` + `userId`) y `Account`. Cerrar sesión borra la fila; cambiar contraseña hace `session.deleteMany({ where: { userId } })`. Permite revocar por dispositivo y listar sesiones activas.
+  2. **JWT + versión de token**: campo `tokenVersion` en `User`, embebido en el JWT al iniciar sesión; al cambiar contraseña se incrementa `tokenVersion`, invalidando todos los JWT previos. No permite revocar un solo dispositivo.
+- Reglas a cumplir:
+  - Al cerrar sesión → eliminar el token/sesión en el servidor (no solo borrar la cookie).
+  - Al cambiar contraseña (el propio usuario o un administrador) → eliminar TODOS los tokens/sesiones de ese usuario.
+- Estado actual: sesión JWT **stateless**; `logout()` solo borra la cookie (no revoca en BD). Pendiente de implementar la revocación (migrar a sesiones en BD o `tokenVersion`).
+
 ---
 
 ## 8. SISTEMA DE APARIENCIA
@@ -1777,14 +1796,19 @@ Sección Apariencia (/settings/appearance):
 - ✅ Selector de tipo: "Estándar" / "A granel" (al crear, cambia formulario; bloqueado en edición)
 - ✅ Campos comunes: nombre, descripción, categoría (combobox), impuesto, imagen (URL), isActive, trackInventory
 - ✅ ── Campos para ESTÁNDAR ──
-  -  ✅ Variante inicial al crear + gestor de variantes al editar (crear/activar/eliminar; API `/api/crud/products/[id]/variants`)
-  -  ✅ Opciones de variante (talla, color, contenido, etc.) — API `GET/PUT /api/crud/products/[id]/options` + `optionValueIds` en crear/editar variante
+  - ✅ **Opciones y variantes (combinaciones automáticas)**: al crear se definen grupos de opciones (ej. Tamaño: chico, mediano, grande; Sabor: fresa, limón) y el backend genera automáticamente las **combinaciones cartesianas** como variantes (ej. "Chico · Fresa"), cada una con su `optionValues` asignado y el precio/costo base del producto
+  - ✅ Precio/costo base: se aplican a todas las variantes generadas (ajustables por variante luego)
+  - ✅ SKU / código de barras solo cuando **NO** hay opciones (producto simple con variante "Default")
+  - ✅ Gestor de variantes al editar (crear/editar/eliminar; API `/api/crud/products/[id]/variants`)
+  - ✅ Opciones de variante (talla, color, contenido, etc.) — API `GET/PUT /api/crud/products/[id]/options`
+  - ✅ Imagen por variante (`ProductVariant.imageUrl`, vía `Attachment`); en POS, si una variante no tiene imagen, se usa la imagen del producto (`v.imageUrl ?? p.imageUrl`)
+  - ✅ Columna de imagen al inicio de la lista/DataTable de productos
 - ✅ ── Campos para A GRANEL ──
-  -  ✅ Unidad de medida (combobox del catálogo de unidades)
-  -  ✅ Precio por unidad de medida
-  -  ✅ Cantidad mínima de venta / Step / Cantidad máxima
-  -  ✅ Permitir venta fraccionada (allow_split)
-  -  ✅ Unidad alternativa (si allow_split) + Precio por unidad alternativa
+  - ✅ Unidad de medida (combobox del catálogo de unidades)
+  - ✅ Precio por unidad de medida
+  - ✅ Cantidad mínima de venta / Step / Cantidad máxima
+  - ✅ Permitir venta fraccionada (allow_split)
+  - ✅ Unidad alternativa (si allow_split) + Precio por unidad alternativa
 - ✅ Imagen (Attachment) — componente `Attachment` (drag & drop) + `/api/uploads` a `public/uploads/<orgId>`; usado en productos, variantes, categorías, clientes, empleados, sucursales, CEDIS y promociones
 - ✅ Importación masiva (Excel .xlsx con plantilla; categoría por nombre, unidad por abreviatura; crea variante inicial estándar o granel)
 - ✅ Exportación (Excel .xlsx)
@@ -2286,6 +2310,7 @@ Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 - **Ligadura label ↔ input**: todo control debe estar asociado a su label con `htmlFor`/`id` (mismo valor) para que al hacer clic en el texto el control reaccione. Aplica **especialmente** a `Switch`, `Checkbox` y `RadioGroupItem`: el texto (título y descripción) debe ser un `<label htmlFor={id} className="cursor-pointer">` y el control llevar `id={id}`. Para `Switch`/`Checkbox` (botones) usar asociación explícita `htmlFor`+`id` (no anidar el control dentro del `<label>`).
 - Campo obligatorio: indicar con `*` al final del nombre (prop `required` en `InputGroupField`/`FormCombobox`)
 - Inputs de búsqueda/filtro: usar `type="search"` para habilitar el limpiado con la tecla Esc
+- Fechas → `DatePicker` (DD/MM/YYYY); fecha+hora → `DateTimePicker`. NUNCA `<input type="date">` nativo
 - Listeners globales de teclado (p.ej. el `Numpad` del POS) deben ignorar los eventos cuando el foco está en un `input`/`textarea`/`select`/`contenteditable`, para no robar las teclas al campo (referencia, puntos, etc.)
 - NUNCA usar `<select>` nativo → siempre `FormCombobox` de shadcn/ui (`src/components/base/form-combobox.tsx`)
 - Formularios con react-hook-form + yup
@@ -2300,12 +2325,14 @@ Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 
 ### Selects (Combobox)
 
-- NUNCA select nativo
+- NUNCA select nativo → siempre `FormCombobox` (`src/components/base/form-combobox.tsx`)
 - Siempre con buscador integrado
-- Botón sincronizar (RefreshCw) a la derecha
-- Botón agregar (Plus) a la derecha (si tiene permiso)
+- **Opciones de catálogo** (cargadas de un módulo CRUD): botón **Sincronizar** (`RefreshCw`, recarga las opciones) + botón **Agregar** (`Plus`, abre el `CrudCreateDialog` con el `CrudForm` completo; al guardar selecciona el nuevo registro y recarga las opciones)
+- **Opciones fijas** (hardcodeadas, que NO pertenecen a catálogo): NO mostrar "Agregar" ni "Sincronizar" (solo búsqueda + selección)
+- `OptionSelect` (`src/components/admin/crud/option-select.tsx`): `FormCombobox` que carga las opciones desde `optionsModule` y abre el modal de creación; usarlo para los campos `type: "select"` del CRUD y en el formulario de productos
+- `CrudCreateDialog` (`src/components/admin/crud/crud-create-dialog.tsx`): diálogo reutilizable para crear un registro de un módulo (renderiza `CrudForm`); su `formId` es único por instancia (`React.useId()`), lo que permite **anidar** diálogos sin colisión: un `FormCombobox` dentro de un `CrudForm` puede abrir otro `CrudCreateDialog`, y así sucesivamente (p. ej. Caja → Sucursal, o Categoría → Categoría padre)
 - Sync: animate-spin + disabled durante carga
-- Create: abre modal, al cerrar selecciona el nuevo registro
+- `CrudForm` usa `formId` (default `crud-form`) para ligar el botón "submit" del footer del diálogo con su `<form>` sin colisionar cuando hay formularios anidados
 
 ### Tablas (DataTable)
 
@@ -2326,7 +2353,7 @@ Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 - Estructura fija de 3 partes: Header fijo, Body con scroll, Footer fijo
 - **Componente base `DialogComponent`** (`@/components/ui/dialog`): encapsula la estructura fija y se usa en TODO el sistema. Props: `open`, `onOpenChange`, `title`, `icon?`, `description?`, `className?` (ancho), `bodyClassName?`, `footer?`, `footerClassName?`, `showCloseButton?`, `children` (cuerpo). No se usa `Dialog`/`DialogContent`/`DialogHeader`/`DialogBody`/`DialogFooter` sueltos en las vistas.
 - Header: icono + título + subtítulo (`description`)
-- Footer: botones de acción (confirmar, cancelar)
+- Footer: botones de acción (confirmar, cancelar, etc)
 - Más anchos (max-w-2xl o max-w-3xl) vía `className`
 - El diálogo nunca excede la altura visible de la pantalla: `DialogContent` usa `max-h-[calc(100vh-2rem)]` y layout flex; el **header** y el **footer** quedan siempre visibles (`shrink-0`) y solo el **body** (`DialogBody`) se vuelve scrolleable al llegar al límite de altura (`vh`)
 
@@ -2416,25 +2443,37 @@ Cada empresa puede configurar en settings si los sonidos están activados o no.
 
 ## DEPLOYMENT (VPS Hostinger + Dokploy)
 
-```
-1. Clonar repo en VPS
-2. Configurar .env con variables de producción:
-   - DATABASE_URL (MySQL connection string)
-   - NEXTAUTH_SECRET (generado con openssl rand -base64 32)
-   - NEXTAUTH_URL (https://tu-dominio.com)
-3. Dockerfile multi-stage:
-   - Stage 1: npm install + prisma generate + prisma migrate deploy
-   - Stage 2: npm run build
-   - Stage 3: npm run start (Node.js server)
-4. Configurar en Dokploy:
-   - Puerto: 3000
-   - Variables de entorno
-   - Dominio
-   - SSL (Let's Encrypt)
-5. Dominios:
-   - app.tudominio.com → POS/Admin
-   - portal.tudominio.com → Portal de clientes (optional, or same domain)
-```
+La app es **monolito full-stack** (Next.js): el front (React) y el back (API routes `/api/*`) corren en el mismo servidor Node; Prisma conecta a MySQL. Se despliega **una sola imagen Docker**.
+
+### Variables de entorno requeridas
+
+- `DATABASE_URL` — conexión MySQL (ej. `mysql://user:pass@host:3306/multi_pos`)
+- `NEXTAUTH_URL` — `https://tu-dominio.com`
+- `NEXTAUTH_SECRET` — `openssl rand -base64 32`
+- `NEXT_PUBLIC_APP_URL` — opcional (webhooks de pagos; cae a `NEXTAUTH_URL`)
+- `NEXT_PUBLIC_WHATSAPP_NUMBER` / `NEXT_PUBLIC_WHATSAPP_MESSAGE` — opcional (landing)
+
+### Archivos
+
+- `Dockerfile` — multi-stage: `deps` (`npm ci`) → `build` (`prisma generate` + `next build`) → `runner` (copias `.next`, `node_modules`, `public`, `prisma`; `CMD` = `prisma migrate deploy && npm run start`)
+- `.dockerignore` — excluye `node_modules`, `.next`, `.env*`, `.git`, etc.
+- `docker-compose.yml` — referencia opcional (app + MySQL) para probar local o desplegar como "Service"
+
+### Pasos en Dokploy
+
+1. **Base de datos**: Dokploy → *Databases* → crear **MySQL/MariaDB**. Anotar host interno (`<db>`), puerto 3306, usuario y contraseña.
+2. **Aplicación**: Dokploy → *Applications* → crear desde el repo (rama). Dokploy detecta el `Dockerfile` automáticamente.
+3. **Variables de entorno**: configurar `DATABASE_URL` apuntando a la BD creada, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, etc.
+4. **Volumen persistente para subidas**: montar un volumen en `/app/public/uploads` (las imágenes de `Attachment` se guardan ahí; sin volumen se pierden al redeployar).
+5. **Puerto/Dominio**: exponer 3000, agregar dominio y activar SSL (Let's Encrypt).
+6. **Desplegar**: el contenedor ejecuta `prisma migrate deploy` (aplica migraciones) y arranca el server.
+
+### Notas
+
+- `prisma migrate deploy` corre al arrancar (aplica migraciones pendientes; no-op si no hay).
+- Migraciones: `prisma/migrations` (Prisma Migrate). No usar `db push` en producción.
+- `serverExternalPackages: ["pdfkit"]` en `next.config.ts` es necesario para que pdfkit encuentre sus fuentes en el contenedor.
+- Dominios: `app.tudominio.com` → POS/Admin; `portal.tudominio.com` → Portal de clientes (opcional, mismo server).
 
 ---
 

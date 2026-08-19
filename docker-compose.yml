@@ -1,0 +1,41 @@
+# Composición de referencia (opcional): app + MySQL.
+# En Dokploy normalmente se usa una Base de datos administrada + la app desde el Dockerfile.
+# Este archivo sirve para probar localmente o desplegar todo como un "Service" (compose).
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: multi_pos
+      MYSQL_ROOT_PASSWORD: cambia-esta-clave
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pcambia-esta-clave"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: mysql://root:cambia-esta-clave@db:3306/multi_pos
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: cambia-esto-por-un-secreto-largo
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      # NEXT_PUBLIC_WHATSAPP_NUMBER: "5215500000000"
+      # NEXT_PUBLIC_WHATSAPP_MESSAGE: "Me%20interesa%20tu%20Multi-POS"
+    volumes:
+      - uploads:/app/public/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  uploads:

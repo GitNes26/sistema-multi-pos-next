@@ -1,10 +1,12 @@
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth/options";
 import { getAppSettings } from "@/lib/db/app-settings";
 import { prisma } from "@/lib/db";
 import { AppearanceSync } from "@/components/appearance/appearance-sync";
 import { Splash } from "@/components/appearance/splash";
 import { PortalShell } from "@/components/portal/portal-shell";
+import { SessionGuard } from "@/components/auth/session-guard";
 
 export default async function PortalShopLayout({
   children,
@@ -12,7 +14,10 @@ export default async function PortalShopLayout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
-  const organizationId = session?.user?.organizationId ?? null;
+  if (!session?.user) {
+    redirect("/portal/auth/login");
+  }
+  const organizationId = session.user.organizationId ?? null;
   const tenant = organizationId ? await getAppSettings(organizationId) : null;
 
   let storeName = "Mi Tienda";
@@ -25,15 +30,17 @@ export default async function PortalShopLayout({
   }
 
   return (
-    <>
-      <AppearanceSync tenant={tenant} />
-      <Splash delay={500} />
-      <PortalShell
-        storeName={storeName}
-        user={{ name: session?.user?.name, image: session?.user?.image }}
-      >
-        {children}
-      </PortalShell>
-    </>
+    <SessionGuard loginPath="/portal/auth/login">
+      <>
+        <AppearanceSync tenant={tenant} />
+        <Splash delay={500} />
+        <PortalShell
+          storeName={storeName}
+          user={{ name: session?.user?.name, image: session?.user?.image }}
+        >
+          {children}
+        </PortalShell>
+      </>
+    </SessionGuard>
   );
 }

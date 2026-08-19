@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
 import { ChevronRight, CreditCard, Heart, LogOut, Mail, MapPin, Phone, Sparkles, User } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
+import { logout } from "@/lib/auth/logout";
 import type { PortalCustomer } from "@/lib/portal/server";
 import { swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
@@ -128,7 +128,7 @@ export function ProfileClient() {
       <Button
         variant="outline"
         className="w-full"
-        onClick={() => void signOut({ callbackUrl: "/auth/login" })}
+        onClick={() => void logout()}
       >
         <LogOut className="size-4" /> Cerrar sesión
       </Button>

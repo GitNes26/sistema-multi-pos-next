@@ -6,7 +6,6 @@ import { Check, ChevronsUpDown, Loader2, Plus, RefreshCw, X } from "lucide-react
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Command as CommandPrimitive } from "cmdk"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { InfoTooltip } from "@/components/base/info-tooltip"
@@ -24,7 +23,9 @@ export interface FormComboboxProps {
   onChange?: (value: string) => void
   onClear?: () => void
   onSync?: () => Promise<void> | void
-  onCreate?: (name: string) => Promise<ComboboxOption | string | void>
+  /** Abre un modal externo (CRUD completo) para crear un nuevo registro. */
+  onCreate?: () => void
+  id?: string
   label?: string
   helper?: React.ReactNode
   required?: boolean
@@ -47,6 +48,7 @@ export function FormCombobox({
   onClear,
   onSync,
   onCreate,
+  id,
   label,
   helper,
   required,
@@ -63,9 +65,6 @@ export function FormCombobox({
 }: FormComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
-  const [creating, setCreating] = React.useState(false)
-  const [newValue, setNewValue] = React.useState("")
-  const [creatingLoading, setCreatingLoading] = React.useState(false)
   const [syncing, setSyncing] = React.useState(false)
 
   const selected = options.find((o) => o.value === value)
@@ -77,25 +76,6 @@ export function FormCombobox({
       `${o.label} ${o.meta ?? ""}`.toLowerCase().includes(q)
     )
   }, [options, search])
-
-  const handleCreate = async () => {
-    const name = newValue.trim()
-    if (!name || creatingLoading) return
-    setCreatingLoading(true)
-    try {
-      const result = await onCreate?.(name)
-      let created = result as ComboboxOption | string | void
-      if (typeof created === "string") created = { value: created, label: name }
-      if (created && "value" in created) {
-        onChange?.(created.value)
-        setOpen(false)
-      }
-      setNewValue("")
-      setCreating(false)
-    } finally {
-      setCreatingLoading(false)
-    }
-  }
 
   const handleSync = async () => {
     if (syncing) return
@@ -125,6 +105,7 @@ export function FormCombobox({
             type="button"
             variant="outline"
             role="combobox"
+            id={id}
             aria-expanded={open}
             disabled={disabled}
             data-slot="form-combobox-trigger"
@@ -189,7 +170,7 @@ export function FormCombobox({
 
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <CommandPrimitive.List className="p-1">
-                  {filtered.length === 0 && !creating && (
+                  {filtered.length === 0 && (
                     <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
                       <p className="text-sm text-muted-foreground">{emptyText}</p>
                       {onCreate && (
@@ -197,61 +178,11 @@ export function FormCombobox({
                           type="button"
                           size="xs"
                           variant="outline"
-                          onClick={() => setCreating(true)}
+                          onClick={onCreate}
                         >
                           <Plus /> Agregar “{search.trim() || "nuevo"}”
                         </Button>
                       )}
-                    </div>
-                  )}
-
-                  {creating && (
-                    <div className="flex flex-col gap-2 border-b p-2">
-                      <p className="text-xs font-medium text-foreground">
-                        Crear nueva opción
-                      </p>
-                      <Input
-                        autoFocus
-                        value={newValue}
-                        onChange={(e) => setNewValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault()
-                            void handleCreate()
-                          }
-                          if (e.key === "Escape") {
-                            setCreating(false)
-                            setNewValue("")
-                          }
-                        }}
-                        placeholder={placeholder}
-                      />
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="ghost"
-                          onClick={() => {
-                            setCreating(false)
-                            setNewValue("")
-                          }}
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          type="button"
-                          size="xs"
-                          onClick={() => void handleCreate()}
-                          disabled={creatingLoading || !newValue.trim()}
-                        >
-                          {creatingLoading ? (
-                            <Loader2 className="size-3.5 animate-spin" />
-                          ) : (
-                            <Plus />
-                          )}
-                          Crear
-                        </Button>
-                      </div>
                     </div>
                   )}
 
@@ -284,12 +215,6 @@ export function FormCombobox({
                       </CommandPrimitive.Item>
                     ))}
                   </CommandPrimitive.Group>
-
-                  {filtered.length === 0 && creating && (
-                    <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                      Escribe un nombre y presiona “Crear”.
-                    </p>
-                  )}
                 </CommandPrimitive.List>
               </div>
 
@@ -313,12 +238,12 @@ export function FormCombobox({
                   ) : (
                     <span />
                   )}
-                  {onCreate && !creating && (
+                  {onCreate && (
                     <Button
                       type="button"
                       size="xs"
                       variant="outline"
-                      onClick={() => setCreating(true)}
+                      onClick={onCreate}
                     >
                       <Plus />
                       Agregar
