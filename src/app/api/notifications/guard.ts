@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth/options";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 
 // FASE 11 — Guard del módulo de notificaciones (sesión de admin, no portal).
 
@@ -11,8 +12,9 @@ export async function notificationsGuard(): Promise<NotificationsGuard | NextRes
   if (!session?.user) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
   }
-  if (session.user.scope === "portal" || !session.user.organizationId) {
+  const organizationId = effectiveOrgId(session);
+  if (session.user.scope === "portal" || !organizationId) {
     return NextResponse.json({ ok: false, error: "Acceso denegado" }, { status: 403 });
   }
-  return { organizationId: session.user.organizationId, userId: session.user.id };
+  return { organizationId, userId: session.user.id };
 }

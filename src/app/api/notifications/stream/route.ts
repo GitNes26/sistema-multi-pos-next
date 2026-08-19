@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth/options";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
 import { openOrgChannel, broadcastItems } from "@/lib/notifications/live";
 import { notificationToPayload } from "@/lib/notifications/helpers";
@@ -18,7 +19,7 @@ export async function GET() {
   if (!session?.user) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
   }
-  const organizationId = session.user.organizationId;
+  const organizationId = effectiveOrgId(session);
   if (session.user.scope === "portal" || !organizationId) {
     return NextResponse.json({ ok: false, error: "Acceso denegado" }, { status: 403 });
   }

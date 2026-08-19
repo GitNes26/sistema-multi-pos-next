@@ -9,7 +9,7 @@ import type { SessionRole } from "@/lib/auth/permissions";
 // - /portal       → solo clientes (el área /portal/auth/* es público)
 // El callbackUrl viaja en la query para volver a la pantalla original.
 
-const ADMIN_ONLY: SessionRole[] = ["superadmin", "owner", "manager"];
+const ADMIN_ONLY: SessionRole[] = ["superadmin", "owner", "manager", "admin"];
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
@@ -38,6 +38,15 @@ export async function middleware(req: NextRequest) {
     if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
     if (token!.scope === "portal" || !ADMIN_ONLY.includes((token!.role as SessionRole) ?? "")) {
       return NextResponse.redirect(new URL("/pos", req.url));
+    }
+    // El superAdmin sin organización activa solo puede ver Organizaciones
+    // (ahí elige en qué empresa operar).
+    if (
+      token!.scope === "superadmin" &&
+      !token!.activeOrganizationId &&
+      !pathname.startsWith("/admin/settings/organizations")
+    ) {
+      return NextResponse.redirect(new URL("/admin/settings/organizations", req.url));
     }
     return NextResponse.next();
   }

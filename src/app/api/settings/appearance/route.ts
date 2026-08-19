@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 import { assertPermission } from "@/lib/auth/server-permissions";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 import { THEMES } from "@/lib/appearance";
 import { sanitizeAppearance } from "@/lib/appearance";
 import {
@@ -15,10 +16,11 @@ import {
 
 async function requireOrg() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id || !session.user.organizationId) {
+  const organizationId = effectiveOrgId(session);
+  if (!session?.user?.id || !organizationId) {
     return { session: null, organizationId: null };
   }
-  return { session, organizationId: session.user.organizationId };
+  return { session, organizationId };
 }
 
 export async function GET() {

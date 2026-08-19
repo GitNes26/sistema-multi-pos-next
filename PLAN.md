@@ -1506,12 +1506,25 @@ Admin/Owner/POS → Clientes → "Registrar cliente"
 
 ```
 ROLES DEL SISTEMA (defaults):
-├── superadmin → Todos los permisos
+├── superadmin → Todos los permisos (control total; opera vía organization switcher)
+├── admin → Todos los permisos (como owner; asignado a 1 o N organizaciones)
 ├── owner → Todos los permisos
 ├── manager → Todos excepto users.manage
 └── cashier → pos.use, products.view, inventory.view, customers.view,
               customers.manage, promotions.view, sales.view, cash.open,
               cash.close, orders.view, orders.manage, locations.view
+
+NOTAS:
+- effectiveRole("admin") → "admin" (rol propio con permisos de owner; AppRole lo incluye)
+- El superAdmin se identifica por `scope === "superadmin"` (flag `User.isSuperadmin`,
+  NO por email); pueden existir varios usuarios con rol superAdmin
+- El superAdmin no tiene organizationId fijo; su JWT lleva `activeOrganizationId`
+  (organization switcher) y opera en cualquier organización
+- Los admins con varias membresías también usan `activeOrganizationId`
+- Permisos extensibles por código: para agregar uno nuevo (ej. inventory.transfer)
+  se agrega a `PermissionKey` (permission-keys.ts), se mapea en el rol de sistema
+  (seeder) y se valida con `hasPermission`. Sin migraciones. El rol superadmin
+  siempre recibe TODOS los permisos (incluso los futuros)
 
 PERMISOS (23+):
 ├── pos.use             Usar punto de venta
@@ -1564,6 +1577,22 @@ PERMISOS (23+):
   - Al cerrar sesión → eliminar el token/sesión en el servidor (no solo borrar la cookie).
   - Al cambiar contraseña (el propio usuario o un administrador) → eliminar TODOS los tokens/sesiones de ese usuario.
 - Estado actual: sesión JWT **stateless**; `logout()` solo borra la cookie (no revoca en BD). Pendiente de implementar la revocación (migrar a sesiones en BD o `tokenVersion`).
+
+### 7.9 SuperAdmin — Control total del sistema
+
+- El superAdmin se identifica por el rol (`scope === "superadmin"`, flag `User.isSuperadmin`); **no** por email/usuario. Pueden existir varios.
+- **Organization switcher**: su JWT lleva `activeOrganizationId`. Puede cambiarlo desde un dropdown en el navbar o desde la página de Organizaciones (endpoint `PATCH /api/settings/switch-org` + `update()` de next-auth).
+- **Guards**: `organizationId` efectivo = `activeOrganizationId ?? organizationId` de la sesión. El superAdmin sin org activa ve solo la página de Organizaciones (middleware redirige `/admin/*` → `/admin/settings/organizations`).
+- Puede crear organizaciones + cuentas owner, asignar organizaciones a usuarios "admin", y operar la data de cualquier empresa (apariencia, usuarios, empleados, clientes, sucursales, etc.).
+- Permisos: siempre tiene TODOS (`permissionsForRole("superadmin")` devuelve todo el catálogo).
+
+### 7.10 Rol "Admin" — owner con multi-asignación
+
+- El rol "admin" tiene permisos equivalentes a "owner" (todos).
+- Un usuario con rol "admin" puede estar asignado a **una o varias organizaciones** (múltiples `Membership` con `role = "admin"`).
+- `effectiveRole("admin")` → "admin"; `hasPermission`/guards/middleware tratan "admin" como owner.
+- El superAdmin asigna organizaciones a usuarios "admin" desde `/admin/settings/organizations`.
+- Un admin solo opera dentro de las organizaciones asignadas (si tiene varias, usa el switcher).
 
 ---
 
@@ -2217,6 +2246,13 @@ NAVIGATION DRAWER (tablet):
 - ✅ 15.6 Configuración de lealtad (puntos por compra, valor del punto) — `/admin/settings/loyalty`
 - ✅ 15.7 Configuración de supervisor approval (qué acciones requieren) — `/admin/settings/supervisor` (JSON `supervisorApproval` en Organization)
 - ✅ 15.8 Configuración de pasarelas de pago — `/admin/settings/payments` (FASE 16)
+- ✅ 15.9 Organizaciones y asignación de admin (exclusivo superAdmin) — `/admin/settings/organizations` + `organizations-manager.tsx`
+  - Sección "Organizaciones": lista todas las empresas (nombre, owner, moneda, miembros). Crear organización + cuenta owner (email/password), editar nombre/moneda, "Entrar" (switch org activa).
+  - Sección "Admins": lista usuarios y sus membresías; crear usuario (email/nombre/password); asignar/quitar organizaciones con rol (admin/owner/manager/cashier).
+  - Endpoints: `GET/POST /api/settings/organizations`, `PATCH /api/settings/organizations/[id]`,
+    `GET/POST /api/settings/organizations/[id]/members`, `DELETE /api/settings/organizations/[id]/members/[membershipId]`,
+    `GET /api/settings/organizations/users`, `GET /api/settings/organizations/mine`, `PATCH /api/settings/switch-org`.
+  - El item de menú "Organizaciones y roles" usa la clave reservada `organizations.manage` (solo visible para superAdmin).
 
 ---
 

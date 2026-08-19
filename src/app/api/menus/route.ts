@@ -13,9 +13,9 @@ export async function GET() {
 
   try {
     const { session } = guard;
-    const isAdmin = session.user.role === "superadmin" || session.user.role === "owner";
+    const isAdmin = session.user.role === "superadmin" || session.user.role === "owner" || session.user.role === "admin";
     const permissions = (session.user.permissions ?? []) as PermissionKey[];
-    const menu = await getMenuTree(permissions, isAdmin);
+    const menu = await getMenuTree(permissions, isAdmin, session.user.role);
     return NextResponse.json({ ok: true, menu });
   } catch (err) {
     return menusErrorResponse(err);

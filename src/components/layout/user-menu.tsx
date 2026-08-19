@@ -30,10 +30,14 @@ export interface UserMenuUser {
   email?: string | null;
   image?: string | null;
   role?: AppRole | "superadmin" | null;
+  scope?: "superadmin" | "app" | "portal" | null;
+  organizationId?: string | null;
+  activeOrganizationId?: string | null;
 }
 
 const ROLE_LABELS: Record<string, string> = {
   superadmin: "Super admin",
+  admin: "Admin",
   owner: "Propietario",
   manager: "Gerente",
   cashier: "Cajero",

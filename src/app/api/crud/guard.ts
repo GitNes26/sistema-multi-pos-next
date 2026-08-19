@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
 import { getCrudEntry, type CrudRegistryEntry } from "@/lib/crud/modules";
 import { CrudError } from "@/lib/crud/types";
@@ -38,14 +39,15 @@ export async function guardCrud(
   if (!session?.user) {
     return { response: NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 }) };
   }
-  if (session.user.scope === "portal" || !session.user.organizationId) {
+  const organizationId = effectiveOrgId(session);
+  if (session.user.scope === "portal" || !organizationId) {
     return { response: NextResponse.json({ ok: false, error: "Acceso denegado" }, { status: 403 }) };
   }
   if (!hasPermission(session, permissionForAction(entry, action))) {
     return { response: NextResponse.json({ ok: false, error: "No tienes permiso para esta acción" }, { status: 403 }) };
   }
 
-  return { entry, organizationId: session.user.organizationId, userId: session.user.id };
+  return { entry, organizationId, userId: session.user.id };
 }
 
 export function isCrudError(err: unknown): err is CrudError {

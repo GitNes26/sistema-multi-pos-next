@@ -131,6 +131,8 @@ model User {
   phone         String?
   isActive      Boolean   @default(true)
   emailVerified DateTime?
+  // 7.9 — Flag de rol superAdmin (identificación por rol, no por email)
+  isSuperadmin  Boolean   @default(false)
   // FASE 2.5 — Recuperación de contraseña (token guardado hasheado)
   passwordResetToken   String?   @unique
   passwordResetExpires DateTime?

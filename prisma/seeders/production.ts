@@ -13,21 +13,30 @@ const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL ?? "admin@multi-pos.com";
 const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD ?? "Admin123!";
 const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME ?? "Super Admin";
 
+// organizations.manage es exclusivo del superAdmin (no va en owner/admin).
+const allPermissionKeys = PERMISSIONS.map((p) => p.key);
+const appPermissionKeys = PERMISSIONS.filter((p) => p.key !== "organizations.manage").map((p) => p.key);
+
 export const SYSTEM_ROLES = [
   {
     name: "superadmin",
     description: "Acceso total al sistema",
-    permissions: PERMISSIONS.map((p) => p.key),
+    permissions: allPermissionKeys,
   },
   {
     name: "owner",
     description: "Dueño de la empresa: acceso total",
-    permissions: PERMISSIONS.map((p) => p.key),
+    permissions: appPermissionKeys,
+  },
+  {
+    name: "admin",
+    description: "Admin multi-empresa: acceso total en sus organizaciones",
+    permissions: appPermissionKeys,
   },
   {
     name: "manager",
     description: "Gerente: todo excepto gestión de usuarios",
-    permissions: PERMISSIONS.map((p) => p.key).filter((k) => k !== "users.manage"),
+    permissions: appPermissionKeys.filter((k) => k !== "users.manage"),
   },
   {
     name: "cashier",
@@ -105,9 +114,10 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   { id: "menu-lealtad", parentId: "menu-ajustes", type: "item", label: "Lealtad", icon: "Sparkles", href: "/admin/settings/loyalty", permissionKey: "settings.manage", sortOrder: 3 },
   { id: "menu-supervisor", parentId: "menu-ajustes", type: "item", label: "Supervisor", icon: "ShieldCheck", href: "/admin/settings/supervisor", permissionKey: "settings.manage", sortOrder: 4 },
   { id: "menu-pagos", parentId: "menu-ajustes", type: "item", label: "Pagos", icon: "CreditCard", href: "/admin/settings/payments", permissionKey: "settings.manage", sortOrder: 5 },
-  { id: "menu-ajustes-general", parentId: "menu-ajustes", type: "item", label: "Ajustes", icon: "Settings", href: "/admin/settings", permissionKey: "settings.manage", sortOrder: 6 },
-  { id: "menu-usuarios", parentId: "menu-ajustes", type: "item", label: "Usuarios y permisos", icon: "ShieldCheck", href: "/admin/settings/users", permissionKey: "users.manage", sortOrder: 7 },
-  { id: "menu-menus", parentId: "menu-ajustes", type: "item", label: "Menú", icon: "Menu", href: "/admin/settings/menus", permissionKey: "users.manage", sortOrder: 8 },
+  // { id: "menu-ajustes-general", parentId: "menu-ajustes", type: "item", label: "Ajustes", icon: "Settings", href: "/admin/settings", permissionKey: "settings.manage", sortOrder: 6 },
+  { id: "menu-usuarios", parentId: "menu-ajustes", type: "item", label: "Usuarios y permisos", icon: "ShieldCheck", href: "/admin/settings/users", permissionKey: "users.manage", sortOrder: 6 },
+  { id: "menu-menus", parentId: "menu-ajustes", type: "item", label: "Menú", icon: "Menu", href: "/admin/settings/menus", permissionKey: "users.manage", sortOrder: 7 },
+  { id: "menu-organizations", parentId: "menu-ajustes", type: "item", label: "Organizaciones y roles", icon: "Building2", href: "/admin/settings/organizations", permissionKey: "organizations.manage", sortOrder: 8 },
 ];
 
 export async function seedProduction() {
@@ -115,12 +125,13 @@ export async function seedProduction() {
   const passwordHash = await bcrypt.hash(SUPERADMIN_PASSWORD, 10);
   await prisma.user.upsert({
     where: { email: SUPERADMIN_EMAIL },
-    update: { isActive: true },
+    update: { isActive: true, isSuperadmin: true },
     create: {
       email: SUPERADMIN_EMAIL,
       passwordHash,
       fullName: SUPERADMIN_NAME,
       isActive: true,
+      isSuperadmin: true,
     },
   });
 

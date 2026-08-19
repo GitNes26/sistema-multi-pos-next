@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requirePosSession } from "../../helpers";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 import { generateTicketPdf } from "@/lib/pos/ticket-pdf";
 
 // FASE 6.12 — Ticket en PDF (80mm) para impresión.
@@ -12,7 +13,7 @@ export async function GET(
 ) {
   const guard = await requirePosSession();
   if ("response" in guard) return guard.response;
-  const organizationId = guard.session.user.organizationId!;
+  const organizationId = effectiveOrgId(guard.session)!;
 
   const { id } = await params;
   try {

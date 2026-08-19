@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions, type SessionUser } from "@/lib/auth/options";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
 
 export type PosSession = { user: SessionUser };
@@ -12,7 +13,7 @@ export async function requirePosSession(): Promise<
   if (!session?.user) {
     return { response: NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 }) };
   }
-  if (session.user.scope === "portal" || !session.user.organizationId) {
+  if (session.user.scope === "portal" || !effectiveOrgId(session)) {
     return { response: NextResponse.json({ ok: false, error: "Acceso denegado" }, { status: 403 }) };
   }
   return { session: session as PosSession };

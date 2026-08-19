@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { isSuperadminOnlyPermission } from "@/lib/auth/permissions";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
 
 // FASE 14.4/14.5 — Menú dinámico multinivel: CRUD + árbol filtrado por permisos.
@@ -80,9 +81,11 @@ const MENU_SELECT = {
 function canSee(
   permissionKey: string | null,
   permissions: PermissionKey[] | null,
-  isAdmin: boolean
+  isAdmin: boolean,
+  role: string | null
 ): boolean {
   if (!permissionKey) return true;
+  if (isSuperadminOnlyPermission(permissionKey)) return role === "superadmin";
   if (isAdmin) return true;
   return permissions?.includes(permissionKey as PermissionKey) ?? false;
 }
@@ -119,11 +122,12 @@ function filterTree(nodes: MenuNode[], keep: (n: MenuNode) => boolean): MenuNode
 
 /**
  * Árbol de menú filtrado por permisos (14.5). Solo nodos activos.
- * `isAdmin` = superadmin/owner (ven todo).
+ * `isAdmin` = superadmin/owner/admin (ven todo).
  */
 export async function getMenuTree(
   permissions: PermissionKey[] | null,
-  isAdmin: boolean
+  isAdmin: boolean,
+  role?: string | null
 ): Promise<MenuNode[]> {
   const rows = await prisma.menu.findMany({
     where: { isActive: true },
@@ -131,7 +135,7 @@ export async function getMenuTree(
     select: MENU_SELECT,
   });
   const nodes = rows.map((r) => toNode(r as MenuRow));
-  const keep = (n: MenuNode) => canSee(n.permissionKey, permissions, isAdmin);
+  const keep = (n: MenuNode) => canSee(n.permissionKey, permissions, isAdmin, role ?? null);
   return filterTree(buildTree(nodes), keep);
 }
 

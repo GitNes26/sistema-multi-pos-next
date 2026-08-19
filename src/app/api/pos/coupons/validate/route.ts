@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { validateCoupon } from "@/lib/pos/server";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 import { requirePosSession } from "../../helpers";
 
 export async function POST(req: Request) {
   const guard = await requirePosSession();
   if ("response" in guard) return guard.response;
   const { session } = guard;
-  const organizationId = session.user.organizationId!;
+  const organizationId = effectiveOrgId(session)!;
 
   try {
     const body = (await req.json()) as { code: string; customerId?: string };

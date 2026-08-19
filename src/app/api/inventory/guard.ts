@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
 
 // FASE 8 — Guard del módulo de inventario.
@@ -13,13 +14,14 @@ export async function inventoryGuard(permission: PermissionKey): Promise<Invento
   if (!session?.user) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
   }
-  if (session.user.scope === "portal" || !session.user.organizationId) {
+  const organizationId = effectiveOrgId(session);
+  if (session.user.scope === "portal" || !organizationId) {
     return NextResponse.json({ ok: false, error: "Acceso denegado" }, { status: 403 });
   }
   if (!hasPermission(session, permission)) {
     return NextResponse.json({ ok: false, error: "No tienes permiso para esta acción" }, { status: 403 });
   }
-  return { organizationId: session.user.organizationId, userId: session.user.id };
+  return { organizationId, userId: session.user.id };
 }
 
 export function inventoryErrorResponse(err: unknown): NextResponse {

@@ -16,7 +16,7 @@ export default async function AdminLayout({
   if (!session?.user) {
     redirect("/auth/login")
   }
-  const organizationId = session.user.organizationId ?? null
+  const organizationId = session.user.activeOrganizationId ?? session.user.organizationId ?? null
   const tenant = organizationId ? await getAppSettings(organizationId) : null
 
   return (
@@ -31,6 +31,9 @@ export default async function AdminLayout({
             email: session?.user?.email,
             image: session?.user?.image,
             role: session?.user?.role,
+            scope: session?.user?.scope,
+            organizationId: session?.user?.organizationId,
+            activeOrganizationId: session?.user?.activeOrganizationId,
           }}
         >
           {children}

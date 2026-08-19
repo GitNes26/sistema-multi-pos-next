@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 import { listPublications, createPublication } from "@/lib/publications/server";
 
 // FASE 18.1/18.5 — Publicaciones: listar (GET) y crear (POST).
@@ -13,13 +14,14 @@ function guard() {
     if (!session?.user) {
       return { response: NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 }) };
     }
-    if (session.user.scope === "portal" || !session.user.organizationId) {
+    const organizationId = effectiveOrgId(session);
+    if (session.user.scope === "portal" || !organizationId) {
       return { response: NextResponse.json({ ok: false, error: "Acceso denegado" }, { status: 403 }) };
     }
     if (!hasPermission(session, "publications.manage")) {
       return { response: NextResponse.json({ ok: false, error: "Sin permisos" }, { status: 403 }) };
     }
-    return { organizationId: session.user.organizationId };
+    return { organizationId };
   });
 }
 

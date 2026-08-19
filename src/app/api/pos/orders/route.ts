@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getRecentOrders, getSalesStats } from "@/lib/pos/server";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 import { requirePosSession, resolveLocationId } from "../helpers";
 
 export async function GET(req: Request) {
   const guard = await requirePosSession();
   if ("response" in guard) return guard.response;
   const { session } = guard;
-  const organizationId = session.user.organizationId!;
+  const organizationId = effectiveOrgId(session)!;
   const { searchParams } = new URL(req.url);
   const locationId = await resolveLocationId(organizationId, searchParams.get("locationId"));
 

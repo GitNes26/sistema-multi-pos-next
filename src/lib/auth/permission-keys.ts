@@ -32,6 +32,7 @@ export const PERMISSIONS = [
   { key: "users.manage", module: "users", action: "manage", label: "Administrar usuarios, roles y permisos" },
   { key: "publications.manage", module: "publications", action: "manage", label: "Gestionar publicaciones" },
   { key: "supervisor.approve", module: "supervisor", action: "approve", label: "Aprobar acciones" },
+  { key: "organizations.manage", module: "organizations", action: "manage", label: "Gestionar organizaciones y asignar admins", superAdminOnly: true },
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number]["key"];

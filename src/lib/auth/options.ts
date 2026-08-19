@@ -20,6 +20,8 @@ export type SessionUser = {
   image: string | null;
   role: AppRole | "superadmin";
   organizationId: string | null;
+  /** Organización en la que el usuario está operando (superAdmin / admin multi-org). */
+  activeOrganizationId: string | null;
   permissions: PermissionKey[];
   scope: AuthScope;
 };
@@ -31,6 +33,7 @@ declare module "next-auth" {
   interface User {
     role?: AppRole | "superadmin";
     organizationId?: string | null;
+    activeOrganizationId?: string | null;
     permissions?: PermissionKey[];
     scope?: AuthScope;
   }
@@ -41,6 +44,7 @@ declare module "next-auth/jwt" {
     id: string;
     role?: AppRole | "superadmin";
     organizationId?: string | null;
+    activeOrganizationId?: string | null;
     permissions?: PermissionKey[];
     scope?: AuthScope;
     /** Sesión invalidada por re-validación en BD (usuario desactivado/eliminado). */
@@ -56,6 +60,7 @@ type ResolvedLoginUser = {
   avatarUrl: string | null;
   passwordHash: string;
   isActive: boolean;
+  isSuperadmin: boolean;
   employees: { organizationId: string }[];
   customers: { organizationId: string }[];
   memberships: { organizationId: string; role: $Enums.OrgRole }[];
@@ -74,6 +79,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
       avatarUrl: true,
       passwordHash: true,
       isActive: true,
+      isSuperadmin: true,
       employees: { select: { organizationId: true } },
       customers: { select: { organizationId: true } },
       memberships: { select: { organizationId: true, role: true } },
@@ -102,6 +108,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
           avatarUrl: true,
           passwordHash: true,
           isActive: true,
+          isSuperadmin: true,
           memberships: { select: { organizationId: true, role: true } },
         },
       },
@@ -118,6 +125,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
       avatarUrl: u.avatarUrl,
       passwordHash: u.passwordHash,
       isActive: u.isActive,
+      isSuperadmin: u.isSuperadmin,
       employees: [{ organizationId: byEmployee.organizationId }],
       customers: [],
       memberships: u.memberships.map((m) => ({ organizationId: m.organizationId, role: m.role })),
@@ -136,6 +144,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
           avatarUrl: true,
           passwordHash: true,
           isActive: true,
+          isSuperadmin: true,
         },
       },
       organizationId: true,
@@ -151,6 +160,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
       avatarUrl: u.avatarUrl,
       passwordHash: u.passwordHash,
       isActive: u.isActive,
+      isSuperadmin: u.isSuperadmin,
       employees: [],
       customers: [{ organizationId: byCustomer.organizationId }],
       memberships: [],
@@ -161,8 +171,8 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
 }
 
 function inferKindFromUser(user: NonNullable<Awaited<ReturnType<typeof resolveLoginUser>>>) {
-  const isSuper = user.employees.length === 0 && user.customers.length === 0;
-  if (isSuper) {
+  // SuperAdmin por rol (flag), no por ausencia de empleado/cliente.
+  if (user.isSuperadmin) {
     return { scope: "superadmin" as AuthScope, role: "superadmin" as const, organizationId: null as string | null };
   }
   if (user.customers.length > 0 && user.employees.length === 0) {
@@ -172,8 +182,12 @@ function inferKindFromUser(user: NonNullable<Awaited<ReturnType<typeof resolveLo
       organizationId: user.customers[0].organizationId as string | null,
     };
   }
-  const org = (user.employees[0]?.organizationId ?? user.customers[0]?.organizationId) ?? null;
-  const membership = user.memberships?.find((m) => m.organizationId === org);
+  // App: preferir la organización del empleado; si no, la primera membresía.
+  const employeeOrg = user.employees[0]?.organizationId ?? null;
+  const membership =
+    user.memberships?.find((m) => m.organizationId === employeeOrg) ??
+    user.memberships?.[0];
+  const org = employeeOrg ?? membership?.organizationId ?? user.customers[0]?.organizationId ?? null;
   const role = membership ? effectiveRole(membership.role) : "cashier";
   return { scope: "app" as AuthScope, role, organizationId: org };
 }
@@ -210,6 +224,7 @@ export const authOptions: NextAuthOptions = {
           image: user.avatarUrl,
           role: kind.role,
           organizationId: kind.organizationId,
+          activeOrganizationId: kind.organizationId,
           permissions,
           scope: kind.scope,
         };
@@ -225,11 +240,12 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session: updatePayload }) {
       if (user) {
         token.id = user.id!;
         token.role = user.role;
         token.organizationId = user.organizationId ?? null;
+        token.activeOrganizationId = user.activeOrganizationId ?? user.organizationId ?? null;
         token.permissions = user.permissions ?? [];
         token.scope = user.scope ?? "app";
         token.name = user.name;
@@ -237,6 +253,13 @@ export const authOptions: NextAuthOptions = {
         token.picture = user.image ?? token.picture;
         token.authCheckedAt = Date.now();
         return token;
+      }
+
+      // Actualización de la sesión desde el cliente (organization switcher):
+      // `update({ activeOrganizationId })` → POST /api/auth/session.
+      if (trigger === "update" && updatePayload && "activeOrganizationId" in updatePayload) {
+        const next = (updatePayload as { activeOrganizationId?: string | null }).activeOrganizationId;
+        token.activeOrganizationId = next ?? null;
       }
 
       // Re-validación contra BD (throttle 60s): si el usuario fue desactivado o
@@ -266,6 +289,7 @@ export const authOptions: NextAuthOptions = {
         image: typeof token.picture === "string" ? token.picture : null,
         role: token.role ?? "customer",
         organizationId: token.organizationId ?? null,
+        activeOrganizationId: token.activeOrganizationId ?? token.organizationId ?? null,
         permissions: token.permissions ?? [],
         scope: token.scope ?? "app",
       };

@@ -2,22 +2,24 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
+import { effectiveOrgId, isSuperadminSession } from "@/lib/auth/org-context";
 import type { Session } from "next-auth";
 
 // FASE 15 — Guard de rutas de ajustes.
 
 type GuardResult = { session: Session; organizationId: string } | { response: NextResponse };
 
-/** Sesión de app (no portal) con organización. */
+/** Sesión de app (no portal) con organización (usa activeOrganizationId). */
 export async function settingsSession(): Promise<GuardResult> {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return { response: NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 }) };
   }
-  if (session.user.scope === "portal" || !session.user.organizationId) {
+  const organizationId = effectiveOrgId(session);
+  if (session.user.scope === "portal" || !organizationId) {
     return { response: NextResponse.json({ ok: false, error: "Acceso denegado" }, { status: 403 }) };
   }
-  return { session, organizationId: session.user.organizationId };
+  return { session, organizationId };
 }
 
 /** Requiere `settings.manage` (empresa, lealtad, supervisor, apariencia). */
@@ -38,6 +40,20 @@ export async function usersManageGuard(): Promise<GuardResult> {
     return { response: NextResponse.json({ ok: false, error: "Sin permisos" }, { status: 403 }) };
   }
   return g;
+}
+
+/** Exclusivo del superAdmin (organizaciones y asignación de admins). */
+export async function superadminGuard(): Promise<
+  { session: Session } | { response: NextResponse }
+> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return { response: NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 }) };
+  }
+  if (!isSuperadminSession(session)) {
+    return { response: NextResponse.json({ ok: false, error: "Acceso denegado" }, { status: 403 }) };
+  }
+  return { session };
 }
 
 export function settingsErrorResponse(err: unknown): NextResponse {

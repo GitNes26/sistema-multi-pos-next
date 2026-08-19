@@ -26,7 +26,7 @@ import {
   Warehouse,
 } from "lucide-react";
 import type { Session } from "next-auth";
-import { hasPermission } from "@/lib/auth/permissions";
+import { hasPermission, isSuperadminOnlyPermission } from "@/lib/auth/permissions";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
 import type { MenuNode } from "@/lib/menus/server";
 import { resolveMenuIcon } from "@/lib/menu-icons";
@@ -214,6 +214,12 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: Menu,
         permission: "users.manage",
       },
+      {
+        href: "/admin/settings/organizations",
+        label: "Organizaciones y roles",
+        icon: Building2,
+        permission: "organizations.manage",
+      },
     ],
   },
 ];
@@ -257,7 +263,8 @@ function navUserHasPermission(
   if (!permission) return true;
   if (!navUser?.user) return false;
   const { role, permissions } = navUser.user;
-  if (role === "superadmin" || role === "owner") return true;
+  if (isSuperadminOnlyPermission(permission)) return role === "superadmin";
+  if (role === "superadmin" || role === "owner" || role === "admin") return true;
   return permissions?.includes(permission) ?? false;
 }
 

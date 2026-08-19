@@ -4,6 +4,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { authOptions } from "@/lib/auth/options";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 
 // FASE 7.11 — Subida de imágenes (Attachment) a almacenamiento local.
 // POST /api/uploads (multipart, campo "file"). Las imágenes quedan en
@@ -19,7 +20,8 @@ const ALLOWED_TYPES: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.organizationId) {
+  const organizationId = effectiveOrgId(session);
+  if (!organizationId) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
   }
 
@@ -44,11 +46,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const dir = path.join(process.cwd(), "public", "uploads", session.user.organizationId);
+    const dir = path.join(process.cwd(), "public", "uploads", organizationId);
     await mkdir(dir, { recursive: true });
     const name = `${randomUUID()}.${ext}`;
     await writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
-    const url = `/uploads/${session.user.organizationId}/${name}`;
+    const url = `/uploads/${organizationId}/${name}`;
     return NextResponse.json({ ok: true, url });
   } catch (err) {
     console.error("[upload]", err);
