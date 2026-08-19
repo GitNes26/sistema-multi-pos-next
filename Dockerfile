@@ -26,17 +26,22 @@ WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    SEED_DEMO=false
 
-# node_modules completo (incluye la CLI de prisma para las migraciones) + build + assets
+# node_modules completo (incluye la CLI de prisma + tsx) + build + assets
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
+# src + tsconfig: los necesita el seeder (prisma/seed.ts importa src/lib/*)
+COPY --from=build /app/src ./src
+COPY --from=build /app/tsconfig.json ./tsconfig.json
 COPY --from=build /app/next.config.ts ./next.config.ts
 COPY --from=build /app/package.json ./package.json
 
 EXPOSE 3000
 
-# Aplica las migraciones pendientes y arranca el servidor Next.js
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+# Aplica migraciones, siembra datos base (seed de producción, idempotente) y arranca.
+# Para sembrar también datos demo: define SEED_DEMO=true en el environment de Dokploy.
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run db:seed && npm run start"]

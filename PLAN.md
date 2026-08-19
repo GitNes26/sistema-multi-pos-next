@@ -2471,6 +2471,7 @@ La app es **monolito full-stack** (Next.js): el front (React) y el back (API rou
 ### Notas
 
 - `prisma migrate deploy` corre al arrancar (aplica migraciones pendientes; no-op si no hay).
+- **Seed al arrancar**: `npm run db:seed` siembra los datos base (superadmin, roles, permisos, unidades, menú) — es **idempotente** (upsert). Por defecto `SEED_DEMO=false` (no siembra demo); con `SEED_DEMO=true` siembra además datos demo (borra y recrea, útil para demo/staging). Credenciales del superadmin vía `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` / `SUPERADMIN_NAME`.
 - Migraciones: `prisma/migrations` (Prisma Migrate). No usar `db push` en producción.
 - `serverExternalPackages: ["pdfkit"]` en `next.config.ts` es necesario para que pdfkit encuentre sus fuentes en el contenedor.
 - Dominios: `app.tudominio.com` → POS/Admin; `portal.tudominio.com` → Portal de clientes (opcional, mismo server).
