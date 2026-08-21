@@ -47,6 +47,45 @@ function DialogOverlay({
   )
 }
 
+/** Evento global: cierra todos los diálogos abiertos (p. ej. tras crear un
+ * registro desde un FormCombobox en un diálogo anidado). */
+export const CLOSE_ALL_DIALOGS_EVENT = "multipos:close-all-dialogs"
+
+export function closeAllDialogs() {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new Event(CLOSE_ALL_DIALOGS_EVENT))
+}
+
+function useCloseAllDialogs(onClose: () => void) {
+  React.useEffect(() => {
+    const handler = () => onClose()
+    window.addEventListener(CLOSE_ALL_DIALOGS_EVENT, handler)
+    return () => window.removeEventListener(CLOSE_ALL_DIALOGS_EVENT, handler)
+  }, [onClose])
+}
+
+function isInteractionInsideNestedLayer(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  return Boolean(
+    target.closest(
+      '[data-slot="dialog-content"], [data-slot="popover-content"], [data-slot="dropdown-menu-content"]'
+    )
+  )
+}
+
+/** ¿El diálogo debe permanecer abierto ante una interacción externa?
+ * - SweetAlert abierto encima (validaciones/errores): clic en su botón no cierra el form.
+ * - Interacción dentro de otro diálogo/popover/menú anidado. */
+function shouldKeepDialogOpen(event: Event): boolean {
+  if (
+    typeof document !== "undefined" &&
+    document.body.classList.contains("swal2-shown")
+  ) {
+    return true
+  }
+  return isInteractionInsideNestedLayer(event.target)
+}
+
 function DialogContent({
   className,
   children,
@@ -60,6 +99,9 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        onInteractOutside={(e) => {
+          if (shouldKeepDialogOpen(e)) e.preventDefault()
+        }}
         className={cn(
           "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
           className
@@ -191,6 +233,8 @@ function DialogComponent({
   showCloseButton,
   children,
 }: DialogComponentProps) {
+  useCloseAllDialogs(() => onOpenChange(false))
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={className} showCloseButton={showCloseButton}>

@@ -119,11 +119,21 @@ export function OrdersMonitor({
                   <p className="px-2 py-4 text-center text-xs text-muted-foreground">Sin pedidos</p>
                 )}
                 {(byStatus[status] ?? []).map((o) => (
-                  <button
+                  <div
                     key={o.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setDetailId(o.id)}
-                    className={cn("w-full rounded-lg border px-3 py-2 text-left transition-colors hover:shadow-sm", STATUS_CARD_STYLE[status])}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setDetailId(o.id);
+                      }
+                    }}
+                    className={cn(
+                      "w-full cursor-pointer rounded-lg border px-3 py-2 text-left transition-colors hover:shadow-sm",
+                      STATUS_CARD_STYLE[status]
+                    )}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-bold tabular-nums">#{o.orderNumber}</span>
@@ -151,7 +161,7 @@ export function OrdersMonitor({
                         </Button>
                       </div>
                     )}
-                  </button>
+                  </div>
                 ))}
               </div>
             </section>

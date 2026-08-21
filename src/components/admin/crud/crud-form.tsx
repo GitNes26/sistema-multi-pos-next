@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   CalendarDays,
   Clock,
@@ -71,6 +71,13 @@ export function CrudForm({
   });
 
   const visibleFields = useMemo(() => config.fields, [config.fields]);
+
+  // El id del <form> se conserva (formId) para que los botones con `form={formId}`
+  // sigan funcionando; los ids de los campos son únicos por instancia (useId) para
+  // que un modal "crear registro" (mismo módulo o anidado) no colisione con los
+  // inputs/labels del formulario origen.
+  const uid = useId().replace(/[:]/g, "");
+  const fieldId = (key: string) => `${uid}-f-${key}`;
 
   const set = (key: string, value: unknown) => setValues((prev) => ({ ...prev, [key]: value }));
 
@@ -222,7 +229,7 @@ export function CrudForm({
           return (
             <div key={field.key} className={field.full ? "sm:col-span-2" : ""}>
               <InputGroupField
-                id={`f-${field.key}`}
+                id={fieldId(field.key)}
                 label={field.label}
                 required={field.required}
                 helper={field.help}
@@ -257,11 +264,11 @@ export function CrudForm({
               control({ className: "w-full" })
             ) : (
               <>
-                <Label htmlFor={`f-${field.key}`}>
+                <Label htmlFor={fieldId(field.key)}>
                   {field.label}
                   {field.required && <span className="text-destructive"> *</span>}
                 </Label>
-                {control({ className: "w-full", id: `f-${field.key}` })}
+                {control({ className: "w-full", id: fieldId(field.key) })}
                 {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
               </>
             )}

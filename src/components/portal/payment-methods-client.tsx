@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, CreditCard, Hash, Plus, Star, Trash2, TriangleAlert } from "lucide-react";
+import { Calendar, CreditCard, Hash, Plus, Star, Trash2, TriangleAlert, Wallet } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import type { ExpiringCardView, PaymentMethodView } from "@/lib/portal/server";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
@@ -15,7 +15,7 @@ export function PaymentMethodsClient() {
   const [methods, setMethods] = useState<PaymentMethodView[] | null>(null);
   const [expiring, setExpiring] = useState<ExpiringCardView[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ brand: "", last4: "", expMonth: "", expYear: "", isDefault: false });
+  const [form, setForm] = useState({ alias: "", brand: "", last4: "", expMonth: "", expYear: "", isDefault: false });
 
   const load = () => {
     portalApi
@@ -41,6 +41,7 @@ export function PaymentMethodsClient() {
     }
     try {
       const res = await portalApi.addPaymentMethod({
+        alias: form.alias,
         brand: form.brand || "card",
         last4: form.last4,
         expMonth,
@@ -49,7 +50,7 @@ export function PaymentMethodsClient() {
       });
       setMethods(res.methods);
       setShowForm(false);
-      setForm({ brand: "", last4: "", expMonth: "", expYear: "", isDefault: false });
+      setForm({ alias: "", brand: "", last4: "", expMonth: "", expYear: "", isDefault: false });
       swalToast("Tarjeta agregada");
     } catch (err) {
       swalError("No se pudo agregar", err instanceof Error ? err.message : undefined);
@@ -94,6 +95,7 @@ export function PaymentMethodsClient() {
             <p className="font-medium text-amber-700">Tarjetas por vencer</p>
             {expiring.map((c) => (
               <p key={c.id} className="text-xs text-amber-700/80">
+                {c.alias ? `${c.alias} — ` : ""}
                 {c.brand} •••• {c.last4} (exp. {String(c.expMonth).padStart(2, "0")}/{c.expYear})
               </p>
             ))}
@@ -103,6 +105,15 @@ export function PaymentMethodsClient() {
 
       {showForm && (
         <div className="space-y-3 rounded-xl border p-4">
+          <InputGroupField
+            label="Alias"
+            helper="Ej. «Mi tarjeta de crédito», «Nómina»…"
+            maxLength={40}
+            leftIcon={<Wallet className="size-4" />}
+            placeholder="Nombre para identificarla"
+            value={form.alias}
+            onChange={(e) => setForm({ ...form, alias: e.target.value })}
+          />
           <InputGroupField
             label="Marca (opcional)"
             leftIcon={<CreditCard className="size-4" />}
@@ -169,7 +180,18 @@ export function PaymentMethodsClient() {
               <CreditCard className="size-5 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">
-                  {m.brand} •••• {m.last4}
+                  {m.alias ? (
+                    <>
+                      {m.alias}{" "}
+                      <span className="font-normal text-muted-foreground">
+                        ({m.brand} •••• {m.last4})
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {m.brand} •••• {m.last4}
+                    </>
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Expira {String(m.expMonth).padStart(2, "0")}/{m.expYear}

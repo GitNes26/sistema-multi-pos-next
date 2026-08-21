@@ -167,7 +167,13 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       { key: "fullName", label: "Nombre completo", type: "text", required: true },
       { key: "customerCode", label: "Nº de cliente", type: "text", placeholder: "CLI-0001 (auto)" },
       { key: "phone", label: "Teléfono", type: "text", placeholder: "55 1234 5678" },
-      { key: "email", label: "Correo", type: "text", placeholder: "cliente@correo.com" },
+      {
+        key: "email",
+        label: "Correo",
+        type: "text",
+        placeholder: "cliente@correo.com",
+        help: "Se asocia a una cuenta de usuario del portal. Contraseña inicial: la misma dirección (el cliente la cambia en su primer acceso).",
+      },
       { key: "points", label: "Puntos", type: "number" },
       { key: "address", label: "Dirección", type: "textarea", full: true },
       { key: "imageUrl", label: "Foto", type: "image", full: true },
@@ -244,6 +250,12 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     columns: [
       { key: "fullName", label: "Nombre" },
       { key: "employeeCode", label: "Nómina", type: "code" },
+      {
+        key: "role",
+        label: "Rol",
+        type: "badge",
+        displayMap: { owner: "Propietario", admin: "Admin", manager: "Gerente", cashier: "Cajero" },
+      },
       { key: "positionName", label: "Puesto", type: "badge" },
       { key: "locationName", label: "Sucursal", type: "badge" },
       { key: "phone", label: "Teléfono" },
@@ -253,6 +265,19 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       { key: "fullName", label: "Nombre completo", type: "text", required: true },
       { key: "employeeCode", label: "Nº de nómina", type: "text", required: true, placeholder: "EMP-001" },
+      {
+        key: "role",
+        label: "Rol",
+        type: "select",
+        required: true,
+        options: [
+          { value: "cashier", label: "Cajero" },
+          { value: "manager", label: "Gerente" },
+          { value: "admin", label: "Admin" },
+          { value: "owner", label: "Propietario" },
+        ],
+        help: "Se crea una cuenta de usuario para el empleado con este rol de acceso.",
+      },
       {
         key: "positionId",
         label: "Puesto",
@@ -271,7 +296,13 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         help: "Sucursal donde trabaja normalmente el empleado.",
       },
       { key: "phone", label: "Teléfono", type: "text" },
-      { key: "email", label: "Correo", type: "text", placeholder: "empleado@correo.com" },
+      {
+        key: "email",
+        label: "Correo",
+        type: "text",
+        placeholder: "empleado@correo.com",
+        help: "Correo de acceso y contraseña inicial: es la misma dirección. Si se deja vacío se genera uno automático y ese será también su contraseña. Indícalo al empleado para que lo cambie en su primer acceso.",
+      },
       { key: "imageUrl", label: "Foto", type: "image", full: true },
       { key: "isActive", label: "Activo", type: "boolean" },
     ],

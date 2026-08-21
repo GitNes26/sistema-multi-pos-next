@@ -1,17 +1,21 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import {
   Barcode,
   Check,
   DollarSign,
   Hash,
+  ImageIcon,
+  Layers,
   Loader2,
   Pencil,
   Percent,
   Plus,
+  Tag,
   Trash2,
   Type,
+  Wallet,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +34,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { optionsApi, variantApi, type VariantRow, type ProductOption } from "@/lib/api";
 import { money } from "@/lib/pos/money";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
@@ -165,6 +171,7 @@ export function ProductsForm({ initial, onSubmit, onSavingChange }: ProductFormP
 
   const [vBusy, setVBusy] = useState(false);
   const [editVariant, setEditVariant] = useState<VariantRow | null>(null);
+  const [variantsOpen, setVariantsOpen] = useState(false);
 
   const categoryField = useMemo<CrudField>(
     () => ({
@@ -187,6 +194,24 @@ export function ProductsForm({ initial, onSubmit, onSavingChange }: ProductFormP
       optionLabel: "name",
     }),
     []
+  );
+
+  // Valores por defecto de SKU / precios: en edición vienen de la variante
+  // "Default" (o la primera); en creación, de los campos de la variante inicial.
+  const productDefaults = useMemo(
+    () => {
+      if (!isEdit) {
+        return { sku: variantSku, barcode: variantBarcode, price: variantPrice, cost: variantCost };
+      }
+      const v = variants.find((x) => x.name.toLowerCase() === "default") ?? variants[0];
+      return {
+        sku: v?.sku ?? "",
+        barcode: v?.barcode ?? "",
+        price: v ? String(v.price) : "",
+        cost: v ? String(v.cost) : "",
+      };
+    },
+    [isEdit, variants, variantSku, variantBarcode, variantPrice, variantCost]
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -254,19 +279,23 @@ export function ProductsForm({ initial, onSubmit, onSavingChange }: ProductFormP
     setVariants(res.rows);
   };
 
-  const createVariant = async () => {
-    if (!initial?.id) return;
+  const createVariant = async (): Promise<VariantRow | null> => {
+    if (!initial?.id) return null;
     setVBusy(true);
     try {
-      await variantApi.create(String(initial.id), {
+      const res = await variantApi.create(String(initial.id), {
         name: "Nueva variante",
-        price: 0,
-        cost: 0,
+        sku: productDefaults.sku || null,
+        barcode: productDefaults.barcode || null,
+        price: Number(productDefaults.price) || 0,
+        cost: Number(productDefaults.cost) || 0,
         isActive: true,
       });
       await refreshVariants();
+      return res.row;
     } catch (err) {
-      swalError("Error", err instanceof Error ? err.message : undefined);
+      swalError("No se pudo crear la variante", err instanceof Error ? err.message : undefined);
+      return null;
     } finally {
       setVBusy(false);
     }
@@ -517,46 +546,50 @@ export function ProductsForm({ initial, onSubmit, onSavingChange }: ProductFormP
           </FieldRow>
 
           {isEdit && (
-            <FieldRow label={`Variantes (${variants.length})`} full>
-              <div className="space-y-2">
-                {variants.map((v) => (
-                  <div key={v.id} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{v.name}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {v.sku ?? v.barcode ?? "—"} · {money(v.price)}
-                        {v.optionValues && v.optionValues.length > 0 && (
-                          <span className="ml-1 text-xs">
-                            · {v.optionValues.map((ov) => ov.value).join(", ")}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                    <Badge variant={v.isActive ? "default" : "secondary"} className="hidden sm:inline-flex">
-                      {v.isActive ? "Activa" : "Inactiva"}
-                    </Badge>
-                    <Button type="button" variant="ghost" size="icon" className="size-8" onClick={() => setEditVariant(v)}>
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button type="button" variant="ghost" size="icon" className="size-8 text-destructive" onClick={() => removeVariant(v)}>
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button type="button" variant="outline" size="sm" disabled={vBusy} onClick={createVariant}>
-                  {vBusy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-                  Agregar variante
-                </Button>
+            <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2.5 sm:col-span-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Variantes</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {variants.length === 0
+                    ? "Aún no hay variantes."
+                    : `${variants.length} variante(s) · imagen, SKU, código de barras y precios propios.`}
+                </p>
               </div>
-            </FieldRow>
+              <Button type="button" variant="outline" size="sm" onClick={() => setVariantsOpen(true)}>
+                <Layers className="size-4" />
+                Gestionar variantes
+              </Button>
+            </div>
           )}
         </>
+      )}
+
+      {isEdit && variantsOpen && (
+        <VariantsDialog
+          product={{
+            name: name.trim() || "Producto",
+            imageUrl: imageUrl || null,
+            categoryName: (initial?.categoryName as string | null) ?? null,
+          }}
+          variants={variants}
+          defaults={productDefaults}
+          busy={vBusy}
+          onClose={() => setVariantsOpen(false)}
+          onCreate={async () => {
+            const row = await createVariant();
+            if (row) setEditVariant(row);
+          }}
+          onEdit={setEditVariant}
+          onRemove={removeVariant}
+          onImage={(variant, imageUrl) => saveVariant(variant.id, { imageUrl })}
+        />
       )}
 
       {editVariant && (
         <VariantEditDialog
           variant={editVariant}
           options={options}
+          siblings={variants}
           onClose={() => setEditVariant(null)}
           onSave={saveVariant}
         />
@@ -565,24 +598,258 @@ export function ProductsForm({ initial, onSubmit, onSavingChange }: ProductFormP
   );
 }
 
+// ── Diálogo de variantes con imagen, cabecera del producto y valores por defecto ─
+
+function HeaderStat({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex cursor-help items-center gap-1.5 text-sm text-foreground/80">
+            <span className="text-muted-foreground">{icon}</span>
+            <span className="tabular-nums">{value ?? "—"}</span>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function VariantImageCell({
+  variant,
+  onImage,
+}: {
+  variant: VariantRow;
+  onImage: (variant: VariantRow, imageUrl: string | null) => Promise<void>;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  const change = async (file: File) => {
+    setBusy(true);
+    try {
+      const url = await uploadFile(file);
+      await onImage(variant, url);
+    } catch (err) {
+      swalError("No se pudo actualizar la imagen", err instanceof Error ? err.message : undefined);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="relative inline-block">
+      <input
+        ref={inputRef}
+        type="file"
+        accept={UPLOAD_IMAGE_ACCEPT}
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void change(f);
+          e.target.value = "";
+        }}
+      />
+      <button
+        type="button"
+        title="Cambiar imagen"
+        onClick={() => inputRef.current?.click()}
+        className="group relative block size-10 overflow-hidden rounded-md border bg-muted"
+      >
+        {variant.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={variant.imageUrl} alt={variant.name} className="size-full object-cover" />
+        ) : (
+          <span className="grid size-full place-items-center text-muted-foreground">
+            <ImageIcon className="size-4" />
+          </span>
+        )}
+        {busy && (
+          <span className="absolute inset-0 grid place-items-center bg-background/60">
+            <Loader2 className="size-4 animate-spin" />
+          </span>
+        )}
+      </button>
+      {variant.imageUrl && (
+        <button
+          type="button"
+          title="Quitar imagen"
+          onClick={() => void onImage(variant, null)}
+          className="absolute -right-1.5 -top-1.5 grid size-4 place-items-center rounded-full bg-destructive text-white shadow-sm"
+        >
+          <X className="size-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function VariantsDialog({
+  product,
+  variants,
+  defaults,
+  busy,
+  onClose,
+  onCreate,
+  onEdit,
+  onRemove,
+  onImage,
+}: {
+  product: { name: string; imageUrl: string | null; categoryName: string | null };
+  variants: VariantRow[];
+  defaults: { sku: string; barcode: string; price: string; cost: string };
+  busy: boolean;
+  onClose: () => void;
+  onCreate: () => Promise<void>;
+  onEdit: (variant: VariantRow) => void;
+  onRemove: (variant: VariantRow) => Promise<void>;
+  onImage: (variant: VariantRow, imageUrl: string | null) => Promise<void>;
+}) {
+  return (
+    <DialogComponent
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title="Variantes"
+      description={`${product.name} · ${variants.length} variante(s)`}
+      className="sm:max-w-3xl"
+      bodyClassName="space-y-4"
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Cerrar
+          </Button>
+          <Button size="sm" disabled={busy} onClick={() => void onCreate()}>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+            Agregar variante
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-3">
+        {product.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={product.imageUrl} alt={product.name} className="size-12 rounded-md object-cover" />
+        ) : (
+          <span className="grid size-12 place-items-center rounded-md bg-muted text-muted-foreground">
+            <ImageIcon className="size-5" />
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{product.name}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <HeaderStat icon={<Tag className="size-3.5" />} label="Categoría" value={product.categoryName ?? "Sin categoría"} />
+            <HeaderStat icon={<Hash className="size-3.5" />} label="SKU por defecto de nuevas variantes" value={defaults.sku} />
+            <HeaderStat icon={<Barcode className="size-3.5" />} label="Código de barras por defecto" value={defaults.barcode} />
+            <HeaderStat
+              icon={<DollarSign className="size-3.5" />}
+              label="Precio de venta por defecto de nuevas variantes"
+              value={defaults.price ? money(Number(defaults.price)) : null}
+            />
+            <HeaderStat
+              icon={<Wallet className="size-3.5" />}
+              label="Precio de compra / costo por defecto de nuevas variantes"
+              value={defaults.cost ? money(Number(defaults.cost)) : null}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-16">Imagen</TableHead>
+              <TableHead>Variante</TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead>Cód. barras</TableHead>
+              <TableHead className="text-right">Precio</TableHead>
+              <TableHead className="text-right">Costo</TableHead>
+              <TableHead>Activa</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {variants.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={8} className="py-6 text-center text-muted-foreground">
+                  Aún no hay variantes. Agrega la primera con el botón inferior.
+                </TableCell>
+              </TableRow>
+            )}
+            {variants.map((v) => (
+              <TableRow key={v.id}>
+                <TableCell>
+                  <VariantImageCell variant={v} onImage={onImage} />
+                </TableCell>
+                <TableCell>
+                  <span className="block max-w-44 truncate font-medium">{v.name}</span>
+                  {v.optionValues && v.optionValues.length > 0 && (
+                    <span className="block max-w-44 truncate text-xs text-muted-foreground">
+                      {v.optionValues.map((ov) => ov.value).join(", ")}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="font-mono text-xs">{v.sku ?? "—"}</TableCell>
+                <TableCell className="font-mono text-xs">{v.barcode ?? "—"}</TableCell>
+                <TableCell className="text-right tabular-nums">{money(v.price)}</TableCell>
+                <TableCell className="text-right tabular-nums">{money(v.cost)}</TableCell>
+                <TableCell>
+                  <Badge variant={v.isActive ? "default" : "secondary"}>{v.isActive ? "Activa" : "Inactiva"}</Badge>
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-right">
+                  <Button type="button" variant="ghost" size="icon" className="size-7" title="Editar" onClick={() => onEdit(v)}>
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-destructive"
+                    title="Eliminar"
+                    onClick={() => void onRemove(v)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </DialogComponent>
+  );
+}
+
 // ── Diálogo de edición de variante con asignación de opciones ───────────────
 
 function VariantEditDialog({
   variant,
   options,
+  siblings,
   onClose,
   onSave,
 }: {
   variant: VariantRow;
   options: ProductOption[];
+  siblings: VariantRow[];
   onClose: () => void;
   onSave: (
     variantId: string,
-    data: { name?: string; sku?: string; price?: number; cost?: number; imageUrl?: string | null; optionValueIds?: string[] }
+    data: { name?: string; sku?: string; barcode?: string; price?: number; cost?: number; imageUrl?: string | null; optionValueIds?: string[] }
   ) => Promise<void>;
 }) {
   const [name, setName] = useState(variant.name);
   const [sku, setSku] = useState(variant.sku ?? "");
+  const [barcode, setBarcode] = useState(variant.barcode ?? "");
   const [price, setPrice] = useState(String(variant.price));
   const [cost, setCost] = useState(String(variant.cost));
   const [imageUrl, setImageUrl] = useState(variant.imageUrl ?? "");
@@ -594,6 +861,18 @@ function VariantEditDialog({
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
+    const trimmedName = name.trim();
+    const trimmedSku = sku.trim();
+    const trimmedBarcode = barcode.trim();
+    const others = siblings.filter((s) => s.id !== variant.id);
+    if (trimmedSku && others.some((s) => s.sku === trimmedSku)) {
+      swalError("SKU duplicado", `Otra variante ya usa el SKU «${trimmedSku}».`);
+      return;
+    }
+    if (trimmedBarcode && others.some((s) => s.barcode === trimmedBarcode)) {
+      swalError("Código duplicado", `Otra variante ya usa el código de barras «${trimmedBarcode}».`);
+      return;
+    }
     setSaving(true);
     try {
       const optionValueIds = options
@@ -601,8 +880,9 @@ function VariantEditDialog({
         .map((o) => selected[o.id as string])
         .filter(Boolean);
       await onSave(variant.id, {
-        name: name.trim() || "Default",
-        sku: sku.trim() || undefined,
+        name: trimmedName || "Default",
+        sku: trimmedSku || undefined,
+        barcode: trimmedBarcode || undefined,
         price: Number(price) || 0,
         cost: Number(cost) || 0,
         imageUrl: imageUrl || null,
@@ -644,6 +924,10 @@ function VariantEditDialog({
           <div className="space-y-1.5">
             <Label htmlFor="v-sku">SKU</Label>
             <Input id="v-sku" value={sku} onChange={(e) => setSku(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="v-barcode">Código de barras</Label>
+            <Input id="v-barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="v-price">Precio ($)</Label>

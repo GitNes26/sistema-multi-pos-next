@@ -1,12 +1,13 @@
-import { randomBytes } from "node:crypto";
+import { $Enums } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { hashPassword, setMembership } from "@/lib/auth/users";
+import { hashPassword, setMembership, verifyPassword } from "@/lib/auth/users";
 import { CrudError, type CrudModule, type ListParams, type CrudListResult } from "../types";
 
 export interface EmployeeDto {
   id: string;
   employeeCode: string | null;
   fullName: string;
+  role: string;
   positionId: string | null;
   positionName: string | null;
   locationId: string | null;
@@ -17,6 +18,9 @@ export interface EmployeeDto {
   isActive: boolean;
   salesCount: number;
 }
+
+/** Roles de acceso asignables a un empleado (se crea su cuenta de usuario). */
+const EMPLOYEE_ROLES = ["owner", "admin", "manager", "cashier"] as const satisfies readonly $Enums.OrgRole[];
 
 type EmployeeRow = {
   id: string;
@@ -30,21 +34,23 @@ type EmployeeRow = {
   userId: string;
   position: { name: string } | null;
   location: { name: string } | null;
-  user: { email: string | null } | null;
+  user: { email: string | null; memberships: { role: string }[] } | null;
   _count: { sales: number };
 };
 
-function serialize(e: EmployeeRow, email: string | null): EmployeeDto {
+function serialize(e: EmployeeRow): EmployeeDto {
+  const role = e.user?.memberships?.[0]?.role ?? "cashier";
   return {
     id: e.id,
     employeeCode: e.employeeCode,
     fullName: e.fullName,
+    role,
     positionId: e.positionId,
     positionName: e.position?.name ?? null,
     locationId: e.locationId,
     locationName: e.location?.name ?? null,
     phone: e.phone,
-    email: email,
+    email: e.user?.email ?? null,
     imageUrl: e.imageUrl,
     isActive: e.isActive,
     salesCount: e._count.sales,
@@ -81,7 +87,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
         include: {
           position: { select: { name: true } },
           location: { select: { name: true } },
-          user: { select: { email: true } },
+          user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true } } } },
           _count: { select: { sales: true } },
         },
         orderBy: [{ isActive: "desc" }, { fullName: "asc" }],
@@ -92,7 +98,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     ]);
 
     return {
-      rows: rows.map((e) => serialize(e as EmployeeRow, e.user?.email ?? null)),
+      rows: rows.map((e) => serialize(e as EmployeeRow)),
       total,
     };
   },
@@ -103,12 +109,12 @@ export const employeesModule: CrudModule<EmployeeDto> = {
       include: {
         position: { select: { name: true } },
         location: { select: { name: true } },
-        user: { select: { email: true } },
+        user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true } } } },
         _count: { select: { sales: true } },
       },
     });
     if (!e) throw new CrudError("Empleado no encontrado", 404);
-    return serialize(e as EmployeeRow, e.user?.email ?? null);
+    return serialize(e as EmployeeRow);
   },
 
   async create(organizationId, input, _ctx) {
@@ -133,7 +139,11 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     }
 
     const email = emailRaw || `emp-${employeeCode.toLowerCase()}@empresa.local`;
-    const passwordHash = await hashPassword(randomBytes(12).toString("hex"));
+    // Contraseña inicial = correo (el empleado la cambia en su primer acceso).
+    const passwordHash = await hashPassword(email);
+    const roleRaw = data.role ? String(data.role) : "";
+    const role: $Enums.OrgRole =
+      (EMPLOYEE_ROLES as readonly string[]).includes(roleRaw) ? (roleRaw as $Enums.OrgRole) : "cashier";
     const positionId = data.positionId ? String(data.positionId) : null;
     if (positionId) {
       const pos = await prisma.employeePosition.findFirst({ where: { id: positionId, organizationId } });
@@ -148,9 +158,9 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     const user = await prisma.user.create({
       data: { email, passwordHash, fullName, phone, isActive: true },
     });
-    await setMembership(user.id, organizationId, "cashier");
 
     try {
+      await setMembership(user.id, organizationId, role);
       const employee = await prisma.employee.create({
         data: {
           organizationId,
@@ -166,12 +176,13 @@ export const employeesModule: CrudModule<EmployeeDto> = {
         include: {
           position: { select: { name: true } },
           location: { select: { name: true } },
-          user: { select: { email: true } },
+          user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true } } } },
           _count: { select: { sales: true } },
         },
       });
-      return serialize(employee as EmployeeRow, email);
+      return serialize(employee as EmployeeRow);
     } catch (err) {
+      await prisma.membership.deleteMany({ where: { userId: user.id, organizationId } }).catch(() => {});
       await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
       throw err;
     }
@@ -181,7 +192,15 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     const data = input as Record<string, unknown>;
     const existing = await prisma.employee.findFirst({
       where: { id, organizationId },
-      select: { id: true, userId: true, employeeCode: true, phone: true, fullName: true, isActive: true },
+      select: {
+        id: true,
+        userId: true,
+        employeeCode: true,
+        phone: true,
+        fullName: true,
+        isActive: true,
+        user: { select: { email: true } },
+      },
     });
     if (!existing) throw new CrudError("Empleado no encontrado", 404);
 
@@ -229,6 +248,21 @@ export const employeesModule: CrudModule<EmployeeDto> = {
       },
     });
 
+    // Si el correo cambió y la contraseña sigue siendo la default (el correo anterior),
+    // se resetea para que coincida con el nuevo correo.
+    if (emailRaw && emailRaw !== existing.user?.email) {
+      const userRow = await prisma.user.findUnique({
+        where: { id: existing.userId },
+        select: { passwordHash: true },
+      });
+      if (userRow && (await verifyPassword(existing.user?.email ?? "", userRow.passwordHash))) {
+        await prisma.user.update({
+          where: { id: existing.userId },
+          data: { passwordHash: await hashPassword(emailRaw) },
+        });
+      }
+    }
+
     if (data.positionId) {
       const pos = await prisma.employeePosition.findFirst({
         where: { id: String(data.positionId), organizationId },
@@ -240,6 +274,14 @@ export const employeesModule: CrudModule<EmployeeDto> = {
         where: { id: String(data.locationId), organizationId },
       });
       if (!loc) throw new CrudError("La sucursal no existe", 400, "locationId");
+    }
+
+    if (data.role !== undefined) {
+      const roleRaw = String(data.role);
+      if (!(EMPLOYEE_ROLES as readonly string[]).includes(roleRaw)) {
+        throw new CrudError("Rol inválido", 400, "role");
+      }
+      await setMembership(existing.userId, organizationId, roleRaw as $Enums.OrgRole);
     }
 
     const employee = await prisma.employee.update({
@@ -260,11 +302,11 @@ export const employeesModule: CrudModule<EmployeeDto> = {
       include: {
         position: { select: { name: true } },
         location: { select: { name: true } },
-        user: { select: { email: true } },
+        user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true } } } },
         _count: { select: { sales: true } },
       },
     });
-    return serialize(employee as EmployeeRow, employee.user?.email ?? null);
+    return serialize(employee as EmployeeRow);
   },
 
   async remove(organizationId, id) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FormCombobox, type ComboboxOption } from "@/components/base/form-combobox";
 import { CrudCreateDialog } from "./crud-create-dialog";
+import { closeAllDialogs } from "@/components/ui/dialog";
 import { crudApi } from "@/lib/api";
 import type { CrudField } from "./crud-config";
 
@@ -70,6 +71,9 @@ export function OptionSelect({
             onChange(String(record.id ?? ""));
             setCreateOpen(false);
             void load();
+            // Cierra también el/los diálogos origen de la cadena (formulario en edición,
+            // diálogos anidados) para no dejar estados intermedios abiertos.
+            closeAllDialogs();
           }}
         />
       )}

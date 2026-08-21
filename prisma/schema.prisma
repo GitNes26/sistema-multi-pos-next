@@ -18,6 +18,7 @@ enum OrgRole {
   owner
   manager
   cashier
+  customer
   superadmin
   admin
 }
@@ -366,6 +367,7 @@ model CustomerPaymentMethod {
   id                     String   @id @default(cuid())
   customerId             String
   organizationId         String
+  alias                  String?
   brand                  String?
   last4                  String?
   expMonth               Int?

@@ -248,7 +248,7 @@ function CreateOrgDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Nueva organización"
-      description="Crea la empresa y su cuenta owner. De ahí parte todo el sistema."
+      description="Crea la empresa con la cuenta owner, la sucursal Matriz y la Caja 1 iniciales."
       icon={<Building2 className="size-4" />}
       footer={
         <>

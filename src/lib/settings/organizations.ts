@@ -46,7 +46,8 @@ export interface CreateOrganizationInput {
   ownerPassword: string;
 }
 
-/** Crea la organización + la cuenta owner (membresía owner). */
+/** Crea la organización + la cuenta owner (membresía owner) + sucursal
+ * Matriz y Caja 1 relacionada, para que la empresa arranque operativa. */
 export async function createOrganization(input: CreateOrganizationInput): Promise<OrganizationRow> {
   const name = input.name?.trim();
   if (!name) throw new Error("El nombre de la organización es obligatorio");
@@ -73,18 +74,44 @@ export async function createOrganization(input: CreateOrganizationInput): Promis
       },
     }));
 
-  const org = await prisma.organization.create({
-    data: {
-      name,
-      ownerId: owner.id,
-      currency: input.currency?.trim() || "MXN",
-    },
-  });
+  const org = await prisma.$transaction(async (tx) => {
+    const created = await tx.organization.create({
+      data: {
+        name,
+        ownerId: owner.id,
+        currency: input.currency?.trim() || "MXN",
+      },
+    });
 
-  await prisma.membership.upsert({
-    where: { userId_organizationId: { userId: owner.id, organizationId: org.id } },
-    update: { role: "owner" },
-    create: { userId: owner.id, organizationId: org.id, role: "owner" },
+    await tx.membership.upsert({
+      where: { userId_organizationId: { userId: owner.id, organizationId: created.id } },
+      update: { role: "owner" },
+      create: { userId: owner.id, organizationId: created.id, role: "owner" },
+    });
+
+    // Sucursal matriz + caja inicial: la base mínima para operar el POS.
+    const matriz = await tx.location.create({
+      data: {
+        organizationId: created.id,
+        name: "Matriz",
+        code: "MATRIZ",
+        managerName: ownerName,
+        allowsPickup: true,
+        allowsDelivery: true,
+        isActive: true,
+      },
+    });
+    await tx.cashRegister.create({
+      data: {
+        organizationId: created.id,
+        locationId: matriz.id,
+        name: "Caja 1",
+        folioPrefix: "C1",
+        isActive: true,
+      },
+    });
+
+    return created;
   });
 
   return {

@@ -6,6 +6,7 @@ import "react-easy-crop/react-easy-crop.css"
 import type { Area } from "react-easy-crop"
 import {
   Camera,
+  CameraOff,
   FileText,
   ImagePlus,
   Loader2,
@@ -96,6 +97,30 @@ export function Attachment({
   const [dragging, setDragging] = React.useState(false)
   const [error, setError] = React.useState<string>()
   const [uploading, setUploading] = React.useState(false)
+  // null = detectando; true/false = hay/no hay cámara disponible.
+  const [hasCamera, setHasCamera] = React.useState<boolean | null>(null)
+
+  React.useEffect(() => {
+    let active = true
+    if (
+      typeof navigator === "undefined" ||
+      typeof navigator.mediaDevices?.enumerateDevices !== "function"
+    ) {
+      setHasCamera(false)
+      return
+    }
+    navigator.mediaDevices
+      .enumerateDevices()
+      .then((devices) => {
+        if (active) setHasCamera(devices.some((d) => d.kind === "videoinput"))
+      })
+      .catch(() => {
+        if (active) setHasCamera(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   // Crop state
   const [cropOpen, setCropOpen] = React.useState(false)
@@ -272,18 +297,31 @@ export function Attachment({
             <ImagePlus className="size-4" />
             {value ? "Reemplazar" : "Subir"}
           </Button>
-          {acceptsImageOnly && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled || uploading}
-              onClick={() => cameraRef.current?.click()}
-            >
-              <Camera className="size-4" />
-              Tomar foto
-            </Button>
-          )}
+          {acceptsImageOnly &&
+            (hasCamera === false ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled
+                className="cursor-not-allowed opacity-60"
+                title="No se detectó una cámara en este dispositivo"
+              >
+                <CameraOff className="size-4" />
+                Cámara no encontrada
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled || uploading || hasCamera === null}
+                onClick={() => cameraRef.current?.click()}
+              >
+                <Camera className="size-4" />
+                Tomar foto
+              </Button>
+            ))}
           {value && (
             <>
               <Button

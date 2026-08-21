@@ -244,7 +244,10 @@ export function CheckoutClient() {
                   <Label htmlFor="pay-card" className="flex flex-1 cursor-pointer items-center gap-2">
                     <CreditCard className="size-4 text-muted-foreground" />
                     <span className="text-sm">
-                      Tarjeta {selectedCard?.brand ?? ""} •••• {selectedCard?.last4}
+                      Tarjeta{" "}
+                      {selectedCard?.alias
+                        ? `${selectedCard.alias} (${selectedCard.brand ?? ""} •••• ${selectedCard.last4})`
+                        : `${selectedCard?.brand ?? ""} •••• ${selectedCard?.last4}`}
                     </span>
                   </Label>
                 </div>

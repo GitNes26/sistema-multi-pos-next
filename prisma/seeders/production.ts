@@ -56,6 +56,11 @@ export const SYSTEM_ROLES = [
       "locations.view",
     ],
   },
+  {
+    name: "customer",
+    description: "Cliente con cuenta en el portal (sin permisos de panel)",
+    permissions: [],
+  },
 ] as const;
 
 // Unidades del sistema (organizationId = null → globales)
@@ -153,13 +158,15 @@ export async function seedProduction() {
       create: { id, name: def.name, description: def.description, isSystem: true },
     });
     await prisma.rolePermission.deleteMany({ where: { roleId: role.id, organizationId: null } });
-    await prisma.rolePermission.createMany({
-      data: def.permissions.map((key) => ({
-        roleId: role.id,
-        permissionKey: key,
-        allowed: true,
-      })),
-    });
+    if (def.permissions.length > 0) {
+      await prisma.rolePermission.createMany({
+        data: def.permissions.map((key) => ({
+          roleId: role.id,
+          permissionKey: key,
+          allowed: true,
+        })),
+      });
+    }
   }
 
   // Unidades del sistema

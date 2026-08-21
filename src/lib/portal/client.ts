@@ -120,6 +120,7 @@ export const portalApi = {
   paymentMethods: () =>
     json<{ ok: boolean; methods: PaymentMethodView[] }>("/api/portal/payment-methods"),
   addPaymentMethod: (input: {
+    alias?: string;
     brand?: string;
     last4: string;
     expMonth: number;

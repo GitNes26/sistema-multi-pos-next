@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { hashPassword } from "@/lib/auth/users";
+import { hashPassword, setMembership, verifyPassword } from "@/lib/auth/users";
 import { CrudError, type CrudModule, type ListParams, type CrudListResult } from "../types";
 
 export interface CustomerDto {
@@ -27,6 +27,7 @@ type CustomerRow = {
   imageUrl: string | null;
   address: string | null;
   isActive: boolean;
+  user: { email: string | null } | null;
   _count: { sales: number; orders: number };
 };
 
@@ -38,7 +39,8 @@ function serialize(c: CustomerRow): CustomerDto {
     customerCode: c.customerCode,
     fullName: c.fullName,
     phone: c.phone,
-    email: c.email,
+    // Si no se capturó correo, se muestra el de la cuenta de usuario asociada.
+    email: c.email ?? c.user?.email ?? null,
     points: num(c.points),
     imageUrl: c.imageUrl,
     address: c.address,
@@ -78,7 +80,7 @@ export const customersModule: CrudModule<CustomerDto> = {
     const [rows, total] = await Promise.all([
       prisma.customer.findMany({
         where,
-        include: { _count: { select: { sales: true, orders: true } } },
+        include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true } } },
         orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -92,7 +94,7 @@ export const customersModule: CrudModule<CustomerDto> = {
   async get(organizationId, id) {
     const c = await prisma.customer.findFirst({
       where: { id, organizationId },
-      include: { _count: { select: { sales: true, orders: true } } },
+      include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true } } },
     });
     if (!c) throw new CrudError("Cliente no encontrado", 404);
     return serialize(c);
@@ -123,13 +125,15 @@ export const customersModule: CrudModule<CustomerDto> = {
     }
 
     const email = emailRaw || `cli-${randomBytes(4).toString("hex")}@portal.local`;
-    const passwordHash = await hashPassword(randomBytes(12).toString("hex"));
+    // Contraseña inicial = correo (el cliente la cambia en su primer acceso).
+    const passwordHash = await hashPassword(email);
 
     const user = await prisma.user.create({
       data: { email, passwordHash, fullName, phone, isActive: true },
     });
 
     try {
+      await setMembership(user.id, organizationId, "customer");
       const customer = await prisma.customer.create({
         data: {
           organizationId,
@@ -143,10 +147,11 @@ export const customersModule: CrudModule<CustomerDto> = {
           isActive: data.isActive !== false,
           ...(data.points !== undefined ? { points: Number(data.points) || 0 } : {}),
         },
-        include: { _count: { select: { sales: true, orders: true } } },
+        include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true } } },
       });
       return serialize(customer);
     } catch (err) {
+      await prisma.membership.deleteMany({ where: { userId: user.id, organizationId } }).catch(() => {});
       await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
       throw err;
     }
@@ -193,6 +198,21 @@ export const customersModule: CrudModule<CustomerDto> = {
       },
     });
 
+    // Si el correo cambió y la contraseña sigue siendo la default (el correo anterior),
+    // se resetea para que coincida con el nuevo correo.
+    if (emailRaw && emailRaw !== existing.email) {
+      const userRow = await prisma.user.findUnique({
+        where: { id: existing.userId },
+        select: { passwordHash: true },
+      });
+      if (userRow && (await verifyPassword(existing.email ?? "", userRow.passwordHash))) {
+        await prisma.user.update({
+          where: { id: existing.userId },
+          data: { passwordHash: await hashPassword(emailRaw) },
+        });
+      }
+    }
+
     const customer = await prisma.customer.update({
       where: { id },
       data: {
@@ -207,7 +227,7 @@ export const customersModule: CrudModule<CustomerDto> = {
           ? { customerCode: data.customerCode ? String(data.customerCode).trim().toUpperCase() : null }
           : {}),
       },
-      include: { _count: { select: { sales: true, orders: true } } },
+      include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true } } },
     });
     return serialize(customer);
   },
@@ -227,6 +247,7 @@ export const customersModule: CrudModule<CustomerDto> = {
       prisma.shoppingList.deleteMany({ where: { customerId: id } }),
       prisma.coupon.deleteMany({ where: { customerId: id } }),
       prisma.customer.delete({ where: { id } }),
+      prisma.membership.deleteMany({ where: { userId: c.userId, organizationId } }),
       prisma.user.delete({ where: { id: c.userId } }),
     ]);
   },

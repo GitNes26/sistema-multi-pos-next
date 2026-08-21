@@ -102,6 +102,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [formSaving, setFormSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [excelBusy, setExcelBusy] = useState<"export" | "import" | null>(null);
   const [preview, setPreview] = useState<ExcelPreviewResult | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -140,6 +141,8 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
   useEffect(() => {
     setPage(1);
   }, [debouncedQ]);
+
+  const isDebouncing = q !== debouncedQ;
 
   const columns = useMemo(() => {
     if (!config) return [];
@@ -251,12 +254,15 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
       danger: true,
     });
     if (!ok) return;
+    setDeletingId(String(row.id));
     try {
       await crudApi.remove(moduleKey, String(row.id));
       swalToast("Eliminado");
       load();
     } catch (err) {
       swalError("No se pudo eliminar", err instanceof Error ? err.message : undefined);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -361,9 +367,15 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                 variant="ghost"
                 size="icon"
                 className="size-8 text-destructive"
+                disabled={deletingId === String(row.original.id)}
                 onClick={() => handleDelete(row.original)}
+                title={deletingId === String(row.original.id) ? "Eliminando…" : "Eliminar"}
               >
-                <Trash2 className="size-4" />
+                {deletingId === String(row.original.id) ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Trash2 className="size-4" />
+                )}
               </Button>
             )}
           </div>
@@ -393,7 +405,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                 <>
                   <Button variant="outline" size="sm" onClick={handleExport} disabled={excelBusy !== null}>
                     {excelBusy === "export" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-                    Exportar
+                    {excelBusy === "export" ? "Exportando…" : "Exportar"}
                   </Button>
                   <TooltipButton
                     label="Plantilla vacía con instrucciones y catálogos (descárgala cada vez que vayas a importar)"
@@ -403,7 +415,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                     disabled={excelBusy !== null}
                   >
                     <FileSpreadsheet className="size-4" />
-                    Descargar plantilla
+                    {excelBusy === "export" ? "Descargando…" : "Plantilla"}
                   </TooltipButton>
                   <TooltipButton
                     label="1) Descarga la plantilla · 2) llena las filas · 3) sube el archivo para ver la vista previa · 4) confirma. Descarga la plantilla cada vez, por si se agregaron valores nuevos a los catálogos."
@@ -414,7 +426,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                     side="bottom"
                   >
                     {excelBusy === "import" ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                    Importar
+                    {excelBusy === "import" ? "Importando…" : "Importar"}
                   </TooltipButton>
                   <input
                     ref={fileInputRef}
@@ -445,8 +457,11 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="h-8 pl-9"
+                className="h-8 pl-9 pr-8"
               />
+              {(isDebouncing || loading) && (
+                <Loader2 className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 animate-spin text-muted-foreground" />
+              )}
             </div>
             <span className="text-sm text-muted-foreground">{total} registro(s)</span>
           </div>
@@ -470,13 +485,13 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                 {from}–{to} de {total}
               </span>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                <Button variant="ghost" size="icon" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                   <ChevronLeft className="size-4" />
                 </Button>
                 <span className="px-2 text-sm tabular-nums text-muted-foreground">
                   {page} / {pageCount}
                 </span>
-                <Button variant="ghost" size="icon" disabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
+                <Button variant="ghost" size="icon" disabled={page >= pageCount || loading} onClick={() => setPage((p) => p + 1)}>
                   <ChevronRight className="size-4" />
                 </Button>
               </div>
@@ -503,7 +518,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
               disabled={formSaving}
             >
               {formSaving && <Loader2 className="size-4 animate-spin" />}
-              {editing ? "Guardar cambios" : isProducts(moduleKey) ? "Crear producto" : "Crear"}
+              {editing ? (formSaving ? "Guardando…" : "Guardar cambios") : isProducts(moduleKey) ? (formSaving ? "Creando…" : "Crear producto") : (formSaving ? "Creando…" : "Crear")}
             </Button>
           </>
         }

@@ -3,15 +3,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
+  ChevronRight,
   ChevronUp,
+  Eye,
+  EyeOff,
   FolderPlus,
   Link2,
+  ListTree,
   Menu,
-  Pencil,
   Plus,
+  Search,
   Tag,
   Trash2,
   Type,
+  X,
 } from "lucide-react";
 import { menusApi } from "@/lib/menus/client";
 import type { MenuNode, MenuInput } from "@/lib/menus/server";
@@ -22,10 +27,13 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { FormCombobox } from "@/components/base/form-combobox";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { TooltipButton } from "@/components/shared/tooltip-button";
-import { DialogComponent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 const BADGE_VARIANTS = [
@@ -53,6 +61,8 @@ export function MenusManager() {
   const [menus, setMenus] = useState<MenuNode[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<(MenuInput & { id?: string }) | null>(null);
+  const [search, setSearch] = useState("");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const load = useCallback(() => {
     menusApi
@@ -65,11 +75,43 @@ export function MenusManager() {
     load();
   }, [load]);
 
+  const stats = useMemo(() => {
+    const list = menus ?? [];
+    return {
+      total: list.length,
+      sections: list.filter((m) => m.type === "section").length,
+      items: list.filter((m) => m.type === "item").length,
+      active: list.filter((m) => m.isActive).length,
+    };
+  }, [menus]);
+
+  // Búsqueda: conserva la cadena de ancestros para mantener el contexto.
+  const filteredList = useMemo(() => {
+    const list = menus ?? [];
+    const q = search.trim().toLowerCase();
+    if (!q) return list;
+    const keep = new Set<string>();
+    for (const m of list) {
+      if (m.label.toLowerCase().includes(q) || (m.href ?? "").toLowerCase().includes(q)) keep.add(m.id);
+    }
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const m of list) {
+        if (m.parentId && keep.has(m.parentId) && !keep.has(m.id)) {
+          keep.add(m.id);
+          changed = true;
+        }
+      }
+    }
+    return list.filter((m) => keep.has(m.id));
+  }, [menus, search]);
+
   const tree = useMemo(() => {
-    if (!menus) return [];
-    const byId = new Map(menus.map((m) => [m.id, { ...m, children: [] as MenuNode[] }]));
+    if (filteredList.length === 0) return [];
+    const byId = new Map(filteredList.map((m) => [m.id, { ...m, children: [] as MenuNode[] }]));
     const roots: MenuNode[] = [];
-    for (const m of menus) {
+    for (const m of filteredList) {
       const node = byId.get(m.id)!;
       if (m.parentId && byId.has(m.parentId)) byId.get(m.parentId)!.children.push(node);
       else roots.push(node);
@@ -80,7 +122,7 @@ export function MenusManager() {
     };
     sort(roots);
     return roots;
-  }, [menus]);
+  }, [filteredList]);
 
   const siblingsOf = (node: MenuNode): MenuNode[] => {
     if (!menus) return [];
@@ -92,8 +134,7 @@ export function MenusManager() {
   const move = async (node: MenuNode, dir: -1 | 1) => {
     const siblings = siblingsOf(node);
     const idx = siblings.findIndex((s) => s.id === node.id);
-    const target = siblings[idx + dir];
-    if (!target) return;
+    if (!siblings[idx + dir]) return;
     const reordered = [...siblings];
     [reordered[idx], reordered[idx + dir]] = [reordered[idx + dir], reordered[idx]];
     await persistOrder(reordered);
@@ -110,8 +151,8 @@ export function MenusManager() {
     }
   };
 
-  const openCreate = (parentId: string | null) => {
-    setForm({ ...EMPTY_FORM, id: undefined, parentId: parentId ?? "", type: parentId ? "item" : "section" });
+  const openCreate = (parentId: string | null, type: "section" | "item") => {
+    setForm({ ...EMPTY_FORM, id: undefined, parentId: parentId ?? "", type });
   };
 
   const openEdit = (node: MenuNode) => {
@@ -143,7 +184,7 @@ export function MenusManager() {
         icon: form.icon || null,
         href: form.type === "item" ? form.href || null : null,
         badge: form.badge || null,
-        badgeVariant: form.badge || null,
+        badgeVariant: form.badgeVariant || null,
         permissionKey: form.permissionKey || null,
         parentId: form.parentId || null,
         sortOrder: form.sortOrder,
@@ -172,6 +213,7 @@ export function MenusManager() {
     if (!ok) return;
     try {
       await menusApi.remove(node.id);
+      if (form?.id === node.id) setForm(null);
       swalToast("Menú eliminado", "info");
       load();
     } catch (err) {
@@ -179,101 +221,208 @@ export function MenusManager() {
     }
   };
 
+  const toggleActive = async (node: MenuNode) => {
+    try {
+      await menusApi.update(node.id, { isActive: !node.isActive, label: node.label });
+      setForm((f) => (f && f.id === node.id ? { ...f, isActive: !node.isActive } : f));
+      load();
+    } catch (err) {
+      swalError("No se pudo actualizar", err instanceof Error ? err.message : undefined);
+    }
+  };
+
+  // Padres válidos: se excluye el propio nodo y su subárbol (evita ciclos).
+  const excludedIds = useMemo(() => {
+    const list = menus ?? [];
+    if (!form?.id) return new Set<string>();
+    const set = new Set<string>();
+    const walk = (id: string) => {
+      if (set.has(id)) return;
+      set.add(id);
+      for (const m of list) if (m.parentId === id) walk(m.id);
+    };
+    walk(form.id);
+    return set;
+  }, [menus, form?.id]);
+
   const parentOptions = useMemo(() => {
-    if (!menus) return [];
-    return menus
-      .filter((m) => m.type === "section" || m.type === "item")
+    const list = menus ?? [];
+    return list
+      .filter((m) => !excludedIds.has(m.id))
       .sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [menus]);
+  }, [menus, excludedIds]);
+
+  const toggleCollapse = (id: string) => setCollapsed((c) => ({ ...c, [id]: !c[id] }));
 
   const renderNode = (node: MenuNode, depth: number) => {
     const Icon = resolveMenuIcon(node.icon);
+    const selected = form?.id === node.id;
+    const isCollapsed = !!collapsed[node.id];
+    const hasChildren = node.children.length > 0;
     return (
-      <div key={node.id}>
+      <div key={node.id} className="space-y-1" style={{ marginLeft: depth * 14 }}>
         <div
           className={cn(
-            "flex items-center gap-2 rounded-lg border p-2",
-            !node.isActive && "opacity-50"
+            "flex items-center gap-1 rounded-lg border bg-card p-1.5 transition-colors",
+            selected ? "border-primary/70 ring-1 ring-primary/30" : "hover:bg-accent/50",
+            !node.isActive && "opacity-60"
           )}
-          style={{ marginLeft: depth * 16 }}
         >
-          <div className="flex flex-col">
+          <button
+            type="button"
+            onClick={() => openEdit(node)}
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-0.5 text-left"
+          >
+            {hasChildren ? (
+              <span
+                className="shrink-0 text-muted-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCollapse(node.id);
+                }}
+                aria-label={isCollapsed ? "Expandir" : "Colapsar"}
+              >
+                {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+              </span>
+            ) : (
+              <span className="w-4 shrink-0" />
+            )}
+            <Icon className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2">
+                <span className="truncate text-sm font-medium">{node.label}</span>
+                {node.type === "section" && <Badge variant="outline">Sección</Badge>}
+                {node.badge && <Badge>{node.badge}</Badge>}
+              </span>
+              {node.type === "item" && (
+                <span className="block truncate text-xs text-muted-foreground">{node.href ?? "—"}</span>
+              )}
+              {node.permissionKey && (
+                <span className="block truncate text-[0.65rem] text-muted-foreground/80">{node.permissionKey}</span>
+              )}
+            </span>
+            {!node.isActive && <span className="size-1.5 shrink-0 rounded-full bg-destructive" title="Inactivo" />}
+          </button>
+          <div className="flex shrink-0 items-center gap-0.5">
             <TooltipButton label="Subir" variant="ghost" size="icon-xs" onClick={() => move(node, -1)}>
               <ChevronUp className="size-3.5" />
             </TooltipButton>
             <TooltipButton label="Bajar" variant="ghost" size="icon-xs" onClick={() => move(node, 1)}>
               <ChevronDown className="size-3.5" />
             </TooltipButton>
-          </div>
-          <Icon className="size-4 shrink-0 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="truncate text-sm font-medium">{node.label}</span>
-              {node.type === "section" ? (
-                <Badge variant="outline">Sección</Badge>
-              ) : (
-                <span className="truncate text-xs text-muted-foreground">{node.href}</span>
-              )}
-              {node.badge && <Badge variant="secondary">{node.badge}</Badge>}
-              {node.permissionKey && (
-                <span className="truncate text-[0.65rem] text-muted-foreground">
-                  {node.permissionKey}
-                </span>
-              )}
-            </div>
-          </div>
-          {node.type === "item" && (
-            <TooltipButton label="Agregar sub-item" variant="ghost" size="icon-xs" onClick={() => openCreate(node.id)}>
-              <Plus className="size-3.5" />
+            {node.type === "item" && (
+              <TooltipButton label="Agregar sub-item" variant="ghost" size="icon-xs" onClick={() => openCreate(node.id, "item")}>
+                <Plus className="size-3.5" />
+              </TooltipButton>
+            )}
+            <TooltipButton
+              label={node.isActive ? "Desactivar" : "Activar"}
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => toggleActive(node)}
+            >
+              {node.isActive ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
             </TooltipButton>
-          )}
-          <TooltipButton label="Editar" variant="ghost" size="icon-xs" onClick={() => openEdit(node)}>
-            <Pencil className="size-3.5" />
-          </TooltipButton>
-          <TooltipButton label="Eliminar" variant="ghost" size="icon-xs" onClick={() => remove(node)}>
-            <Trash2 className="size-3.5 text-destructive" />
-          </TooltipButton>
+            <TooltipButton label="Eliminar" variant="ghost" size="icon-xs" onClick={() => remove(node)}>
+              <Trash2 className="size-3.5 text-destructive" />
+            </TooltipButton>
+          </div>
         </div>
-        {node.children.map((c) => renderNode(c, depth + 1))}
+        {hasChildren && !isCollapsed && (
+          <div className="space-y-1">{node.children.map((c) => renderNode(c, depth + 1))}</div>
+        )}
       </div>
     );
   };
+
+  const EditorPreviewIcon = resolveMenuIcon(form?.icon ?? "Circle");
 
   return (
     <div className="space-y-4">
       {error && <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
 
-      {!menus ? (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full rounded-lg" />
-          ))}
+      {/* Barra de acciones + búsqueda */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o ruta…"
+            className="pl-8"
+          />
         </div>
-      ) : (
-        <div className="space-y-2">
-          {tree.map((node) => renderNode(node, 0))}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => openCreate(null, "section")}>
+            <FolderPlus className="size-4" /> Nueva sección
+          </Button>
+          <Button size="sm" onClick={() => openCreate(null, "item")}>
+            <Plus className="size-4" /> Nuevo ítem
+          </Button>
         </div>
-      )}
+      </div>
 
-      <DialogComponent
-        open={form !== null}
-        onOpenChange={(o) => !o && setForm(null)}
-        icon={<Menu className="size-4 text-primary" />}
-        title={form?.id ? "Editar menú" : "Nuevo menú"}
-        description="Configura el elemento de navegación"
-        className="sm:max-w-md"
-        bodyClassName="space-y-3"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setForm(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={submit}>Guardar</Button>
-          </>
-        }
-      >
-          {form && (
-            <div className="space-y-3">
+      {/* Resumen rápido */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Elementos", value: stats.total },
+          { label: "Secciones", value: stats.sections },
+          { label: "Ítems", value: stats.items },
+          { label: "Activos", value: stats.active },
+        ].map((s) => (
+          <div key={s.label} className="rounded-xl border bg-card p-3">
+            <p className="text-2xl font-bold tabular-nums">{s.value}</p>
+            <p className="text-xs text-muted-foreground">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Estructura + editor */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Estructura del menú</CardTitle>
+            <CardAction>
+              <Badge variant="secondary">{stats.total} elemento(s)</Badge>
+            </CardAction>
+          </CardHeader>
+          <Separator />
+          <CardContent className="pt-4">
+            {!menus ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : tree.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted-foreground">
+                <ListTree className="size-8" />
+                {search ? "Sin resultados para la búsqueda." : "Aún no hay elementos. Crea una sección o un ítem."}
+              </div>
+            ) : (
+              <ScrollArea className="h-[560px] pr-3">
+                <div className="space-y-2">{tree.map((node) => renderNode(node, 0))}</div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Panel de edición inline */}
+        {form ? (
+          <Card className="self-start lg:sticky lg:top-4">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <EditorPreviewIcon className="size-4 text-primary" />
+                <CardTitle>{form.id ? "Editar elemento" : "Nuevo elemento"}</CardTitle>
+              </div>
+              <CardAction>
+                <Button variant="ghost" size="icon-xs" onClick={() => setForm(null)} aria-label="Cerrar editor">
+                  <X className="size-4" />
+                </Button>
+              </CardAction>
+            </CardHeader>
+            <Separator />
+            <CardContent className="space-y-3 pt-4">
               <div className="grid grid-cols-2 gap-3">
                 <FormCombobox
                   label="Tipo"
@@ -376,17 +525,47 @@ export function MenusManager() {
                 </label>
                 <Switch id="menu-active" checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
               </div>
-            </div>
-          )}
-      </DialogComponent>
 
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={() => openCreate(null)}>
-          <FolderPlus className="size-4" /> Agregar sección
-        </Button>
-        <Button onClick={() => openCreate(null)}>
-          <Menu className="size-4" /> Agregar item raíz
-        </Button>
+              {/* Vista previa del elemento */}
+              <div className="rounded-lg border bg-muted/40 p-2">
+                <p className="mb-1.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+                  Vista previa
+                </p>
+                <div className="flex items-center gap-2 rounded-md bg-card px-3 py-2 shadow-sm">
+                  <EditorPreviewIcon className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {form.label?.trim() || "Label"}
+                  </span>
+                  {form.badge && (
+                    <Badge variant={(form.badgeVariant as "default") ?? "default"}>{form.badge}</Badge>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+            <Separator />
+            <div className="flex justify-end gap-2 px-4 py-3">
+              <Button variant="outline" onClick={() => setForm(null)}>
+                Cancelar
+              </Button>
+              <Button onClick={submit}>{form.id ? "Guardar cambios" : "Crear"}</Button>
+            </div>
+          </Card>
+        ) : (
+          <Card className="flex flex-col items-center justify-center gap-3 border-dashed py-16 text-center">
+            <Menu className="size-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              Selecciona un elemento del árbol para editarlo o crea uno nuevo.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => openCreate(null, "section")}>
+                <FolderPlus className="size-4" /> Nueva sección
+              </Button>
+              <Button size="sm" onClick={() => openCreate(null, "item")}>
+                <Plus className="size-4" /> Nuevo ítem
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );

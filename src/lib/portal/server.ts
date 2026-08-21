@@ -960,6 +960,7 @@ export async function duplicateShoppingList(
 
 export interface PaymentMethodView {
   id: string;
+  alias: string | null;
   brand: string | null;
   last4: string | null;
   expMonth: number | null;
@@ -978,6 +979,7 @@ export async function listPaymentMethods(
   });
   return rows.map((m) => ({
     id: m.id,
+    alias: m.alias,
     brand: m.brand,
     last4: m.last4,
     expMonth: m.expMonth,
@@ -990,8 +992,8 @@ export async function listPaymentMethods(
 export async function addPaymentMethod(
   organizationId: string,
   customerId: string,
-  input: { brand?: string; last4: string; expMonth: number; expYear: number; isDefault?: boolean }
-): Promise<PaymentMethodView> {
+  input: { alias?: string; brand?: string; last4: string; expMonth: number; expYear: number; isDefault?: boolean }
+): Promise<PaymentMethodView[]> {
   if (!input.last4 || !/^\d{4}$/.test(input.last4)) {
     throw new PortalError("Los últimos 4 dígitos son inválidos");
   }
@@ -1003,6 +1005,7 @@ export async function addPaymentMethod(
   }
 
   const isDefault = input.isDefault ?? false;
+  const alias = input.alias ? String(input.alias).trim().slice(0, 40) : null;
   await prisma.$transaction(async (tx) => {
     if (isDefault) {
       await tx.customerPaymentMethod.updateMany({
@@ -1014,6 +1017,7 @@ export async function addPaymentMethod(
       data: {
         customerId,
         organizationId,
+        alias,
         brand: input.brand ?? null,
         last4: input.last4,
         expMonth: input.expMonth,
@@ -1023,8 +1027,7 @@ export async function addPaymentMethod(
     });
   });
 
-  const list = await listPaymentMethods(organizationId, customerId);
-  return list.find((m) => m.last4 === input.last4 && m.expYear === input.expYear)!;
+  return listPaymentMethods(organizationId, customerId);
 }
 
 export async function removePaymentMethod(
@@ -1064,6 +1067,7 @@ export async function setDefaultPaymentMethod(
 
 export interface ExpiringCardView {
   id: string;
+  alias: string | null;
   brand: string | null;
   last4: string | null;
   expMonth: number | null;
@@ -1081,7 +1085,7 @@ export async function listExpiringCards(
 
   const methods = await prisma.customerPaymentMethod.findMany({
     where: { customerId, expYear: { not: null }, expMonth: { not: null } },
-    select: { id: true, brand: true, last4: true, expMonth: true, expYear: true },
+    select: { id: true, alias: true, brand: true, last4: true, expMonth: true, expYear: true },
   });
 
   return methods
@@ -1093,5 +1097,12 @@ export async function listExpiringCards(
       const diff = totalMonths - nowMonths;
       return diff >= 0 && diff <= 2;
     })
-    .map((c) => ({ id: c.id, brand: c.brand, last4: c.last4, expMonth: c.expMonth, expYear: c.expYear }));
+    .map((c) => ({
+      id: c.id,
+      alias: c.alias,
+      brand: c.brand,
+      last4: c.last4,
+      expMonth: c.expMonth,
+      expYear: c.expYear,
+    }));
 }
