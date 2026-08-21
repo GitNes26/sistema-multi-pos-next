@@ -103,7 +103,7 @@ function DialogContent({
           if (shouldKeepDialogOpen(e)) e.preventDefault()
         }}
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
           className
         )}
         {...props}
@@ -141,7 +141,7 @@ function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-body"
-      className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto", className)}
+      className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto px-2", className)}
       {...props}
     />
   )
@@ -206,12 +206,27 @@ function DialogDescription({
   )
 }
 
+type DialogComponentSize = "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full" | "auto"
+
+const DIALOG_SIZE_CLASSES: Record<DialogComponentSize, string> = {
+  sm: "sm:max-w-sm",
+  md: "sm:max-w-md",
+  lg: "sm:max-w-lg",
+  xl: "sm:max-w-xl",
+  "2xl": "sm:max-w-2xl",
+  "3xl": "sm:max-w-3xl",
+  "4xl": "sm:max-w-4xl",
+  full: "sm:max-w-[calc(100vw-2rem)]",
+  auto: "",
+}
+
 type DialogComponentProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   title?: React.ReactNode
   description?: React.ReactNode
   icon?: React.ReactNode
+  size?: DialogComponentSize
   className?: string
   bodyClassName?: string
   footerClassName?: string
@@ -226,6 +241,7 @@ function DialogComponent({
   title,
   description,
   icon,
+  size = "2xl",
   className,
   bodyClassName,
   footerClassName,
@@ -235,9 +251,11 @@ function DialogComponent({
 }: DialogComponentProps) {
   useCloseAllDialogs(() => onOpenChange(false))
 
+  const sizeClass = DIALOG_SIZE_CLASSES[size]
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={className} showCloseButton={showCloseButton}>
+      <DialogContent className={cn(sizeClass, className)} showCloseButton={showCloseButton}>
         {title || description ? (
           <DialogHeader>
             {title ? (

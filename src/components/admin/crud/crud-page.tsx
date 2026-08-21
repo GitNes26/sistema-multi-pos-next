@@ -8,6 +8,7 @@ import {
   Download,
   Eye,
   FileSpreadsheet,
+  Layers,
   Loader2,
   Package,
   Plus,
@@ -29,6 +30,7 @@ import { money } from "@/lib/pos/money";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { CrudForm } from "./crud-form";
 import { ProductsForm } from "./products-form";
+import { VariantsDialog } from "./variants-dialog";
 import { TooltipButton } from "@/components/shared/tooltip-button";
 import { getCrudUi, CRUD_PRODUCTS_TITLE, type CrudColumn, type CrudUiConfig } from "./crud-config";
 
@@ -109,6 +111,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
   const [activity, setActivity] = useState<CustomerActivityData | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityCustomer, setActivityCustomer] = useState<Record<string, unknown> | null>(null);
+  const [variantsProduct, setVariantsProduct] = useState<Record<string, unknown> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -362,6 +365,11 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
             <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(row.original)}>
               <Pencil className="size-4" />
             </Button>
+            {isProducts(moduleKey) && row.original.productType === "standard" && (
+              <Button variant="ghost" size="icon" className="size-8" title="Variantes" onClick={() => setVariantsProduct(row.original)}>
+                <Layers className="size-4" />
+              </Button>
+            )}
             {canDelete && (
               <Button
                 variant="ghost"
@@ -505,7 +513,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         onOpenChange={(o) => !o && setDialogOpen(false)}
         title={editing ? "Editar" : "Nuevo"}
         description={meta.title}
-        className="sm:max-w-xl"
+        className="w-[90vw]"
         footerClassName="gap-2"
         footer={
           <>
@@ -550,12 +558,32 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         onClose={() => setActivityCustomer(null)}
       />
 
+      {variantsProduct && (
+        <VariantsDialog
+          productId={String(variantsProduct.id)}
+          productName={String(variantsProduct.name ?? "Producto")}
+          productImage={String(variantsProduct.imageUrl ?? "") || null}
+          categoryName={String(variantsProduct.categoryName ?? "") || null}
+          defaults={(() => {
+            const variants = (variantsProduct.variants as { name?: string; sku?: string; barcode?: string; price?: number; cost?: number }[]) ?? [];
+            const def = variants.find((v) => v.name?.toLowerCase() === "default") ?? variants[0];
+            return {
+              sku: String(def?.sku ?? ""),
+              barcode: String(def?.barcode ?? ""),
+              price: Number(def?.price ?? 0),
+              cost: Number(def?.cost ?? 0),
+            };
+          })()}
+          onClose={() => setVariantsProduct(null)}
+        />
+      )}
+
       <DialogComponent
         open={preview !== null}
         onOpenChange={(o) => !o && (setPreview(null), setPendingFile(null))}
         title="Vista previa de importación"
         description={preview ? `Se importarán ${preview.total} fila(s).` : ""}
-        className="sm:max-w-3xl"
+        className="max-w-[90vw]"
         footer={
           <>
             <Button variant="outline" onClick={() => (setPreview(null), setPendingFile(null))}>
@@ -647,7 +675,7 @@ function CustomerActivityDialog({
           )}
         </>
       }
-      className="sm:max-w-2xl"
+      className="max-w-[90vw]"
     >
         {loading ? (
           <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />

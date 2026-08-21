@@ -407,6 +407,7 @@ sistema-multi-pos/
 │   │   ├── use-mobile.tsx
 │   │   ├── use-active-org.ts
 │   │   ├── use-cart.ts
+│   │   ├── use-focus-invalid.ts    # Focus automático al primer campo inválido
 │   │   ├── use-portal-session.ts
 │   │   ├── use-permissions.ts
 │   │   ├── use-menus.ts           # Fetch de menús dinámicos desde BD
@@ -1733,9 +1734,9 @@ Sección Apariencia (/settings/appearance):
 ## FASE 4 — COMPONENTES BASE ✅
 
 - ✅ 4.1 Instalar 46+ componentes shadcn/ui (40 instalados: accordion, alert, avatar, badge, breadcrumb, button, calendar, card, carousel, chart, checkbox, collapsible, command, dialog, drawer, dropdown-menu, hover-card, input, input-group, input-otp, label, pagination, popover, progress, radio-group, scroll-area, select, separator, sheet, skeleton, slider, sonner, switch, table, tabs, textarea, toggle, toggle-group, tooltip)
-- ✅ 4.2 InputGroup (`src/components/base/input-group-field.tsx`: `InputGroupField` = label + InfoTooltip + icono + addons + hint/error; re-exporta `InputGroup` compuesto de shadcn)
+- ✅ 4.2 InputGroup (`src/components/base/input-group-field.tsx`: `InputGroupField` = label + InfoTooltip + icono + addons + hint/error + icono `AlertCircle` en error; re-exporta `InputGroup` compuesto de shadcn)
 - ✅ 4.3 InfoTooltip (`src/components/base/info-tooltip.tsx`)
-- ✅ 4.4 FormCombobox (`src/components/base/form-combobox.tsx`: searchable + sync `RefreshCw` + create inline + preserva selección)
+- ✅ 4.4 FormCombobox (`src/components/base/form-combobox.tsx`: searchable + sync `RefreshCw` + create inline + preserva selección + icono `AlertCircle` en error)
 - ✅ 4.5 DatePicker (`src/components/base/date-picker.tsx`, DD/MM/YYYY, react-day-picker v10, dropdown meses/años)
 - ✅ 4.6 TimePicker (`src/components/base/time-picker.tsx`, HH:MM AM/PM con segmentos)
 - ✅ 4.7 DateTimePicker (`src/components/base/date-time-picker.tsx`)
@@ -2350,6 +2351,11 @@ Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 - Listeners globales de teclado (p.ej. el `Numpad` del POS) deben ignorar los eventos cuando el foco está en un `input`/`textarea`/`select`/`contenteditable`, para no robar las teclas al campo (referencia, puntos, etc.)
 - NUNCA usar `<select>` nativo → siempre `FormCombobox` de shadcn/ui (`src/components/base/form-combobox.tsx`)
 - Formularios con react-hook-form + yup
+- **Validación inline en tiempo real**: cuando un campo tiene error:
+  - Borde rojo automático (via `aria-invalid` + CSS de Input/Combobox)
+  - Icono `AlertCircle` (! en círculo) al final del input/combobox
+  - Mensaje de error en `text-destructive text-sm` bajo el campo
+  - Al enviar el formulario con errores, hacer **focus automático** al primer campo inválido (hook `useFocusInvalid` de `src/hooks/use-focus-invalid.ts`)
 - Errores: `text-destructive text-sm` bajo el campo
 - Teléfono: solo 10 dígitos (transform yup + onChange sanitizador)
 - RFC/CURP/claves: mayúsculas (transform toUpperCase)
@@ -2387,10 +2393,10 @@ Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 
 - Cualquier modal → siempre `Dialog` de shadcn/ui
 - Estructura fija de 3 partes: Header fijo, Body con scroll, Footer fijo
-- **Componente base `DialogComponent`** (`@/components/ui/dialog`): encapsula la estructura fija y se usa en TODO el sistema. Props: `open`, `onOpenChange`, `title`, `icon?`, `description?`, `className?` (ancho), `bodyClassName?`, `footer?`, `footerClassName?`, `showCloseButton?`, `children` (cuerpo). No se usa `Dialog`/`DialogContent`/`DialogHeader`/`DialogBody`/`DialogFooter` sueltos en las vistas.
+- **Componente base `DialogComponent`** (`@/components/ui/dialog`): encapsula la estructura fija y se usa en TODO el sistema. Props: `open`, `onOpenChange`, `title`, `icon?`, `description?`, `size?` (predefinido: "2xl"), `className?` (override ancho), `bodyClassName?`, `footer?`, `footerClassName?`, `showCloseButton?`, `children` (cuerpo). No se usa `Dialog`/`DialogContent`/`DialogHeader`/`DialogBody`/`DialogFooter` sueltos en las vistas.
+- **Tamaños predefinidos** (prop `size`): `"sm"` | `"md"` | `"lg"` | `"xl"` | `"2xl"` (default) | `"3xl"` | `"4xl"` | `"full"` | `"auto"`. Para tamaño personalizado usar `className="max-w-[90vw]"` directamente.
 - Header: icono + título + subtítulo (`description`)
 - Footer: botones de acción (confirmar, cancelar, etc)
-- Más anchos (max-w-2xl o max-w-3xl) vía `className`
 - El diálogo nunca excede la altura visible de la pantalla: `DialogContent` usa `max-h-[calc(100vh-2rem)]` y layout flex; el **header** y el **footer** quedan siempre visibles (`shrink-0`) y solo el **body** (`DialogBody`) se vuelve scrolleable al llegar al límite de altura (`vh`)
 
 ### Micro-interacciones
@@ -2515,4 +2521,4 @@ La app es **monolito full-stack** (Next.js): el front (React) y el back (API rou
 ---
 
 *Plan generado: 2026-08-10*
-*Última actualización: 2026-08-10*
+*Última actualización: 2026-08-21*

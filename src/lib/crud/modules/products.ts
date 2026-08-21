@@ -44,6 +44,7 @@ export interface ProductDto {
   splitUnitAbbrev: string | null;
   splitUnitName: string | null;
   splitPricePerUnit: number;
+  options: ProductOptionDto[];
   variants: VariantDto[];
   createdAt: string;
 }
@@ -170,6 +171,12 @@ function serialize(p: ProductRow): ProductDto {
         valueId: ov.optionValue.id,
         value: ov.optionValue.value,
       })),
+    })),
+    options: p.options.map((o) => ({
+      id: o.id,
+      name: o.name,
+      position: o.position,
+      values: o.values.map((v) => ({ id: v.id, value: v.value, position: v.position })),
     })),
     createdAt: p.createdAt.toISOString(),
   };

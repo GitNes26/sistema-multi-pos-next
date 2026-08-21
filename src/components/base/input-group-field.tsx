@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { InfoTooltip } from "@/components/base/info-tooltip"
+import { AlertCircle } from "lucide-react"
 
 export interface InputGroupFieldProps
   extends React.ComponentProps<typeof Input> {
@@ -74,11 +75,17 @@ export const InputGroupField = React.forwardRef<
           className={cn(
             (leftIcon || leftAddon) && "pl-9",
             rightAddon && "pr-20",
+            hasError && "pr-9",
             className
           )}
           {...props}
         />
-        {rightAddon && (
+        {hasError && (
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-destructive">
+            <AlertCircle className="size-4" />
+          </span>
+        )}
+        {rightAddon && !hasError && (
           <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-muted-foreground">
             {rightAddon}
           </span>

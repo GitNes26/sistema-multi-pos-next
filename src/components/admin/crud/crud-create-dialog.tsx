@@ -35,7 +35,7 @@ export function CrudCreateDialog({
       onOpenChange={(o) => !o && onClose()}
       title="Nuevo"
       description={config.title}
-      className="sm:max-w-xl"
+      className="max-w-[90vw]"
       footerClassName="gap-2"
       footer={
         <>

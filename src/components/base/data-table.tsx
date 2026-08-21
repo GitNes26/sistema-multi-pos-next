@@ -163,9 +163,7 @@ export function DataTable<TData, TValue>({
       rowSelection,
     },
     enableRowSelection: enableSelection,
-    getRowId: rowKey
-      ? (row) => rowKey(row)
-      : undefined,
+    getRowId: rowKey ? (row) => rowKey(row) : undefined,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
@@ -205,9 +203,7 @@ export function DataTable<TData, TValue>({
             className="rounded-lg border bg-card p-3"
             onClick={() => onRowClick?.(row.original)}
           >
-            {renderCard
-              ? renderCard(row.original)
-              : defaultCard(row)}
+            {renderCard ? renderCard(row.original) : defaultCard(row)}
           </div>
         ))}
       </div>
@@ -215,13 +211,14 @@ export function DataTable<TData, TValue>({
   }
 
   function defaultCard(row: Row<TData>) {
-    const cells = row
-      .getVisibleCells()
-      .filter((c) => c.column.id !== "select")
+    const cells = row.getVisibleCells().filter((c) => c.column.id !== "select")
     return (
       <div className="flex flex-col gap-1.5">
         {cells.map((cell) => (
-          <div key={cell.id} className="flex items-baseline justify-between gap-2">
+          <div
+            key={cell.id}
+            className="flex items-baseline justify-between gap-2"
+          >
             <span className="truncate text-xs font-medium text-muted-foreground">
               {headerLabel(cell.column)}
             </span>
@@ -239,6 +236,26 @@ export function DataTable<TData, TValue>({
       {(searchable || showColumnVisibility || toolbarSlot || onRefresh) && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-1 items-center gap-2">
+            {onRefresh && (
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={onRefresh}
+                      aria-label="Refrescar"
+                    >
+                      <RefreshCw
+                        className={cn("size-4", refreshing && "animate-spin")}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refrescar</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             {searchable && (
               <div className="relative w-full max-w-60">
                 <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
@@ -252,25 +269,8 @@ export function DataTable<TData, TValue>({
               </div>
             )}
             {toolbarSlot}
+            
           </div>
-          {onRefresh && (
-            <TooltipProvider delayDuration={300}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={onRefresh}
-                    aria-label="Refrescar"
-                  >
-                    <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Refrescar</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
           {showColumnVisibility && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -282,18 +282,19 @@ export function DataTable<TData, TValue>({
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuLabel>Columnas visibles</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {table.getAllLeafColumns().filter((c) => c.getCanHide()).map((column) => (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(v) => column.toggleVisibility(v)}
-                    onSelect={(e) => e.preventDefault()}
-                  >
-{String(
-                    headerLabel(column)
-                  )}
-                  </DropdownMenuCheckboxItem>
-                ))}
+                {table
+                  .getAllLeafColumns()
+                  .filter((c) => c.getCanHide())
+                  .map((column) => (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(v) => column.toggleVisibility(v)}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {String(headerLabel(column))}
+                    </DropdownMenuCheckboxItem>
+                  ))}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -312,7 +313,8 @@ export function DataTable<TData, TValue>({
                         <div
                           className={cn(
                             "flex items-center gap-1",
-                            header.column.getCanSort() && "cursor-pointer select-none"
+                            header.column.getCanSort() &&
+                              "cursor-pointer select-none"
                           )}
                           onClick={
                             header.column.getCanSort()
@@ -325,9 +327,7 @@ export function DataTable<TData, TValue>({
                             header.getContext()
                           )}
                           {header.column.getCanSort() && (
-                            <SortIcon
-                              sorted={header.column.getIsSorted()}
-                            />
+                            <SortIcon sorted={header.column.getIsSorted()} />
                           )}
                         </div>
                       )}
@@ -351,9 +351,7 @@ export function DataTable<TData, TValue>({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className={cn(
-                      onRowClick && "cursor-pointer"
-                    )}
+                    className={cn(onRowClick && "cursor-pointer")}
                     onClick={() => onRowClick?.(row.original)}
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -384,10 +382,7 @@ export function DataTable<TData, TValue>({
       <div className="md:hidden">{renderCards()}</div>
 
       {showPagination && !loading && pageCount > 1 && (
-        <PaginationFooter
-          table={table}
-          pageSizeOptions={pageSizeOptions}
-        />
+        <PaginationFooter table={table} pageSizeOptions={pageSizeOptions} />
       )}
     </div>
   )
@@ -442,7 +437,10 @@ function PaginationFooter<TData>({
           </SelectContent>
         </Select>
         <span className="hidden sm:inline">
-          {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}–
+          {table.getState().pagination.pageIndex *
+            table.getState().pagination.pageSize +
+            1}
+          –
           {Math.min(
             (table.getState().pagination.pageIndex + 1) *
               table.getState().pagination.pageSize,

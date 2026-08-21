@@ -9,6 +9,7 @@ import { Command as CommandPrimitive } from "cmdk"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { InfoTooltip } from "@/components/base/info-tooltip"
+import { AlertCircle } from "lucide-react"
 
 export interface ComboboxOption {
   value: string
@@ -122,6 +123,9 @@ export function FormCombobox({
               {loading && (
                 <Loader2 className="size-4 animate-spin text-muted-foreground" />
               )}
+              {error && (
+                <AlertCircle className="size-4 text-destructive" />
+              )}
               {clearable && selected && !disabled && (
                 <button
                   type="button"
@@ -150,6 +154,7 @@ export function FormCombobox({
             align="start"
             className={cn("w-full min-w-[--radix-popover-trigger-width] overflow-hidden p-0", contentClassName)}
             onCloseAutoFocus={(e) => e.preventDefault()}
+            onWheel={(e) => e.stopPropagation()}
           >
             <CommandPrimitive
               shouldFilter={false}

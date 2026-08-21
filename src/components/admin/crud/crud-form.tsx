@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react"
 import {
   CalendarDays,
   Clock,
@@ -6,54 +6,62 @@ import {
   Hash,
   Percent,
   Type,
-} from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { swalError } from "@/lib/swal";
-import { OptionSelect } from "./option-select";
-import { MultiSelect } from "./multi-select";
-import { Attachment } from "@/components/base/attachment";
-import { GpsPicker } from "@/components/base/gps-picker";
-import { InputGroupField } from "@/components/base/input-group-field";
-import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads";
-import type { CrudField, CrudUiConfig } from "./crud-config";
+} from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { swalError } from "@/lib/swal"
+import { OptionSelect } from "./option-select"
+import { MultiSelect } from "./multi-select"
+import { Attachment } from "@/components/base/attachment"
+import { GpsPicker } from "@/components/base/gps-picker"
+import { InputGroupField } from "@/components/base/input-group-field"
+import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads"
+import type { CrudField, CrudUiConfig } from "./crud-config"
+import { cn } from "@/lib/utils"
 
 interface CrudFormProps {
-  config: CrudUiConfig;
-  initial: Record<string, unknown> | null;
-  onSubmit: (values: Record<string, unknown>) => Promise<void>;
-  onSavingChange?: (saving: boolean) => void;
-  formId?: string;
+  config: CrudUiConfig
+  initial: Record<string, unknown> | null
+  onSubmit: (values: Record<string, unknown>) => Promise<void>
+  onSavingChange?: (saving: boolean) => void
+  formId?: string
 }
 
-function defaultValue(field: CrudField, initial: Record<string, unknown> | null) {
-  if (field.type === "gps") return undefined;
-  if (initial && initial[field.key] !== undefined && initial[field.key] !== null) {
-    return initial[field.key];
+function defaultValue(
+  field: CrudField,
+  initial: Record<string, unknown> | null
+) {
+  if (field.type === "gps") return undefined
+  if (
+    initial &&
+    initial[field.key] !== undefined &&
+    initial[field.key] !== null
+  ) {
+    return initial[field.key]
   }
-  if (field.type === "boolean") return false;
-  if (field.type === "multiselect") return [] as string[];
-  return "";
+  if (field.type === "boolean") return false
+  if (field.type === "multiselect") return [] as string[]
+  return ""
 }
 
-const INPUT_TYPES = ["text", "number", "money", "percent", "date", "time"];
+const INPUT_TYPES = ["text", "number", "money", "percent", "date", "time"]
 
 function fieldIcon(type: string): React.ReactNode {
   switch (type) {
     case "number":
-      return <Hash className="size-4" />;
+      return <Hash className="size-4" />
     case "money":
-      return <DollarSign className="size-4" />;
+      return <DollarSign className="size-4" />
     case "percent":
-      return <Percent className="size-4" />;
+      return <Percent className="size-4" />
     case "date":
-      return <CalendarDays className="size-4" />;
+      return <CalendarDays className="size-4" />
     case "time":
-      return <Clock className="size-4" />;
+      return <Clock className="size-4" />
     default:
-      return <Type className="size-4" />;
+      return <Type className="size-4" />
   }
 }
 
@@ -65,77 +73,103 @@ export function CrudForm({
   formId = "crud-form",
 }: CrudFormProps) {
   const [values, setValues] = useState<Record<string, unknown>>(() => {
-    const v: Record<string, unknown> = {};
-    for (const f of config.fields) v[f.key] = defaultValue(f, initial);
-    return v;
-  });
+    const v: Record<string, unknown> = {}
+    for (const f of config.fields) v[f.key] = defaultValue(f, initial)
+    return v
+  })
 
-  const visibleFields = useMemo(() => config.fields, [config.fields]);
+  const visibleFields = useMemo(() => config.fields, [config.fields])
 
   // El id del <form> se conserva (formId) para que los botones con `form={formId}`
   // sigan funcionando; los ids de los campos son únicos por instancia (useId) para
   // que un modal "crear registro" (mismo módulo o anidado) no colisione con los
   // inputs/labels del formulario origen.
-  const uid = useId().replace(/[:]/g, "");
-  const fieldId = (key: string) => `${uid}-f-${key}`;
+  const uid = useId().replace(/[:]/g, "")
+  const fieldId = (key: string) => `${uid}-f-${key}`
 
-  const set = (key: string, value: unknown) => setValues((prev) => ({ ...prev, [key]: value }));
+  const set = (key: string, value: unknown) =>
+    setValues((prev) => ({ ...prev, [key]: value }))
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     for (const field of visibleFields) {
-      if (field.showIf && !field.showIf(values)) continue;
-      if (!field.required) continue;
-      const v = values[field.key];
+      if (field.showIf && !field.showIf(values)) continue
+      if (!field.required) continue
+      const v = values[field.key]
       if (v === "" || v === undefined || v === null) {
-        swalError("Campo obligatorio", `Completa el campo «${field.label}».`);
-        return;
+        swalError("Campo obligatorio", `Completa el campo «${field.label}».`)
+        return
       }
     }
 
-    const payload: Record<string, unknown> = {};
+    const payload: Record<string, unknown> = {}
     for (const field of visibleFields) {
-      if (field.showIf && !field.showIf(values)) continue;
-      if (field.type === "gps") continue;
-      let v = values[field.key];
-      if (field.type === "number" || field.type === "money" || field.type === "percent") {
-        v = v === "" || v === undefined || v === null ? "" : Number(v);
+      if (field.showIf && !field.showIf(values)) continue
+      if (field.type === "gps") continue
+      let v = values[field.key]
+      if (
+        field.type === "number" ||
+        field.type === "money" ||
+        field.type === "percent"
+      ) {
+        v = v === "" || v === undefined || v === null ? "" : Number(v)
       }
-      payload[field.key] = v;
+      payload[field.key] = v
     }
 
-    onSavingChange?.(true);
+    onSavingChange?.(true)
     try {
-      await onSubmit(payload);
+      await onSubmit(payload)
     } catch (err) {
-      swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo guardar",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      onSavingChange?.(false);
+      onSavingChange?.(false)
     }
-  };
+  }
 
   return (
-    <form id={formId} onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+    <form
+      id={formId}
+      onSubmit={handleSubmit}
+      className="grid gap-4 sm:grid-cols-2"
+    >
       {visibleFields.map((field) => {
-        if (field.showIf && !field.showIf(values)) return null;
-        const value = values[field.key];
-        const control = ({ className, id }: { className?: string; id?: string }) => {
+        if (field.showIf && !field.showIf(values)) return null
+        const value = values[field.key]
+        const control = ({
+          className,
+          id,
+        }: {
+          className?: string
+          id?: string
+        }) => {
           switch (field.type) {
             case "boolean":
               return (
-                <div className={className}>
+                <div
+                  className={cn([
+                    className,
+                    "flex items-center gap-2 border border-input rounded-md px-3 py-2",
+                  ])}
+                >
                   <div className="flex h-9 items-center gap-2">
                     <Switch
                       id={id}
                       checked={Boolean(value)}
                       onCheckedChange={(c) => set(field.key, c)}
                     />
-                    <label htmlFor={id} className="cursor-pointer text-sm text-muted-foreground">
+                    <label
+                      htmlFor={id}
+                      className="cursor-pointer text-sm text-muted-foreground"
+                    >
                       {value ? "Sí" : "No"}
                     </label>
                   </div>
                 </div>
-              );
+              )
             case "textarea":
               return (
                 <Textarea
@@ -146,19 +180,27 @@ export function CrudForm({
                   rows={3}
                   className={className}
                 />
-              );
+              )
             case "select":
               return (
                 <div className={className}>
-                  <OptionSelect field={field} value={String(value ?? "")} onChange={(v) => set(field.key, v)} />
+                  <OptionSelect
+                    field={field}
+                    value={String(value ?? "")}
+                    onChange={(v) => set(field.key, v)}
+                  />
                 </div>
-              );
+              )
             case "multiselect":
               return (
                 <div className={className}>
-                  <MultiSelect field={field} value={value} onChange={(v) => set(field.key, v)} />
+                  <MultiSelect
+                    field={field}
+                    value={value}
+                    onChange={(v) => set(field.key, v)}
+                  />
                 </div>
-              );
+              )
             case "image":
               return (
                 <div className={className}>
@@ -172,16 +214,19 @@ export function CrudForm({
                     heightClass="h-24"
                   />
                 </div>
-              );
+              )
             case "gps": {
-              const latRaw = field.latKey ? values[field.latKey] : undefined;
-              const lonRaw = field.lonKey ? values[field.lonKey] : undefined;
-              const lat = Number(latRaw);
-              const lon = Number(lonRaw);
+              const latRaw = field.latKey ? values[field.latKey] : undefined
+              const lonRaw = field.lonKey ? values[field.lonKey] : undefined
+              const lat = Number(latRaw)
+              const lon = Number(lonRaw)
               const gpsValue =
-                Number.isFinite(lat) && Number.isFinite(lon) && String(latRaw) !== "" && String(lonRaw) !== ""
+                Number.isFinite(lat) &&
+                Number.isFinite(lon) &&
+                String(latRaw) !== "" &&
+                String(lonRaw) !== ""
                   ? { lat, lon }
-                  : undefined;
+                  : undefined
               return (
                 <div className={className}>
                   <GpsPicker
@@ -189,12 +234,12 @@ export function CrudForm({
                     label={field.label}
                     helper={field.help}
                     onChange={(g) => {
-                      if (field.latKey && g) set(field.latKey, g.lat);
-                      if (field.lonKey && g) set(field.lonKey, g.lon);
+                      if (field.latKey && g) set(field.latKey, g.lat)
+                      if (field.lonKey && g) set(field.lonKey, g.lon)
                     }}
                   />
                 </div>
-              );
+              )
             }
             default:
               return (
@@ -205,7 +250,9 @@ export function CrudForm({
                       ? "date"
                       : field.type === "time"
                         ? "time"
-                        : field.type === "number" || field.type === "money" || field.type === "percent"
+                        : field.type === "number" ||
+                            field.type === "money" ||
+                            field.type === "percent"
                           ? "number"
                           : "text"
                   }
@@ -221,9 +268,9 @@ export function CrudForm({
                   placeholder={field.placeholder}
                   className={className}
                 />
-              );
+              )
           }
-        };
+        }
 
         if (INPUT_TYPES.includes(field.type)) {
           return (
@@ -239,7 +286,9 @@ export function CrudForm({
                     ? "date"
                     : field.type === "time"
                       ? "time"
-                      : field.type === "number" || field.type === "money" || field.type === "percent"
+                      : field.type === "number" ||
+                          field.type === "money" ||
+                          field.type === "percent"
                         ? "number"
                         : "text"
                 }
@@ -255,27 +304,33 @@ export function CrudForm({
                 onChange={(e) => set(field.key, e.target.value)}
               />
             </div>
-          );
+          )
         }
 
         return (
-          <div key={field.key} className={field.full ? "sm:col-span-2 space-y-1.5" : "space-y-1.5"}>
+          <div
+            key={field.key}
+            className={field.full ? "sm:col-span-2 space-y-1.5" : "space-y-1.5"}
+          >
             {field.type === "gps" ? (
               control({ className: "w-full" })
             ) : (
               <>
                 <Label htmlFor={fieldId(field.key)}>
                   {field.label}
-                  {field.required && <span className="text-destructive"> *</span>}
+                  {field.required && (
+                    <span className="text-destructive"> *</span>
+                  )}
                 </Label>
                 {control({ className: "w-full", id: fieldId(field.key) })}
-                {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
+                {field.help && (
+                  <p className="text-xs text-muted-foreground">{field.help}</p>
+                )}
               </>
             )}
           </div>
-        );
+        )
       })}
-
     </form>
-  );
+  )
 }
