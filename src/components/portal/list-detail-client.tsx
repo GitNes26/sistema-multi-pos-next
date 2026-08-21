@@ -10,7 +10,7 @@ import { usePortalStore } from "@/stores/portal-store";
 import { swalError, swalPrompt, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DialogComponent } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/portal/bottom-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface DraftItem {
@@ -207,12 +207,11 @@ export function ListDetailClient({ listId }: { listId: string }) {
         <Save className="size-4" /> {saving ? "Guardando…" : "Guardar lista"}
       </Button>
 
-      <DialogComponent
+      <BottomSheet
         open={addOpen}
         onOpenChange={setAddOpen}
         title="Agregar productos"
         description="Busca un producto y elige su variante"
-        className="sm:max-w-sm"
         bodyClassName="space-y-2"
       >
           <div className="relative">
@@ -245,7 +244,7 @@ export function ListDetailClient({ listId }: { listId: string }) {
               <p className="py-6 text-center text-xs text-muted-foreground">Sin resultados</p>
             )}
           </div>
-      </DialogComponent>
+      </BottomSheet>
     </div>
   );
 }

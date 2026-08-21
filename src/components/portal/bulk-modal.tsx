@@ -6,7 +6,7 @@ import { usePortalStore } from "@/stores/portal-store";
 import { money, round2, round3, snapToStep } from "@/lib/pos/money";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DialogComponent } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/portal/bottom-sheet";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
@@ -98,13 +98,11 @@ export function BulkModal() {
   };
 
   return (
-    <DialogComponent
+    <BottomSheet
       open
       onOpenChange={(o) => !o && setBulkProduct(null)}
-      icon={<Scale className="size-4 text-primary" />}
       title={product.name}
       description="A granel — selecciona la cantidad"
-      className="sm:max-w-sm"
       bodyClassName="space-y-4"
       footer={
         <Button className="w-full" onClick={handleAdd} disabled={effectiveQty <= 0}>
@@ -191,6 +189,6 @@ export function BulkModal() {
               <span>{money(total)}</span>
             </div>
           </div>
-    </DialogComponent>
+    </BottomSheet>
   );
 }

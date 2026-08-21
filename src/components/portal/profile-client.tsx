@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, CreditCard, Heart, LogOut, Mail, MapPin, Phone, Sparkles, User } from "lucide-react";
+import { ChevronRight, CreditCard, Heart, LogOut, Mail, MapPin, Phone, Sparkles, User, LayoutGrid } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import { logout } from "@/lib/auth/logout";
 import type { PortalCustomer } from "@/lib/portal/server";
@@ -10,6 +10,7 @@ import { swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InputGroupField } from "@/components/base/input-group-field";
+import { NavCustomizer } from "@/components/portal/nav-customizer";
 
 const LINKS = [
   { href: "/portal/loyalty", label: "Puntos y lealtad", icon: Sparkles },
@@ -123,6 +124,14 @@ export function ProfileClient() {
             </Link>
           );
         })}
+      </section>
+
+      <section className="rounded-xl border p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <LayoutGrid className="size-4 text-primary" />
+          <h2 className="text-sm font-semibold">Personalizar barra de navegación</h2>
+        </div>
+        <NavCustomizer />
       </section>
 
       <Button

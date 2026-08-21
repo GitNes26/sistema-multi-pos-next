@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { PortalCategory, PortalProduct, PortalVariantOption } from "@/lib/portal/server";
 import { round2, round3 } from "@/lib/pos/money";
+import type { NavItemId } from "@/components/portal/portal-shell";
 
 // FASE 13 — Store del portal: catálogo + carrito (13.5) + favoritos.
 
@@ -41,12 +42,14 @@ interface PortalState {
   favorites: Set<string>;
   cartOpen: boolean;
   bulkProduct: PortalProduct | null;
+  navOrder: NavItemId[];
 
   setStorefront: (categories: PortalCategory[], products: PortalProduct[]) => void;
   setActiveCategory: (id: string | null) => void;
   setSearch: (value: string) => void;
   setCartOpen: (open: boolean) => void;
   setBulkProduct: (product: PortalProduct | null) => void;
+  setNavOrder: (order: NavItemId[]) => void;
 
   addStandard: (product: PortalProduct, variant: PortalVariantOption, qty?: number) => void;
   addBulk: (product: PortalProduct, opts: BulkInputOptions) => void;
@@ -76,12 +79,14 @@ export const usePortalStore = create<PortalState>()((set) => ({
   favorites: new Set(),
   cartOpen: false,
   bulkProduct: null,
+  navOrder: ["home", "store", "orders", "lists", "profile"],
 
   setStorefront: (categories, products) => set({ categories, products }),
   setActiveCategory: (activeCategory) => set({ activeCategory }),
   setSearch: (search) => set({ search }),
   setCartOpen: (cartOpen) => set({ cartOpen }),
   setBulkProduct: (bulkProduct) => set({ bulkProduct }),
+  setNavOrder: (navOrder) => set({ navOrder }),
 
   addStandard: (product, variant, qty = 1) => {
     set((s) => {

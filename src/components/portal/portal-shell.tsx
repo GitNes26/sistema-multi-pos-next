@@ -8,23 +8,31 @@ import {
   ClipboardList,
   ListChecks,
   User,
-  ShoppingCart,
+  Heart,
+  Star,
+  CreditCard,
 } from "lucide-react";
 import { usePortalStore } from "@/stores/portal-store";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { PortalHeader } from "@/components/portal/portal-header";
 import { CartSheet } from "@/components/portal/cart-sheet";
 import { BulkModal } from "@/components/portal/bulk-modal";
 import { TapScale } from "@/components/shared/tap-scale";
 
-const NAV_ITEMS = [
-  { href: "/portal", label: "Inicio", icon: Home, match: /^\/portal$/ },
-  { href: "/portal/store", label: "Tienda", icon: Store },
-  { href: "/portal/orders", label: "Pedidos", icon: ClipboardList },
-  { href: "/portal/lists", label: "Listas", icon: ListChecks },
-  { href: "/portal/profile", label: "Perfil", icon: User },
-];
+export const ALL_NAV_ITEMS = [
+  { id: "home", href: "/portal", label: "Inicio", icon: Home, match: /^\/portal$/ },
+  { id: "store", href: "/portal/store", label: "Tienda", icon: Store, match: /^\/portal\/store/ },
+  { id: "orders", href: "/portal/orders", label: "Pedidos", icon: ClipboardList, match: /^\/portal\/orders/ },
+  { id: "lists", href: "/portal/lists", label: "Listas", icon: ListChecks, match: /^\/portal\/lists/ },
+  { id: "favorites", href: "/portal/favorites", label: "Favoritos", icon: Heart, match: /^\/portal\/favorites/ },
+  { id: "loyalty", href: "/portal/loyalty", label: "Puntos", icon: Star, match: /^\/portal\/loyalty/ },
+  { id: "payment", href: "/portal/payment-methods", label: "Pagos", icon: CreditCard, match: /^\/portal\/payment/ },
+  { id: "profile", href: "/portal/profile", label: "Perfil", icon: User, match: /^\/portal\/profile/ },
+] as const;
+
+export type NavItemId = (typeof ALL_NAV_ITEMS)[number]["id"];
+
+const DEFAULT_NAV_ORDER: NavItemId[] = ["home", "store", "orders", "lists", "profile"];
 
 export function PortalShell({
   storeName,
@@ -36,54 +44,26 @@ export function PortalShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const itemCount = usePortalStore((s) => s.items.reduce((a, i) => a + i.qty, 0));
-  const setCartOpen = usePortalStore((s) => s.setCartOpen);
+  const navOrder = usePortalStore((s) => s.navOrder);
+  const activeNavIds = navOrder && navOrder.length >= 3 ? navOrder : DEFAULT_NAV_ORDER;
+  const navItems = activeNavIds
+    .map((id) => ALL_NAV_ITEMS.find((item) => item.id === id)!)
+    .filter(Boolean);
+
+  const colsClass =
+    navItems.length <= 5
+      ? `grid-cols-${navItems.length}`
+      : "grid-cols-5";
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col">
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b bg-background/90 px-4 py-3 backdrop-blur">
-        <Link href="/portal" className="flex min-w-0 items-center gap-2">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Store className="size-5" />
-          </span>
-          <span className="truncate text-base font-semibold leading-tight">{storeName}</span>
-        </Link>
+      <PortalHeader storeName={storeName} user={user} />
 
-        <div className="flex items-center gap-1">
-          <Link
-            href="/portal/profile"
-            className="flex size-9 items-center justify-center rounded-xl border text-muted-foreground hover:bg-muted"
-            aria-label="Perfil"
-          >
-            {user.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.image} alt={user.name ?? ""} className="size-9 rounded-xl object-cover" />
-            ) : (
-              <User className="size-5" />
-            )}
-          </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative"
-            aria-label="Carrito"
-            onClick={() => setCartOpen(true)}
-          >
-            <ShoppingCart className="size-5" />
-            {itemCount > 0 && (
-              <Badge className="absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[10px]">
-                {itemCount}
-              </Badge>
-            )}
-          </Button>
-        </div>
-      </header>
+      <main className="flex-1 pb-20">{children}</main>
 
-      <main className="flex-1 pb-24">{children}</main>
-
-      <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md border-t bg-background/95 backdrop-blur">
-        <div className="grid grid-cols-5">
-          {NAV_ITEMS.map((item) => {
+      <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md border-t bg-background/95 backdrop-blur safe-area-bottom">
+        <div className={cn("grid", colsClass)}>
+          {navItems.map((item) => {
             const active = item.match
               ? item.match.test(pathname)
               : pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -93,12 +73,12 @@ export function PortalShell({
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors",
+                    "flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium text-muted-foreground transition-colors",
                     active && "text-primary"
                   )}
                 >
-                  <Icon className="size-5" />
-                  {item.label}
+                  <Icon className="size-5" strokeWidth={active ? 2.5 : 2} />
+                  <span className="leading-none">{item.label}</span>
                 </Link>
               </TapScale>
             );
