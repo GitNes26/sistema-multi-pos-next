@@ -18,6 +18,7 @@ import {
 
 export interface AppSidebarProps {
   sections: NavSection[];
+  logoUrl?: string | null;
 }
 
 // FASE 5.5 / 14.7 — Sidebar agrupada por secciones colapsables + items multinivel.
@@ -66,7 +67,7 @@ function NavNode({ item, depth }: { item: NavItem; depth: number }) {
   );
 }
 
-export function AppSidebar({ sections }: AppSidebarProps) {
+export function AppSidebar({ sections, logoUrl }: AppSidebarProps) {
   const pathname = usePathname();
   const [expanded, setExpanded] = React.useState(true);
 
@@ -85,7 +86,7 @@ export function AppSidebar({ sections }: AppSidebarProps) {
   return (
     <div className="flex h-full w-full flex-col">
       <div className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-        <Logo size={20} className="rounded-lg" />
+        <Logo size={20} logoUrl={logoUrl} className="rounded-lg" />
         {expanded && (
           <span className="text-sm font-semibold tracking-tight">Multi-POS</span>
         )}

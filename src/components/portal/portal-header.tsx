@@ -2,12 +2,18 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { ChevronLeft, Store, ShoppingCart, User } from "lucide-react"
+import {
+  ChevronLeft,
+  ShoppingCart,
+  User,
+  Bell,
+} from "lucide-react"
 import { usePortalStore } from "@/stores/portal-store"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { TapScale } from "@/components/shared/tap-scale"
+import { Logo } from "@/components/layout/logo"
 
 const PAGE_TITLES: Record<string, string> = {
   "/portal": "",
@@ -19,11 +25,12 @@ const PAGE_TITLES: Record<string, string> = {
   "/portal/loyalty": "Mis Puntos",
   "/portal/favorites": "Favoritos",
   "/portal/payment-methods": "Métodos de Pago",
+  "/portal/notifications": "Notificaciones",
 }
 
 function getPageTitle(pathname: string): string {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
-  if (pathname.startsWith("/portal/orders/")) return "Detalle del Pedido"
+  if (pathname.startsWith("/portal/orders/")) return "Detalle"
   if (pathname.startsWith("/portal/lists/")) return "Mi Lista"
   return ""
 }
@@ -35,9 +42,11 @@ function isSubPage(pathname: string): boolean {
 
 export function PortalHeader({
   storeName,
+  logoUrl,
   user,
 }: {
   storeName: string
+  logoUrl?: string | null
   user: { name?: string | null; image?: string | null }
 }) {
   const pathname = usePathname()
@@ -47,74 +56,80 @@ export function PortalHeader({
 
   const showBack = isSubPage(pathname)
   const pageTitle = getPageTitle(pathname)
-  const isHome = pathname === "/portal"
 
   return (
-    <header className="sticky top-0 z-40 flex items-center gap-2 border-b bg-background/90 px-4 py-3 backdrop-blur">
-      {/* Left side: back button or logo */}
-      {showBack ? (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0 -ml-1"
-          onClick={() => router.back()}
-          aria-label="Volver"
-        >
-          <ChevronLeft className="size-5" />
-        </Button>
-      ) : (
-        <Link href="/portal" className="flex min-w-0 items-center gap-2">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Store className="size-4" />
-          </span>
-          <span className="truncate text-sm font-semibold leading-tight">
-            {storeName}
-          </span>
-        </Link>
-      )}
-
-      {/* Center: page title (on sub-pages) */}
-      {showBack && pageTitle && (
-        <span className="min-w-0 flex-1 truncate text-center text-sm font-semibold">
-          {pageTitle}
-        </span>
-      )}
-
-      {/* Right side */}
-      <div className="flex items-center gap-0.5">
-        <ThemeToggle />
-        <TapScale>
-          <Link
-            href="/portal/profile"
-            className="flex size-8 items-center justify-center rounded-xl border text-muted-foreground hover:bg-muted"
-            aria-label="Perfil"
-          >
-            {user.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.image}
-                alt={user.name ?? ""}
-                className="size-8 rounded-xl object-cover"
-              />
-            ) : (
-              <User className="size-4" />
-            )}
-          </Link>
-        </TapScale>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-          aria-label="Carrito"
-          onClick={() => setCartOpen(true)}
-        >
-          <ShoppingCart className="size-5" />
-          {itemCount > 0 && (
-            <Badge className="absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[10px]">
-              {itemCount}
-            </Badge>
+    <header className="sticky top-0 z-40 safe-area-top">
+      <div className="flex items-center justify-between gap-2 border-b bg-background/80 px-4 py-2.5 backdrop-blur-xl">
+        {/* Left */}
+        <div className="flex items-center gap-2 min-w-0">
+          {showBack ? (
+            <>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 -ml-1 size-9"
+                onClick={() => router.back()}
+                aria-label="Volver"
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+              {pageTitle && (
+                <h1 className="truncate text-base font-semibold">{pageTitle}</h1>
+              )}
+            </>
+          ) : (
+            <Link href="/portal" className="flex items-center gap-2.5">
+              <Logo size={24} logoUrl={logoUrl} className="rounded-xl" />
+              <span className="truncate text-sm font-bold tracking-tight">{storeName}</span>
+            </Link>
           )}
-        </Button>
+        </div>
+
+        {/* Right — compact icon row */}
+        <div className="flex items-center gap-0.5">
+          <TapScale>
+            <Link
+              href="/portal/notifications"
+              className="relative flex size-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted"
+              aria-label="Notificaciones"
+            >
+              <Bell className="size-[18px]" />
+              <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />
+            </Link>
+          </TapScale>
+
+          <ThemeToggle />
+
+          <TapScale>
+            <Link
+              href="/portal/profile"
+              className="flex size-8 items-center justify-center overflow-hidden rounded-xl border border-border/50"
+              aria-label="Perfil"
+            >
+              {user.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.image} alt={user.name ?? ""} className="size-8 object-cover" />
+              ) : (
+                <User className="size-4 text-muted-foreground" />
+              )}
+            </Link>
+          </TapScale>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative size-8"
+            aria-label="Carrito"
+            onClick={() => setCartOpen(true)}
+          >
+            <ShoppingCart className="size-[18px]" />
+            {itemCount > 0 && (
+              <Badge className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center p-0 text-[9px] font-bold">
+                {itemCount > 99 ? "99+" : itemCount}
+              </Badge>
+            )}
+          </Button>
+        </div>
       </div>
     </header>
   )

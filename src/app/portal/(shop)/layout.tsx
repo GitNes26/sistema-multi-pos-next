@@ -21,12 +21,14 @@ export default async function PortalShopLayout({
   const tenant = organizationId ? await getAppSettings(organizationId) : null;
 
   let storeName = "Mi Tienda";
+  let logoUrl: string | null = null;
   if (organizationId) {
     const org = await prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { name: true, companyProfile: { select: { tradeName: true } } },
+      select: { name: true, companyProfile: { select: { tradeName: true, logoUrl: true } } },
     });
     storeName = org?.companyProfile?.tradeName ?? org?.name ?? "Mi Tienda";
+    logoUrl = org?.companyProfile?.logoUrl ?? null;
   }
 
   return (
@@ -36,6 +38,7 @@ export default async function PortalShopLayout({
         <Splash delay={500} />
         <PortalShell
           storeName={storeName}
+          logoUrl={logoUrl}
           user={{ name: session?.user?.name, image: session?.user?.image }}
         >
           {children}

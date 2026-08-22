@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { NavCustomizer } from "@/components/portal/nav-customizer";
+import packageJson from "../../../package.json";
 
 const LINKS = [
   { href: "/portal/loyalty", label: "Puntos y lealtad", icon: Sparkles },
@@ -141,6 +142,10 @@ export function ProfileClient() {
       >
         <LogOut className="size-4" /> Cerrar sesión
       </Button>
+
+      <p className="text-center text-[0.65rem] text-muted-foreground/50">
+        Sistema Multi-POS v{packageJson.version}
+      </p>
     </div>
   );
 }

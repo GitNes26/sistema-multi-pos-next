@@ -39,18 +39,27 @@ export function BottomSheet({
   bodyClassName,
   showCloseButton = true,
 }: BottomSheetProps) {
+  const [snap, setSnap] = React.useState<number | string | null>(null)
+
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      snapPoints={[0.85, 1]}
+      activeSnapPoint={snap}
+      setActiveSnapPoint={setSnap}
+    >
       <DrawerPortal>
-        <DrawerOverlay className="bg-black/40 supports-backdrop-filter:backdrop-blur-sm" />
+        <DrawerOverlay className="bg-black/50 supports-backdrop-filter:backdrop-blur-sm" />
         <DrawerContent
           className={cn(
-            "max-h-[85vh] rounded-t-2xl border-t border-border/50 bg-background shadow-2xl",
+            "mx-auto flex max-h-[92vh] flex-col rounded-t-2xl border-t border-border/30 bg-background shadow-[0_-8px_30px_rgba(0,0,0,0.12)]",
+            snap === 1 && "rounded-none",
             className
           )}
         >
           {/* Drag handle */}
-          <div className="mx-auto mt-3 mb-1 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30" />
+          <div className="mx-auto mt-3 mb-1 flex h-1 w-10 shrink-0 cursor-grab items-center justify-center rounded-full bg-muted-foreground/25 active:bg-muted-foreground/40" />
 
           {/* Header */}
           {(title || showCloseButton) && (
@@ -85,7 +94,7 @@ export function BottomSheet({
           {/* Body */}
           <div
             className={cn(
-              "flex-1 overflow-y-auto px-4 pb-2",
+              "flex-1 overflow-y-auto px-4 pb-4",
               bodyClassName
             )}
           >

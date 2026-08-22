@@ -18,10 +18,11 @@ import { useUiStore } from "@/stores/ui-store";
 export interface AppHeaderProps {
   sections: NavSection[];
   user: UserMenuUser;
+  logoUrl?: string | null;
 }
 
 // FASE 5.2 — Header sticky: menú, buscador, notificaciones y usuario.
-export function AppHeader({ sections, user }: AppHeaderProps) {
+export function AppHeader({ sections, user, logoUrl }: AppHeaderProps) {
   const pathname = usePathname();
   const toggleNav = useUiStore((s) => s.toggleNav);
   const navOpen = useUiStore((s) => s.navOpen);
@@ -49,7 +50,7 @@ export function AppHeader({ sections, user }: AppHeaderProps) {
           <Menu className="size-4" />
         </Button>
 
-        <Logo size={18} className="lg:hidden rounded-lg" />
+        <Logo size={18} logoUrl={logoUrl} className="lg:hidden rounded-lg" />
 
         <span className="hidden h-4 w-px bg-border lg:block" aria-hidden />
 

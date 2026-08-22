@@ -96,7 +96,7 @@ export async function getPosCatalog(
       }),
       prisma.companyProfile.findUnique({
         where: { organizationId },
-        select: { tradeName: true, legalName: true, address: true, city: true, phone: true },
+        select: { tradeName: true, legalName: true, logoUrl: true, address: true, city: true, phone: true },
       }),
     ]);
 
@@ -258,6 +258,7 @@ export async function getPosCatalog(
     },
     company: {
       name: companyProfile?.tradeName ?? companyProfile?.legalName ?? null,
+      logoUrl: companyProfile?.logoUrl ?? null,
       address: companyProfile?.address ?? null,
       city: companyProfile?.city ?? null,
       phone: companyProfile?.phone ?? null,

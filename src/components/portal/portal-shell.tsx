@@ -36,10 +36,12 @@ const DEFAULT_NAV_ORDER: NavItemId[] = ["home", "store", "orders", "lists", "pro
 
 export function PortalShell({
   storeName,
+  logoUrl,
   user,
   children,
 }: {
   storeName: string;
+  logoUrl?: string | null;
   user: { name?: string | null; image?: string | null };
   children: React.ReactNode;
 }) {
@@ -57,7 +59,7 @@ export function PortalShell({
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col">
-      <PortalHeader storeName={storeName} user={user} />
+      <PortalHeader storeName={storeName} logoUrl={logoUrl} user={user} />
 
       <main className="flex-1 pb-20">{children}</main>
 

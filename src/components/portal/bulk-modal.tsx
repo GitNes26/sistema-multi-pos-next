@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, Scale } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { usePortalStore } from "@/stores/portal-store";
 import { money, round2, round3, snapToStep } from "@/lib/pos/money";
 import { Button } from "@/components/ui/button";

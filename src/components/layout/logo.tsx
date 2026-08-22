@@ -1,21 +1,46 @@
 import { cn } from "@/lib/utils";
 
-// FASE 5.2 — Logotipo reutilizable (marca Multi-POS).
+// Logotipo reutilizable: muestra el logo de la empresa si está disponible,否则 el SVG por defecto.
 
 export function Logo({
   className,
   size = 24,
+  logoUrl,
 }: {
   className?: string;
   size?: number;
+  logoUrl?: string | null;
 }) {
+  const boxSize = size + 8;
+
+  if (logoUrl) {
+    return (
+      <span
+        className={cn(
+          "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-background",
+          className
+        )}
+        style={{ width: boxSize, height: boxSize }}
+        aria-hidden
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoUrl}
+          alt="Logo"
+          className="size-full object-contain p-0.5"
+          draggable={false}
+        />
+      </span>
+    );
+  }
+
   return (
     <span
       className={cn(
         "inline-flex shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground",
         className
       )}
-      style={{ width: size + 8, height: size + 8 }}
+      style={{ width: boxSize, height: boxSize }}
       aria-hidden
     >
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none">

@@ -2409,6 +2409,34 @@ Estas reglas se aplican a TODOS los componentes del sistema, sin excepción.
 - Rutas: AnimatePresence page transitions
 - Empty states: animados
 
+### Mobile-first sizing (Portal)
+
+- **Inputs**: `h-11 rounded-xl` en mobile, `md:h-9 md:rounded-lg` en desktop
+- **Buttons default**: `h-11 rounded-xl` en mobile, `md:h-8 md:rounded-lg` en desktop
+- **Buttons sm**: `h-9 rounded-xl` en mobile, `md:h-7 md:rounded-lg` en desktop
+- **Buttons lg**: `h-12 rounded-xl` en mobile, `md:h-9 md:rounded-lg` en desktop
+- **Icon buttons**: `size-11 rounded-xl` en mobile, `md:size-8 md:rounded-lg` en desktop
+- **Select triggers**: `h-11 rounded-xl` en mobile, `md:h-8 md:rounded-lg` en desktop
+- **Combobox triggers**: `h-11 rounded-xl` en mobile, `md:h-9 md:rounded-lg` en desktop
+- **Touch targets mínimo**: 44x44px (Apple HIG) / 48x48px (Material Design)
+- **Checkbox/Switch**: `size-5` mínimo para tap targets con padding
+
+### Portal Native Mobile
+
+- **BottomSheet** (`src/components/portal/bottom-sheet.tsx`): Vaul Drawer con `snapPoints={[0.85, 1]}`. Arrastrar arriba = fullscreen. Overlay `bg-black/50` + blur. Se usa para TODOS los modales del portal.
+- **PortalHeader** (`src/components/portal/portal-header.tsx`): izquierda = logo+nombre (home) o flecha←+título (sub-páginas); derecha = 🔔Bell + ThemeToggle + 👤Avatar + 🛒Cart. Compacto con iconos size-8/size-[18px].
+- **PortalPageTransition** (`src/components/portal/portal-page-transition.tsx`): slide transitions por profundidad de ruta (forward/back).
+- **PullToRefresh** (`src/components/shared/pull-to-refresh.tsx`): pull-to-refresh nativo en listas del portal.
+- **LongPress** (`src/components/shared/long-press.tsx`): hook para detectar long press (500ms) en elementos del portal.
+- **TapScale** (`src/components/shared/tap-scale.tsx`): feedback `whileTap={{ scale: 0.97 }}` en cards y botones.
+- **NavCustomizer** (`src/components/portal/nav-customizer.tsx`): en `/portal/profile`, permite reordenar (drag) y activar/desactivar bottom nav tabs. Almacena en `portal-store.ts`.
+- **ProductCard** (`src/components/portal/product-card.tsx`): `rounded-2xl`, `whileTap={{ scale: 0.97 }}`, corazón animado con `AnimatePresence`, variante chips, badge "A granel", botón con check animado al agregar.
+- **Notifications** (`src/components/portal/notifications-client.tsx`): pull-to-refresh, íconos por kind, colores por severity, deep links.
+- **Favorites**: son por `variantId` (ya específico por variante). Animación de corazón con spring explosion.
+- **Shopping Lists**: swipe para eliminar, long press para editar nombre, duplicar lista, agregar al carrito desde lista.
+- **Payment Methods**: diseño tipo tarjeta visual con campo color (CARD_COLORS array).
+- **Loyalty**: card hero gradiente con puntos animados, historial con íconos por kind.
+
 ### Scrollbars
 
 - Barras de scroll discretas y sutiles en todo el sistema (definidas en `globals.css`): track transparente, thumb redondeado semitransparente con `--foreground` (se adapta a tema claro/oscuro), ancho delgado y más intenso al hover

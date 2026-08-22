@@ -1,123 +1,139 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
-import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
-import { Eye, EyeOff, Loader2, Lock, LogIn, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-
-type LoginMode = "pos" | "portal";
+import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
+import { useForm } from "react-hook-form"
+import { yupResolver } from "@hookform/resolvers/yup"
+import * as yup from "yup"
+import { motion } from "framer-motion"
+import { Eye, EyeOff, Loader2, Lock, User, ArrowRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Logo } from "@/components/layout/logo"
+import { cn } from "@/lib/utils"
 
 const validationSchema = yup.object({
-  identifier: yup
-    .string()
-    .required("Correo o código requerido")
-    .min(3, "Demasiado corto"),
+  identifier: yup.string().required("Correo o código requerido").min(3, "Demasiado corto"),
   password: yup.string().required("Contraseña requerida").min(6, "Mínimo 6 caracteres"),
-});
+})
 
-type LoginValues = yup.InferType<typeof validationSchema>;
+type LoginValues = yup.InferType<typeof validationSchema>
 
-const DEMO_ACCOUNTS: { mode: LoginMode; label: string; identifier: string; password: string }[] = [
-  { mode: "pos", label: "Owner", identifier: "demo@multi-pos.com", password: "demo1234" },
-  { mode: "pos", label: "Gerente", identifier: "manager@demo.multi-pos.com", password: "demo1234" },
-  { mode: "pos", label: "Cajero", identifier: "cajero1@demo.multi-pos.com", password: "demo1234" },
-  { mode: "pos", label: "Repartidor", identifier: "repartidor@demo.multi-pos.com", password: "demo1234" },
-  { mode: "portal", label: "Cliente demo", identifier: "cli-001@portal.local", password: "demo1234" },
-];
+const DEMO_ACCOUNTS = [
+  { label: "Cliente demo", identifier: "cli-001@portal.local", password: "demo1234" },
+]
 
 export function LoginForm({
   mode,
   callbackUrl,
   error: nextAuthError,
 }: {
-  mode: LoginMode;
-  callbackUrl?: string | null;
-  error?: string | null;
+  mode: "pos" | "portal"
+  callbackUrl?: string | null
+  error?: string | null
 }) {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginValues>({
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginValues>({
     resolver: yupResolver(validationSchema),
     defaultValues: { identifier: "", password: "" },
-  });
+  })
 
   async function runLogin(identifier: string, password: string) {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
     const res = await signIn("credentials", {
       identifier,
       password,
       redirect: false,
       callbackUrl: callbackUrl ?? undefined,
-    });
-    setLoading(false);
-
+    })
+    setLoading(false)
     if (res?.error) {
-      setError("Credenciales incorrectas o usuario inactivo.");
-      return;
+      setError("Credenciales incorrectas o usuario inactivo.")
+      return
     }
-    const target = res?.url;
-    if (target) router.push(target);
-    else router.refresh();
+    if (res?.url) router.push(res.url)
+    else router.refresh()
   }
 
   function onSubmit(values: LoginValues) {
-    void runLogin(values.identifier, values.password);
+    void runLogin(values.identifier, values.password)
   }
+
+  const isPortal = mode === "portal"
 
   return (
     <div className="w-full max-w-sm">
-      <Card className="border-border/60 shadow-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <LogIn className="size-6" />
-          </div>
-          <CardTitle className="text-xl">
-            {mode === "portal" ? "Portal de clientes" : "Sistema Multi-POS"}
-          </CardTitle>
-          <CardDescription>
-            {mode === "portal"
-              ? "Ingresa con tu correo o nº de cliente para hacer pedidos."
-              : "Ingresa con tu correo o código de nómina."}
-          </CardDescription>
-        </CardHeader>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+      >
+        {/* Hero icon */}
+        <motion.div
+          className="mx-auto mb-6"
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+        >
+          <Logo size={32} className="rounded-2xl shadow-lg shadow-primary/25" />
+        </motion.div>
 
-        <CardContent className="space-y-4">
+        <motion.h1
+          className="mb-1 text-center text-xl font-bold"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          {isPortal ? "Bienvenido" : "Multi-POS"}
+        </motion.h1>
+        <motion.p
+          className="mb-6 text-center text-sm text-muted-foreground"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.25 }}
+        >
+          {isPortal
+            ? "Ingresa para hacer pedidos y ganar puntos"
+            : "Punto de venta multi-sucursal"}
+        </motion.p>
+
+        {/* Form card */}
+        <motion.div
+          className="rounded-2xl border border-border/50 bg-card p-5 shadow-sm"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
           {(error ?? nextAuthError) && (
-            <Alert variant="destructive">
-              <AlertDescription>
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription className="text-sm">
                 {error ?? "No se pudo iniciar sesión. Revisa tus credenciales."}
               </AlertDescription>
             </Alert>
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-            <div className="space-y-2">
-              <Label htmlFor="identifier">Correo o código</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="identifier" className="text-sm font-medium">Correo o código</Label>
               <div className="relative">
-                <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <User className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="identifier"
                   autoComplete="username"
-                  placeholder={mode === "portal" ? "correo o nº de cliente" : "correo o nº de nómina"}
-                  className="pl-9"
+                  placeholder={isPortal ? "correo o nº de cliente" : "correo o nº de nómina"}
+                  className={cn(
+                    "h-12 pl-11 text-base rounded-xl",
+                    errors.identifier && "border-destructive"
+                  )}
                   aria-invalid={!!errors.identifier}
                   {...register("identifier")}
                 />
@@ -127,31 +143,34 @@ export function LoginForm({
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Contraseña</Label>
+                <Label htmlFor="password" className="text-sm font-medium">Contraseña</Label>
                 <Link
-                  href={mode === "portal" ? "/portal/auth/forgot" : "/auth/forgot"}
-                  className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  href={isPortal ? "/portal/auth/forgot" : "/auth/forgot"}
+                  className="text-xs text-primary underline-offset-4 hover:underline"
                 >
-                  ¿Olvidaste tu contraseña?
+                  ¿Olvidaste?
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
-                  className="pl-9 pr-9"
+                  className={cn(
+                    "h-12 pl-11 pr-11 text-base rounded-xl",
+                    errors.password && "border-destructive"
+                  )}
                   aria-invalid={!!errors.password}
                   {...register("password")}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? "Ocultar" : "Mostrar"}
                 >
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
@@ -161,38 +180,43 @@ export function LoginForm({
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : <LogIn />}
-              Iniciar sesión
+            <Button
+              type="submit"
+              className="h-12 w-full rounded-xl text-base font-semibold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  Entrar <ArrowRight className="size-4 ml-1" />
+                </>
+              )}
             </Button>
           </form>
+        </motion.div>
 
-          {process.env.NODE_ENV === "development" && (
-            <>
-              <Separator />
-              <div className="space-y-2">
-                <p className="text-center text-xs text-muted-foreground">
-                  Acceso rápido demo (modo desarrollo) — demo1234
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {DEMO_ACCOUNTS.filter((a) => a.mode === mode).map((acc) => (
-                    <Button
-                      key={acc.identifier}
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      disabled={loading}
-                      onClick={() => void runLogin(acc.identifier, acc.password)}
-                    >
-                      {acc.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+        {/* Demo access */}
+        {process.env.NODE_ENV === "development" && (
+          <motion.div
+            className="mt-4 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              disabled={loading}
+              onClick={() => void runLogin(DEMO_ACCOUNTS[0].identifier, DEMO_ACCOUNTS[0].password)}
+            >
+              Demo rápido: Cliente
+            </Button>
+          </motion.div>
+        )}
+      </motion.div>
     </div>
-  );
+  )
 }

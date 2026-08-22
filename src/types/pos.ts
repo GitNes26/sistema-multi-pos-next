@@ -129,7 +129,7 @@ export interface PosOrder {
 
 export interface PosCatalog {
   location: PosLocation;
-  company: { name: string | null; address: string | null; city: string | null; phone: string | null };
+  company: { name: string | null; logoUrl: string | null; address: string | null; city: string | null; phone: string | null };
   products: PosProduct[];
   categories: PosCategory[];
   customers: PosCustomer[];

@@ -18,6 +18,7 @@ export function PosHeader({ onOpenCatalogs, onOpenCash }: PosHeaderProps) {
   const session = usePosStore((s) => s.session);
   const cashier = usePosStore((s) => s.cashier);
   const location = usePosStore((s) => s.location);
+  const logoUrl = usePosStore((s) => s.company?.logoUrl ?? null);
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card/80 px-3 backdrop-blur lg:px-4">
@@ -26,7 +27,7 @@ export function PosHeader({ onOpenCatalogs, onOpenCash }: PosHeaderProps) {
           <ArrowLeft className="size-5" />
         </Link>
       </Button>
-      <Logo className="h-8 w-auto" />
+      <Logo logoUrl={logoUrl} className="h-8 w-auto" />
       <div className="hidden min-w-0 sm:block">
         <p className="text-sm font-bold leading-tight">Punto de venta</p>
         <p className="truncate text-[11px] leading-tight text-muted-foreground">

@@ -9,7 +9,6 @@ import {
   Hash,
   ImageIcon,
   Loader2,
-  Plus,
   Tag,
   Trash2,
   X,
