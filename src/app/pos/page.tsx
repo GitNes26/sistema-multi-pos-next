@@ -16,16 +16,20 @@ export const dynamic = "force-dynamic";
 
 export default async function PosPage() {
   const session = await getServerSession(authOptions);
-  const organizationId = session?.user?.organizationId ?? null;
+  const organizationId = session?.user?.activeOrganizationId ?? session?.user?.organizationId ?? null;
   const tenant = organizationId ? await getAppSettings(organizationId) : null;
 
-  if (!session?.user?.organizationId) {
+  if (!organizationId) {
+    // SuperAdmin sin organización → ir a seleccionar org
+    if (session?.user?.scope === "superadmin") {
+      redirect("/admin/settings/organizations");
+    }
     redirect("/auth/login?callbackUrl=/pos");
   }
 
   let catalog: Awaited<ReturnType<typeof getPosCatalog>>;
   try {
-    catalog = await getPosCatalog(session.user.organizationId, session.user.id);
+    catalog = await getPosCatalog(organizationId, session!.user.id);
   } catch (err) {
     if (err instanceof PosError) {
       return (

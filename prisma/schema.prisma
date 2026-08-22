@@ -72,6 +72,7 @@ enum OrderStatus {
   confirmed
   preparing
   ready
+  in_transit
   delivered
   cancelled
 }
@@ -205,6 +206,7 @@ model Organization {
   userInvitations       UserInvitation[]
   notifications         Notification[]
   publications          Publication[]
+  deliveryPolicy        DeliveryPolicy?
 
   @@map("organizations")
 }
@@ -259,6 +261,34 @@ model CompanyProfile {
   organization Organization @relation(fields: [organizationId], references: [id])
 
   @@map("company_profiles")
+}
+
+model DeliveryPolicy {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+
+  // Pickup settings
+  pickupEnabled       Boolean  @default(true)
+  pickupMinAmount     Decimal? @db.Decimal(12, 2)
+  pickupFee           Decimal? @default(0) @db.Decimal(12, 2)
+  pickupFeeEnabled    Boolean  @default(false)
+  pickupScheduleJson  String?  @db.Text
+
+  // Delivery settings
+  deliveryEnabled       Boolean  @default(false)
+  deliveryMinAmount     Decimal? @db.Decimal(12, 2)
+  deliveryFee           Decimal? @default(0) @db.Decimal(12, 2)
+  deliveryFeeEnabled    Boolean  @default(false)
+  deliveryScheduleJson  String?  @db.Text
+  deliveryRadiusKm      Decimal? @db.Decimal(5, 2)
+  deliveryEstimatedMins Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("delivery_policies")
 }
 
 model AppSettings {
@@ -1007,6 +1037,7 @@ model Order {
   longitude       Decimal?       @db.Decimal(11, 8)
   paymentMethod   PaymentMethod?
   paymentReference String?
+  deliveryFee     Decimal?       @default(0) @db.Decimal(12, 2)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 

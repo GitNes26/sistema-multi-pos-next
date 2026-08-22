@@ -32,6 +32,7 @@ export const metadata: Metadata = {
   description:
     "Sistema Multi-POS: punto de venta multi-sucursal, panel administrativo y portal de clientes.",
   applicationName: "Multi-POS",
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
@@ -60,6 +61,11 @@ export default function RootLayout({
           <HttpErrorToast />
           {children}
         </Providers>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){})})}`,
+          }}
+        />
       </body>
     </html>
   );

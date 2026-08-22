@@ -2548,5 +2548,42 @@ La app es **monolito full-stack** (Next.js): el front (React) y el back (API rou
 
 ---
 
+## CONVENCIONES CLAVE (referencia rápida)
+
+### Order Flow (estados obligatorios)
+`pending` → `confirmed` → `preparing` → `ready` → `in_transit` (solo delivery) → `delivered`
+
+- `pending → confirmed`: `POST /api/orders/[id]/confirm`
+- `confirmed → preparing`: `startPreparation()` (requiere `confirmed`)
+- `ready → in_transit`: `POST /api/orders/[id]/deliver` (solo delivery)
+- Cualquier estado → `cancelled`: dropdown manual en admin
+
+### Delivery Policy
+- Modelo `DeliveryPolicy` (1:1 con Organization)
+- Configuración: `/admin/settings/delivery-policy`
+- Cálculo: `calculateDeliveryFee(policy, method, subtotal)` → `{ fee, error? }`
+- Horarios: `isScheduleOpen(schedule, timezone)` → `{ open, nextOpen? }`
+- Checkout portal muestra: costo, horarios, monto mínimo
+
+### Ticket PDF
+- Logo: si `company.logoUrl` existe, se dibuja centrado (40px) antes del encabezado
+- Formato: 80mm térmico, pdfkit
+
+### Sonidos (mobile)
+- AudioContext unlock en primera interacción del usuario
+- Usa `decodeAudioData` + `BufferSource` (mejor soporte mobile)
+- Fallback a `Audio` element
+
+### PWA
+- `public/manifest.json` — app manifest
+- `public/sw.js` — service worker con cache + push notifications
+- Registro en `layout.tsx` via script inline
+
+### POS Order Detail
+- Endpoint: `GET /api/pos/orders/[id]` (auth POS)
+- Componente: `PosOrderDetail` (read-only, con historial)
+
+---
+
 *Plan generado: 2026-08-10*
 *Última actualización: 2026-08-21*

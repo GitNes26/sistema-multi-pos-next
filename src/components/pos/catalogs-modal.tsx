@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ClipboardList, Star } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ClipboardList, Eye, Star } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "@/lib/pos/config";
 import { promotionScheduleLabel } from "@/lib/pos/pricing";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "./product-card";
+import { PosOrderDetail } from "./pos-order-detail";
 
 interface CatalogsModalProps {
   open: boolean;
@@ -27,31 +28,32 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
   const [orders, setOrders] = useState<PosOrder[]>([]);
   const [today, setToday] = useState<{ total: number; count: number }>({ total: 0, count: 0 });
   const [activeTab, setActiveTab] = useState("pedidos");
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const aliveRef = useRef(true);
+
+  const loadOrders = useCallback(async () => {
+    try {
+      const res = await fetch("/api/pos/orders", { cache: "no-store" });
+      const data = await res.json();
+      if (!data.ok) return;
+      if (aliveRef.current) {
+        setOrders(data.orders ?? []);
+        setToday({ total: data.stats?.todaySales ?? 0, count: data.stats?.todayCount ?? 0 });
+      }
+    } catch {
+      /* noop */
+    }
+  }, []);
 
   useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/pos/orders", { cache: "no-store" });
-        const data = await res.json();
-        if (!data.ok) return;
-        if (alive) {
-          setOrders(data.orders ?? []);
-          setToday({ total: data.stats?.todaySales ?? 0, count: data.stats?.todayCount ?? 0 });
-        }
-      } catch {
-        /* noop */
-      }
-    };
-    void load();
-    // 6.20 – Monitoreo en vivo (polling mientras la modal está abierta).
-    const timer = setInterval(load, 15000);
+    aliveRef.current = true;
+    void loadOrders();
+    const timer = setInterval(loadOrders, 15000);
     return () => {
-      alive = false;
+      aliveRef.current = false;
       clearInterval(timer);
     };
-  }, [open]);
+  }, [open, loadOrders]);
 
   return (
     <DialogComponent
@@ -81,9 +83,11 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
             ) : (
               <div className="space-y-1.5">
                 {orders.map((o) => (
-                  <div
+                  <button
                     key={o.id}
-                    className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2 text-sm"
+                    type="button"
+                    onClick={() => setSelectedOrderId(o.id)}
+                    className="flex w-full items-center gap-3 rounded-xl border bg-card px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 active:bg-muted"
                   >
                     <span
                       className={cn("size-2.5 shrink-0 rounded-full", ORDER_STATUS_COLORS[o.status])}
@@ -100,7 +104,8 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
                       {ORDER_STATUS_LABELS[o.status]}
                     </Badge>
                     <span className="shrink-0 font-semibold tabular-nums">{money(o.total)}</span>
-                  </div>
+                    <Eye className="size-3.5 shrink-0 text-muted-foreground" />
+                  </button>
                 ))}
               </div>
             )}
@@ -178,6 +183,16 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
             </div>
           </TabsContent>
           </Tabs>
+          {selectedOrderId && (
+            <PosOrderDetail
+              orderId={selectedOrderId}
+              onClose={() => setSelectedOrderId(null)}
+              onChanged={() => {
+                setSelectedOrderId(null);
+                void loadOrders();
+              }}
+            />
+          )}
     </DialogComponent>
   );
 }

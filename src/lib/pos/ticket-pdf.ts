@@ -47,6 +47,22 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
     doc.text(r, { align: "right" });
   };
 
+  // Logo de la empresa
+  if (company?.logoUrl) {
+    try {
+      const res = await fetch(company.logoUrl);
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer());
+        const imgWidth = 40;
+        const imgX = (226.77 - imgWidth) / 2;
+        doc.image(buf, imgX, doc.y, { width: imgWidth });
+        doc.moveDown(1.5);
+      }
+    } catch {
+      // Si falla la imagen, continuar sin logo
+    }
+  }
+
   // Encabezado
   doc.font("Helvetica-Bold");
   doc.fontSize(11).text(`${company?.tradeName ?? company?.legalName ?? "Empresa"} - ${sale.location.name}`, { align: "center" });

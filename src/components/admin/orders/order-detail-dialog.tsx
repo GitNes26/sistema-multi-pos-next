@@ -9,6 +9,7 @@ import {
   PackageCheck,
   Truck,
   X,
+  CircleCheckBig,
 } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ const HISTORY_ICONS: Record<string, React.ReactNode> = {
   confirmed: <ClipboardList className="size-3.5" />,
   preparing: <PackageCheck className="size-3.5" />,
   ready: <Check className="size-3.5" />,
+  in_transit: <Truck className="size-3.5" />,
   delivered: <Truck className="size-3.5" />,
   cancelled: <X className="size-3.5" />,
 };
@@ -194,8 +196,78 @@ export function OrderDetailDialog({
             {canManage && order.status !== "cancelled" && order.status !== "delivered" && (
               <div className="space-y-3 rounded-lg border p-3">
                 <h4 className="flex items-center gap-1.5 text-sm font-semibold">
-                  <MapPin className="size-4" /> Cambiar estado
+                  <MapPin className="size-4" /> Acciones rapida
                 </h4>
+
+                {order.status === "pending" && (
+                  <Button
+                    onClick={async () => {
+                      setSaving(true);
+                      try {
+                        const res = await fetch(`/api/orders/${order.id}/confirm`, { method: "POST" });
+                        const data = await res.json();
+                        if (data.ok) {
+                          swalToast("Pedido confirmado");
+                          onChanged?.();
+                          setOpen(false);
+                        } else {
+                          swalError("Error", data.error);
+                        }
+                      } catch (err) {
+                        swalError("Error", err instanceof Error ? err.message : undefined);
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    disabled={saving}
+                    className="w-full"
+                  >
+                    <CircleCheckBig className="mr-2 size-4" />
+                    Confirmar pedido
+                  </Button>
+                )}
+
+                {order.status === "ready" && order.deliveryMethod === "delivery" && (
+                  <Button
+                    onClick={async () => {
+                      setSaving(true);
+                      try {
+                        const res = await fetch(`/api/orders/${order.id}/deliver`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ notes: notes || undefined }),
+                        });
+                        const data = await res.json();
+                        if (data.ok) {
+                          swalToast("Pedido en camino");
+                          onChanged?.();
+                          setOpen(false);
+                        } else {
+                          swalError("Error", data.error);
+                        }
+                      } catch (err) {
+                        swalError("Error", err instanceof Error ? err.message : undefined);
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    disabled={saving}
+                    className="w-full"
+                  >
+                    <Truck className="mr-2 size-4" />
+                    Enviar a domicilio
+                  </Button>
+                )}
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">o cambiar manualmente</span>
+                  </div>
+                </div>
+
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger className="w-full">
                     <SelectValue />

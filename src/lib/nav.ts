@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   Sparkles,
   Tags,
+  Truck,
   UserCog,
   Users,
   Warehouse,
@@ -194,6 +195,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/admin/settings/payments",
         label: "Pagos",
         icon: CreditCard,
+        permission: "settings.manage",
+      },
+      {
+        href: "/admin/settings/delivery-policy",
+        label: "Entrega",
+        icon: Truck,
         permission: "settings.manage",
       },
       {

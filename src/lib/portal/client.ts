@@ -13,6 +13,7 @@ import type {
   ShoppingListInput,
   ExpiringCardView,
 } from "@/lib/portal/server";
+import type { DeliveryPolicyData } from "@/lib/orders/server";
 
 // FASE 13 — Cliente HTTP del portal de clientes.
 
@@ -50,6 +51,9 @@ export const portalApi = {
 
   locations: () =>
     json<{ ok: boolean; locations: PortalLocation[] }>("/api/portal/locations"),
+
+  deliveryPolicy: () =>
+    json<{ ok: boolean; policy: DeliveryPolicyData | null }>("/api/portal/delivery-policy"),
 
   // Pedidos
   createOrder: (input: PortalOrderInput) =>

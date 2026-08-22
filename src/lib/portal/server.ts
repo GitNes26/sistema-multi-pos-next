@@ -444,6 +444,7 @@ export interface PortalOrderInput {
   paymentReference?: string | null;
   subtotal: number;
   discount: number;
+  deliveryFee?: number;
   total: number;
   notes?: string | null;
 }
@@ -620,6 +621,7 @@ export async function createPortalOrder(
         deliveryMethod: input.deliveryMethod,
         subtotal: round2(input.subtotal),
         discount: round2(input.discount),
+        deliveryFee: round2(input.deliveryFee ?? 0),
         total: round2(input.total),
         notes: input.notes ?? null,
         address: input.address ?? null,

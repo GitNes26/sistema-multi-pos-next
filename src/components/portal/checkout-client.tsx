@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, CreditCard, Globe, LocateFixed, MapPin, Store } from "lucide-react";
+import { Banknote, CreditCard, Globe, LocateFixed, MapPin, Store, Truck, Clock, AlertTriangle } from "lucide-react";
 import { usePortalStore, cartSubtotal, cartTax, cartTotal } from "@/stores/portal-store";
 import { portalApi } from "@/lib/portal/client";
 import { paymentsApi } from "@/lib/payments/client";
 import type { PortalLocation, PaymentMethodView } from "@/lib/portal/server";
+import type { DeliveryPolicyData } from "@/lib/orders/server";
 import { money } from "@/lib/pos/money";
 import { swalError, swalLoading, swalClose } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export function CheckoutClient() {
 
   const [locations, setLocations] = useState<PortalLocation[]>([]);
   const [methods, setMethods] = useState<PaymentMethodView[]>([]);
+  const [policy, setPolicy] = useState<DeliveryPolicyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -37,15 +39,60 @@ export function CheckoutClient() {
 
   const subtotal = cartSubtotal(items);
   const tax = cartTax(items);
-  const total = cartTotal(items);
+
+  const deliveryFee = useMemo(() => {
+    if (!policy) return 0;
+    if (deliveryMethod === "pickup") {
+      if (!policy.pickupFeeEnabled) return 0;
+      return policy.pickupFee;
+    }
+    if (!policy.deliveryFeeEnabled) return 0;
+    return policy.deliveryFee;
+  }, [policy, deliveryMethod]);
+
+  const total = subtotal + tax + deliveryFee;
+
+  const scheduleInfo = useMemo(() => {
+    if (!policy) return null;
+    const schedule = deliveryMethod === "pickup" ? policy.pickupSchedule : policy.deliverySchedule;
+    if (!schedule || schedule.length === 0) return null;
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Mexico_City",
+    });
+    const parts = formatter.formatToParts(now);
+    const dayStr = parts.find((p) => p.type === "weekday")?.value ?? "";
+    const hour = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+    const minute = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+    const currentMinutes = hour * 60 + minute;
+    const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    const today = dayMap[dayStr] ?? 0;
+    const todaySchedule = schedule.find((s) => s.day === today);
+    if (!todaySchedule || !todaySchedule.enabled) return { open: false, message: "Cerrado hoy" };
+    const [openH, openM] = todaySchedule.open.split(":").map(Number);
+    const [closeH, closeM] = todaySchedule.close.split(":").map(Number);
+    const isOpen = currentMinutes >= openH * 60 + openM && currentMinutes < closeH * 60 + closeM;
+    return { open: isOpen, message: isOpen ? `Abierto hasta ${todaySchedule.close}` : `Abre a las ${todaySchedule.open}` };
+  }, [policy, deliveryMethod]);
+
+  const minAmount = useMemo(() => {
+    if (!policy) return null;
+    return deliveryMethod === "pickup" ? policy.pickupMinAmount : policy.deliveryMinAmount;
+  }, [policy, deliveryMethod]);
+
+  const minAmountError = useMemo(() => {
+    if (!minAmount || subtotal >= minAmount) return null;
+    return `Monto minimo: ${money(minAmount)}`;
+  }, [minAmount, subtotal]);
 
   useEffect(() => {
     let active = true;
-    Promise.all([portalApi.locations(), portalApi.paymentMethods()])
-      .then(([l, m]) => {
+    Promise.all([portalApi.locations(), portalApi.paymentMethods(), portalApi.deliveryPolicy()])
+      .then(([l, m, p]) => {
         if (!active) return;
         setLocations(l.locations);
         setMethods(m.methods);
+        setPolicy(p.policy);
         const pickupLoc = l.locations.find((x) => x.allowsPickup);
         setLocationId(pickupLoc?.id ?? "");
         if (l.locations.every((x) => !x.allowsPickup)) setDeliveryMethod("delivery");
@@ -112,6 +159,7 @@ export function CheckoutClient() {
           payMethod === "card" ? selectedCard?.last4 ?? null : payMethod === "online" ? "gateway" : null,
         subtotal,
         discount: 0,
+        deliveryFee,
         total,
         notes: notes.trim() || null,
       });
@@ -165,23 +213,30 @@ export function CheckoutClient() {
               <button
                 type="button"
                 onClick={() => setDeliveryMethod("pickup")}
-                disabled={pickupLocations.length === 0}
+                disabled={pickupLocations.length === 0 || (policy !== null && !policy.pickupEnabled)}
                 className={cn(
                   "flex flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors disabled:opacity-40",
                   deliveryMethod === "pickup" ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
                 )}
               >
                 <Store className="size-5" /> Recoger en sucursal
+                {policy?.pickupFeeEnabled && policy.pickupFee > 0 && (
+                  <span className="text-[11px] text-muted-foreground">{money(policy.pickupFee)}</span>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setDeliveryMethod("delivery")}
+                disabled={policy !== null && !policy.deliveryEnabled}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors",
+                  "flex flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors disabled:opacity-40",
                   deliveryMethod === "delivery" ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
                 )}
               >
-                <MapPin className="size-5" /> A domicilio
+                <Truck className="size-5" /> A domicilio
+                {policy?.deliveryFeeEnabled && policy.deliveryFee > 0 && (
+                  <span className="text-[11px] text-muted-foreground">{money(policy.deliveryFee)}</span>
+                )}
               </button>
             </div>
 
@@ -278,6 +333,27 @@ export function CheckoutClient() {
                 <span>IVA</span>
                 <span>{money(tax)}</span>
               </div>
+              {deliveryFee > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    {deliveryMethod === "delivery" ? <Truck className="size-3.5" /> : <Store className="size-3.5" />}
+                    {deliveryMethod === "delivery" ? "Envio" : "Cargo por recoger"}
+                  </span>
+                  <span>{money(deliveryFee)}</span>
+                </div>
+              )}
+              {scheduleInfo && (
+                <div className={cn("flex items-center gap-1.5 text-xs", scheduleInfo.open ? "text-emerald-600" : "text-amber-600")}>
+                  <Clock className="size-3" />
+                  {scheduleInfo.message}
+                </div>
+              )}
+              {minAmountError && (
+                <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                  <AlertTriangle className="size-3" />
+                  {minAmountError}
+                </div>
+              )}
               <div className="flex justify-between text-base font-semibold">
                 <span>Total</span>
                 <span>{money(total)}</span>

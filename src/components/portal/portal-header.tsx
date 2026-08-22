@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   ChevronLeft,
   ShoppingCart,
-  User,
   Bell,
 } from "lucide-react"
 import { usePortalStore } from "@/stores/portal-store"
@@ -85,8 +84,23 @@ export function PortalHeader({
           )}
         </div>
 
-        {/* Right — compact icon row */}
+        {/* Right — compact icon row: Cart → Bell → Theme → Avatar(rightmost) */}
         <div className="flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative size-8"
+            aria-label="Carrito"
+            onClick={() => setCartOpen(true)}
+          >
+            <ShoppingCart className="size-[18px]" />
+            {itemCount > 0 && (
+              <Badge className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center p-0 text-[9px] font-bold">
+                {itemCount > 99 ? "99+" : itemCount}
+              </Badge>
+            )}
+          </Button>
+
           <TapScale>
             <Link
               href="/portal/notifications"
@@ -103,32 +117,19 @@ export function PortalHeader({
           <TapScale>
             <Link
               href="/portal/profile"
-              className="flex size-8 items-center justify-center overflow-hidden rounded-xl border border-border/50"
+              className="flex size-8 items-center justify-center overflow-hidden rounded-full border-2 border-primary/20 bg-primary/5"
               aria-label="Perfil"
             >
               {user.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.image} alt={user.name ?? ""} className="size-8 object-cover" />
+                <img src={user.image} alt={user.name ?? ""} className="size-full object-cover" />
               ) : (
-                <User className="size-4 text-muted-foreground" />
+                <span className="text-xs font-bold text-primary">
+                  {(user.name ?? "?")[0]?.toUpperCase()}
+                </span>
               )}
             </Link>
           </TapScale>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative size-8"
-            aria-label="Carrito"
-            onClick={() => setCartOpen(true)}
-          >
-            <ShoppingCart className="size-[18px]" />
-            {itemCount > 0 && (
-              <Badge className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center p-0 text-[9px] font-bold">
-                {itemCount > 99 ? "99+" : itemCount}
-              </Badge>
-            )}
-          </Button>
         </div>
       </div>
     </header>

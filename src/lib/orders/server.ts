@@ -10,6 +10,7 @@ export const ORDER_STATUSES = [
   "confirmed",
   "preparing",
   "ready",
+  "in_transit",
   "delivered",
   "cancelled",
 ] as const;
@@ -17,7 +18,7 @@ export const ORDER_STATUSES = [
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 /** Estados que mantienen el pedido "activo" para el monitoreo (12.4). */
-export const ACTIVE_STATUSES: OrderStatus[] = ["pending", "confirmed", "preparing", "ready"];
+export const ACTIVE_STATUSES: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "in_transit"];
 
 const toNum = (v: Prisma.Decimal | number | string | null): number =>
   v == null ? 0 : Number(v);
@@ -124,6 +125,7 @@ export interface OrderDetail {
   orderNumber: number;
   status: string;
   deliveryMethod: string;
+  address: string | null;
   subtotal: number;
   discount: number;
   total: number;
@@ -177,6 +179,7 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
     orderNumber: Number(order.orderNumber),
     status: order.status,
     deliveryMethod: order.deliveryMethod,
+    address: order.address ?? null,
     subtotal: toNum(order.subtotal),
     discount: toNum(order.discount),
     total: toNum(order.total),
@@ -341,6 +344,36 @@ export async function getPreparation(organizationId: string, orderId: string): P
   };
 }
 
+/** Confirma un pedido pendiente: pending → confirmed. */
+export async function confirmOrder(
+  organizationId: string,
+  id: string,
+  ctx: StatusCtx
+): Promise<OrderDetail | null> {
+  const order = await prisma.order.findFirst({ where: { id, organizationId } });
+  if (!order) throw new Error("Pedido no encontrado");
+  if (order.status !== "pending") throw new Error("Solo se pueden confirmar pedidos pendientes");
+
+  await updateOrderStatus(organizationId, id, "confirmed", ctx);
+  return getOrderDetail(organizationId, id);
+}
+
+/** Marca un pedido como en camino: ready → in_transit (solo delivery). */
+export async function startDelivery(
+  organizationId: string,
+  id: string,
+  ctx: StatusCtx,
+  notes?: string
+): Promise<OrderDetail | null> {
+  const order = await prisma.order.findFirst({ where: { id, organizationId } });
+  if (!order) throw new Error("Pedido no encontrado");
+  if (order.deliveryMethod !== "delivery") throw new Error("Este pedido no es a domicilio");
+  if (order.status !== "ready") throw new Error("El pedido debe estar listo para iniciar entrega");
+
+  await updateOrderStatus(organizationId, id, "in_transit", ctx, notes);
+  return getOrderDetail(organizationId, id);
+}
+
 /** Inicia la preparación: crea la sesión (empleado + startedAt) y el checklist. */
 export async function startPreparation(
   organizationId: string,
@@ -353,6 +386,7 @@ export async function startPreparation(
   });
   if (!order) throw new Error("Pedido no encontrado");
   if (order.status === "cancelled") throw new Error("Un pedido cancelado no puede prepararse");
+  if (order.status !== "confirmed") throw new Error("El pedido debe estar confirmado antes de prepararse");
 
   const existing = await prisma.orderPreparation.findUnique({ where: { orderId } });
   if (existing) return (await getPreparation(organizationId, orderId))!;
@@ -432,4 +466,152 @@ export async function completePreparation(
   });
 
   return (await getPreparation(organizationId, orderId))!;
+}
+
+// ─── Delivery Policy ────────────────────────────────────────────────────────
+
+export interface DeliveryPolicyData {
+  id: string;
+  organizationId: string;
+  pickupEnabled: boolean;
+  pickupMinAmount: number | null;
+  pickupFee: number;
+  pickupFeeEnabled: boolean;
+  pickupSchedule: DaySchedule[] | null;
+  deliveryEnabled: boolean;
+  deliveryMinAmount: number | null;
+  deliveryFee: number;
+  deliveryFeeEnabled: boolean;
+  deliverySchedule: DaySchedule[] | null;
+  deliveryRadiusKm: number | null;
+  deliveryEstimatedMins: number | null;
+}
+
+export interface DaySchedule {
+  day: number;
+  enabled: boolean;
+  open: string;
+  close: string;
+}
+
+export async function getDeliveryPolicy(organizationId: string): Promise<DeliveryPolicyData | null> {
+  const p = await prisma.deliveryPolicy.findUnique({ where: { organizationId } });
+  if (!p) return null;
+  return {
+    id: p.id,
+    organizationId: p.organizationId,
+    pickupEnabled: p.pickupEnabled,
+    pickupMinAmount: toNum(p.pickupMinAmount) || null,
+    pickupFee: toNum(p.pickupFee),
+    pickupFeeEnabled: p.pickupFeeEnabled,
+    pickupSchedule: p.pickupScheduleJson ? JSON.parse(p.pickupScheduleJson) : null,
+    deliveryEnabled: p.deliveryEnabled,
+    deliveryMinAmount: toNum(p.deliveryMinAmount) || null,
+    deliveryFee: toNum(p.deliveryFee),
+    deliveryFeeEnabled: p.deliveryFeeEnabled,
+    deliverySchedule: p.deliveryScheduleJson ? JSON.parse(p.deliveryScheduleJson) : null,
+    deliveryRadiusKm: toNum(p.deliveryRadiusKm) || null,
+    deliveryEstimatedMins: p.deliveryEstimatedMins,
+  };
+}
+
+export async function upsertDeliveryPolicy(
+  organizationId: string,
+  input: Partial<Omit<DeliveryPolicyData, "id" | "organizationId">>
+): Promise<DeliveryPolicyData> {
+  const data: Record<string, unknown> = {};
+  if (input.pickupEnabled !== undefined) data.pickupEnabled = input.pickupEnabled;
+  if (input.pickupMinAmount !== undefined) data.pickupMinAmount = input.pickupMinAmount;
+  if (input.pickupFee !== undefined) data.pickupFee = input.pickupFee;
+  if (input.pickupFeeEnabled !== undefined) data.pickupFeeEnabled = input.pickupFeeEnabled;
+  if (input.pickupSchedule !== undefined) data.pickupScheduleJson = JSON.stringify(input.pickupSchedule);
+  if (input.deliveryEnabled !== undefined) data.deliveryEnabled = input.deliveryEnabled;
+  if (input.deliveryMinAmount !== undefined) data.deliveryMinAmount = input.deliveryMinAmount;
+  if (input.deliveryFee !== undefined) data.deliveryFee = input.deliveryFee;
+  if (input.deliveryFeeEnabled !== undefined) data.deliveryFeeEnabled = input.deliveryFeeEnabled;
+  if (input.deliverySchedule !== undefined) data.deliveryScheduleJson = JSON.stringify(input.deliverySchedule);
+  if (input.deliveryRadiusKm !== undefined) data.deliveryRadiusKm = input.deliveryRadiusKm;
+  if (input.deliveryEstimatedMins !== undefined) data.deliveryEstimatedMins = input.deliveryEstimatedMins;
+
+  const policy = await prisma.deliveryPolicy.upsert({
+    where: { organizationId },
+    create: { organizationId, ...data },
+    update: data,
+  });
+
+  return {
+    id: policy.id,
+    organizationId: policy.organizationId,
+    pickupEnabled: policy.pickupEnabled,
+    pickupMinAmount: toNum(policy.pickupMinAmount) || null,
+    pickupFee: toNum(policy.pickupFee),
+    pickupFeeEnabled: policy.pickupFeeEnabled,
+    pickupSchedule: policy.pickupScheduleJson ? JSON.parse(policy.pickupScheduleJson) : null,
+    deliveryEnabled: policy.deliveryEnabled,
+    deliveryMinAmount: toNum(policy.deliveryMinAmount) || null,
+    deliveryFee: toNum(policy.deliveryFee),
+    deliveryFeeEnabled: policy.deliveryFeeEnabled,
+    deliverySchedule: policy.deliveryScheduleJson ? JSON.parse(policy.deliveryScheduleJson) : null,
+    deliveryRadiusKm: toNum(policy.deliveryRadiusKm) || null,
+    deliveryEstimatedMins: policy.deliveryEstimatedMins,
+  };
+}
+
+export function calculateDeliveryFee(
+  policy: DeliveryPolicyData | null,
+  method: "pickup" | "delivery",
+  subtotal: number
+): { fee: number; error?: string } {
+  if (!policy) return { fee: 0 };
+
+  if (method === "pickup") {
+    if (!policy.pickupEnabled) return { fee: 0, error: "Recoger en sucursal no disponible" };
+    if (policy.pickupMinAmount && subtotal < policy.pickupMinAmount) {
+      return { fee: 0, error: `Monto mínimo para recoger: $${policy.pickupMinAmount}` };
+    }
+    if (policy.pickupFeeEnabled) return { fee: policy.pickupFee };
+    return { fee: 0 };
+  }
+
+  if (!policy.deliveryEnabled) return { fee: 0, error: "Servicio a domicilio no disponible" };
+  if (policy.deliveryMinAmount && subtotal < policy.deliveryMinAmount) {
+    return { fee: 0, error: `Monto mínimo para domicilio: $${policy.deliveryMinAmount}` };
+  }
+  if (policy.deliveryFeeEnabled) return { fee: policy.deliveryFee };
+  return { fee: 0 };
+}
+
+export function isScheduleOpen(
+  schedule: DaySchedule[] | null,
+  timezone: string = "America/Mexico_City"
+): { open: boolean; nextOpen?: string } {
+  if (!schedule || schedule.length === 0) return { open: true };
+
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: timezone,
+  });
+  const parts = formatter.formatToParts(now);
+  const dayStr = parts.find((p) => p.type === "weekday")?.value ?? "";
+  const hour = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+  const minute = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+  const currentMinutes = hour * 60 + minute;
+
+  const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const today = dayMap[dayStr] ?? 0;
+
+  const todaySchedule = schedule.find((s) => s.day === today);
+  if (!todaySchedule || !todaySchedule.enabled) return { open: false, nextOpen: "Cerrado hoy" };
+
+  const [openH, openM] = todaySchedule.open.split(":").map(Number);
+  const [closeH, closeM] = todaySchedule.close.split(":").map(Number);
+  const openMin = openH * 60 + openM;
+  const closeMin = closeH * 60 + closeM;
+
+  if (currentMinutes >= openMin && currentMinutes < closeMin) return { open: true };
+  return { open: false, nextOpen: `Abre a las ${todaySchedule.open}` };
 }

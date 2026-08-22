@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, Save, Search, Trash2, Pencil, PackagePlus } from "lucide-react";
+import { Minus, Plus, Save, Search, Trash2, Pencil, PackagePlus, Check } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import type { ShoppingListView } from "@/lib/portal/server";
 import { money, round3 } from "@/lib/pos/money";
 import { usePortalStore } from "@/stores/portal-store";
 import { swalError, swalPrompt, swalToast } from "@/lib/swal";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/portal/bottom-sheet";
@@ -223,20 +224,25 @@ export function ListDetailClient({ listId }: { listId: string }) {
               <div key={p.id} className="rounded-lg border p-2">
                 <p className="text-sm font-medium">{p.name}</p>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {p.variants.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
-                      onClick={() => {
-                        addVariant(p.name, v.name === "Estándar" ? null : v.name, v.id, v.price);
-                        setAddOpen(false);
-                        setSearch("");
-                      }}
-                    >
-                      {v.name} · {money(v.price)}
-                    </button>
-                  ))}
+                  {p.variants.map((v) => {
+                    const inList = items.some((i) => i.variantId === v.id);
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-all active:scale-95",
+                          inList ? "border-primary/40 bg-primary/10 text-primary" : "hover:bg-primary/10"
+                        )}
+                        onClick={() => {
+                          addVariant(p.name, v.name === "Estándar" ? null : v.name, v.id, v.price);
+                        }}
+                      >
+                        {inList ? <Check className="size-3" /> : <Plus className="size-3" />}
+                        {v.name} · {money(v.price)}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -244,6 +250,12 @@ export function ListDetailClient({ listId }: { listId: string }) {
               <p className="py-6 text-center text-xs text-muted-foreground">Sin resultados</p>
             )}
           </div>
+
+          {items.length > 0 && (
+            <Button className="w-full rounded-xl" onClick={() => setAddOpen(false)}>
+              Listo ({items.length} producto{items.length !== 1 ? "s" : ""})
+            </Button>
+          )}
       </BottomSheet>
     </div>
   );

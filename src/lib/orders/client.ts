@@ -6,13 +6,14 @@ import type {
 
 // FASE 12 — Cliente HTTP del módulo de pedidos.
 
-export type OrderStatusKey = "pending" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled";
+export type OrderStatusKey = "pending" | "confirmed" | "preparing" | "ready" | "in_transit" | "delivered" | "cancelled";
 
 export const ORDER_STATUSES: OrderStatusKey[] = [
   "pending",
   "confirmed",
   "preparing",
   "ready",
+  "in_transit",
   "delivered",
   "cancelled",
 ];
@@ -22,6 +23,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatusKey, string> = {
   confirmed: "Confirmado",
   preparing: "Preparando",
   ready: "Listo",
+  in_transit: "En camino",
   delivered: "Entregado",
   cancelled: "Cancelado",
 };
@@ -31,6 +33,7 @@ export const ORDER_STATUS_COLORS: Record<OrderStatusKey, string> = {
   confirmed: "bg-sky-500 text-white",
   preparing: "bg-orange-500 text-white",
   ready: "bg-emerald-500 text-white",
+  in_transit: "bg-violet-500 text-white",
   delivered: "bg-blue-600 text-white",
   cancelled: "bg-destructive text-white",
 };

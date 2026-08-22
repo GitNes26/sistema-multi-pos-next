@@ -40,7 +40,7 @@ export function NotificationsClient() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/notifications?scope=portal")
+      const res = await fetch("/api/portal/notifications")
       if (!res.ok) return
       const data = await res.json()
       setNotifications(data.notifications ?? [])
@@ -55,7 +55,7 @@ export function NotificationsClient() {
 
   const markAsRead = async (id: string) => {
     try {
-      await fetch(`/api/notifications/${id}`, { method: "PATCH" })
+      await fetch(`/api/portal/notifications/${id}`, { method: "PATCH" })
       setNotifications((prev) =>
         prev?.map((n) => (n.id === id ? { ...n, readAt: new Date().toISOString() } : n)) ?? prev
       )
