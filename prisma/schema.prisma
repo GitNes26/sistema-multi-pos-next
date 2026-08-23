@@ -729,7 +729,6 @@ model Inventory {
   // CHECK sobre columnas con FK ON DELETE SET NULL / ON UPDATE CASCADE.
   // Ver migración 20260811050000_customer_phone_unique_inventory_check.
   @@unique([variantId, locationId, locationType])
-  @@unique([productId, locationId, locationType])
   @@map("inventory")
 }
 

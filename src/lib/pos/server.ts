@@ -472,10 +472,13 @@ export async function createSale(
     // Validar y descontar inventario (6.12 – ticket correcto/posible error de stock).
     for (const item of payload.items) {
       if (!item.trackInventory) continue;
-      const where: Prisma.InventoryWhereUniqueInput = item.variantId
-        ? { variantId_locationId_locationType: { variantId: item.variantId, locationId, locationType: "location" } }
-        : { productId_locationId_locationType: { productId: item.productId, locationId, locationType: "location" } };
-      const inv = await tx.inventory.findUnique({ where });
+      const inv = item.variantId
+        ? await tx.inventory.findUnique({
+            where: { variantId_locationId_locationType: { variantId: item.variantId, locationId, locationType: "location" } },
+          })
+        : await tx.inventory.findFirst({
+            where: { productId: item.productId, locationId, locationType: "location" },
+          });
       if (!inv) throw new PosError(`Sin inventario registrado para ${item.productName}`, 400);
       const current = toNum(inv.quantity);
       if (current < item.quantity) {
@@ -561,13 +564,18 @@ export async function createSale(
     const touchedInventoryIds: string[] = [];
     for (const item of payload.items) {
       if (!item.trackInventory) continue;
-      const where: Prisma.InventoryWhereUniqueInput = item.variantId
-        ? { variantId_locationId_locationType: { variantId: item.variantId, locationId, locationType: "location" } }
-        : { productId_locationId_locationType: { productId: item.productId, locationId, locationType: "location" } };
-      const inv = await tx.inventory.update({
-        where,
-        data: { quantity: { decrement: item.quantity }, updatedAt: new Date() },
-      });
+      const inv = item.variantId
+        ? await tx.inventory.update({
+            where: { variantId_locationId_locationType: { variantId: item.variantId, locationId, locationType: "location" } },
+            data: { quantity: { decrement: item.quantity }, updatedAt: new Date() },
+          })
+        : await tx.inventory.findFirst({
+            where: { productId: item.productId, locationId, locationType: "location" },
+          }).then((r) => r ? tx.inventory.update({
+            where: { id: r.id },
+            data: { quantity: { decrement: item.quantity }, updatedAt: new Date() },
+          }) : null);
+      if (!inv) throw new PosError(`Sin inventario registrado para ${item.productName}`, 400);
       touchedInventoryIds.push(inv.id);
       await tx.inventoryMovement.create({
         data: {

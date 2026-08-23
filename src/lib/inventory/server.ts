@@ -45,13 +45,17 @@ export async function ensureInventoryRows(
   locationId: string
 ) {
   const products = await prisma.product.findMany({
-    where: { organizationId, trackInventory: true, isActive: true },
+    where: { organizationId, isActive: true },
     select: { id: true, productType: true, trackInventory: true, bulkUnitId: true, variants: { select: { id: true } } },
   });
   const targets: { productId: string | null; variantId: string | null; unitId: string | null }[] = [];
   for (const p of products) {
     if (p.productType === "standard") {
-      for (const v of p.variants) targets.push({ productId: p.id, variantId: v.id, unitId: null });
+      if (p.variants.length > 0) {
+        for (const v of p.variants) targets.push({ productId: p.id, variantId: v.id, unitId: null });
+      } else {
+        targets.push({ productId: p.id, variantId: null, unitId: null });
+      }
     } else {
       targets.push({ productId: p.id, variantId: null, unitId: p.bulkUnitId });
     }
