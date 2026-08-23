@@ -66,9 +66,9 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
         const data = JSON.parse(ev.data) as { status: string };
         setOrder((prev) => {
           if (!prev || prev.status === data.status) return prev;
-          portalApi.order(orderId).then((d) => setOrder(d.order)).catch(() => {});
           return { ...prev, status: data.status };
         });
+        portalApi.order(orderId).then((d) => setOrder(d.order)).catch(() => {});
       } catch { /* ignore */ }
     };
     return () => es.close();

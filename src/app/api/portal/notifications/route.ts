@@ -27,6 +27,7 @@ export async function GET() {
         body: n.body,
         severity: n.severity,
         link: n.link,
+        metadata: n.metadata,
         readAt: n.readAt?.toISOString() ?? null,
         createdAt: n.createdAt.toISOString(),
       })),

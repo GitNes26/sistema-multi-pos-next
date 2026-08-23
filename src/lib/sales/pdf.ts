@@ -30,12 +30,10 @@ export function buildSalesPdf({ organizationName, rows }: PdfSaleRows): Promise<
 
     // Header
     doc.rect(0, 0, doc.page.width, 64).fill(INDIGO);
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .fillColor("white")
-      .text(organizationName || "Reporte de ventas", 40, 16, { width: W - 120 });
-    doc.font("Helvetica").fontSize(10).fillColor("white").text("Reporte de ventas", 40, 38, { width: W - 120 });
+    doc.font("Helvetica-Bold").fontSize(16).fillColor("white");
+    doc.text(organizationName || "Reporte de ventas", 40, 16, { width: W - 120 });
+    doc.font("Helvetica").fontSize(10).fillColor("white");
+    doc.text("Reporte de ventas", 40, 38, { width: W - 120 });
 
     if (rows.length === 0) {
       doc.font("Helvetica").fontSize(10).fillColor(DARK);
@@ -46,13 +44,12 @@ export function buildSalesPdf({ organizationName, rows }: PdfSaleRows): Promise<
 
     // Summary
     const totalVentas = rows.reduce((acc, r) => acc + r.total, 0);
+    let y = 78;
     doc.font("Helvetica").fontSize(9).fillColor(DARK);
-    doc.text(`Total de ventas: ${rows.length}`, 40, 78, { continued: true });
-    doc.fillColor(MUTED).text("   ·   Importe total: ", { continued: true });
-    doc.fillColor(DARK).text(money(totalVentas));
+    doc.text(`Total de ventas: ${rows.length}   ·   Importe total: ${money(totalVentas)}`, 40, y, { width: W });
+    y += 22;
 
-    // Table
-    let y = 108;
+    // Table header
     const h = 22;
     doc.rect(40, y, W, h).fill(SLATE_HEAD);
     doc.fillColor("white").font("Helvetica-Bold").fontSize(8);
@@ -66,8 +63,10 @@ export function buildSalesPdf({ organizationName, rows }: PdfSaleRows): Promise<
     col(472, 82, "TOTAL", "right");
     y += h;
 
+    // Table rows
     doc.font("Helvetica").fontSize(8);
-    rows.forEach((r, i) => {
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
       if (y + h > doc.page.height - 56) {
         doc.addPage();
         y = 40;
@@ -94,7 +93,7 @@ export function buildSalesPdf({ organizationName, rows }: PdfSaleRows): Promise<
       doc.font("Helvetica");
 
       y += h;
-    });
+    }
 
     // Footer
     doc.fillColor(MUTED).font("Helvetica").fontSize(8);

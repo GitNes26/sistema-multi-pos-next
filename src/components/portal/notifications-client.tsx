@@ -18,6 +18,7 @@ interface PortalNotification {
   body: string | null
   severity: string
   link: string | null
+  metadata: Record<string, unknown> | null
   readAt: string | null
   createdAt: string
 }
@@ -35,6 +36,18 @@ const SEVERITY_COLORS: Record<string, string> = {
   success: "bg-emerald-500/10 text-emerald-600",
   warning: "bg-amber-500/10 text-amber-600",
   error: "bg-destructive/10 text-destructive",
+}
+
+function getPortalLink(n: PortalNotification): string | null {
+  if (n.kind === "order") {
+    const orderId = (n.metadata as Record<string, unknown>)?.orderId
+    if (typeof orderId === "string") return `/portal/orders/${orderId}`
+    return "/portal/orders"
+  }
+  if (n.link) {
+    return n.link.replace(/^\/admin\//, "/portal/")
+  }
+  return null
 }
 
 export function NotificationsClient() {
@@ -75,8 +88,9 @@ export function NotificationsClient() {
 
   const handleClick = (n: PortalNotification) => {
     markAsRead(n.id)
-    if (n.link) {
-      router.push(n.link)
+    const link = getPortalLink(n)
+    if (link) {
+      router.push(link)
     }
   }
 

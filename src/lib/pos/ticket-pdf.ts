@@ -32,7 +32,11 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
 
   const company = await prisma.companyProfile.findUnique({ where: { organizationId } });
 
-  const doc = new PDFDocument({ size: [226.77, 840], margin: 12 });
+  const doc = new PDFDocument({
+    size: [226.77, 840],
+    margin: 12,
+    font: "Courier",
+  });
   const chunks: Buffer[] = [];
   const result = new Promise<Buffer>((resolve, reject) => {
     doc.on("data", (c) => chunks.push(c as Buffer));
@@ -40,17 +44,19 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
     doc.on("error", reject);
   });
 
-  const center = () => doc.text("", { align: "center" });
   const line = (l: string, r: string) => {
-    doc.font("Helvetica");
-    doc.fontSize(8).text(l, 12, undefined, { continued: true });
-    doc.text(r, { align: "right" });
+    doc.font("Courier").fontSize(8);
+    doc.text(l, 12, undefined, { continued: true, width: 200 });
+    doc.text(r, { align: "right", width: 200 });
   };
 
-  // Logo de la empresa
+  // Logo de la empresa — use absolute URL
   if (company?.logoUrl) {
     try {
-      const res = await fetch(company.logoUrl);
+      const logoUrl = company.logoUrl.startsWith("http")
+        ? company.logoUrl
+        : `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}${company.logoUrl}`;
+      const res = await fetch(logoUrl);
       if (res.ok) {
         const buf = Buffer.from(await res.arrayBuffer());
         const imgWidth = 40;
@@ -63,60 +69,65 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
     }
   }
 
-  // Encabezado
-  doc.font("Helvetica-Bold");
-  doc.fontSize(11).text(`${company?.tradeName ?? company?.legalName ?? "Empresa"} - ${sale.location.name}`, { align: "center" });
-  doc.font("Helvetica").fontSize(7);
-  if (company?.address) doc.text([company.address, company.city].filter(Boolean).join(", "), { align: "center" });
-  if (company?.phone) doc.text(`Tel: ${company.phone}`, { align: "center" });
-  doc.text(`Ticket: ${sale.saleNumber}`, { align: "center" });
-  doc.text(new Date(sale.createdAt).toLocaleString("es-MX"), { align: "center" });
-  if (sale.cashRegister) doc.text(`Caja: ${sale.cashRegister.name}`, { align: "center" });
-  doc.text(`Cajero: ${sale.cashier?.fullName ?? "—"}`, { align: "center" });
-  center();
+  // Encabezado — monospace to match receipt
+  doc.font("Courier-Bold");
+  doc.fontSize(10).text(`${company?.tradeName ?? company?.legalName ?? "Empresa"} - ${sale.location.name}`, 12, doc.y, { align: "center", width: 200 });
+  doc.font("Courier").fontSize(7);
+  if (company?.address) doc.text([company.address, company.city].filter(Boolean).join(", "), { align: "center", width: 200 });
+  if (company?.phone) doc.text(`Tel: ${company.phone}`, { align: "center", width: 200 });
+  doc.text(`Ticket: ${sale.saleNumber}`, { align: "center", width: 200 });
+  doc.text(new Date(sale.createdAt).toLocaleString("es-MX"), { align: "center", width: 200 });
+  if (sale.cashRegister) doc.text(`Caja: ${sale.cashRegister.name}`, { align: "center", width: 200 });
+  doc.text(`Cajero: ${sale.cashier?.fullName ?? "—"}`, { align: "center", width: 200 });
 
-  doc.moveTo(12, doc.y).lineTo(214.77, doc.y).dash(2, { space: 2 }).stroke();
+  doc.moveTo(12, doc.y + 4).lineTo(214.77, doc.y + 4).dash(2, { space: 2 }).stroke();
   doc.undash();
+  doc.moveDown(1);
 
   // Cliente
   if (sale.customer) {
-    doc.font("Helvetica-Bold").fontSize(8).text("Cliente:");
-    doc.font("Helvetica").text(`${sale.customer.fullName}${sale.customer.customerCode ? ` · Nº ${sale.customer.customerCode}` : ""}`);
+    doc.font("Courier-Bold").fontSize(8).text("Cliente:", 12);
+    doc.font("Courier").text(`${sale.customer.fullName}${sale.customer.customerCode ? ` · Nº ${sale.customer.customerCode}` : ""}`, 12);
+    doc.moveDown(0.5);
   }
 
   // Items
   for (const i of sale.items) {
-    doc.font("Helvetica-Bold").fontSize(8).text(i.productName);
-    doc.font("Helvetica");
-    if (i.bulkQuantityDisplay) doc.fontSize(7).text(i.bulkQuantityDisplay);
-    doc.fontSize(7).text(`${Number(i.quantity)} x ${MXN(Number(i.unitPrice))}`, { continued: true });
-    doc.text(MXN(Number(i.lineTotal ?? 0)), { align: "right" });
+    doc.font("Courier-Bold").fontSize(8).text(i.productName, 12);
+    doc.font("Courier").fontSize(7);
+    if (i.bulkQuantityDisplay) doc.text(i.bulkQuantityDisplay, 12);
+    doc.text(`${Number(i.quantity)} x ${MXN(Number(i.unitPrice))}`, 12, doc.y, { continued: true, width: 200 });
+    doc.text(MXN(Number(i.lineTotal ?? 0)), { align: "right", width: 200 });
   }
 
-  doc.moveTo(12, doc.y).lineTo(214.77, doc.y).dash(2, { space: 2 }).stroke();
+  doc.moveTo(12, doc.y + 4).lineTo(214.77, doc.y + 4).dash(2, { space: 2 }).stroke();
   doc.undash();
+  doc.moveDown(0.5);
 
   line("Subtotal", MXN(Number(sale.subtotal)));
   for (const d of sale.discounts) line(d.label, `-${MXN(Number(d.amount))}`);
   line("Impuestos", MXN(Number(sale.tax)));
   if (Number(sale.pointsRedeemed) > 0) line(`Puntos canjeados (${sale.pointsRedeemed})`, `-${MXN(Number(sale.pointsRedeemed ?? 0))}`);
-  doc.font("Helvetica-Bold").fontSize(10);
+  doc.font("Courier-Bold").fontSize(10);
   line("TOTAL", MXN(Number(sale.total)));
-  doc.font("Helvetica").fontSize(8);
+  doc.font("Courier").fontSize(8);
   if (Number(sale.changeGiven) > 0) line("Cambio", MXN(Number(sale.changeGiven)));
 
-  doc.moveTo(12, doc.y).lineTo(214.77, doc.y).dash(2, { space: 2 }).stroke();
+  doc.moveTo(12, doc.y + 4).lineTo(214.77, doc.y + 4).dash(2, { space: 2 }).stroke();
   doc.undash();
+  doc.moveDown(0.5);
 
   for (const p of sale.payments) line(PAYMENT_LABELS[p.method], MXN(Number(p.amount)));
 
   if (sale.customer) {
-    doc.font("Helvetica").fontSize(8).text(`Puntos ganados: ${Math.floor(Number(sale.pointsEarned))}`);
+    doc.font("Courier").fontSize(8);
+    doc.text(`Puntos ganados: ${Math.floor(Number(sale.pointsEarned))}`, 12);
     const newPoints = Math.floor(Number(sale.customer.points) + Number(sale.pointsEarned) - Number(sale.pointsRedeemed));
-    doc.text(`Puntos totales: ${newPoints}`);
+    doc.text(`Puntos totales: ${newPoints}`, 12);
   }
 
-  doc.font("Helvetica-Bold").fontSize(8).text("¡Gracias por su compra!", { align: "center" });
+  doc.moveDown(1);
+  doc.font("Courier-Bold").fontSize(8).text("¡Gracias por su compra!", { align: "center", width: 200 });
 
   doc.end();
   return result;

@@ -662,6 +662,7 @@ export async function createPortalOrder(
 
   const detail = await getPortalOrder(organizationId, customerId, order.id);
   await notifyOrderEvent(organizationId, order.locationId, { userId: customer.userId }, {
+    id: order.id,
     orderNumber: Number(order.orderNumber),
     status: "pending",
     customerName: customer.fullName,
@@ -693,6 +694,7 @@ export async function cancelPortalOrder(
 
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
   await notifyOrderEvent(organizationId, order.locationId, { userId: customer?.userId }, {
+    id: orderId,
     orderNumber: Number(order.orderNumber),
     status: "cancelled",
     customerName: customer?.fullName,

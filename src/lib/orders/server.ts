@@ -18,7 +18,7 @@ export const ORDER_STATUSES = [
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 /** Estados que mantienen el pedido "activo" para el monitoreo (12.4). */
-export const ACTIVE_STATUSES: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "in_transit"];
+export const ACTIVE_STATUSES: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "delivered"];
 
 const toNum = (v: Prisma.Decimal | number | string | null): number =>
   v == null ? 0 : Number(v);
@@ -255,6 +255,7 @@ export async function updateOrderStatus(
   const detail = await getOrderDetail(organizationId, id);
   if (detail) {
     await notifyOrderEvent(organizationId, order.locationId, ctx, {
+      id,
       orderNumber: detail.orderNumber,
       status: detail.status,
       customerName: detail.customerName,

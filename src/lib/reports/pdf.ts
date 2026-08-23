@@ -1,9 +1,6 @@
 import PDFDocument from "pdfkit";
-import { buildInventoryPdf } from "@/lib/pdf";
-import { buildSalesPdf } from "@/lib/sales/pdf";
-import type { SalesReportRow } from "@/lib/reports/server";
 
-// FASE 10.3/10.5 — Generadores PDF para reportes (reutilizan pdfkit y los builders existentes).
+// FASE 10.3/10.5 — Generadores PDF para reportes (pdfkit, server-side).
 
 export interface PdfTableColumn<T> {
   header: string;
@@ -47,52 +44,47 @@ export function buildReportPdf<T>({
 
     const W = doc.page.width - 80;
 
+    // Header bar
     doc.rect(0, 0, doc.page.width, 64).fill(INDIGO);
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .fillColor("white")
-      .text(organizationName || title, 40, 16, { width: W - 120 });
-    doc.font("Helvetica").fontSize(10).fillColor("white").text(title, 40, 38, { width: W - 120 });
+    doc.font("Helvetica-Bold").fontSize(16).fillColor("white");
+    doc.text(organizationName || title, 40, 16, { width: W - 120 });
+    doc.font("Helvetica").fontSize(10).fillColor("white");
+    doc.text(title, 40, 38, { width: W - 120 });
 
+    // Subtitle
     let y = 80;
     doc.font("Helvetica").fontSize(8).fillColor(MUTED);
     doc.text(subtitle ?? `Generado el ${new Date().toLocaleString("es-MX")}`, 40, y, { width: W });
+    y += 18;
 
+    // Summary line
     if (summary && summary.length) {
-      y += 18;
       doc.font("Helvetica").fontSize(9).fillColor(DARK);
-      doc.text(
-        summary.map((s) => `${s.label}: ${s.value}`).join("   ·   "),
-        40,
-        y,
-        { width: W }
-      );
-      y += 18;
-    } else {
+      const summaryText = summary.map((s) => `${s.label}: ${s.value}`).join("   ·   ");
+      doc.text(summaryText, 40, y, { width: W });
       y += 18;
     }
 
+    // Table
     const h = 22;
-    const colWidths = columns.map((c) => c.width);
-    const totalW = colWidths.reduce((a, b) => a + b, 0);
-    const startX = 40 + Math.max(0, (W - totalW) / 2);
+    const startX = 40;
 
     const drawHeader = () => {
-      doc.rect(40, y, W, h).fill(SLATE_HEAD);
+      doc.rect(startX, y, W, h).fill(SLATE_HEAD);
       doc.fillColor("white").font("Helvetica-Bold").fontSize(8);
       let x = startX;
-      columns.forEach((c, i) => {
+      for (const c of columns) {
         doc.text(c.header.toUpperCase(), x + 4, y + 7, { width: c.width - 8, align: c.align ?? "left" });
         x += c.width;
-      });
+      }
       y += h;
     };
 
     drawHeader();
 
     doc.font("Helvetica").fontSize(8);
-    rows.forEach((r, i) => {
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
       if (y + h > doc.page.height - 56) {
         doc.addPage();
         y = 40;
@@ -100,21 +92,22 @@ export function buildReportPdf<T>({
         doc.font("Helvetica").fontSize(8);
       }
 
-      if (i % 2 === 1) doc.rect(40, y, W, h).fill(SLATE_ROW);
+      if (i % 2 === 1) doc.rect(startX, y, W, h).fill(SLATE_ROW);
 
       let x = startX;
-      columns.forEach((c) => {
+      for (const c of columns) {
         const value = c.render(r);
         doc.fillColor(DARK).text(clamp(value, Math.floor(c.width / 4.6) + 8), x + 4, y + 7, {
           width: c.width - 8,
           align: c.align ?? "left",
         });
         x += c.width;
-      });
+      }
 
       y += h;
-    });
+    }
 
+    // Footer
     doc.fillColor(MUTED).font("Helvetica").fontSize(8);
     doc.text(
       `Generado por el sistema Multi-POS · ${new Date().toLocaleString("es-MX")}`,
@@ -129,7 +122,7 @@ export function buildReportPdf<T>({
 
 export function buildSalesReportPdf(
   organizationName: string,
-  rows: SalesReportRow[]
+  rows: { folio: number; date: string; locationName: string; customerName: string | null; total: number }[]
 ): Promise<Buffer> {
   const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
   const total = rows.reduce((a, r) => a + r.total, 0);
@@ -160,12 +153,12 @@ export function buildCashReportPdf(
     summary: [{ label: "Sesiones", value: String(rows.length) }, { label: "Ventas", value: money(totalSales) }],
     columns: [
       { header: "Caja", width: 70, render: (r) => r.registerName ?? "—" },
-      { header: "Sucursal", width: 110, render: (r) => r.locationName },
-      { header: "Cajero", width: 110, render: (r) => r.employeeName ?? "—" },
-      { header: "Apertura", width: 90, render: (r) => (r.openedAt ? new Date(r.openedAt).toLocaleString("es-MX") : "—") },
-      { header: "Ventas", width: 70, align: "right", render: (r) => money(r.totalSales) },
-      { header: "Esperado", width: 70, align: "right", render: (r) => money(r.expectedCash) },
-      { header: "Dif.", width: 60, align: "right", render: (r) => (r.difference == null ? "—" : money(r.difference)) },
+      { header: "Sucursal", width: 100, render: (r) => r.locationName },
+      { header: "Cajero", width: 100, render: (r) => r.employeeName ?? "—" },
+      { header: "Apertura", width: 85, render: (r) => (r.openedAt ? new Date(r.openedAt).toLocaleString("es-MX") : "—") },
+      { header: "Ventas", width: 60, align: "right", render: (r) => money(r.totalSales) },
+      { header: "Esperado", width: 65, align: "right", render: (r) => money(r.expectedCash) },
+      { header: "Dif.", width: 55, align: "right", render: (r) => (r.difference == null ? "—" : money(r.difference)) },
     ],
     rows,
   });
@@ -185,8 +178,8 @@ export function buildOrdersReportPdf(
       { header: "Fecha", width: 90, render: (r) => new Date(r.createdAt).toLocaleString("es-MX") },
       { header: "Cliente", width: 120, render: (r) => r.customerName ?? "—" },
       { header: "Entrega", width: 80, render: (r) => (r.deliveryMethod === "delivery" ? "Domicilio" : "Sucursal") },
-      { header: "Estado", width: 90, render: (r) => r.status },
-      { header: "Total", width: 80, align: "right", render: (r) => money(r.total) },
+      { header: "Estado", width: 80, render: (r) => r.status },
+      { header: "Total", width: 70, align: "right", render: (r) => money(r.total) },
     ],
     rows,
   });
@@ -212,5 +205,5 @@ export function buildCustomersReportPdf(
   });
 }
 
-export { buildInventoryPdf };
-export { buildSalesPdf };
+export { buildInventoryPdf } from "@/lib/pdf";
+export { buildSalesPdf } from "@/lib/sales/pdf";

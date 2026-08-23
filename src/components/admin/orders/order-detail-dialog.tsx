@@ -15,7 +15,6 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { money } from "@/lib/pos/money";
 import { swalError, swalToast } from "@/lib/swal";
 import {
@@ -29,17 +28,28 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const NEXT_STEP: Record<string, { label: string; icon: React.ReactNode; color: string } | null> = {
-  pending: { label: "Confirmar", icon: <CircleCheckBig className="size-4" />, color: "bg-sky-600 hover:bg-sky-700" },
-  confirmed: { label: "Iniciar preparación", icon: <PackageCheck className="size-4" />, color: "bg-orange-600 hover:bg-orange-700" },
-  preparing: null, // goes to preparation page
-  ready: { label: "Marcar listo", icon: <Check className="size-4" />, color: "bg-emerald-600 hover:bg-emerald-700" },
-  in_transit: { label: "Marcar entregado", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" },
-  delivered: null,
-  cancelled: null,
-};
-
 const FLOW: OrderStatusKey[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "delivered"];
+
+function getNextAction(status: string, isDelivery: boolean): { label: string; icon: React.ReactNode; color: string } | "navigate" | null {
+  if (status === "pending") return { label: "Confirmar", icon: <CircleCheckBig className="size-4" />, color: "bg-sky-600 hover:bg-sky-700" };
+  if (status === "confirmed") return "navigate"; // → /prepare
+  if (status === "preparing") return "navigate"; // → /prepare
+  if (status === "ready") {
+    return isDelivery
+      ? { label: "Enviar a domicilio", icon: <Truck className="size-4" />, color: "bg-violet-600 hover:bg-violet-700" }
+      : { label: "Marcar entregado", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" };
+  }
+  if (status === "in_transit") return { label: "Marcar entregado", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" };
+  return null;
+}
+
+function getNextStatus(status: string, isDelivery: boolean): OrderStatusKey | null {
+  if (status === "pending") return "confirmed";
+  if (status === "ready" && isDelivery) return "in_transit";
+  if (status === "ready") return "delivered";
+  if (status === "in_transit") return "delivered";
+  return null;
+}
 
 export function OrderDetailDialog({
   orderId,
@@ -54,10 +64,8 @@ export function OrderDetailDialog({
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const notes = "";
 
   const load = async () => {
-    setLoading(true);
     try {
       const r = await ordersApi.detail(orderId);
       setOrder(r.order);
@@ -68,39 +76,36 @@ export function OrderDetailDialog({
     }
   };
 
-  useEffect(() => { load(); }, [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setLoading(true);
+    load();
+  }, [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const openChange = (v: boolean) => {
+  const handleClose = (v: boolean) => {
+    if (!v) {
+      // Closing — notify parent to refresh, then close
+      onChanged?.();
+    }
     setOpen(v);
-    if (v) load();
   };
 
-  const nextStep = order ? NEXT_STEP[order.status] : null;
+  const nextAction = order ? getNextAction(order.status, order.deliveryMethod === "delivery") : null;
   const isDelivery = order?.deliveryMethod === "delivery";
   const currentFlowIdx = order ? FLOW.indexOf(order.status as OrderStatusKey) : -1;
 
   const advanceStatus = async () => {
-    if (!order || !nextStep) return;
+    if (!order || !nextAction || nextAction === "navigate") return;
     setSaving(true);
     try {
+      const targetStatus = getNextStatus(order.status, isDelivery);
       if (order.status === "pending") {
         const res = await fetch(`/api/orders/${order.id}/confirm`, { method: "POST" });
         const data = await res.json();
         if (!data.ok) throw new Error(data.error);
-      } else if (order.status === "ready" && isDelivery) {
-        const res = await fetch(`/api/orders/${order.id}/deliver`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes: notes || undefined }),
-        });
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.error);
-      } else if (order.status === "in_transit") {
-        await ordersApi.updateStatus(order.id, "delivered", notes || undefined);
-      } else {
-        await ordersApi.updateStatus(order.id, "confirmed", notes || undefined);
+      } else if (targetStatus) {
+        await ordersApi.updateStatus(order.id, targetStatus);
       }
-      swalToast(nextStep.label + " ✓");
+      swalToast(nextAction.label + " ✓");
       onChanged?.();
       setOpen(false);
     } catch (err) {
@@ -111,7 +116,7 @@ export function OrderDetailDialog({
   };
 
   return (
-    <DialogComponent open={open} onOpenChange={openChange} size="lg" title="Detalle del pedido">
+    <DialogComponent open={open} onOpenChange={handleClose} size="lg" title="Detalle del pedido">
       {loading || !order ? (
         <div className="space-y-3 py-4">
           <div className="h-6 w-32 animate-pulse rounded bg-muted" />
@@ -191,27 +196,27 @@ export function OrderDetailDialog({
           {canManage && order.status !== "cancelled" && order.status !== "delivered" && (
             <div className="space-y-2">
               <AnimatePresence mode="wait">
-                {order.status === "preparing" ? (
-                  <motion.div key="prepare" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                {nextAction === "navigate" ? (
+                  <motion.div key="nav" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                     <Button
                       className="w-full bg-orange-600 hover:bg-orange-700"
                       onClick={() => {
-                        setOpen(false);
+                        onChanged?.();
                         window.location.href = `/admin/orders/${order.id}/prepare`;
                       }}
                     >
                       <PackageCheck className="mr-2 size-4" /> Ir a preparación
                     </Button>
                   </motion.div>
-                ) : nextStep ? (
-                  <motion.div key="next" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                ) : nextAction ? (
+                  <motion.div key="advance" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                     <Button
-                      className={cn("w-full", nextStep.color)}
+                      className={cn("w-full", nextAction.color)}
                       onClick={advanceStatus}
                       disabled={saving}
                     >
-                      {nextStep.icon}
-                      <span className="ml-2">{saving ? "Procesando…" : nextStep.label}</span>
+                      {nextAction.icon}
+                      <span className="ml-2">{saving ? "Procesando…" : nextAction.label}</span>
                       <ArrowRight className="ml-auto size-4" />
                     </Button>
                   </motion.div>
@@ -225,7 +230,7 @@ export function OrderDetailDialog({
                   onClick={async () => {
                     setSaving(true);
                     try {
-                      await ordersApi.updateStatus(order.id, "cancelled", notes || undefined);
+                      await ordersApi.updateStatus(order.id, "cancelled");
                       swalToast("Pedido cancelado");
                       onChanged?.();
                       setOpen(false);

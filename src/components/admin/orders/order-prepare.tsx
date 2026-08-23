@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { swalError, swalToast } from "@/lib/swal";
+import { playSound } from "@/lib/sounds";
 import { cn } from "@/lib/utils";
 import {
   ORDER_STATUS_LABELS,
@@ -129,9 +130,11 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
     if (!q || !prep) return;
     const target = prep.items.find((i) => !i.found && (i.productName.toLowerCase().includes(q) || (i.variantName ?? "").toLowerCase().includes(q)));
     if (target) {
+      playSound("scan");
       toggleFound(target);
       swalToast(`Encontrado: ${target.productName}`);
     } else {
+      playSound("error");
       swalError("Sin coincidencia", "Escribe el nombre del producto o su variante.");
     }
     setScan("");

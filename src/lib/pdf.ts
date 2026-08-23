@@ -42,42 +42,38 @@ export function buildInventoryPdf({
     doc.on("error", reject);
 
     const W = doc.page.width - 80;
-    const label = (y: number, text: string, value: string) => {
-      doc.font("Helvetica").fontSize(8).fillColor(MUTED).text(text, 40, y, { width: 110 });
-      doc.fillColor(DARK).text(value, 120, y, { width: W - 80 });
-    };
 
     // Header
     doc.rect(0, 0, doc.page.width, 64).fill(INDIGO);
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .fillColor("white")
-      .text(organizationName || "Reporte de inventario", 40, 16, { width: W - 120 });
-    doc.font("Helvetica").fontSize(10).fillColor("white").text("Reporte de inventario", 40, 38, { width: W - 120 });
+    doc.font("Helvetica-Bold").fontSize(16).fillColor("white");
+    doc.text(organizationName || "Reporte de inventario", 40, 16, { width: W - 120 });
+    doc.font("Helvetica").fontSize(10).fillColor("white");
+    doc.text("Reporte de inventario", 40, 38, { width: W - 120 });
 
-    label(78, "Sucursal / CEDIS:", locationName);
-    label(96, "Generado:", generatedAt.toLocaleString("es-MX"));
+    // Metadata
+    let y = 78;
+    doc.font("Helvetica").fontSize(8).fillColor(MUTED);
+    doc.text("Sucursal / CEDIS:", 40, y, { width: 110 });
+    doc.fillColor(DARK).text(locationName, 120, y, { width: W - 80 });
+    y += 18;
+    doc.font("Helvetica").fontSize(8).fillColor(MUTED);
+    doc.text("Generado:", 40, y, { width: 110 });
+    doc.fillColor(DARK).text(generatedAt.toLocaleString("es-MX"), 120, y, { width: W - 80 });
+    y += 18;
 
     // Summary
     const low = rows.filter((r) => r.status === "low").length;
     const empty = rows.filter((r) => r.status === "empty").length;
     doc.font("Helvetica").fontSize(9).fillColor(DARK);
-    doc.text(`Total de productos: ${rows.length}`, 40, 122, { continued: true });
-    doc.fillColor(MUTED).text(`   ·   Stock bajo: `, { continued: true });
-    doc.fillColor(low > 0 ? "b45309" : MUTED).text(`${low}`, { continued: true });
-    doc.fillColor(MUTED).text(`   ·   Sin stock: `, { continued: true });
-    doc.fillColor(empty > 0 ? "b91c1c" : MUTED).text(`${empty}`);
+    doc.text(`Total de productos: ${rows.length}   ·   Stock bajo: ${low}   ·   Sin stock: ${empty}`, 40, y, { width: W });
+    y += 20;
 
-    // Column headers
-    let y = 148;
+    // Table header
     const h = 24;
     doc.rect(40, y, W, h).fill(SLATE_HEAD);
     doc.fillColor("white").font("Helvetica-Bold").fontSize(8.5);
-    const col = (x: number, w: number, t: string, align: "left" | "right" = "left") => {
-      const opts: Record<string, unknown> = { width: w, align };
-      doc.text(t, x, y + 8, opts);
-    };
+    const col = (x: number, w: number, t: string, align: "left" | "right" = "left") =>
+      doc.text(t, x, y + 8, { width: w, align });
     col(50, 190, "PRODUCTO");
     col(240, 140, "VARIANTE / SKU");
     col(380, 50, "UNIDAD");
@@ -85,9 +81,10 @@ export function buildInventoryPdf({
     col(500, 55, "MÍNIMO", "right");
     y += h;
 
-    // Rows
+    // Table rows
     doc.font("Helvetica").fontSize(8.5);
-    rows.forEach((r, i) => {
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
       if (y + h > doc.page.height - 56) {
         doc.addPage();
         y = 40;
@@ -126,7 +123,7 @@ export function buildInventoryPdf({
       doc.font("Helvetica").fontSize(8.5);
 
       y += h;
-    });
+    }
 
     // Footer
     doc.fillColor(MUTED).font("Helvetica").fontSize(8);
@@ -182,49 +179,42 @@ export function buildRevisionPdf(config: PdfRevisionConfig): Promise<Buffer> {
     const W = doc.page.width - 80;
     const footer = () => {
       const pages = doc.bufferedPageRange();
-      doc
-        .fillColor(MUTED)
-        .font("Helvetica")
-        .fontSize(8)
-        .text(
-          `Generado por el sistema Multi-POS · ${config.generatedAt.toLocaleString("es-MX")}`,
-          40,
-          doc.page.height - 46,
-          { width: W / 2 }
-        )
-        .text(`Página ${pages.start + pages.count}`, 40 + W / 2, doc.page.height - 46, {
-          width: W / 2,
-          align: "right",
-        });
+      doc.fillColor(MUTED).font("Helvetica").fontSize(8);
+      doc.text(
+        `Generado por el sistema Multi-POS · ${config.generatedAt.toLocaleString("es-MX")}`,
+        40,
+        doc.page.height - 46,
+        { width: W / 2 }
+      );
+      doc.text(`Página ${pages.start + pages.count}`, 40 + W / 2, doc.page.height - 46, {
+        width: W / 2,
+        align: "right",
+      });
     };
 
     // Header
     doc.rect(0, 0, doc.page.width, 64).fill(INDIGO);
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(16)
-      .fillColor("white")
-      .text(config.organizationName || "Reporte de inventario", 40, 16, { width: W - 120 });
-    doc
-      .font("Helvetica")
-      .fontSize(10)
-      .fillColor("white")
-      .text(`Reporte de revisión física #${config.revisionNumber}`, 40, 38, { width: W - 120 });
+    doc.font("Helvetica-Bold").fontSize(16).fillColor("white");
+    doc.text(config.organizationName || "Reporte de inventario", 40, 16, { width: W - 120 });
+    doc.font("Helvetica").fontSize(10).fillColor("white");
+    doc.text(`Reporte de revisión física #${config.revisionNumber}`, 40, 38, { width: W - 120 });
 
-    const meta = (y: number, label: string, value: string) => {
+    // Metadata
+    let y = 78;
+    const meta = (label: string, value: string) => {
       doc.font("Helvetica").fontSize(8).fillColor(MUTED).text(label, 40, y, { width: 110 });
       doc.fillColor(DARK).text(value, 120, y, { width: W - 80 });
+      y += 18;
     };
 
-    meta(78, "Sucursal / CEDIS:", config.locationName);
-    meta(96, "Estado:", STATUS_LABELS[config.status] ?? config.status);
-    meta(114, "Responsable:", config.performedBy ?? "—");
-    meta(132, "Inicio:", config.startedAt ? new Date(config.startedAt).toLocaleString("es-MX") : "—");
+    meta("Sucursal / CEDIS:", config.locationName);
+    meta("Estado:", STATUS_LABELS[config.status] ?? config.status);
+    meta("Responsable:", config.performedBy ?? "—");
+    meta("Inicio:", config.startedAt ? new Date(config.startedAt).toLocaleString("es-MX") : "—");
     if (config.completedAt) {
-      meta(150, "Finalizada:", new Date(config.completedAt).toLocaleString("es-MX"));
+      meta("Finalizada:", new Date(config.completedAt).toLocaleString("es-MX"));
     }
 
-    let y = config.completedAt ? 176 : 158;
     if (config.notes) {
       doc.font("Helvetica-Bold").fontSize(8).fillColor(DARK).text("NOTAS:", 40, y, { width: W });
       y += 12;
@@ -236,13 +226,10 @@ export function buildRevisionPdf(config: PdfRevisionConfig): Promise<Buffer> {
     const counted = config.items.filter((i) => i.countedQuantity != null).length;
     const withDiff = config.items.filter((i) => i.difference != null && i.difference !== 0).length;
     doc.font("Helvetica").fontSize(9).fillColor(DARK);
-    doc.text(`Total de productos: ${config.items.length}`, 40, y, { continued: true });
-    doc.fillColor(MUTED).text(`   ·   Contados: `, { continued: true });
-    doc.fillColor("1d4ed8").text(`${counted}`, { continued: true });
-    doc.fillColor(MUTED).text(`   ·   Con diferencia: `, { continued: true });
-    doc.fillColor(withDiff > 0 ? "b45309" : MUTED).text(`${withDiff}`);
-    y += 26;
+    doc.text(`Total: ${config.items.length}   ·   Contados: ${counted}   ·   Con diferencia: ${withDiff}`, 40, y, { width: W });
+    y += 22;
 
+    // Table
     const h = 24;
     const headerRow = () => {
       doc.rect(40, y, W, h).fill(SLATE_HEAD);
@@ -259,7 +246,8 @@ export function buildRevisionPdf(config: PdfRevisionConfig): Promise<Buffer> {
     headerRow();
 
     doc.font("Helvetica").fontSize(8.5);
-    config.items.forEach((r, i) => {
+    for (let i = 0; i < config.items.length; i++) {
+      const r = config.items[i];
       if (y + h > doc.page.height - 56) {
         doc.addPage();
         y = 40;
@@ -276,12 +264,11 @@ export function buildRevisionPdf(config: PdfRevisionConfig): Promise<Buffer> {
         : r.sku ?? "—";
       doc.text(clamp(variant, 30), 250, y + 8, { width: 140 });
       doc.fillColor(DARK).text(String(r.expectedQuantity), 390, y + 8, { width: 60, align: "right" });
-      doc
-        .fillColor(r.countedQuantity != null ? DARK : MUTED)
-        .text(r.countedQuantity != null ? String(r.countedQuantity) : "—", 450, y + 8, {
-          width: 60,
-          align: "right",
-        });
+      doc.fillColor(r.countedQuantity != null ? DARK : MUTED);
+      doc.text(r.countedQuantity != null ? String(r.countedQuantity) : "—", 450, y + 8, {
+        width: 60,
+        align: "right",
+      });
 
       const diff = r.difference;
       if (diff == null) {
@@ -297,7 +284,7 @@ export function buildRevisionPdf(config: PdfRevisionConfig): Promise<Buffer> {
         doc.font("Helvetica");
       }
       y += h;
-    });
+    }
 
     footer();
     doc.end();

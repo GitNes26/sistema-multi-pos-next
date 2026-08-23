@@ -40,6 +40,7 @@ export async function notifyOrderEvent(
   locationId: string | null,
   ctx: EventCtx,
   order: {
+    id: string;
     orderNumber: string | number;
     status: string;
     customerName?: string | null;
@@ -69,6 +70,6 @@ export async function notifyOrderEvent(
     title: c.title,
     body: `#${order.orderNumber}${who} por ${money(order.total)}`,
     link: `/admin/orders?q=${order.orderNumber}`,
-    metadata: { event: "order", status: order.status, sound: c.sound },
+    metadata: { event: "order", status: order.status, sound: c.sound, orderId: order.id },
   });
 }

@@ -248,6 +248,7 @@ export async function markOrderPaid(orderId: string): Promise<{ ok: boolean }> {
     updatedAt: new Date().toISOString(),
   });
   await notifyOrderEvent(order.organizationId, order.locationId, {}, {
+    id: orderId,
     orderNumber: Number(order.orderNumber),
     status: "confirmed",
     customerName: (await prisma.customer.findUnique({ where: { id: order.customerId ?? "" } }))?.fullName ?? null,
