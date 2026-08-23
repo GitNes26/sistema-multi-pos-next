@@ -6,6 +6,8 @@ import type {
 
 // FASE 12 — Cliente HTTP del módulo de pedidos.
 
+export type { OrderDetail };
+
 export type OrderStatusKey = "pending" | "confirmed" | "preparing" | "ready" | "in_transit" | "delivered" | "cancelled";
 
 export const ORDER_STATUSES: OrderStatusKey[] = [

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { PackageCheck, RefreshCw, Truck } from "lucide-react";
+import { PackageCheck, RefreshCw, Truck, CircleCheckBig, Clock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,15 +20,15 @@ import {
 import type { OrderRow } from "@/lib/orders/server";
 import { OrderDetailDialog } from "./order-detail-dialog";
 
-// FASE 12.4 — Monitoreo de pedidos (semáforo de estados).
-
-const MONITOR_STATUSES = ["pending", "confirmed", "preparing", "ready"] as const;
+const MONITOR_STATUSES = ["pending", "confirmed", "preparing", "ready", "in_transit", "delivered"] as const;
 
 const STATUS_CARD_STYLE: Record<string, string> = {
   pending: "border-amber-300 bg-amber-50/60 dark:bg-amber-950/20",
   confirmed: "border-sky-300 bg-sky-50/60 dark:bg-sky-950/20",
   preparing: "border-orange-300 bg-orange-50/60 dark:bg-orange-950/20",
   ready: "border-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/20",
+  in_transit: "border-violet-300 bg-violet-50/60 dark:bg-violet-950/20",
+  delivered: "border-blue-300 bg-blue-50/60 dark:bg-blue-950/20",
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -35,6 +36,17 @@ const STATUS_DOT: Record<string, string> = {
   confirmed: "bg-sky-500",
   preparing: "bg-orange-500",
   ready: "bg-emerald-500",
+  in_transit: "bg-violet-500",
+  delivered: "bg-blue-600",
+};
+
+const STATUS_ICON: Record<string, React.ReactNode> = {
+  pending: <Clock className="size-3.5" />,
+  confirmed: <CircleCheckBig className="size-3.5" />,
+  preparing: <PackageCheck className="size-3.5" />,
+  ready: <PackageCheck className="size-3.5" />,
+  in_transit: <Truck className="size-3.5" />,
+  delivered: <CircleCheckBig className="size-3.5" />,
 };
 
 export function OrdersMonitor({
@@ -45,7 +57,9 @@ export function OrdersMonitor({
   icon?: React.ReactNode;
 }) {
   const router = useRouter();
-  const [byStatus, setByStatus] = useState<Record<string, OrderRow[]>>({ pending: [], confirmed: [], preparing: [], ready: [] });
+  const [byStatus, setByStatus] = useState<Record<string, OrderRow[]>>({
+    pending: [], confirmed: [], preparing: [], ready: [], in_transit: [], delivered: [],
+  });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -56,7 +70,9 @@ export function OrdersMonitor({
     setRefreshing(true);
     try {
       const r = await ordersApi.list({ active: true, pageSize: 200 });
-      const grouped: Record<string, OrderRow[]> = { pending: [], confirmed: [], preparing: [], ready: [] };
+      const grouped: Record<string, OrderRow[]> = {
+        pending: [], confirmed: [], preparing: [], ready: [], in_transit: [], delivered: [],
+      };
       for (const o of r.rows) {
         if (grouped[o.status]) grouped[o.status].push(o);
       }
@@ -70,10 +86,7 @@ export function OrdersMonitor({
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
+  useEffect(() => { load(); }, [load]);
   useEffect(() => {
     const t = setInterval(() => load(true), 30_000);
     return () => clearInterval(t);
@@ -100,69 +113,70 @@ export function OrdersMonitor({
       />
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-40 animate-pulse rounded-xl border bg-muted" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-40 animate-pulse rounded-2xl border bg-muted" />
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {MONITOR_STATUSES.map((status) => (
-            <section key={status} className="rounded-xl border bg-card">
-              <header className={cn("flex items-center gap-2 rounded-t-xl border-b px-3 py-2", STATUS_CARD_STYLE[status])}>
-                <span className={cn("size-2.5 rounded-full", STATUS_DOT[status])} />
+            <section key={status} className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+              <header className={cn("flex items-center gap-2 border-b px-3 py-2.5", STATUS_CARD_STYLE[status])}>
+                <span className={cn("flex size-5 items-center justify-center rounded-full", STATUS_DOT[status], "text-white")}>
+                  {STATUS_ICON[status]}
+                </span>
                 <span className="text-sm font-semibold">{ORDER_STATUS_LABELS[status]}</span>
-                <Badge variant="secondary" className="ml-auto">{byStatus[status]?.length ?? 0}</Badge>
+                <Badge variant="secondary" className="ml-auto text-xs">{byStatus[status]?.length ?? 0}</Badge>
               </header>
-              <div className="space-y-2 p-2">
-                {(byStatus[status] ?? []).length === 0 && (
-                  <p className="px-2 py-4 text-center text-xs text-muted-foreground">Sin pedidos</p>
-                )}
-                {(byStatus[status] ?? []).map((o) => (
-                  <div
-                    key={o.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setDetailId(o.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setDetailId(o.id);
-                      }
-                    }}
-                    className={cn(
-                      "w-full cursor-pointer rounded-lg border px-3 py-2 text-left transition-colors hover:shadow-sm",
-                      STATUS_CARD_STYLE[status]
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold tabular-nums">#{o.orderNumber}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(o.createdAt), { addSuffix: true, locale: es })}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 truncate text-sm">{o.customerName ?? "Cliente"}</div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{DELIVERY_METHOD_LABELS[o.deliveryMethod]}</span>
-                      <span className="font-semibold tabular-nums">{money(o.total)}</span>
-                    </div>
-                    {canManage && status === "preparing" && (
-                      <div className="mt-2">
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          className="w-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/admin/orders/${o.id}/prepare`);
-                          }}
-                        >
-                          <PackageCheck className="size-3.5" /> Preparar
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <div className="space-y-1.5 p-2 max-h-80 overflow-y-auto">
+                <AnimatePresence>
+                  {(byStatus[status] ?? []).length === 0 && (
+                    <p className="px-2 py-6 text-center text-xs text-muted-foreground">Sin pedidos</p>
+                  )}
+                  {(byStatus[status] ?? []).map((o) => (
+                    <motion.div
+                      key={o.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                    >
+                      <button
+                        onClick={() => setDetailId(o.id)}
+                        className={cn(
+                          "w-full cursor-pointer rounded-xl border px-3 py-2.5 text-left transition-all hover:shadow-md active:scale-[0.98]",
+                          STATUS_CARD_STYLE[status]
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold tabular-nums">#{o.orderNumber}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatDistanceToNow(new Date(o.createdAt), { addSuffix: true, locale: es })}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 truncate text-xs">{o.customerName ?? "Cliente"}</div>
+                        <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{DELIVERY_METHOD_LABELS[o.deliveryMethod]}</span>
+                          <span className="font-bold tabular-nums">{money(o.total)}</span>
+                        </div>
+                        {canManage && status === "preparing" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2 w-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/admin/orders/${o.id}/prepare`);
+                            }}
+                          >
+                            <PackageCheck className="size-3.5" /> Preparar
+                          </Button>
+                        )}
+                      </button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </section>
           ))}
@@ -173,10 +187,7 @@ export function OrdersMonitor({
         <OrderDetailDialog
           orderId={detailId}
           canManage={canManage}
-          onChanged={() => {
-            setDetailId(null);
-            load();
-          }}
+          onChanged={() => { setDetailId(null); load(); }}
         />
       )}
     </>

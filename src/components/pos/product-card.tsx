@@ -1,7 +1,8 @@
 "use client";
 
-import { memo } from "react";
-import { Package, Scale } from "lucide-react";
+import { memo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, Package, Scale } from "lucide-react";
 import type { PosProduct } from "@/types/pos";
 import { money } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
@@ -35,16 +36,42 @@ function StockBadge({ stock }: { stock: number }) {
 }
 
 export const ProductCard = memo(function ProductCard({ product, hot, onSelect }: ProductCardProps) {
+  const [added, setAdded] = useState(false);
+
+  const handleClick = () => {
+    onSelect(product);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 500);
+  };
+
   return (
-    <button
+    <motion.button
       type="button"
-      onClick={() => onSelect(product)}
+      onClick={handleClick}
+      whileTap={{ scale: 0.96 }}
       className={cn(
         "group relative flex h-full flex-col gap-2 rounded-2xl border bg-card p-2.5 text-left shadow-sm transition",
-        "hover:border-primary/50 hover:shadow-md active:scale-[0.98]",
-        product.stock <= 0 && "opacity-60"
+        "hover:border-primary/50 hover:shadow-md",
+        product.stock <= 0 && "opacity-60",
+        added && "border-primary bg-primary/5"
       )}
     >
+      {/* Add feedback overlay */}
+      <AnimatePresence>
+        {added && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.5 }}
+            className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-primary/10"
+          >
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+              <Check className="size-5" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {product.bulk && (
         <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-violet-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
           <Scale className="size-3" /> A granel
@@ -94,6 +121,6 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
           )}
         </div>
       </div>
-    </button>
+    </motion.button>
   );
 });

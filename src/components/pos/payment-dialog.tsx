@@ -13,12 +13,12 @@ import {
   ReceiptText,
   Trash2,
   Wallet,
+  Zap,
 } from "lucide-react"
 import { DialogComponent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AnimatedNumber } from "@/components/base/animated-number"
 import { usePosStore } from "@/stores/pos-store"
 import { usePosTotals } from "@/hooks/use-pos-totals"
@@ -51,6 +51,13 @@ const METHOD_ICONS: Partial<Record<$Enums.PaymentMethod, React.ReactNode>> = {
   other: <MoreHorizontal className="size-5" />,
 }
 
+const METHOD_COLORS: Record<string, string> = {
+  cash: "bg-emerald-600 hover:bg-emerald-700 text-white",
+  card: "bg-blue-600 hover:bg-blue-700 text-white",
+  wallet: "bg-violet-600 hover:bg-violet-700 text-white",
+  other: "bg-muted hover:bg-muted/80",
+}
+
 export function PaymentDialog({
   open,
   onClose,
@@ -68,22 +75,13 @@ export function PaymentDialog({
   const [error, setError] = useState("")
 
   const maxPoints = t.customer
-    ? Math.max(
-        0,
-        Math.min(
-          Math.floor(t.customer.points),
-          Math.ceil(t.total * POINTS_PER_PESO)
-        )
-      )
+    ? Math.max(0, Math.min(Math.floor(t.customer.points), Math.ceil(t.total * POINTS_PER_PESO)))
     : 0
 
-  // Pagado = solo dinero recibido (efectivo/tarjeta/wallet). Los puntos ya se
-  // descuentan de t.payable (NO se suman aquí; antes se contaban doble).
   const paid = round2(entries.reduce((s, e) => s + e.amount, 0))
   const remaining = round2(Math.max(0, t.payable - paid))
   const change = round2(Math.max(0, paid - t.payable))
   const progress = t.payable > 0 ? Math.min(100, (paid / t.payable) * 100) : 0
-
   const currentAmount = parseFloat(cashStr.replace(",", ".")) || 0
 
   useEffect(() => {
@@ -100,8 +98,7 @@ export function PaymentDialog({
     if (key === "clear") return setCashStr("")
     if (key === "backspace") return setCashStr((s) => s.slice(0, -1))
     if (key === ".") {
-      if (!cashStr.includes("."))
-        setCashStr(cashStr === "" ? "0." : cashStr + ".")
+      if (!cashStr.includes(".")) setCashStr(cashStr === "" ? "0." : cashStr + ".")
       return
     }
     setCashStr(cashStr + key)
@@ -114,37 +111,17 @@ export function PaymentDialog({
 
   const addPayment = (m: $Enums.PaymentMethod, amount: number) => {
     if (amount <= 0) return
-    setEntries((prev) => [
-      ...prev,
-      {
-        method: m,
-        amount: round2(amount),
-        reference: reference.trim() || undefined,
-      },
-    ])
+    setEntries((prev) => [...prev, { method: m, amount: round2(amount), reference: reference.trim() || undefined }])
     setCashStr("")
     setReference("")
   }
 
   const addCurrentPayment = () => addPayment(method, currentAmount)
-  const addRemaining = (m: $Enums.PaymentMethod = method) =>
-    addPayment(m, remaining)
-  const removeEntry = (i: number) =>
-    setEntries((prev) => prev.filter((_, idx) => idx !== i))
-
-  const reset = () => {
-    setEntries([])
-    setCashStr("")
-    setPointsStr("")
-    setReference("")
-    setError("")
-  }
+  const addRemaining = (m: $Enums.PaymentMethod = method) => addPayment(m, remaining)
+  const removeEntry = (i: number) => setEntries((prev) => prev.filter((_, idx) => idx !== i))
 
   const complete = async () => {
-    if (paid - t.payable < -0.01) {
-      setError("Falta por cubrir el total")
-      return
-    }
+    if (paid - t.payable < -0.01) { setError("Falta por cubrir el total"); return }
     setLoading(true)
     setError("")
     try {
@@ -152,22 +129,16 @@ export function PaymentDialog({
       const res = await fetch("/api/pos/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          locationId: usePosStore.getState().location.id,
-          payload,
-        }),
+        body: JSON.stringify({ locationId: usePosStore.getState().location.id, payload }),
       })
       const data = await res.json()
-      if (!data.ok)
-        throw new Error(data.error ?? "No se pudo registrar la venta")
+      if (!data.ok) throw new Error(data.error ?? "No se pudo registrar la venta")
       playSound("sale-complete")
-      reset()
+      setEntries([]); setCashStr(""); setPointsStr(""); setReference(""); setError("")
       onSuccess(data.sale, payload)
     } catch (err) {
       playSound("error")
-      setError(
-        err instanceof Error ? err.message : "Error al registrar la venta"
-      )
+      setError(err instanceof Error ? err.message : "Error al registrar la venta")
     } finally {
       setLoading(false)
     }
@@ -176,23 +147,15 @@ export function PaymentDialog({
   return (
     <DialogComponent
       open={open}
-      onOpenChange={(o) => {
-        if (!o && !loading) {
-          reset()
-          onClose()
-        }
-      }}
+      onOpenChange={(o) => { if (!o && !loading) { setEntries([]); setCashStr(""); setPointsStr(""); setReference(""); setError(""); onClose() } }}
       icon={<ReceiptText className="size-5 text-primary" />}
       title="Cobro de venta"
       description={
         <>
           {t.pointsRedeemed > 0 && (
-            <>
-              Aplicando {t.pointsRedeemed} pts ({money(t.pointsRedeemedValue)})
-              en puntos ·{" "}
-            </>
+            <>Aplicando {t.pointsRedeemed} pts ({money(t.pointsRedeemedValue)}) en puntos · </>
           )}
-          Restante a pagar: {money(t.payable)}
+          Restante: {money(t.payable)}
         </>
       }
       className="sm:max-w-lg"
@@ -200,41 +163,30 @@ export function PaymentDialog({
       footer={
         <Button
           size="lg"
-          className="w-full"
+          className="h-14 w-full text-base font-bold"
           disabled={loading || paid - t.payable < -0.01}
           onClick={complete}
         >
-          <BadgeCheck className="size-4" />
+          <BadgeCheck className="size-5" />
           {loading ? "Registrando…" : `Completar venta · ${money(t.payable)}`}
         </Button>
       }
     >
-      {/* Total + progreso */}
-      <div className="rounded-xl border bg-muted/30 p-4">
+      {/* Total + progress */}
+      <div className="rounded-2xl border bg-muted/30 p-4">
         <div className="flex items-end justify-between">
           <span className="text-sm text-muted-foreground">Total a cobrar</span>
-          <AnimatedNumber
-            value={t.payable}
-            format={money}
-            className="text-2xl font-black tabular-nums"
-          />
+          <AnimatedNumber value={t.payable} format={money} className="text-3xl font-black tabular-nums" />
         </div>
-        <Progress value={progress} className="mt-3 h-2" />
+        <Progress value={progress} className="mt-3 h-2.5 rounded-full" />
         <div className="mt-2 flex justify-between text-sm">
           <span className="text-muted-foreground">
-            Pagado{" "}
-            <span className="font-semibold text-foreground tabular-nums">
-              {money(paid)}
-            </span>
+            Pagado <span className="font-semibold text-foreground tabular-nums">{money(paid)}</span>
           </span>
           {remaining > 0 ? (
-            <span className="font-semibold text-destructive tabular-nums">
-              Falta {money(remaining)}
-            </span>
+            <span className="font-semibold text-destructive tabular-nums">Falta {money(remaining)}</span>
           ) : (
-            <span className="font-semibold text-emerald-600 tabular-nums">
-              Cambio {money(change)}
-            </span>
+            <span className="font-semibold text-emerald-600 tabular-nums">Cambio {money(change)}</span>
           )}
         </div>
       </div>
@@ -253,26 +205,15 @@ export function PaymentDialog({
                 key={`${e.method}-${i}`}
                 initial={{ opacity: 0, x: -12 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-sm"
+                className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm"
               >
                 {METHOD_ICONS[e.method]}
                 <span className="min-w-0 flex-1 truncate">
                   {PAYMENT_METHOD_LABELS[e.method]}
-                  {e.reference && (
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · {e.reference}
-                    </span>
-                  )}
+                  {e.reference && <span className="text-muted-foreground"> · {e.reference}</span>}
                 </span>
-                <span className="font-bold tabular-nums">
-                  {money(e.amount)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeEntry(i)}
-                  className="text-muted-foreground hover:text-destructive"
-                >
+                <span className="font-bold tabular-nums">{money(e.amount)}</span>
+                <button type="button" onClick={() => removeEntry(i)} className="text-muted-foreground hover:text-destructive">
                   <Trash2 className="size-4" />
                 </button>
               </motion.div>
@@ -295,40 +236,23 @@ export function PaymentDialog({
               inputMode="numeric"
               className="h-9"
             />
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 shrink-0"
-              onClick={() => applyPoints(Number(pointsStr))}
-            >
+            <Button variant="outline" size="sm" className="h-9 shrink-0" onClick={() => applyPoints(Number(pointsStr))}>
               Aplicar
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 shrink-0"
-              onClick={() => applyPoints(maxPoints)}
-              disabled={maxPoints <= 0}
-            >
+            <Button variant="outline" size="sm" className="h-9 shrink-0" onClick={() => applyPoints(maxPoints)} disabled={maxPoints <= 0}>
               Máximo
             </Button>
           </div>
           {t.pointsRedeemed > 0 && (
             <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
               Canjeando {t.pointsRedeemed} pts = -{money(t.pointsRedeemedValue)}
-              <button
-                type="button"
-                className="ml-2 underline"
-                onClick={() => applyPoints(0)}
-              >
-                quitar
-              </button>
+              <button type="button" className="ml-2 underline" onClick={() => applyPoints(0)}>quitar</button>
             </p>
           )}
         </div>
       )}
 
-      {/* Referencia opcional para el siguiente pago */}
+      {/* Referencia */}
       <Input
         value={reference}
         onChange={(e) => setReference(e.target.value)}
@@ -336,93 +260,94 @@ export function PaymentDialog({
         className="h-9"
       />
 
-      {/* Pago rápido / personalizado */}
-      <Tabs defaultValue="quick">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="quick">Pago rápido</TabsTrigger>
-          <TabsTrigger value="custom">Pago personalizado</TabsTrigger>
-        </TabsList>
+      {/* Quick pay buttons — most common flow */}
+      {remaining > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Pago rápido</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => addRemaining("cash")}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-bold transition active:scale-[0.97]",
+                METHOD_COLORS.cash
+              )}
+            >
+              <Banknote className="size-5" />
+              Efectivo · {money(remaining)}
+            </button>
+            <button
+              type="button"
+              onClick={() => addRemaining("card")}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-bold transition active:scale-[0.97]",
+                METHOD_COLORS.card
+              )}
+            >
+              <CreditCard className="size-5" />
+              Tarjeta · {money(remaining)}
+            </button>
+          </div>
+        </div>
+      )}
 
-        <TabsContent value="quick" className="space-y-3 pt-3">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {METHODS.map((m) => (
+      {/* Cash denominations */}
+      {remaining > 0 && method === "cash" && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Denominaciones</p>
+          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+            {CASH_DENOMINATIONS.map((d) => (
               <button
-                key={m}
+                key={d}
                 type="button"
-                disabled={remaining <= 0}
-                onClick={() => addRemaining(m)}
-                className={cn(
-                  `flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-xs font-medium transition ${m === "cash" ? "bg-green-700" : ""} hover:bg-muted disabled:opacity-40`
-                )}
+                onClick={() => addPayment("cash", d)}
+                className="rounded-xl border bg-background py-2.5 text-sm font-bold tabular-nums transition hover:bg-muted active:scale-[0.97]"
               >
-                {METHOD_ICONS[m]}
-                {PAYMENT_METHOD_LABELS[m]}
-                <span className="tabular-nums opacity-70">
-                  {money(remaining)}
-                </span>
+                ${d}
               </button>
             ))}
           </div>
-          <div>
-            <p className="mb-1.5 text-xs text-muted-foreground">
-              Efectivo recibido (denominaciones)
-            </p>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {CASH_DENOMINATIONS.map((d) => (
+        </div>
+      )}
+
+      {/* Custom amount — numpad */}
+      <details className="group">
+        <summary className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground transition hover:text-foreground">
+          <Zap className="size-3.5" /> Pago personalizado
+        </summary>
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
+              {METHODS.map((m) => (
                 <button
-                  key={d}
+                  key={m}
                   type="button"
-                  onClick={() => addPayment("cash", d)}
-                  className="rounded-lg border bg-background py-2 text-sm font-semibold hover:bg-muted"
+                  onClick={() => setMethod(m)}
+                  className={cn(
+                    "flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-[10px] font-medium transition",
+                    method === m ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"
+                  )}
                 >
-                  ${d}
+                  {METHOD_ICONS[m]}
+                  {PAYMENT_METHOD_LABELS[m]}
                 </button>
               ))}
             </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="custom" className="space-y-3 pt-3">
-          <div className="grid grid-cols-4 gap-1.5">
-            {METHODS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMethod(m)}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-xs font-medium transition",
-                  method === m
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "hover:bg-muted"
-                )}
-              >
-                {METHOD_ICONS[m]}
-                {PAYMENT_METHOD_LABELS[m]}
-              </button>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <Numpad onKey={onKey} onEnter={addCurrentPayment} />
-            <div className="flex flex-col gap-2">
-              <div className="rounded-xl border bg-card px-3 py-2 text-center">
-                <span className="text-2xl font-bold tabular-nums">
-                  {money(currentAmount)}
-                </span>
-              </div>
-              <Button onClick={addCurrentPayment} disabled={currentAmount <= 0}>
-                <Check className="size-4" /> Agregar pago
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => addRemaining(method)}
-                disabled={remaining <= 0}
-              >
-                Exacto ({money(remaining)})
-              </Button>
-            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+          <div className="flex flex-col gap-2">
+            <div className="rounded-xl border bg-card px-3 py-3 text-center">
+              <span className="text-2xl font-bold tabular-nums">{money(currentAmount)}</span>
+            </div>
+            <Button onClick={addCurrentPayment} disabled={currentAmount <= 0}>
+              <Check className="size-4" /> Agregar pago
+            </Button>
+            <Button variant="outline" onClick={() => addRemaining(method)} disabled={remaining <= 0}>
+              Exacto ({money(remaining)})
+            </Button>
+          </div>
+        </div>
+      </details>
 
       {error && <p className="text-center text-xs text-destructive">{error}</p>}
     </DialogComponent>
