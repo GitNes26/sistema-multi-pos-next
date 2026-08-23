@@ -1,0 +1,28 @@
+{
+  "$schema": "https://dokploy.com/docs/configuration/dokploy-json",
+  "name": "multi-pos",
+  "description": "Sistema Multi-POS — Next.js full-stack + Prisma/MySQL",
+  "compose": {
+    "services": {
+      "app": {
+        "build": {
+          "context": ".",
+          "dockerfile": "Dockerfile"
+        },
+        "ports": ["3000:3000"],
+        "volumes": [
+          "uploads:/app/public/uploads"
+        ],
+        "environment": {
+          "NODE_ENV": "production",
+          "SEED_DEMO": "false"
+        }
+      }
+    },
+    "volumes": {
+      "uploads": {
+        "driver": "local"
+      }
+    }
+  }
+}

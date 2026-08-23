@@ -130,6 +130,7 @@ export const portalApi = {
     expMonth: number;
     expYear: number;
     isDefault?: boolean;
+    color?: string;
   }) =>
     json<{ ok: boolean; methods: PaymentMethodView[] }>("/api/portal/payment-methods", {
       method: "POST",

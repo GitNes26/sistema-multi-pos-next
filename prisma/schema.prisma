@@ -403,6 +403,7 @@ model CustomerPaymentMethod {
   expMonth               Int?
   expYear                Int?
   isDefault              Boolean  @default(false)
+  color                  String?
   stripePaymentMethodId  String?
   createdAt              DateTime @default(now())
 

@@ -97,6 +97,8 @@ export function Attachment({
   const [dragging, setDragging] = React.useState(false)
   const [error, setError] = React.useState<string>()
   const [uploading, setUploading] = React.useState(false)
+  const [imgError, setImgError] = React.useState(false)
+  const localPreviewRef = React.useRef<string>("")
   // null = detectando; true/false = hay/no hay cámara disponible.
   const [hasCamera, setHasCamera] = React.useState<boolean | null>(null)
 
@@ -135,6 +137,7 @@ export function Attachment({
 
   async function saveFile(file: File) {
     onFileChange?.(file)
+    setImgError(false)
     if (upload) {
       setUploading(true)
       try {
@@ -147,6 +150,7 @@ export function Attachment({
       }
     } else {
       const localUrl = URL.createObjectURL(file)
+      localPreviewRef.current = localUrl
       onChange?.(localUrl)
     }
   }
@@ -253,9 +257,18 @@ export function Attachment({
         {value ? (
           <div className={cn("relative overflow-hidden rounded-lg border bg-card", widthClass, heightClass)}>
             {uploading && <div className="absolute inset-0 z-10 grid place-items-center bg-background/60"><Loader2 className="size-6 animate-spin" /></div>}
-            {isImage ? (
+            {isImage && !imgError ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={value} alt="Adjunto" className="size-full object-cover" />
+              <img
+                src={value}
+                alt="Adjunto"
+                className="size-full object-cover"
+                onError={() => setImgError(true)}
+              />
+            ) : isImage && imgError ? (
+              <div className="grid h-full w-full place-items-center bg-muted text-muted-foreground">
+                <ImagePlus className="size-8" />
+              </div>
             ) : (
               <object data={value} type="application/pdf" className="size-full" aria-label="Vista previa de PDF">
                 <div className="grid h-full w-full place-items-center text-muted-foreground">

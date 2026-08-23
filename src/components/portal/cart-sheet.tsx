@@ -80,7 +80,7 @@ export function CartSheet() {
         )}
 
         {items.map((item) => (
-          <div key={item.key} className="rounded-xl border p-3">
+          <div key={item.key} className="rounded-2xl border bg-card p-3.5 shadow-sm">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{item.name}</p>

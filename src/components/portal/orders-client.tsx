@@ -34,12 +34,14 @@ export function OrdersClient() {
 
   return (
     <PullToRefresh onRefresh={load}>
-      <div className="space-y-2 p-4">
-        <h1 className="mb-2 text-lg font-semibold">Mis pedidos</h1>
+      <div className="space-y-3 p-4">
+        <h1 className="flex items-center gap-2 text-lg font-bold">
+          <ClipboardList className="size-5 text-primary" /> Mis pedidos
+        </h1>
         {!orders ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-xl" />
+              <Skeleton key={i} className="h-20 w-full rounded-2xl" />
             ))}
           </div>
         ) : orders.length === 0 ? (
@@ -58,10 +60,10 @@ export function OrdersClient() {
             >
               <Link
                 href={`/portal/orders/${o.id}`}
-                className="flex items-center justify-between rounded-xl border p-3 transition-colors hover:bg-muted/50"
+                className="flex items-center justify-between rounded-2xl border bg-card p-4 shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
               >
                 <div>
-                  <p className="text-sm font-medium">Pedido #{o.orderNumber}</p>
+                  <p className="text-sm font-bold">Pedido #{o.orderNumber}</p>
                   <p className="text-xs text-muted-foreground">
                     {new Date(o.createdAt).toLocaleDateString("es-MX", {
                       day: "numeric",

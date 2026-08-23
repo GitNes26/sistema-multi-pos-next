@@ -93,14 +93,14 @@ export function StoreClient() {
       </div>
 
       {error && (
-        <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>
+        <p className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">{error}</p>
       )}
 
       {loading ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="space-y-2">
-              <Skeleton className="aspect-square w-full rounded-xl" />
+              <Skeleton className="aspect-square w-full rounded-2xl" />
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-4 w-1/2" />
             </div>

@@ -188,6 +188,13 @@
   backdrop-filter: blur(4px);
   background: color-mix(in oklab, var(--background) 55%, transparent);
 }
+/* Toast NUNCA debe tener backdrop blur */
+.swal2-container-custom:has(.swal2-toast),
+.swal2-container-custom.swal2-toast-container,
+.swal2-container-custom:has(.swal2-popup-custom.swal2-toast) {
+  backdrop-filter: none !important;
+  background: transparent !important;
+}
 .swal2-popup-custom {
   background: var(--popover);
   color: var(--popover-foreground);

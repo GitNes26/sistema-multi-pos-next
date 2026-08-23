@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/portal/bottom-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SwipeableRow } from "@/components/shared/swipeable-row";
 
 interface DraftItem {
   id?: string;
@@ -131,9 +132,9 @@ export function ListDetailClient({ listId }: { listId: string }) {
   if (loading) {
     return (
       <div className="space-y-3 p-4">
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-8 w-40 rounded-xl" />
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <Skeleton className="h-24 w-full rounded-2xl" />
       </div>
     );
   }
@@ -172,31 +173,33 @@ export function ListDetailClient({ listId }: { listId: string }) {
       ) : (
         <div className="space-y-2">
           {items.map((i) => (
-            <div key={i.variantId} className="flex items-center justify-between gap-2 rounded-xl border p-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{i.productName}</p>
-                {i.variantName && <p className="text-xs text-muted-foreground">{i.variantName}</p>}
-                <p className="text-xs text-muted-foreground">{money(i.price)}</p>
+              <SwipeableRow key={i.variantId} onDelete={() => removeItem(i.variantId)}>
+              <div className="flex items-center justify-between gap-2 rounded-2xl border bg-card p-3.5 shadow-sm">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{i.productName}</p>
+                  {i.variantName && <p className="text-xs text-muted-foreground">{i.variantName}</p>}
+                  <p className="text-xs text-muted-foreground">{money(i.price)}</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button variant="outline" size="icon-xs" onClick={() => changeQty(i.variantId, -1)}>
+                    <Minus className="size-3" />
+                  </Button>
+                  <span className="w-8 text-center text-sm tabular-nums">{round3(i.quantity)}</span>
+                  <Button variant="outline" size="icon-xs" onClick={() => changeQty(i.variantId, 1)}>
+                    <Plus className="size-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon-xs" onClick={() => removeItem(i.variantId)} aria-label="Quitar">
+                    <Trash2 className="size-3.5 text-destructive" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Button variant="outline" size="icon-xs" onClick={() => changeQty(i.variantId, -1)}>
-                  <Minus className="size-3" />
-                </Button>
-                <span className="w-8 text-center text-sm tabular-nums">{round3(i.quantity)}</span>
-                <Button variant="outline" size="icon-xs" onClick={() => changeQty(i.variantId, 1)}>
-                  <Plus className="size-3" />
-                </Button>
-                <Button variant="ghost" size="icon-xs" onClick={() => removeItem(i.variantId)} aria-label="Quitar">
-                  <Trash2 className="size-3.5 text-destructive" />
-                </Button>
-              </div>
-            </div>
+            </SwipeableRow>
           ))}
         </div>
       )}
 
       {items.length > 0 && (
-        <div className="rounded-xl border p-4">
+        <div className="rounded-2xl border bg-card p-4 shadow-sm">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Total estimado</span>
             <span className="font-semibold">{money(total)}</span>

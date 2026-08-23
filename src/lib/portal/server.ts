@@ -968,6 +968,7 @@ export interface PaymentMethodView {
   expMonth: number | null;
   expYear: number | null;
   isDefault: boolean;
+  color: string | null;
   createdAt: string;
 }
 
@@ -987,6 +988,7 @@ export async function listPaymentMethods(
     expMonth: m.expMonth,
     expYear: m.expYear,
     isDefault: m.isDefault,
+    color: m.color,
     createdAt: m.createdAt.toISOString(),
   }));
 }
@@ -994,7 +996,7 @@ export async function listPaymentMethods(
 export async function addPaymentMethod(
   organizationId: string,
   customerId: string,
-  input: { alias?: string; brand?: string; last4: string; expMonth: number; expYear: number; isDefault?: boolean }
+  input: { alias?: string; brand?: string; last4: string; expMonth: number; expYear: number; isDefault?: boolean; color?: string }
 ): Promise<PaymentMethodView[]> {
   if (!input.last4 || !/^\d{4}$/.test(input.last4)) {
     throw new PortalError("Los últimos 4 dígitos son inválidos");
@@ -1025,6 +1027,7 @@ export async function addPaymentMethod(
         expMonth: input.expMonth,
         expYear: input.expYear,
         isDefault,
+        color: input.color ?? null,
       },
     });
   });

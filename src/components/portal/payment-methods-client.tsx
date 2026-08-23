@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { BottomSheet } from "@/components/portal/bottom-sheet"
+import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { cn } from "@/lib/utils"
 
 const CARD_COLORS = [
@@ -53,7 +54,7 @@ function CardView({ m, onSetDefault, onRemove }: {
   onRemove: () => void
 }) {
   const colorIdx = (m.last4 ?? "").split("").reduce((a, c) => a + c.charCodeAt(0), 0) % CARD_COLORS.length
-  const color = (m as unknown as Record<string, string>).color ?? CARD_COLORS[colorIdx]
+  const color = m.color ?? CARD_COLORS[colorIdx]
   const brandKey = (m.brand ?? "").toLowerCase().replace(/\s/g, "")
   const isVisa = brandKey.includes("visa")
   const isMC = brandKey.includes("master") || brandKey === "mc"
@@ -160,6 +161,7 @@ export function PaymentMethodsClient() {
         expMonth: Number(form.expMonth),
         expYear: Number(form.expYear),
         isDefault: form.isDefault,
+        color: form.color,
       })
       setMethods(res.methods)
       setShowForm(false)
@@ -235,12 +237,13 @@ export function PaymentMethodsClient() {
         <div className="space-y-3">
           <AnimatePresence>
             {methods.map((m) => (
-              <CardView
-                key={m.id}
-                m={m}
-                onSetDefault={() => setDefault(m.id)}
-                onRemove={() => remove(m.id)}
-              />
+              <SwipeableRow key={m.id} onDelete={() => remove(m.id)}>
+                <CardView
+                  m={m}
+                  onSetDefault={() => setDefault(m.id)}
+                  onRemove={() => remove(m.id)}
+                />
+              </SwipeableRow>
             ))}
           </AnimatePresence>
         </div>

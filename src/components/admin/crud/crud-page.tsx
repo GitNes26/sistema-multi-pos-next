@@ -513,7 +513,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         onOpenChange={(o) => !o && setDialogOpen(false)}
         title={editing ? "Editar" : "Nuevo"}
         description={meta.title}
-        className="w-[90vw]"
+        className="max-w-[90vw]"
         footerClassName="gap-2"
         footer={
           <>
@@ -564,16 +564,12 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
           productName={String(variantsProduct.name ?? "Producto")}
           productImage={String(variantsProduct.imageUrl ?? "") || null}
           categoryName={String(variantsProduct.categoryName ?? "") || null}
-          defaults={(() => {
-            const variants = (variantsProduct.variants as { name?: string; sku?: string; barcode?: string; price?: number; cost?: number }[]) ?? [];
-            const def = variants.find((v) => v.name?.toLowerCase() === "default") ?? variants[0];
-            return {
-              sku: String(def?.sku ?? ""),
-              barcode: String(def?.barcode ?? ""),
-              price: Number(def?.price ?? 0),
-              cost: Number(def?.cost ?? 0),
-            };
-          })()}
+          defaults={{
+            sku: String((variantsProduct.variants as { sku?: string }[])?.[0]?.sku ?? ""),
+            barcode: String((variantsProduct.variants as { barcode?: string }[])?.[0]?.barcode ?? ""),
+            price: Number((variantsProduct.variants as { price?: number }[])?.[0]?.price ?? 0),
+            cost: Number((variantsProduct.variants as { cost?: number }[])?.[0]?.cost ?? 0),
+          }}
           onClose={() => setVariantsProduct(null)}
         />
       )}

@@ -2,11 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, ShoppingCart, Package, Truck, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Bell, ShoppingCart, Package, Truck, AlertTriangle, CheckCircle2, CheckCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 import { EmptyState } from "@/components/shared/empty-state"
+import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 
 interface PortalNotification {
   id: string
@@ -64,6 +67,12 @@ export function NotificationsClient() {
     }
   }
 
+  const markAllAsRead = async () => {
+    if (!notifications) return
+    const unread = notifications.filter((n) => !n.readAt)
+    await Promise.all(unread.map((n) => markAsRead(n.id)))
+  }
+
   const handleClick = (n: PortalNotification) => {
     markAsRead(n.id)
     if (n.link) {
@@ -71,11 +80,14 @@ export function NotificationsClient() {
     }
   }
 
+  const unreadCount = notifications?.filter((n) => !n.readAt).length ?? 0
+
   if (!notifications) {
     return (
       <div className="space-y-3 p-4">
+        <Skeleton className="h-8 w-48 rounded-xl" />
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 w-full rounded-xl" />
+          <Skeleton key={i} className="h-20 w-full rounded-2xl" />
         ))}
       </div>
     )
@@ -83,7 +95,30 @@ export function NotificationsClient() {
 
   return (
     <PullToRefresh onRefresh={load}>
-      <div className="space-y-3 p-4">
+      <div className="space-y-4 p-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="size-5 text-primary" />
+            <h1 className="text-lg font-bold">Notificaciones</h1>
+            {unreadCount > 0 && (
+              <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                {unreadCount}
+              </span>
+            )}
+          </div>
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 text-xs text-muted-foreground"
+              onClick={markAllAsRead}
+            >
+              <CheckCheck className="size-3.5" /> Marcar todo leído
+            </Button>
+          )}
+        </div>
+
         {notifications.length === 0 ? (
           <EmptyState
             icon={Bell}
@@ -91,41 +126,55 @@ export function NotificationsClient() {
             description="Aquí verás tus pedidos, promociones y avisos."
           />
         ) : (
-          notifications.map((n) => {
-            const Icon = KIND_ICONS[n.kind] ?? Bell
-            const unread = !n.readAt
-            return (
-              <button
-                key={n.id}
-                onClick={() => handleClick(n)}
-                className={cn(
-                  "w-full rounded-xl border p-3.5 text-left transition-all active:scale-[0.98]",
-                  unread ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", SEVERITY_COLORS[n.severity] ?? SEVERITY_COLORS.info)}>
-                    <Icon className="size-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className={cn("truncate text-sm font-medium", unread && "font-semibold")}>{n.title}</p>
-                      {unread && <span className="size-2 shrink-0 rounded-full bg-primary" />}
-                    </div>
-                    {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>}
-                    <p className="mt-1 text-[11px] text-muted-foreground/70">
-                      {new Date(n.createdAt).toLocaleDateString("es-MX", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            )
-          })
+          <div className="space-y-2">
+            <AnimatePresence>
+              {notifications.map((n, idx) => {
+                const Icon = KIND_ICONS[n.kind] ?? Bell
+                const unread = !n.readAt
+                return (
+                  <motion.div
+                    key={n.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                  >
+                    <SwipeableRow onDelete={() => markAsRead(n.id)}>
+                      <button
+                        onClick={() => handleClick(n)}
+                        className={cn(
+                          "w-full rounded-2xl border-2 p-3.5 text-left transition-all active:scale-[0.98]",
+                          unread
+                            ? "border-primary/20 bg-primary/5 shadow-sm"
+                            : "border-transparent bg-card"
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", SEVERITY_COLORS[n.severity] ?? SEVERITY_COLORS.info)}>
+                            <Icon className="size-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className={cn("truncate text-sm", unread ? "font-bold" : "font-medium")}>{n.title}</p>
+                              {unread && <span className="size-2 shrink-0 rounded-full bg-primary" />}
+                            </div>
+                            {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>}
+                            <p className="mt-1 text-[11px] text-muted-foreground/60">
+                              {new Date(n.createdAt).toLocaleDateString("es-MX", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    </SwipeableRow>
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
+          </div>
         )}
       </div>
     </PullToRefresh>

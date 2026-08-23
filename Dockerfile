@@ -42,6 +42,9 @@ COPY --from=build /app/package.json ./package.json
 
 EXPOSE 3000
 
-# Aplica migraciones, siembra datos base (seed de producción, idempotente) y arranca.
-# Para sembrar también datos demo: define SEED_DEMO=true en el environment de Dokploy.
+# Asegura que /app/public/uploads exista (Dokploy monta un volumen persistente aqui).
+RUN mkdir -p /app/public/uploads
+
+# Aplica migraciones, siembra datos base (seed de produccion, idempotente) y arranca.
+# Para sembrar tambien datos demo: define SEED_DEMO=true en el environment de Dokploy.
 CMD ["sh", "-c", "npx prisma migrate deploy && npm run db:seed && npm run start"]

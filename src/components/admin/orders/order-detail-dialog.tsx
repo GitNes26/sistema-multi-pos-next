@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Check,
   ClipboardList,
@@ -72,6 +72,10 @@ export function OrderDetailDialog({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    load();
+  }, [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openChange = (v: boolean) => {
     setOpen(v);

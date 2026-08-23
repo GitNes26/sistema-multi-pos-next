@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { GripVertical, RotateCcw } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { GripVertical, RotateCcw, ChevronUp, ChevronDown, Plus, Settings } from "lucide-react"
 import { usePortalStore } from "@/stores/portal-store"
 import { ALL_NAV_ITEMS, type NavItemId } from "@/components/portal/portal-shell"
 import { Button } from "@/components/ui/button"
+import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { swalToast } from "@/lib/swal"
 
 const DEFAULT_ORDER: NavItemId[] = ["home", "store", "orders", "lists", "profile"]
@@ -12,7 +13,6 @@ const DEFAULT_ORDER: NavItemId[] = ["home", "store", "orders", "lists", "profile
 export function NavCustomizer() {
   const navOrder = usePortalStore((s) => s.navOrder)
   const setNavOrder = usePortalStore((s) => s.setNavOrder)
-  const [dragIdx, setDragIdx] = useState<number | null>(null)
 
   const orderedItems = navOrder
     .map((id) => ALL_NAV_ITEMS.find((item) => item.id === id)!)
@@ -49,91 +49,90 @@ export function NavCustomizer() {
   const reset = () => setNavOrder(DEFAULT_ORDER)
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-muted-foreground">
-          Barra de navegación ({navOrder.length}/5)
-        </p>
+        <div className="flex items-center gap-2">
+          <Settings className="size-4 text-primary" />
+          <p className="text-sm font-medium">
+            Barra de navegación
+          </p>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+            {navOrder.length}/5
+          </span>
+        </div>
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 gap-1 text-xs"
+          className="h-8 gap-1.5 text-xs text-muted-foreground"
           onClick={reset}
         >
-          <RotateCcw className="size-3" /> Restablecer
+          <RotateCcw className="size-3.5" /> Restablecer
         </Button>
       </div>
 
-      <div className="space-y-1">
-        {orderedItems.map((item, idx) => {
-          const Icon = item.icon
-          return (
-            <div
-              key={item.id}
-              draggable
-              onDragStart={() => setDragIdx(idx)}
-              onDragOver={(e) => {
-                e.preventDefault()
-                if (dragIdx !== null && dragIdx !== idx) {
-                  moveItem(dragIdx, idx)
-                  setDragIdx(idx)
-                }
-              }}
-              onDragEnd={() => setDragIdx(null)}
-              className="flex items-center gap-2 rounded-lg border bg-background p-2"
-            >
-              <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground" />
-              <Icon className="size-4 shrink-0 text-primary" />
-              <span className="flex-1 text-sm">{item.label}</span>
-              <div className="flex shrink-0 gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => moveItem(idx, idx - 1)}
-                  disabled={idx === 0}
-                  className="size-6 text-xs"
-                >
-                  ↑
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => moveItem(idx, idx + 1)}
-                  disabled={idx === orderedItems.length - 1}
-                  className="size-6 text-xs"
-                >
-                  ↓
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => removeItem(item.id)}
-                  className="size-6 text-destructive"
-                >
-                  ×
-                </Button>
-              </div>
-            </div>
-          )
-        })}
+      <div className="space-y-1.5">
+        <AnimatePresence>
+          {orderedItems.map((item, idx) => {
+            const Icon = item.icon
+            return (
+              <motion.div
+                key={item.id}
+                layout
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ duration: 0.2 }}
+              >
+                <SwipeableRow onDelete={() => removeItem(item.id)}>
+                  <div className="flex items-center gap-2.5 rounded-xl border bg-card p-3 shadow-sm">
+                    <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground/50" />
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Icon className="size-4 text-primary" />
+                    </div>
+                    <span className="flex-1 text-sm font-medium">{item.label}</span>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        onClick={() => moveItem(idx, idx - 1)}
+                        disabled={idx === 0}
+                        className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
+                      >
+                        <ChevronUp className="size-4" />
+                      </button>
+                      <button
+                        onClick={() => moveItem(idx, idx + 1)}
+                        disabled={idx === orderedItems.length - 1}
+                        className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
+                      >
+                        <ChevronDown className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                </SwipeableRow>
+              </motion.div>
+            )
+          })}
+        </AnimatePresence>
       </div>
 
       {availableItems.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Disponibles:</p>
-          <div className="flex flex-wrap gap-1">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Disponibles</p>
+          <div className="flex flex-wrap gap-1.5">
             {availableItems.map((item) => {
               const Icon = item.icon
               return (
-                <Button
+                <motion.button
                   key={item.id}
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1 text-xs"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => addItem(item.id)}
+                  className="flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
                 >
-                  <Icon className="size-3" /> {item.label}
-                </Button>
+                  <Plus className="size-3" />
+                  <Icon className="size-3" />
+                  {item.label}
+                </motion.button>
               )
             })}
           </div>

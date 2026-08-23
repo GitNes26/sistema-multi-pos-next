@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, CreditCard, Globe, LocateFixed, MapPin, Store, Truck, Clock, AlertTriangle } from "lucide-react";
-import { usePortalStore, cartSubtotal, cartTax, cartTotal } from "@/stores/portal-store";
+import { ArrowLeft, Banknote, CreditCard, Globe, LocateFixed, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, CircleCheck } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { usePortalStore, cartSubtotal, cartTax } from "@/stores/portal-store";
 import { portalApi } from "@/lib/portal/client";
 import { paymentsApi } from "@/lib/payments/client";
 import type { PortalLocation, PaymentMethodView } from "@/lib/portal/server";
@@ -16,12 +17,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InputGroupField } from "@/components/base/input-group-field";
+import { SwipeableRow } from "@/components/shared/swipeable-row";
 import { cn } from "@/lib/utils";
 
 export function CheckoutClient() {
   const router = useRouter();
   const items = usePortalStore((s) => s.items);
   const clearCart = usePortalStore((s) => s.clearCart);
+  const removeItem = usePortalStore((s) => s.removeItem);
 
   const [locations, setLocations] = useState<PortalLocation[]>([]);
   const [methods, setMethods] = useState<PaymentMethodView[]>([]);
@@ -185,8 +188,14 @@ export function CheckoutClient() {
 
   if (items.length === 0 && !loading) {
     return (
-      <div className="flex flex-col items-center gap-3 p-10 text-center">
-        <p className="text-sm text-muted-foreground">Tu carrito está vacío</p>
+      <div className="flex flex-col items-center gap-4 p-10 text-center">
+        <div className="flex size-16 items-center justify-center rounded-full bg-muted">
+          <ShoppingBag className="size-8 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="font-medium">Tu carrito está vacío</p>
+          <p className="text-sm text-muted-foreground">Agrega productos antes de continuar</p>
+        </div>
         <Button variant="outline" onClick={() => router.push("/portal/store")}>
           Ir a la tienda
         </Button>
@@ -195,31 +204,47 @@ export function CheckoutClient() {
   }
 
   return (
-    <div className="space-y-5 p-4">
-      <h1 className="text-lg font-semibold">Finalizar pedido</h1>
+    <div className="space-y-4 p-4 pb-28">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => router.back()}
+          className="flex size-10 items-center justify-center rounded-full bg-muted transition-colors hover:bg-muted/80 active:scale-95"
+        >
+          <ArrowLeft className="size-5" />
+        </button>
+        <div>
+          <h1 className="text-lg font-bold">Finalizar pedido</h1>
+          <p className="text-xs text-muted-foreground">{items.length} producto(s) en tu carrito</p>
+        </div>
+      </div>
 
       {loading ? (
         <div className="space-y-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          <Skeleton className="h-28 w-full rounded-2xl" />
+          <Skeleton className="h-36 w-full rounded-2xl" />
         </div>
       ) : (
         <>
           {/* Entrega */}
-          <section className="space-y-3 rounded-xl border p-4">
-            <h2 className="text-sm font-semibold">¿Cómo lo quieres recibir?</h2>
+          <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-sm">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <MapPin className="size-4 text-primary" /> ¿Cómo lo quieres recibir?
+            </h2>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setDeliveryMethod("pickup")}
                 disabled={pickupLocations.length === 0 || (policy !== null && !policy.pickupEnabled)}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors disabled:opacity-40",
-                  deliveryMethod === "pickup" ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
+                  "flex flex-col items-center gap-1.5 rounded-xl border-2 p-4 text-sm font-medium transition-all active:scale-[0.97]",
+                  deliveryMethod === "pickup"
+                    ? "border-primary bg-primary/10 text-primary shadow-sm"
+                    : "border-transparent bg-muted/50 text-muted-foreground hover:bg-muted"
                 )}
               >
-                <Store className="size-5" /> Recoger en sucursal
+                <Store className="size-6" /> Recoger
                 {policy?.pickupFeeEnabled && policy.pickupFee > 0 && (
                   <span className="text-[11px] text-muted-foreground">{money(policy.pickupFee)}</span>
                 )}
@@ -229,102 +254,146 @@ export function CheckoutClient() {
                 onClick={() => setDeliveryMethod("delivery")}
                 disabled={policy !== null && !policy.deliveryEnabled}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-lg border p-3 text-sm font-medium transition-colors disabled:opacity-40",
-                  deliveryMethod === "delivery" ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
+                  "flex flex-col items-center gap-1.5 rounded-xl border-2 p-4 text-sm font-medium transition-all active:scale-[0.97]",
+                  deliveryMethod === "delivery"
+                    ? "border-primary bg-primary/10 text-primary shadow-sm"
+                    : "border-transparent bg-muted/50 text-muted-foreground hover:bg-muted"
                 )}
               >
-                <Truck className="size-5" /> A domicilio
+                <Truck className="size-6" /> Domicilio
                 {policy?.deliveryFeeEnabled && policy.deliveryFee > 0 && (
                   <span className="text-[11px] text-muted-foreground">{money(policy.deliveryFee)}</span>
                 )}
               </button>
             </div>
 
-            {deliveryMethod === "pickup" && (
-              <RadioGroup value={locationId} onValueChange={setLocationId}>
-                {pickupLocations.map((l) => (
-                  <div key={l.id} className="flex items-start gap-2 rounded-lg border p-2.5">
-                    <RadioGroupItem value={l.id} id={`loc-${l.id}`} className="mt-0.5" />
-                    <Label htmlFor={`loc-${l.id}`} className="flex-1 cursor-pointer">
-                      <span className="block text-sm font-medium">{l.name}</span>
-                      {l.address && <span className="block text-xs text-muted-foreground">{l.address}</span>}
-                      {l.openingHours && <span className="block text-xs text-muted-foreground">{l.openingHours}</span>}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            )}
+            <AnimatePresence mode="wait">
+              {deliveryMethod === "pickup" && (
+                <motion.div
+                  key="pickup"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <RadioGroup value={locationId} onValueChange={setLocationId} className="space-y-2 pt-1">
+                    {pickupLocations.map((l) => (
+                      <Label
+                        key={l.id}
+                        htmlFor={`loc-${l.id}`}
+                        className={cn(
+                          "flex cursor-pointer items-start gap-3 rounded-xl border-2 p-3 transition-all",
+                          locationId === l.id ? "border-primary bg-primary/5" : "border-transparent bg-muted/50"
+                        )}
+                      >
+                        <RadioGroupItem value={l.id} id={`loc-${l.id}`} className="mt-0.5" />
+                        <div className="flex-1">
+                          <span className="block text-sm font-medium">{l.name}</span>
+                          {l.address && <span className="block text-xs text-muted-foreground">{l.address}</span>}
+                          {l.openingHours && <span className="block text-xs text-muted-foreground">{l.openingHours}</span>}
+                        </div>
+                      </Label>
+                    ))}
+                  </RadioGroup>
+                </motion.div>
+              )}
 
-            {deliveryMethod === "delivery" && (
-              <div className="space-y-2">
-                <InputGroupField
-                  placeholder="Calle, número, colonia, ciudad…"
-                  leftIcon={<MapPin className="size-4" />}
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
-                <Button type="button" variant="outline" size="sm" onClick={useCurrentLocation}>
-                  <LocateFixed className="size-4" /> {coords ? "Ubicación capturada" : "Usar mi ubicación (GPS)"}
-                </Button>
-              </div>
-            )}
+              {deliveryMethod === "delivery" && (
+                <motion.div
+                  key="delivery"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-2 overflow-hidden pt-1"
+                >
+                  <InputGroupField
+                    placeholder="Calle, número, colonia, ciudad…"
+                    leftIcon={<MapPin className="size-4" />}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                  />
+                  <Button type="button" variant="outline" size="sm" className="w-full" onClick={useCurrentLocation}>
+                    <LocateFixed className="size-4" /> {coords ? "Ubicación capturada ✓" : "Usar mi ubicación (GPS)"}
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </section>
 
           {/* Pago */}
-          <section className="space-y-3 rounded-xl border p-4">
-            <h2 className="text-sm font-semibold">Método de pago</h2>
+          <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-sm">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <CreditCard className="size-4 text-primary" /> Método de pago
+            </h2>
             <RadioGroup
               value={payMethod}
               onValueChange={(v) => setPayMethod(v as "cash" | "card" | "online")}
+              className="space-y-2"
             >
-              <div className="flex items-center gap-2 rounded-lg border p-2.5">
+              <Label
+                htmlFor="pay-cash"
+                className={cn(
+                  "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-all",
+                  payMethod === "cash" ? "border-primary bg-primary/5" : "border-transparent bg-muted/50"
+                )}
+              >
                 <RadioGroupItem value="cash" id="pay-cash" />
-                <Label htmlFor="pay-cash" className="flex flex-1 cursor-pointer items-center gap-2">
-                  <Banknote className="size-4 text-muted-foreground" />
-                  <span className="text-sm">Pagar en sucursal</span>
-                </Label>
-              </div>
+                <Banknote className="size-5 text-muted-foreground" />
+                <span className="flex-1 text-sm font-medium">Pagar en sucursal</span>
+              </Label>
 
-              <div className="flex items-center gap-2 rounded-lg border p-2.5">
+              <Label
+                htmlFor="pay-online"
+                className={cn(
+                  "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-all",
+                  payMethod === "online" ? "border-primary bg-primary/5" : "border-transparent bg-muted/50"
+                )}
+              >
                 <RadioGroupItem value="online" id="pay-online" />
-                <Label htmlFor="pay-online" className="flex flex-1 cursor-pointer items-center gap-2">
-                  <Globe className="size-4 text-muted-foreground" />
-                  <span className="text-sm">Pagar en línea (tarjeta)</span>
-                </Label>
-              </div>
+                <Globe className="size-5 text-muted-foreground" />
+                <span className="flex-1 text-sm font-medium">Pagar en línea</span>
+              </Label>
 
               {methods.length > 0 && (
-                <div className="flex items-center gap-2 rounded-lg border p-2.5">
+                <Label
+                  htmlFor="pay-card"
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-all",
+                    payMethod === "card" ? "border-primary bg-primary/5" : "border-transparent bg-muted/50"
+                  )}
+                >
                   <RadioGroupItem value="card" id="pay-card" />
-                  <Label htmlFor="pay-card" className="flex flex-1 cursor-pointer items-center gap-2">
-                    <CreditCard className="size-4 text-muted-foreground" />
-                    <span className="text-sm">
-                      Tarjeta{" "}
-                      {selectedCard?.alias
-                        ? `${selectedCard.alias} (${selectedCard.brand ?? ""} •••• ${selectedCard.last4})`
-                        : `${selectedCard?.brand ?? ""} •••• ${selectedCard?.last4}`}
-                    </span>
-                  </Label>
-                </div>
+                  <CreditCard className="size-5 text-muted-foreground" />
+                  <span className="flex-1 text-sm font-medium">
+                    {selectedCard?.alias
+                      ? `${selectedCard.alias} •••• ${selectedCard.last4}`
+                      : `Tarjeta •••• ${selectedCard?.last4 ?? ""}`}
+                  </span>
+                </Label>
               )}
             </RadioGroup>
           </section>
 
           {/* Resumen */}
-          <section className="space-y-2 rounded-xl border p-4">
-            <h2 className="text-sm font-semibold">Resumen</h2>
-            <div className="max-h-48 space-y-1.5 overflow-y-auto">
+          <section className="rounded-2xl border bg-card p-4 shadow-sm">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <ShoppingBag className="size-4 text-primary" /> Resumen
+            </h2>
+            <div className="max-h-40 space-y-1 overflow-y-auto">
               {items.map((i) => (
-                <div key={i.key} className="flex justify-between text-sm">
-                  <span className="min-w-0 truncate pr-2">
-                    {i.qty}× {i.name}
-                    {i.variantName ? ` (${i.variantName})` : ""}
-                  </span>
-                  <span className="shrink-0 tabular-nums">{money(i.unitPrice * i.qty)}</span>
-                </div>
+                <SwipeableRow key={i.key} onDelete={() => removeItem(i.key)}>
+                  <div className="flex justify-between py-1.5 text-sm">
+                    <span className="min-w-0 truncate pr-2">
+                      {i.qty}× {i.name}
+                      {i.variantName ? ` (${i.variantName})` : ""}
+                    </span>
+                    <span className="shrink-0 font-medium tabular-nums">{money(i.unitPrice * i.qty)}</span>
+                  </div>
+                </SwipeableRow>
               ))}
             </div>
-            <div className="space-y-1 border-t pt-2 text-sm">
+
+            <div className="mt-2 space-y-1.5 border-t pt-2 text-sm">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
                 <span>{money(subtotal)}</span>
@@ -337,7 +406,7 @@ export function CheckoutClient() {
                 <div className="flex justify-between text-muted-foreground">
                   <span className="flex items-center gap-1">
                     {deliveryMethod === "delivery" ? <Truck className="size-3.5" /> : <Store className="size-3.5" />}
-                    {deliveryMethod === "delivery" ? "Envio" : "Cargo por recoger"}
+                    {deliveryMethod === "delivery" ? "Envío" : "Cargo por recoger"}
                   </span>
                   <span>{money(deliveryFee)}</span>
                 </div>
@@ -354,7 +423,7 @@ export function CheckoutClient() {
                   {minAmountError}
                 </div>
               )}
-              <div className="flex justify-between text-base font-semibold">
+              <div className="flex justify-between border-t pt-2 text-base font-bold">
                 <span>Total</span>
                 <span>{money(total)}</span>
               </div>
@@ -365,11 +434,20 @@ export function CheckoutClient() {
             placeholder="Notas para tu pedido (opcional)…"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+            className="rounded-2xl"
           />
 
-          <Button className="w-full" size="lg" onClick={submit} disabled={submitting}>
-            {submitting ? "Procesando…" : `Confirmar pedido · ${money(total)}`}
-          </Button>
+          {/* Submit — fixed at bottom on mobile */}
+          <div className="sticky bottom-0 -mx-4 bg-background px-4 pt-3 pb-4">
+            <Button
+              className="h-14 w-full rounded-2xl text-base font-bold shadow-lg"
+              onClick={submit}
+              disabled={submitting || !!minAmountError}
+            >
+              <CircleCheck className="mr-2 size-5" />
+              {submitting ? "Procesando…" : `Confirmar pedido · ${money(total)}`}
+            </Button>
+          </div>
         </>
       )}
     </div>
