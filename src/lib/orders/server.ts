@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { $Enums, Prisma } from "@prisma/client";
+import crypto from "crypto";
 import { notifyOrderEvent } from "@/lib/notifications/events";
 import { broadcastOrderStatus } from "@/lib/portal/live";
 
@@ -11,6 +12,7 @@ export const ORDER_STATUSES = [
   "preparing",
   "ready",
   "in_transit",
+  "at_destination",
   "delivered",
   "cancelled",
 ] as const;
@@ -18,7 +20,7 @@ export const ORDER_STATUSES = [
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 /** Estados que mantienen el pedido "activo" para el monitoreo (12.4). */
-export const ACTIVE_STATUSES: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "delivered"];
+export const ACTIVE_STATUSES: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "at_destination", "delivered"];
 
 const toNum = (v: Prisma.Decimal | number | string | null): number =>
   v == null ? 0 : Number(v);
@@ -238,6 +240,12 @@ export async function updateOrderStatus(
       throw new Error("El pedido ya no puede cambiar de estado");
     }
 
+    // Validar transiciones válidas según tipo de entrega
+    const isValid = isValidTransition(current.status, status, current.deliveryMethod);
+    if (!isValid) {
+      throw new Error(`Transición inválida: ${current.status} → ${status}`);
+    }
+
     await tx.order.update({ where: { id }, data: { status: status as $Enums.OrderStatus } });
     await tx.orderStatusHistory.create({
       data: {
@@ -269,6 +277,166 @@ export async function updateOrderStatus(
     });
   }
   return detail;
+}
+
+// ── Validación de transiciones ────────────────────────────────────────────────
+
+const TRANSITIONS_PICKUP: Record<string, string[]> = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["preparing", "cancelled"],
+  preparing: ["ready"],
+  ready: ["delivered"],
+  // in_transit y at_destination no aplican para pickup
+};
+
+const TRANSITIONS_DELIVERY: Record<string, string[]> = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["preparing", "cancelled"],
+  preparing: ["ready"],
+  ready: ["in_transit"],
+  in_transit: ["at_destination"],
+  at_destination: ["delivered"],
+};
+
+function isValidTransition(from: string, to: string, deliveryMethod: string): boolean {
+  const map = deliveryMethod === "pickup" ? TRANSITIONS_PICKUP : TRANSITIONS_DELIVERY;
+  return map[from]?.includes(to) ?? false;
+}
+
+// ── Confirmación de llegada del driver ────────────────────────────────────────
+
+function generatePin(): string {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+/**
+ * El driver confirma que llegó al domicilio del cliente.
+ * Genera PIN de 6 dígitos + token QR único.
+ */
+export async function confirmArrival(
+  organizationId: string,
+  orderId: string,
+  ctx: StatusCtx
+): Promise<OrderDetail | null> {
+  const order = await prisma.$transaction(async (tx) => {
+    const current = await tx.order.findFirst({ where: { id: orderId, organizationId } });
+    if (!current) throw new Error("Pedido no encontrado");
+    if (current.status !== "in_transit") {
+      throw new Error("El pedido debe estar en tránsito para confirmar llegada");
+    }
+
+    const pin = generatePin();
+    const qrToken = crypto.randomUUID();
+
+    await tx.order.update({
+      where: { id: orderId },
+      data: {
+        status: "at_destination",
+        deliveryPin: pin,
+        deliveryQrToken: qrToken,
+      },
+    });
+    await tx.orderStatusHistory.create({
+      data: {
+        orderId,
+        status: "at_destination",
+        employeeId: ctx.employeeId ?? null,
+        userId: ctx.userId ?? null,
+        notes: "Driver confirmó llegada al domicilio",
+      },
+    });
+    return current;
+  });
+
+  const detail = await getOrderDetail(organizationId, orderId);
+  if (detail) {
+    await notifyOrderEvent(organizationId, order.locationId, ctx, {
+      id: orderId,
+      orderNumber: detail.orderNumber,
+      status: "at_destination",
+      customerName: detail.customerName,
+      total: detail.total,
+    });
+    broadcastOrderStatus({
+      orderId,
+      orderNumber: detail.orderNumber,
+      status: "at_destination",
+      updatedAt: detail.updatedAt,
+    });
+  }
+  return detail;
+}
+
+// ── Confirmación de entrega con PIN/QR ────────────────────────────────────────
+
+export interface ConfirmDeliveryResult {
+  ok: boolean;
+  order?: OrderDetail;
+  error?: string;
+}
+
+/**
+ * Confirma la entrega validando PIN o QR token.
+ * Si el PIN/QR es válido, cambia el estado a "delivered".
+ */
+export async function confirmDelivery(
+  organizationId: string,
+  orderId: string,
+  input: { pin?: string; qrToken?: string }
+): Promise<ConfirmDeliveryResult> {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, organizationId },
+  });
+  if (!order) return { ok: false, error: "Pedido no encontrado" };
+  if (order.status !== "at_destination") {
+    return { ok: false, error: "El pedido no está en estado de entrega" };
+  }
+
+  // Validar PIN o QR
+  if (input.pin) {
+    if (order.deliveryPin !== input.pin) {
+      return { ok: false, error: "PIN incorrecto" };
+    }
+  } else if (input.qrToken) {
+    if (order.deliveryQrToken !== input.qrToken) {
+      return { ok: false, error: "QR inválido" };
+    }
+  } else {
+    return { ok: false, error: "Proporcione PIN o QR" };
+  }
+
+  // Entrega confirmada
+  await prisma.$transaction(async (tx) => {
+    await tx.order.update({
+      where: { id: orderId },
+      data: { status: "delivered", deliveryPin: null, deliveryQrToken: null },
+    });
+    await tx.orderStatusHistory.create({
+      data: {
+        orderId,
+        status: "delivered",
+        notes: input.pin ? "Entrega confirmada con PIN" : "Entrega confirmada con QR",
+      },
+    });
+  });
+
+  const detail = await getOrderDetail(organizationId, orderId);
+  if (detail) {
+    await notifyOrderEvent(organizationId, order.locationId, {}, {
+      id: orderId,
+      orderNumber: detail.orderNumber,
+      status: "delivered",
+      customerName: detail.customerName,
+      total: detail.total,
+    });
+    broadcastOrderStatus({
+      orderId,
+      orderNumber: detail.orderNumber,
+      status: "delivered",
+      updatedAt: detail.updatedAt,
+    });
+  }
+  return { ok: true, order: detail! };
 }
 
 // ── Preparación (12.3) ────────────────────────────────────────────────────────

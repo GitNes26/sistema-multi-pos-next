@@ -494,6 +494,8 @@ export interface PortalOrderDetail {
   locationName: string | null;
   paymentMethod: string | null;
   paymentReference: string | null;
+  deliveryPin: string | null;
+  deliveryQrToken: string | null;
   createdAt: string;
   updatedAt: string;
   items: {
@@ -542,6 +544,8 @@ export async function getPortalOrder(
     locationName: order.location?.name ?? null,
     paymentMethod: order.paymentMethod,
     paymentReference: order.paymentReference,
+    deliveryPin: order.status === "at_destination" ? order.deliveryPin : null,
+    deliveryQrToken: order.status === "at_destination" ? order.deliveryQrToken : null,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     items: order.items.map((i) => ({

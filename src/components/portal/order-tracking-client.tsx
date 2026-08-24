@@ -17,8 +17,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { cn } from "@/lib/utils";
 import { StepIllustration } from "@/components/shared/step-illustration";
+import { DeliveryConfirmPanel } from "@/components/portal/delivery-confirm-panel";
 
-const FLOW: OrderStatusKey[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "delivered"];
+const FLOW: OrderStatusKey[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "at_destination", "delivered"];
 
 const FLOW_ICONS: Record<string, React.ReactNode> = {
   pending: <Clock className="size-3.5" />,
@@ -26,6 +27,7 @@ const FLOW_ICONS: Record<string, React.ReactNode> = {
   preparing: <Package className="size-3.5" />,
   ready: <Package className="size-3.5" />,
   in_transit: <Truck className="size-3.5" />,
+  at_destination: <MapPin className="size-3.5" />,
   delivered: <CircleCheck className="size-3.5" />,
 };
 
@@ -124,11 +126,13 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
   const currentIdx = statusIndex(order.status);
   const isCancelled = order.status === "cancelled";
   const isDelivery = order.deliveryMethod === "delivery";
-  const isTransit = order.status === "in_transit";
+  const isTransit = order.status === "in_transit" || order.status === "at_destination";
   const cancellable = order.status === "pending" || order.status === "confirmed";
 
-  // Filter in_transit from flow for pickup orders
-  const visibleFlow = isDelivery ? FLOW : FLOW.filter((s) => s !== "in_transit");
+  // Filter delivery-only statuses from flow for pickup orders
+  const visibleFlow = isDelivery
+    ? FLOW
+    : FLOW.filter((s) => s !== "in_transit" && s !== "at_destination");
   const rawIdx = visibleFlow.indexOf(order.status as OrderStatusKey);
   const visibleCurrentIdx = rawIdx >= 0 ? rawIdx : 0;
 
@@ -186,6 +190,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
               {order.status === "ready" && isDelivery && "Tu pedido está listo, pronto saldrá a domicilio"}
               {order.status === "ready" && !isDelivery && "Tu pedido está listo para recoger"}
               {order.status === "in_transit" && "Tu pedido va en camino a tu dirección"}
+              {order.status === "at_destination" && "El repartidor llegó a tu domicilio — muestra el PIN o QR para recibir tu pedido"}
               {order.status === "delivered" && "¡Pedido entregado! Esperamos que lo disfrutes"}
             </p>
 
@@ -230,6 +235,24 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
           </>
         )}
       </motion.div>
+
+      {/* Delivery confirmation — PIN + QR when at_destination */}
+      <AnimatePresence>
+        {order.status === "at_destination" && order.deliveryPin && (
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <DeliveryConfirmPanel
+              pin={order.deliveryPin}
+              qrToken={order.deliveryQrToken}
+              orderNumber={order.orderNumber}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delivery map — real-time driver location */}
       <AnimatePresence>

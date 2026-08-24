@@ -8,7 +8,7 @@ import type {
 
 export type { OrderDetail };
 
-export type OrderStatusKey = "pending" | "confirmed" | "preparing" | "ready" | "in_transit" | "delivered" | "cancelled";
+export type OrderStatusKey = "pending" | "confirmed" | "preparing" | "ready" | "in_transit" | "at_destination" | "delivered" | "cancelled";
 
 export const ORDER_STATUSES: OrderStatusKey[] = [
   "pending",
@@ -16,6 +16,7 @@ export const ORDER_STATUSES: OrderStatusKey[] = [
   "preparing",
   "ready",
   "in_transit",
+  "at_destination",
   "delivered",
   "cancelled",
 ];
@@ -26,6 +27,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatusKey, string> = {
   preparing: "Preparando",
   ready: "Listo",
   in_transit: "En camino",
+  at_destination: "En domicilio",
   delivered: "Entregado",
   cancelled: "Cancelado",
 };
@@ -36,9 +38,19 @@ export const ORDER_STATUS_COLORS: Record<OrderStatusKey, string> = {
   preparing: "bg-orange-500 text-white",
   ready: "bg-emerald-500 text-white",
   in_transit: "bg-violet-500 text-white",
+  at_destination: "bg-purple-500 text-white",
   delivered: "bg-blue-600 text-white",
   cancelled: "bg-destructive text-white",
 };
+
+/** Flujos de estado por tipo de entrega */
+export const ORDER_FLOW_PICKUP: OrderStatusKey[] = [
+  "pending", "confirmed", "preparing", "ready", "delivered",
+];
+
+export const ORDER_FLOW_DELIVERY: OrderStatusKey[] = [
+  "pending", "confirmed", "preparing", "ready", "in_transit", "at_destination", "delivered",
+];
 
 export const DELIVERY_METHOD_LABELS: Record<string, string> = {
   pickup: "Recoger en sucursal",
@@ -110,4 +122,13 @@ export const ordersApi = {
       `/api/orders/${orderId}/preparation/items/${itemId}`,
       { method: "PATCH", body: JSON.stringify(input) }
     ),
+  confirmArrival: (id: string) =>
+    json<{ ok: boolean; order: OrderDetail }>(`/api/orders/${id}/confirm-arrival`, {
+      method: "POST",
+    }),
+  confirmDelivery: (id: string, input: { pin?: string; qrToken?: string }) =>
+    json<{ ok: boolean; order: OrderDetail }>(`/api/orders/${id}/confirm-delivery`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };

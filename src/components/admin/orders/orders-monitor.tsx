@@ -74,7 +74,9 @@ export function OrdersMonitor({
         pending: [], confirmed: [], preparing: [], ready: [], in_transit: [], delivered: [],
       };
       for (const o of r.rows) {
-        if (grouped[o.status]) grouped[o.status].push(o);
+        // Merge at_destination into in_transit column
+        const col = o.status === "at_destination" ? "in_transit" : o.status;
+        if (grouped[col]) grouped[col].push(o);
       }
       setByStatus(grouped);
       setLastUpdate(new Date());
@@ -146,11 +148,16 @@ export function OrdersMonitor({
                         onClick={() => setDetailId(o.id)}
                         className={cn(
                           "w-full cursor-pointer rounded-xl border px-3 py-2.5 text-left transition-all hover:shadow-md active:scale-[0.98]",
-                          STATUS_CARD_STYLE[status]
+                          o.status === "at_destination"
+                            ? "border-purple-300 bg-purple-50/60 dark:bg-purple-950/20"
+                            : STATUS_CARD_STYLE[status]
                         )}
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-bold tabular-nums">#{o.orderNumber}</span>
+                          {o.status === "at_destination" && (
+                            <Badge className="h-4 px-1.5 text-[0.6rem] bg-purple-500">En domicilio</Badge>
+                          )}
                           <span className="text-[10px] text-muted-foreground">
                             {formatDistanceToNow(new Date(o.createdAt), { addSuffix: true, locale: es })}
                           </span>

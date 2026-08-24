@@ -55,6 +55,8 @@ export async function notifyOrderEvent(
     confirmed: { title: "Pedido confirmado", severity: "info", icon: "order-received", sound: "notification" },
     preparing: { title: "Pedido en preparación", severity: "info", icon: "order-received", sound: "notification" },
     ready: { title: "Pedido listo", severity: "success", icon: "order-ready", sound: "order-ready" },
+    in_transit: { title: "Pedido en camino", severity: "info", icon: "order-received", sound: "notification" },
+    at_destination: { title: "Repartidor llegó al domicilio", severity: "success", icon: "order-ready", sound: "order-ready" },
     delivered: { title: "Pedido entregado", severity: "success", icon: "order-ready", sound: "notification" },
     cancelled: { title: "Pedido cancelado", severity: "warning", icon: "notification", sound: "error" },
   };

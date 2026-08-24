@@ -118,6 +118,25 @@ export function StepIllustration({ step, size = 80 }: { step: string; size?: num
     );
   }
 
+  if (step === "at_destination") {
+    return (
+      <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+        <motion.circle cx="40" cy="40" r="36" stroke="#9333ea" strokeWidth="3" fill="#faf5ff" {...pulse} />
+        {/* House */}
+        <motion.g {...bounce}>
+          <path d="M24 42 L40 28 L56 42 L56 56 L24 56 Z" fill="#9333ea" />
+          <rect x="35" y="46" width="10" height="10" rx="1" fill="#faf5ff" />
+          <rect x="28" y="44" width="6" height="5" rx="1" fill="#c084fc" />
+        </motion.g>
+        {/* Location pin */}
+        <motion.g animate={{ y: [0, -3, 0] }} transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}>
+          <path d="M40 18 C34 18 30 22.5 30 27 C30 33 40 40 40 40 C40 40 50 33 50 27 C50 22.5 46 18 40 18Z" fill="#e879f9" />
+          <circle cx="40" cy="27" r="3" fill="#faf5ff" />
+        </motion.g>
+      </svg>
+    );
+  }
+
   if (step === "delivered") {
     return (
       <svg width={s} height={s} viewBox="0 0 80 80" fill="none">

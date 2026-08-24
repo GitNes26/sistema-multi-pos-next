@@ -28,7 +28,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const FLOW: OrderStatusKey[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "delivered"];
+const FLOW: OrderStatusKey[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "at_destination", "delivered"];
 
 function getNextAction(status: string, isDelivery: boolean): { label: string; icon: React.ReactNode; color: string } | "navigate" | null {
   if (status === "pending") return { label: "Confirmar", icon: <CircleCheckBig className="size-4" />, color: "bg-sky-600 hover:bg-sky-700" };
@@ -39,7 +39,8 @@ function getNextAction(status: string, isDelivery: boolean): { label: string; ic
       ? { label: "Enviar a domicilio", icon: <Truck className="size-4" />, color: "bg-violet-600 hover:bg-violet-700" }
       : { label: "Marcar entregado", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" };
   }
-  if (status === "in_transit") return { label: "Marcar entregado", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" };
+  if (status === "in_transit") return { label: "Confirmar llegada", icon: <MapPin className="size-4" />, color: "bg-purple-600 hover:bg-purple-700" };
+  if (status === "at_destination") return { label: "Confirmar entrega (PIN/QR)", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" };
   return null;
 }
 
@@ -47,7 +48,7 @@ function getNextStatus(status: string, isDelivery: boolean): OrderStatusKey | nu
   if (status === "pending") return "confirmed";
   if (status === "ready" && isDelivery) return "in_transit";
   if (status === "ready") return "delivered";
-  if (status === "in_transit") return "delivered";
+  if (status === "in_transit") return "at_destination";
   return null;
 }
 
@@ -91,19 +92,38 @@ export function OrderDetailDialog({
 
   const nextAction = order ? getNextAction(order.status, order.deliveryMethod === "delivery") : null;
   const isDelivery = order?.deliveryMethod === "delivery";
-  const currentFlowIdx = order ? FLOW.indexOf(order.status as OrderStatusKey) : -1;
+  const visibleFlow = isDelivery
+    ? FLOW
+    : FLOW.filter((s) => s !== "in_transit" && s !== "at_destination");
+  const currentFlowIdx = order ? visibleFlow.indexOf(order.status as OrderStatusKey) : -1;
 
   const advanceStatus = async () => {
     if (!order || !nextAction || nextAction === "navigate") return;
     setSaving(true);
     try {
-      const targetStatus = getNextStatus(order.status, isDelivery);
       if (order.status === "pending") {
         const res = await fetch(`/api/orders/${order.id}/confirm`, { method: "POST" });
         const data = await res.json();
         if (!data.ok) throw new Error(data.error);
-      } else if (targetStatus) {
-        await ordersApi.updateStatus(order.id, targetStatus);
+      } else if (order.status === "in_transit") {
+        // Confirm arrival → at_destination (generates PIN + QR)
+        const res = await fetch(`/api/orders/${order.id}/confirm-arrival`, { method: "POST" });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error);
+      } else if (order.status === "at_destination") {
+        // Confirm delivery → needs PIN from employee
+        const pin = window.prompt("Ingresa el PIN de entrega que el cliente muestra en su teléfono:");
+        if (!pin) { setSaving(false); return; }
+        const res = await fetch(`/api/orders/${order.id}/confirm-delivery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin: pin.trim() }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error);
+      } else {
+        const targetStatus = getNextStatus(order.status, isDelivery);
+        if (targetStatus) await ordersApi.updateStatus(order.id, targetStatus);
       }
       swalToast(nextAction.label + " ✓");
       onChanged?.();
@@ -141,8 +161,8 @@ export function OrderDetailDialog({
           {/* Flow progress */}
           {order.status !== "cancelled" && (
             <div className="flex items-center gap-1">
-              {FLOW.filter((s) => !(isDelivery === false && s === "in_transit")).map((s, i) => (
-                <div key={s} className={cn("flex items-center", i < FLOW.length - 1 && "flex-1")}>
+              {visibleFlow.map((s, i) => (
+                <div key={s} className={cn("flex items-center", i < visibleFlow.length - 1 && "flex-1")}>
                   <div
                     className={cn(
                       "flex size-6 items-center justify-center rounded-full text-[10px] font-bold",
@@ -153,7 +173,7 @@ export function OrderDetailDialog({
                   >
                     {i + 1}
                   </div>
-                  {i < FLOW.length - 1 && (
+                  {i < visibleFlow.length - 1 && (
                     <div className={cn("mx-0.5 mb-4 h-0.5 flex-1 rounded", i < currentFlowIdx ? "bg-primary" : "bg-muted")} />
                   )}
                 </div>

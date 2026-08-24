@@ -28,6 +28,7 @@ export const ORDER_STATUS_COLORS: Record<$Enums.OrderStatus, string> = {
   preparing: "bg-orange-500",
   ready: "bg-emerald-500",
   in_transit: "bg-violet-500",
+  at_destination: "bg-purple-500",
   delivered: "bg-blue-600",
   cancelled: "bg-red-500",
 };
@@ -38,6 +39,7 @@ export const ORDER_STATUS_LABELS: Record<$Enums.OrderStatus, string> = {
   preparing: "Preparando",
   ready: "Listo",
   in_transit: "En camino",
+  at_destination: "En domicilio",
   delivered: "Entregado",
   cancelled: "Cancelado",
 };
