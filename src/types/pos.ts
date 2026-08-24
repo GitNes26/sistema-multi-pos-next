@@ -127,6 +127,12 @@ export interface PosOrder {
   createdAt: string;
 }
 
+export interface PosLoyaltyConfig {
+  pointValue: number;
+  pointsPerCurrency: number;
+  enabled: boolean;
+}
+
 export interface PosCatalog {
   location: PosLocation;
   company: { name: string | null; logoUrl: string | null; address: string | null; city: string | null; phone: string | null };
@@ -137,6 +143,7 @@ export interface PosCatalog {
   registers: PosCashRegister[];
   session: PosCashSession | null;
   cashier: { userId: string; employeeId: string | null; name: string };
+  loyalty: PosLoyaltyConfig;
 }
 
 export interface PosLineItem {

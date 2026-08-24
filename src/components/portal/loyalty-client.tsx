@@ -57,7 +57,7 @@ export function LoyaltyClient() {
           <div className="relative">
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="size-4 opacity-80" />
-              <p className="text-xs font-medium opacity-80">Tus puntos</p>
+              <p className="text-xs font-medium opacity-80">Dinero electrónico disponible</p>
             </div>
             <motion.p
               className="text-4xl font-extrabold tracking-tight"
@@ -65,9 +65,11 @@ export function LoyaltyClient() {
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
             >
-              {money(data.points)}
+              {money(data.points * data.pointValue)}
             </motion.p>
-            <p className="mt-1 text-xs opacity-60">Puntos acumulados</p>
+            <p className="mt-1 text-xs opacity-60">
+              {Math.floor(data.points)} pts · valor {money(data.pointValue)} por punto
+            </p>
           </div>
         </motion.div>
 
@@ -106,6 +108,7 @@ export function LoyaltyClient() {
                           <p className="text-sm font-medium">{config.label}</p>
                           {t.note && <p className="text-xs text-muted-foreground truncate">{t.note}</p>}
                           <p className="text-[11px] text-muted-foreground/60">
+                            {t.ticket != null && <span className="font-semibold text-foreground/70">#{t.ticket} · </span>}
                             {new Date(t.createdAt).toLocaleDateString("es-MX", {
                               day: "numeric",
                               month: "short",

@@ -130,12 +130,16 @@ export interface OrderDetail {
   address: string | null;
   subtotal: number;
   discount: number;
+  deliveryFee: number;
   total: number;
   notes: string | null;
   customerName: string | null;
   customerPhone: string | null;
   locationName: string | null;
   saleId: string | null;
+  isPaid: boolean;
+  paymentMethod: string | null;
+  paymentReference: string | null;
   createdAt: string;
   updatedAt: string;
   items: {
@@ -184,12 +188,16 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
     address: order.address ?? null,
     subtotal: toNum(order.subtotal),
     discount: toNum(order.discount),
+    deliveryFee: toNum(order.deliveryFee),
     total: toNum(order.total),
     notes: order.notes,
     customerName: order.customer?.fullName ?? null,
     customerPhone: order.customer?.phone ?? null,
     locationName: order.location?.name ?? null,
     saleId: order.saleId,
+    isPaid: order.paidAt != null || order.saleId != null,
+    paymentMethod: order.paymentMethod,
+    paymentReference: order.paymentReference,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     items: order.items.map((i) => ({
@@ -399,8 +407,18 @@ export async function confirmDelivery(
     where: { id: orderId, organizationId },
   });
   if (!order) return { ok: false, error: "Pedido no encontrado" };
-  if (order.status !== "at_destination") {
-    return { ok: false, error: "El pedido no está en estado de entrega" };
+
+  // Recogida: el PIN/QR se genera en "ready". Domicilio: en "at_destination".
+  const expectedStatus =
+    order.deliveryMethod === "pickup" ? "ready" : "at_destination";
+  if (order.status !== expectedStatus) {
+    return {
+      ok: false,
+      error:
+        order.deliveryMethod === "pickup"
+          ? "El pedido no está listo para recoger"
+          : "El pedido no está en estado de entrega",
+    };
   }
 
   // Validar PIN o QR
@@ -448,6 +466,43 @@ export async function confirmDelivery(
     });
   }
   return { ok: true, order: detail! };
+}
+
+// ── Cobro en tienda ────────────────────────────────────────────────────────────
+
+export interface PayOrderInStoreInput {
+  method: string;
+  reference?: string | null;
+}
+
+/**
+ * Registra el cobro en tienda de un pedido pendiente de pago
+ * (p. ej. "pagar en efectivo al recoger"). Marca paidAt y el método usado.
+ */
+export async function payOrderInStore(
+  organizationId: string,
+  orderId: string,
+  input: PayOrderInStoreInput
+): Promise<OrderDetail | null> {
+  const order = await prisma.order.findFirst({ where: { id: orderId, organizationId } });
+  if (!order) throw new Error("Pedido no encontrado");
+  if (order.status === "cancelled" || order.status === "delivered") {
+    throw new Error("El pedido ya no puede cobrarse");
+  }
+  if (order.paidAt || order.saleId) {
+    throw new Error("El pedido ya está pagado");
+  }
+
+  await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      paidAt: new Date(),
+      paymentMethod: input.method as $Enums.PaymentMethod,
+      paymentReference: input.reference ?? null,
+    },
+  });
+
+  return getOrderDetail(organizationId, orderId);
 }
 
 // ── Preparación (12.3) ────────────────────────────────────────────────────────

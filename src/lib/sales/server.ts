@@ -156,22 +156,29 @@ export async function listSales(
 }
 
 export async function getSaleDetail(organizationId: string, saleId: string): Promise<SaleDetail> {
-  const sale = await prisma.sale.findFirst({
-    where: { id: saleId, organizationId },
-    include: {
-      location: { select: { name: true } },
-      cashRegister: { select: { name: true } },
-      cashier: { select: { fullName: true } },
-      employee: { select: { fullName: true } },
-      customer: { select: { fullName: true, customerCode: true } },
-      items: { include: { unit: { select: { abbreviation: true } } } },
-      payments: true,
-      discounts: true,
-    },
-  });
+  const [sale, org] = await Promise.all([
+    prisma.sale.findFirst({
+      where: { id: saleId, organizationId },
+      include: {
+        location: { select: { name: true } },
+        cashRegister: { select: { name: true } },
+        cashier: { select: { fullName: true } },
+        employee: { select: { fullName: true } },
+        customer: { select: { fullName: true, customerCode: true } },
+        items: { include: { unit: { select: { abbreviation: true } } } },
+        payments: true,
+        discounts: true,
+      },
+    }),
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { pointValue: true },
+    }),
+  ]);
   if (!sale) throw new Error("Venta no encontrada");
 
-  const pointsValue = sale.pointsRedeemed != null ? toNum(sale.pointsRedeemed) / 100 : 0;
+  const pointValue = toNum(org?.pointValue ?? null) || 0.01;
+  const pointsValue = sale.pointsRedeemed != null ? toNum(sale.pointsRedeemed) * pointValue : 0;
 
   return {
     id: sale.id,

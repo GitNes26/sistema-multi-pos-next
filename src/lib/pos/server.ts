@@ -37,7 +37,7 @@ export async function getPosCatalog(
   organizationId: string,
   userId: string
 ): Promise<PosCatalog> {
-  const [locations, productsRaw, bulkRaw, categories, customers, promotions, registers, employee, userData, cashSession, companyProfile] =
+  const [locations, productsRaw, bulkRaw, categories, customers, promotions, registers, employee, userData, cashSession, companyProfile, orgLoyalty] =
     await Promise.all([
       prisma.location.findMany({
         where: { organizationId },
@@ -97,6 +97,10 @@ export async function getPosCatalog(
       prisma.companyProfile.findUnique({
         where: { organizationId },
         select: { tradeName: true, legalName: true, logoUrl: true, address: true, city: true, phone: true },
+      }),
+      prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { pointsPerCurrency: true, pointValue: true, loyaltyEnabled: true },
       }),
     ]);
 
@@ -306,6 +310,11 @@ registers: registersMapped,
       userId,
       employeeId: employee?.id ?? null,
       name: userData?.fullName ?? "",
+    },
+    loyalty: {
+      pointValue: toNum(orgLoyalty?.pointValue ?? null),
+      pointsPerCurrency: toNum(orgLoyalty?.pointsPerCurrency ?? null),
+      enabled: orgLoyalty?.loyaltyEnabled ?? true,
     },
   };
 }

@@ -21,7 +21,7 @@ export interface PdfInventoryConfig {
 
 const INDIGO = "1e40af";
 const SLATE_HEAD = "1e293b";
-const SLATE_ROW = "f8fafc";
+const SLATE_ROW = "f1f5f9";
 const MUTED = "64748b";
 const DARK = "0f172a";
 
@@ -70,38 +70,35 @@ export function buildInventoryPdf({
 
     // Table header
     const h = 24;
-    doc.rect(40, y, W, h).fill(SLATE_HEAD);
-    doc.fillColor("white").font("Helvetica-Bold").fontSize(8.5);
-    const col = (x: number, w: number, t: string, align: "left" | "right" = "left") =>
-      doc.text(t, x, y + 8, { width: w, align });
-    col(50, 190, "PRODUCTO");
-    col(240, 140, "VARIANTE / SKU");
-    col(380, 50, "UNIDAD");
-    col(430, 70, "EXISTENCIA", "right");
-    col(500, 55, "MÍNIMO", "right");
-    y += h;
+    const drawHeader = () => {
+      doc.rect(40, y, W, h).fill(SLATE_HEAD);
+      doc.fillColor("white").font("Helvetica-Bold").fontSize(8.5);
+      doc.text("PRODUCTO", 50, y + 8, { width: 190 });
+      doc.text("VARIANTE / SKU", 240, y + 8, { width: 140 });
+      doc.text("UNIDAD", 380, y + 8, { width: 50 });
+      doc.text("EXISTENCIA", 430, y + 8, { width: 70, align: "right" });
+      doc.text("MÍNIMO", 500, y + 8, { width: 55, align: "right" });
+      y += h;
+    };
+
+    drawHeader();
 
     // Table rows
-    doc.font("Helvetica").fontSize(8.5);
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (y + h > doc.page.height - 56) {
         doc.addPage();
         y = 40;
-        doc.rect(40, y, W, h).fill(SLATE_HEAD);
-        doc.fillColor("white").font("Helvetica-Bold").fontSize(8.5);
-        col(50, 190, "PRODUCTO");
-        col(240, 140, "VARIANTE / SKU");
-        col(380, 50, "UNIDAD");
-        col(430, 70, "EXISTENCIA", "right");
-        col(500, 55, "MÍNIMO", "right");
-        y += h;
-        doc.font("Helvetica").fontSize(8.5);
+        drawHeader();
       }
 
-      if (i % 2 === 1) doc.rect(40, y, W, h).fill(SLATE_ROW);
+      if (i % 2 === 1) {
+        doc.save();
+        doc.rect(40, y, W, h).fill(SLATE_ROW);
+        doc.restore();
+      }
 
-      doc.fillColor(DARK);
+      doc.font("Helvetica").fontSize(8.5).fillColor(DARK);
       doc.text(clamp(r.productName, 40), 50, y + 8, { width: 190 });
       doc.fillColor(MUTED);
       const variant = r.variantName
@@ -115,7 +112,9 @@ export function buildInventoryPdf({
       const status = r.status === "empty" ? "SIN STOCK" : r.status === "low" ? "BAJO" : "OK";
       const color = r.status === "empty" ? "b91c1c" : r.status === "low" ? "b45309" : "16a34a";
       const bw = 58;
+      doc.save();
       doc.rect(W - bw + 10, y + 6, bw - 10, 12).fill(color);
+      doc.restore();
       doc.fillColor("white").font("Helvetica-Bold").fontSize(7.5).text(status, W - bw + 13, y + 9, {
         width: bw - 16,
         align: "center",
@@ -234,29 +233,29 @@ export function buildRevisionPdf(config: PdfRevisionConfig): Promise<Buffer> {
     const headerRow = () => {
       doc.rect(40, y, W, h).fill(SLATE_HEAD);
       doc.fillColor("white").font("Helvetica-Bold").fontSize(8.5);
-      const col = (x: number, w: number, t: string, align: "left" | "right" = "left") =>
-        doc.text(t, x, y + 8, { width: w, align });
-      col(50, 200, "PRODUCTO");
-      col(250, 140, "VARIANTE / SKU");
-      col(390, 60, "ESPERADO", "right");
-      col(450, 60, "CONTADO", "right");
-      col(510, 50, "DIF.", "right");
+      doc.text("PRODUCTO", 50, y + 8, { width: 200 });
+      doc.text("VARIANTE / SKU", 250, y + 8, { width: 140 });
+      doc.text("ESPERADO", 390, y + 8, { width: 60, align: "right" });
+      doc.text("CONTADO", 450, y + 8, { width: 60, align: "right" });
+      doc.text("DIF.", 510, y + 8, { width: 50, align: "right" });
       y += h;
     };
     headerRow();
 
-    doc.font("Helvetica").fontSize(8.5);
     for (let i = 0; i < config.items.length; i++) {
       const r = config.items[i];
       if (y + h > doc.page.height - 56) {
         doc.addPage();
         y = 40;
         headerRow();
-        doc.font("Helvetica").fontSize(8.5);
       }
-      if (i % 2 === 1) doc.rect(40, y, W, h).fill(SLATE_ROW);
+      if (i % 2 === 1) {
+        doc.save();
+        doc.rect(40, y, W, h).fill(SLATE_ROW);
+        doc.restore();
+      }
 
-      doc.fillColor(DARK);
+      doc.font("Helvetica").fontSize(8.5).fillColor(DARK);
       doc.text(clamp(r.productName, 44), 50, y + 8, { width: 200 });
       doc.fillColor(MUTED);
       const variant = r.variantName

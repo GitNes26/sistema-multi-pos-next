@@ -12,6 +12,8 @@ import type {
   ShoppingListView,
   ShoppingListInput,
   ExpiringCardView,
+  CustomerAddressView,
+  CustomerAddressInput,
 } from "@/lib/portal/server";
 import type { DeliveryPolicyData } from "@/lib/orders/server";
 
@@ -34,11 +36,14 @@ export interface PortalStorefrontData {
 
 export interface LoyaltyData {
   points: number;
+  pointValue: number;
+  loyaltyEnabled: boolean;
   transactions: {
     id: string;
     kind: string;
     points: number;
     note: string | null;
+    ticket: number | null;
     createdAt: string;
   }[];
 }
@@ -53,7 +58,17 @@ export const portalApi = {
     json<{ ok: boolean; locations: PortalLocation[] }>("/api/portal/locations"),
 
   deliveryPolicy: () =>
-    json<{ ok: boolean; policy: DeliveryPolicyData | null }>("/api/portal/delivery-policy"),
+    json<{ ok: boolean; policy: DeliveryPolicyData | null; onlinePaymentEnabled: boolean }>("/api/portal/delivery-policy"),
+
+  // Destinos guardados
+  addresses: () => json<{ ok: boolean; addresses: CustomerAddressView[] }>("/api/portal/addresses"),
+  addAddress: (input: CustomerAddressInput) =>
+    json<{ ok: boolean; address: CustomerAddressView }>("/api/portal/addresses", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  removeAddress: (id: string) =>
+    json<{ ok: boolean }>(`/api/portal/addresses/${id}`, { method: "DELETE" }),
 
   // Pedidos
   createOrder: (input: PortalOrderInput) =>

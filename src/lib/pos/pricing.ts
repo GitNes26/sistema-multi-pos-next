@@ -52,6 +52,7 @@ export interface PricingInput {
   manualDiscount: ManualDiscount
   coupon: CouponResult | null
   pointsRedeemedValue: number
+  pointsPerCurrency?: number
 }
 
 function withinSchedule(p: PosPromotion, now: Date): boolean {
@@ -216,6 +217,7 @@ export function computeTotals(input: PricingInput): Totals {
     manualDiscount,
     coupon,
     pointsRedeemedValue,
+    pointsPerCurrency = LOYALTY_EARN_RATE,
   } = input
 
   const subtotal = round2(
@@ -304,14 +306,14 @@ export function computeTotals(input: PricingInput): Totals {
     total,
     pointsRedeemedValue: pointsValue,
     payable,
-    pointsEarned: customer ? round2(payable * LOYALTY_EARN_RATE) : 0,
+    pointsEarned: customer ? round2(payable * pointsPerCurrency) : 0,
   }
 }
 
-export function pointsToMoney(points: number): number {
-  return round2(points / POINTS_PER_PESO)
+export function pointsToMoney(points: number, pointValue: number): number {
+  return round2(points * (pointValue > 0 ? pointValue : 1 / POINTS_PER_PESO))
 }
 
-export function moneyToPoints(moneyAmount: number): number {
-  return round2(moneyAmount * POINTS_PER_PESO)
+export function moneyToPoints(amount: number, pointValue: number): number {
+  return round2(amount / (pointValue > 0 ? pointValue : 1 / POINTS_PER_PESO))
 }

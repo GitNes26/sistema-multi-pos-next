@@ -131,4 +131,9 @@ export const ordersApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  payOrder: (id: string, input: { method: string; reference?: string | null }) =>
+    json<{ ok: boolean; order: OrderDetail }>(`/api/orders/${id}/pay`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };

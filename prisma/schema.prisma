@@ -208,6 +208,7 @@ model Organization {
   notifications         Notification[]
   publications          Publication[]
   deliveryPolicy        DeliveryPolicy?
+  customerAddresses     CustomerAddress[]
 
   @@map("organizations")
 }
@@ -385,6 +386,7 @@ model Customer {
   coupons               Coupon[]
   loyaltyTransactions   LoyaltyTransaction[]
   orders                Order[]
+  addresses             CustomerAddress[]
 
   @@unique([organizationId, customerCode])
   @@unique([organizationId, userId])
@@ -412,6 +414,23 @@ model CustomerPaymentMethod {
   organization Organization @relation(fields: [organizationId], references: [id])
 
   @@map("customer_payment_methods")
+}
+
+model CustomerAddress {
+  id             String   @id @default(cuid())
+  organizationId String
+  customerId     String
+  label          String
+  address        String
+  latitude       Decimal? @db.Decimal(10, 8)
+  longitude      Decimal? @db.Decimal(11, 8)
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+
+  @@map("customer_addresses")
 }
 
 model CustomerFavorite {
@@ -1042,6 +1061,11 @@ model Order {
   // FASE — confirmación de entrega domicilio (PIN + QR)
   deliveryPin     String?        @db.VarChar(6)
   deliveryQrToken String?        @unique
+  // FASE — cobro en tienda (cuando el cliente paga al recoger/recibir)
+  paidAt          DateTime?
+  // FASE — redención de puntos en el portal
+  pointsRedeemed  Decimal?       @default(0) @db.Decimal(12, 2)
+  pointsValue     Decimal?       @default(0) @db.Decimal(12, 2)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 

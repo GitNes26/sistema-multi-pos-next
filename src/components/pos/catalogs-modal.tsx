@@ -9,7 +9,7 @@ import { usePosStore } from "@/stores/pos-store";
 import type { PosOrder, PosProduct } from "@/types/pos";
 import { money } from "@/lib/pos/money";
 import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "@/lib/pos/config";
-import { promotionScheduleLabel } from "@/lib/pos/pricing";
+import { promotionScheduleLabel, pointsToMoney } from "@/lib/pos/pricing";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "./product-card";
 import { PosOrderDetail } from "./pos-order-detail";
@@ -24,6 +24,7 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
   const products = usePosStore((s) => s.products);
   const customers = usePosStore((s) => s.customers);
   const promotions = usePosStore((s) => s.promotions);
+  const loyalty = usePosStore((s) => s.loyalty);
 
   const [orders, setOrders] = useState<PosOrder[]>([]);
   const [today, setToday] = useState<{ total: number; count: number }>({ total: 0, count: 0 });
@@ -61,7 +62,7 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
       onOpenChange={(o) => !o && onClose()}
       icon={<ClipboardList className="size-5 text-primary" />}
       title="Catálogos y pedidos"
-      className="sm:max-w-2xl"
+      className="sm:max-w-3xl"
     >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-1">
           <TabsList className="grid w-full grid-cols-4">
@@ -112,7 +113,7 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
           </TabsContent>
 
           <TabsContent value="productos">
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-2">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
               {products.map((p) => (
                 <ProductCard key={p.id} product={p} onSelect={onSelectProduct} />
               ))}
@@ -132,8 +133,11 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
                       {c.phone ?? c.email ?? c.customerCode ?? "—"}
                     </span>
                   </span>
-                  <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-amber-600">
-                    <Star className="size-3.5" /> {Math.floor(c.points)}
+                  <span className="ml-auto flex flex-col items-end gap-0.5">
+                    <span className="flex items-center gap-1 text-xs font-semibold text-amber-600">
+                      <Star className="size-3.5" /> {money(pointsToMoney(c.points, loyalty.pointValue))}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">{Math.floor(c.points)} pts</span>
                   </span>
                 </div>
               ))}

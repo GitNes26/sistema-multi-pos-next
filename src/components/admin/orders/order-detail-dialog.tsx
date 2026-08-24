@@ -2,9 +2,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  Check,
-  ClipboardList,
-  Clock,
   MapPin,
   PackageCheck,
   Truck,
@@ -28,6 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { DeliveryConfirmDialog } from "./delivery-confirm-dialog";
+import { OrderPaymentDialog } from "./order-payment-dialog";
 
 const FLOW: OrderStatusKey[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "at_destination", "delivered"];
 
@@ -67,6 +65,7 @@ export function OrderDetailDialog({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
 
   const load = async () => {
     try {
@@ -192,9 +191,21 @@ export function OrderDetailDialog({
                 </div>
               ))}
             </div>
-            <div className="mt-2 flex justify-between border-t pt-2 text-sm font-bold">
-              <span>Total</span>
-              <span>{money(order.total)}</span>
+            <div className="mt-2 space-y-1 border-t pt-2 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Subtotal</span>
+                <span>{money(order.subtotal)}</span>
+              </div>
+              {order.deliveryFee > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{order.deliveryMethod === "delivery" ? "Envío" : "Cargo por recoger"}</span>
+                  <span>{money(order.deliveryFee)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold">
+                <span>Total</span>
+                <span>{money(order.total)}</span>
+              </div>
             </div>
           </div>
 
@@ -207,7 +218,32 @@ export function OrderDetailDialog({
             {order.locationName && <p className="mt-1 text-xs text-muted-foreground">{order.locationName}</p>}
             {order.address && <p className="mt-1 text-xs text-muted-foreground">{order.address}</p>}
             {order.notes && <p className="mt-1 text-xs italic text-muted-foreground">&quot;{order.notes}&quot;</p>}
+
+            {/* Estado de pago */}
+            <div className="mt-2 flex items-center gap-2 border-t pt-2">
+              {order.isPaid ? (
+                <Badge className="bg-emerald-600 text-white">Pagado</Badge>
+              ) : (
+                <Badge variant="secondary" className="bg-amber-500 text-white">Pendiente de pago</Badge>
+              )}
+              {order.paymentMethod && (
+                <span className="text-xs text-muted-foreground">
+                  {order.paymentMethod === "cash" ? "Efectivo" : order.paymentMethod === "card" ? "Tarjeta" : order.paymentMethod === "wallet" ? "Monedero" : order.paymentMethod}
+                  {order.paymentReference ? ` · ${order.paymentReference}` : ""}
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* Cobro pendiente */}
+          {canManage && !order.isPaid && order.status !== "cancelled" && order.status !== "delivered" && (
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              onClick={() => setPayOpen(true)}
+            >
+              <CircleCheckBig className="mr-2 size-4" /> Cobrar pedido · {money(order.total)}
+            </Button>
+          )}
 
           {/* Quick actions */}
           {canManage && order.status !== "cancelled" && order.status !== "delivered" && (
@@ -299,6 +335,19 @@ export function OrderDetailDialog({
             swalToast(order.deliveryMethod === "delivery" ? "Pedido entregado" : "Pedido recogido");
             onChanged?.();
             setOpen(false);
+          }}
+        />
+      )}
+
+      {order && (
+        <OrderPaymentDialog
+          open={payOpen}
+          onOpenChange={setPayOpen}
+          order={order}
+          onPaid={() => {
+            swalToast("Cobro registrado");
+            load();
+            onChanged?.();
           }}
         />
       )}

@@ -23,26 +23,43 @@ const CARD_COLORS = [
   "#f77f00",
   "#7209b7",
   "#3a86ff",
+  "#0d1b2a",
+  "#6d597a",
+  "#219ebc",
+  "#fb8500",
+  "#14213d",
+  "#9c6644",
+  "#457b9d",
+  "#5f0f40",
 ]
 
 const BRAND_LOGOS: Record<string, { label: string; svg: React.ReactNode }> = {
   visa: {
     label: "VISA",
     svg: (
-      <svg viewBox="0 0 48 32" className="h-5 w-auto">
-        <rect width="48" height="32" rx="4" fill="#1a1f71" />
-        <text x="24" y="20" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold" fontFamily="sans-serif">VISA</text>
+      <svg viewBox="0 0 48 32" className="h-6 w-auto drop-shadow-sm">
+        <rect width="48" height="32" rx="4" fill="#ffffff" />
+        <text x="24" y="21.5" textAnchor="middle" fill="#1434cb" fontSize="13.5" fontWeight="900" fontStyle="italic" fontFamily="Arial, sans-serif" letterSpacing="-0.5">VISA</text>
       </svg>
     ),
   },
   mastercard: {
     label: "MC",
     svg: (
-      <svg viewBox="0 0 48 32" className="h-5 w-auto">
-        <rect width="48" height="32" rx="4" fill="#252525" />
-        <circle cx="19" cy="16" r="8" fill="#eb001b" />
-        <circle cx="29" cy="16" r="8" fill="#f79e1b" />
-        <path d="M24 10.5a8 8 0 010 11" fill="#ff5f00" />
+      <svg viewBox="0 0 48 32" className="h-6 w-auto drop-shadow-sm">
+        <rect width="48" height="32" rx="4" fill="#ffffff" />
+        <circle cx="19" cy="16" r="9" fill="#eb001b" />
+        <circle cx="29" cy="16" r="9" fill="#f79e1b" />
+        <path d="M24 8.6a9 9 0 010 14.8z" fill="#ff5f00" />
+      </svg>
+    ),
+  },
+  amex: {
+    label: "AMEX",
+    svg: (
+      <svg viewBox="0 0 48 32" className="h-6 w-auto drop-shadow-sm">
+        <rect width="48" height="32" rx="4" fill="#2e77bb" />
+        <text x="24" y="20.5" textAnchor="middle" fill="#ffffff" fontSize="10.5" fontWeight="900" fontFamily="Arial, sans-serif">AMEX</text>
       </svg>
     ),
   },
@@ -57,8 +74,9 @@ function CardView({ m, onSetDefault, onRemove }: {
   const color = m.color ?? CARD_COLORS[colorIdx]
   const brandKey = (m.brand ?? "").toLowerCase().replace(/\s/g, "")
   const isVisa = brandKey.includes("visa")
-  const isMC = brandKey.includes("master") || brandKey === "mc"
-  const brandLogo = isVisa ? BRAND_LOGOS.visa : isMC ? BRAND_LOGOS.mastercard : null
+  const isMC = brandKey.includes("master") || brandKey === "mc" || brandKey === "mastercard"
+  const isAmex = brandKey.includes("amex") || brandKey.includes("american")
+  const brandLogo = isVisa ? BRAND_LOGOS.visa : isMC ? BRAND_LOGOS.mastercard : isAmex ? BRAND_LOGOS.amex : null
 
   return (
     <motion.div

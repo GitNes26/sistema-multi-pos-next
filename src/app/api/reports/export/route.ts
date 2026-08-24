@@ -53,18 +53,22 @@ export async function GET(req: NextRequest) {
 
       if (type === "cash") {
         const { rows } = await getCashReport(guard.organizationId, filters);
+        console.log(`[reports] cash: org=${guard.organizationId} rows=${rows.length}`);
         buffer = await buildCashReportPdf(org, rows);
         filename = `corte-caja-${date}.pdf`;
       } else if (type === "orders") {
         const { rows } = await getOrdersReport(guard.organizationId, filters);
+        console.log(`[reports] orders: org=${guard.organizationId} rows=${rows.length}`);
         buffer = await buildOrdersReportPdf(org, rows);
         filename = `pedidos-${date}.pdf`;
       } else if (type === "customers") {
         const { rows } = await getCustomersReport(guard.organizationId, filters);
+        console.log(`[reports] customers: org=${guard.organizationId} rows=${rows.length}`);
         buffer = await buildCustomersReportPdf(org, rows);
         filename = `clientes-${date}.pdf`;
       } else {
         const { rows } = await getSalesReport(guard.organizationId, filters);
+        console.log(`[reports] sales: org=${guard.organizationId} rows=${rows.length}`);
         buffer = await buildSalesReportPdf(org, rows);
         filename = `ventas-${date}.pdf`;
       }

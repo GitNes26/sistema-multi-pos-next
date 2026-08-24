@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Copy, Plus, Trash2, ListChecks, ShoppingCart, Pencil } from "lucide-react"
+import { Copy, Plus, ListChecks, ShoppingCart, Pencil } from "lucide-react"
 import { portalApi } from "@/lib/portal/client"
 import type { ShoppingListRow } from "@/lib/portal/server"
 import { swalConfirm, swalError, swalPrompt, swalToast } from "@/lib/swal"
@@ -110,21 +110,31 @@ export function ListsClient() {
     try {
       const res = await portalApi.list(listId)
       let added = 0
+      let limited = 0
+      let skipped = 0
       for (const item of res.list.items) {
         const products = usePortalStore.getState().products
         const product = products.find((p) => p.variants.some((v) => v.id === item.variantId))
         if (product) {
           const variant = product.variants.find((v) => v.id === item.variantId)
           if (variant) {
-            usePortalStore.getState().addStandard(product, variant, item.quantity)
-            added++
+            const r = usePortalStore.getState().addStandard(product, variant, item.quantity)
+            if (r.added > 0) {
+              added++
+              if (r.limited) limited++
+            } else {
+              skipped++
+            }
           }
         }
       }
       if (added > 0) {
-        swalToast(`${added} producto${added > 1 ? "s" : ""} agregado${added > 1 ? "s" : ""} al carrito`)
+        const parts = [`${added} producto${added > 1 ? "s" : ""} agregado${added > 1 ? "s" : ""} al carrito`]
+        if (limited > 0) parts.push(`${limited} limitado${limited > 1 ? "s" : ""} por stock`)
+        if (skipped > 0) parts.push(`${skipped} sin stock`)
+        swalToast(parts.join(" · "))
       } else {
-        swalToast("No se encontraron productos", "info")
+        swalToast("Los productos de la lista no tienen stock disponible", "info")
       }
     } catch {
       swalToast("No se pudo agregar la lista", "info")

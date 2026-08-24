@@ -10,7 +10,7 @@ export interface PdfSaleRows {
 
 const INDIGO = "1e40af";
 const SLATE_HEAD = "1e293b";
-const SLATE_ROW = "f8fafc";
+const SLATE_ROW = "f1f5f9";
 const MUTED = "64748b";
 const DARK = "0f172a";
 
@@ -51,45 +51,45 @@ export function buildSalesPdf({ organizationName, rows }: PdfSaleRows): Promise<
 
     // Table header
     const h = 22;
-    doc.rect(40, y, W, h).fill(SLATE_HEAD);
-    doc.fillColor("white").font("Helvetica-Bold").fontSize(8);
-    const col = (x: number, w: number, t: string, align: "left" | "right" = "left") =>
-      doc.text(t, x, y + 7, { width: w, align });
-    col(48, 50, "FOLIO");
-    col(100, 92, "FECHA");
-    col(196, 120, "SUCURSAL");
-    col(318, 90, "CLIENTE");
-    col(410, 62, "ART.", "right");
-    col(472, 82, "TOTAL", "right");
-    y += h;
+    const drawHeader = () => {
+      doc.rect(40, y, W, h).fill(SLATE_HEAD);
+      doc.fillColor("white").font("Helvetica-Bold").fontSize(8);
+      doc.text("FOLIO", 48, y + 6, { width: 50, align: "left" });
+      doc.text("FECHA", 100, y + 6, { width: 92, align: "left" });
+      doc.text("SUCURSAL", 196, y + 6, { width: 120, align: "left" });
+      doc.text("CLIENTE", 318, y + 6, { width: 90, align: "left" });
+      doc.text("ART.", 410, y + 6, { width: 55, align: "right" });
+      doc.text("TOTAL", 472, y + 6, { width: 82, align: "right" });
+      y += h;
+    };
+
+    drawHeader();
 
     // Table rows
-    doc.font("Helvetica").fontSize(8);
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (y + h > doc.page.height - 56) {
         doc.addPage();
         y = 40;
-        doc.rect(40, y, W, h).fill(SLATE_HEAD);
-        doc.fillColor("white").font("Helvetica-Bold").fontSize(8);
-        col(48, 50, "FOLIO");
-        col(100, 92, "FECHA");
-        col(196, 120, "SUCURSAL");
-        col(318, 90, "CLIENTE");
-        col(410, 62, "ART.", "right");
-        col(472, 82, "TOTAL", "right");
-        y += h;
-        doc.font("Helvetica").fontSize(8);
+        drawHeader();
       }
 
-      if (i % 2 === 1) doc.rect(40, y, W, h).fill(SLATE_ROW);
+      if (i % 2 === 1) {
+        doc.save();
+        doc.rect(40, y, W, h).fill(SLATE_ROW);
+        doc.restore();
+      }
 
-      doc.fillColor(DARK).font("Helvetica-Bold").text(String(r.locationSaleNumber ?? r.saleNumber), 48, y + 7, { width: 50 });
-      doc.font("Helvetica").fillColor(MUTED).text(new Date(r.createdAt).toLocaleString("es-MX"), 100, y + 7, { width: 92 });
-      doc.fillColor(DARK).text(r.locationName, 196, y + 7, { width: 120 });
-      doc.text(r.customerName ?? "—", 318, y + 7, { width: 90 });
-      doc.text(String(r.itemCount), 410, y + 7, { width: 62, align: "right" });
-      doc.font("Helvetica-Bold").text(money(r.total), 472, y + 7, { width: 82, align: "right" });
+      doc.font("Helvetica-Bold").fontSize(8).fillColor(DARK);
+      doc.text(String(r.locationSaleNumber ?? r.saleNumber), 48, y + 6, { width: 50 });
+      doc.font("Helvetica").fillColor(MUTED);
+      doc.text(new Date(r.createdAt).toLocaleString("es-MX"), 100, y + 6, { width: 92 });
+      doc.fillColor(DARK);
+      doc.text(r.locationName, 196, y + 6, { width: 120 });
+      doc.text(r.customerName ?? "—", 318, y + 6, { width: 90 });
+      doc.text(String(r.itemCount), 410, y + 6, { width: 55, align: "right" });
+      doc.font("Helvetica-Bold");
+      doc.text(money(r.total), 472, y + 6, { width: 82, align: "right" });
       doc.font("Helvetica");
 
       y += h;

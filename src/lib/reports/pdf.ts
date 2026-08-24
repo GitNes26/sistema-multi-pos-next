@@ -20,7 +20,7 @@ export interface PdfTableConfig<T> {
 
 const INDIGO = "1e40af";
 const SLATE_HEAD = "1e293b";
-const SLATE_ROW = "f8fafc";
+const SLATE_ROW = "f1f5f9";
 const MUTED = "64748b";
 const DARK = "0f172a";
 
@@ -65,49 +65,80 @@ export function buildReportPdf<T>({
       y += 18;
     }
 
+    // No data
+    if (!rows || rows.length === 0) {
+      doc.font("Helvetica").fontSize(10).fillColor(MUTED);
+      doc.text("No hay datos para los filtros seleccionados.", 40, y + 10, { width: W, align: "center" });
+      doc.fillColor(MUTED).font("Helvetica").fontSize(8);
+      doc.text(
+        `Generado por el sistema Multi-POS · ${new Date().toLocaleString("es-MX")}`,
+        40,
+        doc.page.height - 46,
+        { width: W, align: "center" }
+      );
+      doc.end();
+      return;
+    }
+
     // Table
-    const h = 22;
+    const ROW_H = 22;
     const startX = 40;
 
-    const drawHeader = () => {
-      doc.rect(startX, y, W, h).fill(SLATE_HEAD);
-      doc.fillColor("white").font("Helvetica-Bold").fontSize(8);
-      let x = startX;
+    // Draw table header
+    const drawTableHeader = (atY: number) => {
+      doc.rect(startX, atY, W, ROW_H).fill(SLATE_HEAD);
+      let cx = startX;
       for (const c of columns) {
-        doc.text(c.header.toUpperCase(), x + 4, y + 7, { width: c.width - 8, align: c.align ?? "left" });
-        x += c.width;
+        doc.font("Helvetica-Bold").fontSize(8).fillColor("white");
+        if (c.align === "right") {
+          doc.text(c.header.toUpperCase(), cx, atY + 6, { width: c.width - 8, align: "right" });
+        } else {
+          doc.text(c.header.toUpperCase(), cx + 6, atY + 6, { width: c.width - 12, align: "left" });
+        }
+        cx += c.width;
       }
-      y += h;
     };
 
-    drawHeader();
+    drawTableHeader(y);
+    y += ROW_H;
 
-    doc.font("Helvetica").fontSize(8);
+    // Draw data rows — each column as a separate text call at fixed coordinates
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      if (y + h > doc.page.height - 56) {
+
+      // Page break
+      if (y + ROW_H > doc.page.height - 56) {
         doc.addPage();
         y = 40;
-        drawHeader();
-        doc.font("Helvetica").fontSize(8);
+        drawTableHeader(y);
+        y += ROW_H;
       }
 
-      if (i % 2 === 1) doc.rect(startX, y, W, h).fill(SLATE_ROW);
+      // Alternating row background
+      if (i % 2 === 1) {
+        doc.save();
+        doc.rect(startX, y, W, ROW_H).fill(SLATE_ROW);
+        doc.restore();
+      }
 
-      let x = startX;
+      // Render each cell
+      let cx = startX;
       for (const c of columns) {
-        const value = c.render(r);
-        doc.fillColor(DARK).text(clamp(value, Math.floor(c.width / 4.6) + 8), x + 4, y + 7, {
-          width: c.width - 8,
-          align: c.align ?? "left",
-        });
-        x += c.width;
+        const value = clamp(c.render(r), Math.floor((c.width - 12) / 4.2) + 2);
+        doc.font("Helvetica").fontSize(8).fillColor(DARK);
+        if (c.align === "right") {
+          doc.text(value, cx, y + 6, { width: c.width - 8, align: "right" });
+        } else {
+          doc.text(value, cx + 6, y + 6, { width: c.width - 12, align: "left" });
+        }
+        cx += c.width;
       }
 
-      y += h;
+      y += ROW_H;
     }
 
     // Footer
+    doc.save();
     doc.fillColor(MUTED).font("Helvetica").fontSize(8);
     doc.text(
       `Generado por el sistema Multi-POS · ${new Date().toLocaleString("es-MX")}`,
@@ -115,6 +146,7 @@ export function buildReportPdf<T>({
       doc.page.height - 46,
       { width: W, align: "center" }
     );
+    doc.restore();
 
     doc.end();
   });
@@ -131,10 +163,10 @@ export function buildSalesReportPdf(
     title: "Reporte de ventas",
     summary: [{ label: "Ventas", value: String(rows.length) }, { label: "Total", value: money(total) }],
     columns: [
-      { header: "Folio", width: 50, render: (r) => String(r.folio) },
-      { header: "Fecha", width: 90, render: (r) => new Date(r.date).toLocaleString("es-MX") },
-      { header: "Sucursal", width: 110, render: (r) => r.locationName },
-      { header: "Cliente", width: 110, render: (r) => r.customerName ?? "—" },
+      { header: "Folio", width: 55, render: (r) => String(r.folio) },
+      { header: "Fecha", width: 120, render: (r) => new Date(r.date).toLocaleString("es-MX") },
+      { header: "Sucursal", width: 140, render: (r) => r.locationName },
+      { header: "Cliente", width: 120, render: (r) => r.customerName ?? "—" },
       { header: "Total", width: 80, align: "right", render: (r) => money(r.total) },
     ],
     rows,
@@ -152,13 +184,13 @@ export function buildCashReportPdf(
     title: "Corte de caja",
     summary: [{ label: "Sesiones", value: String(rows.length) }, { label: "Ventas", value: money(totalSales) }],
     columns: [
-      { header: "Caja", width: 70, render: (r) => r.registerName ?? "—" },
-      { header: "Sucursal", width: 100, render: (r) => r.locationName },
+      { header: "Caja", width: 80, render: (r) => r.registerName ?? "—" },
+      { header: "Sucursal", width: 110, render: (r) => r.locationName },
       { header: "Cajero", width: 100, render: (r) => r.employeeName ?? "—" },
-      { header: "Apertura", width: 85, render: (r) => (r.openedAt ? new Date(r.openedAt).toLocaleString("es-MX") : "—") },
-      { header: "Ventas", width: 60, align: "right", render: (r) => money(r.totalSales) },
-      { header: "Esperado", width: 65, align: "right", render: (r) => money(r.expectedCash) },
-      { header: "Dif.", width: 55, align: "right", render: (r) => (r.difference == null ? "—" : money(r.difference)) },
+      { header: "Apertura", width: 95, render: (r) => (r.openedAt ? new Date(r.openedAt).toLocaleString("es-MX") : "—") },
+      { header: "Ventas", width: 65, align: "right", render: (r) => money(r.totalSales) },
+      { header: "Esperado", width: 70, align: "right", render: (r) => money(r.expectedCash) },
+      { header: "Dif.", width: 60, align: "right", render: (r) => (r.difference == null ? "—" : money(r.difference)) },
     ],
     rows,
   });
@@ -175,11 +207,11 @@ export function buildOrdersReportPdf(
     summary: [{ label: "Pedidos", value: String(rows.length) }],
     columns: [
       { header: "Pedido", width: 60, render: (r) => `#${r.orderNumber}` },
-      { header: "Fecha", width: 90, render: (r) => new Date(r.createdAt).toLocaleString("es-MX") },
+      { header: "Fecha", width: 120, render: (r) => new Date(r.createdAt).toLocaleString("es-MX") },
       { header: "Cliente", width: 120, render: (r) => r.customerName ?? "—" },
-      { header: "Entrega", width: 80, render: (r) => (r.deliveryMethod === "delivery" ? "Domicilio" : "Sucursal") },
+      { header: "Entrega", width: 85, render: (r) => (r.deliveryMethod === "delivery" ? "Domicilio" : "Sucursal") },
       { header: "Estado", width: 80, render: (r) => r.status },
-      { header: "Total", width: 70, align: "right", render: (r) => money(r.total) },
+      { header: "Total", width: 75, align: "right", render: (r) => money(r.total) },
     ],
     rows,
   });
@@ -195,11 +227,11 @@ export function buildCustomersReportPdf(
     title: "Reporte de clientes",
     summary: [{ label: "Clientes", value: String(rows.length) }],
     columns: [
-      { header: "Cliente", width: 180, render: (r) => r.fullName },
-      { header: "Nº", width: 70, render: (r) => r.customerCode ?? "—" },
+      { header: "Cliente", width: 160, render: (r) => r.fullName },
+      { header: "Nº", width: 80, render: (r) => r.customerCode ?? "—" },
       { header: "Compras", width: 70, align: "right", render: (r) => String(r.salesCount) },
       { header: "Puntos", width: 70, align: "right", render: (r) => String(r.points) },
-      { header: "Total", width: 90, align: "right", render: (r) => money(r.totalSpent) },
+      { header: "Total", width: 100, align: "right", render: (r) => money(r.totalSpent) },
     ],
     rows,
   });

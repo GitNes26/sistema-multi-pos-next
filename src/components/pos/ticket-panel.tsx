@@ -7,6 +7,7 @@ import { usePosStore, selectCustomer } from "@/stores/pos-store";
 import { usePosTotals } from "@/hooks/use-pos-totals";
 import type { PosLineItem } from "@/types/pos";
 import { money } from "@/lib/pos/money";
+import { pointsToMoney } from "@/lib/pos/pricing";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AnimatedNumber } from "@/components/base/animated-number";
@@ -33,6 +34,7 @@ export function TicketPanel({
 
   const t = usePosTotals();
   const customer = selectCustomer(customerId);
+  const loyalty = usePosStore((s) => s.loyalty);
 
   const listRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -158,7 +160,7 @@ export function TicketPanel({
               <span className="min-w-0 flex-1 truncate text-sm font-medium">{customer.fullName}</span>
               <CheckCircle2 className="size-4 shrink-0 text-accent-foreground" />
               <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-600">
-                {Math.floor(customer.points)} pts
+                {money(pointsToMoney(customer.points, loyalty.pointValue))} · {Math.floor(customer.points)} pts
               </span>
             </motion.button>
           )}

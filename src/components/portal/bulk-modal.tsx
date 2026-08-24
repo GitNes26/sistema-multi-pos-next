@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { usePortalStore } from "@/stores/portal-store";
 import { money, round2, round3, snapToStep } from "@/lib/pos/money";
+import { swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomSheet } from "@/components/portal/bottom-sheet";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Numpad, type NumpadKey } from "@/components/pos/numpad";
 import { cn } from "@/lib/utils";
 
 interface UnitOption {
@@ -28,6 +30,10 @@ export function BulkModal() {
   const [unitId, setUnitId] = useState<string>("");
   const [qty, setQty] = useState<number>(0);
   const [amount, setAmount] = useState<string>("");
+  const [editing, setEditing] = useState(false);
+  const [editStr, setEditStr] = useState("");
+  const repeatTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const repeatTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const units: UnitOption[] = useMemo(() => {
     if (!product?.bulk) return [];
@@ -67,33 +73,86 @@ export function BulkModal() {
       setQty(product?.bulk?.minQty ?? 0);
       setAmount("");
       setMode("qty");
+      setEditing(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.unitId]);
+
+  useEffect(() => {
+    return () => {
+      if (repeatTimeout.current) clearTimeout(repeatTimeout.current);
+      if (repeatTimer.current) clearInterval(repeatTimer.current);
+    };
+  }, []);
 
   if (!product || !product.bulk) return null;
 
   const minQty = selected ? (product.bulk.allowSplit && selected.unitId === product.bulk.split?.unitId ? 1 : product.bulk.minQty) : 0;
   const effectiveQty = mode === "amount" && selected ? round3(Number(amount) / selected.price) : qty;
   const total = selected ? round2(effectiveQty * selected.price) : 0;
+  const available = product.trackInventory ? Math.floor(product.stock) : null;
 
   const changeQty = (delta: number) => {
     if (!selected) return;
     const step = selected.step || 0.01;
-    const next = snapToStep(Math.max(minQty, (mode === "amount" ? effectiveQty : qty) + delta), step);
+    let next = snapToStep(Math.max(minQty, (mode === "amount" ? effectiveQty : qty) + delta), step);
+    if (available != null) next = Math.min(next, available);
     setMode("qty");
     setQty(next);
   };
 
+  // Long-press en +/-: un paso inmediato y luego incremento continuo.
+  const stopRepeat = () => {
+    if (repeatTimeout.current) clearTimeout(repeatTimeout.current);
+    if (repeatTimer.current) clearInterval(repeatTimer.current);
+    repeatTimeout.current = null;
+    repeatTimer.current = null;
+  };
+
+  const startRepeat = (delta: number) => {
+    changeQty(delta);
+    repeatTimeout.current = setTimeout(() => {
+      repeatTimer.current = setInterval(() => changeQty(delta), 110);
+    }, 480);
+  };
+
+  const startEdit = () => {
+    setEditStr(String(round3(effectiveQty)));
+    setEditing(true);
+  };
+
+  const onNumpadKey = (key: NumpadKey) => {
+    if (key === "clear") return setEditStr("");
+    if (key === "backspace") return setEditStr((s) => s.slice(0, -1));
+    if (key === ".") {
+      if (!editStr.includes(".")) setEditStr(editStr === "" ? "0." : editStr + ".");
+      return;
+    }
+    setEditStr(editStr + key);
+  };
+
+  const commitEdit = () => {
+    const val = parseFloat(editStr.replace(",", ".")) || 0;
+    let next = round3(Math.max(minQty, val));
+    if (available != null) next = Math.min(next, available);
+    setQty(next);
+    setEditing(false);
+  };
+
   const handleAdd = () => {
     if (!product || !selected || effectiveQty <= 0) return;
-    addBulk(product, {
+    const res = addBulk(product, {
       qty: effectiveQty,
       unitId: selected.unitId,
       unitName: selected.unitName,
       unitAbbrev: selected.unitAbbrev,
       pricePerUnit: selected.price,
     });
+    if (res.added <= 0) {
+      swalToast("Sin stock disponible", "info");
+    } else if (res.limited) {
+      swalToast(`Cantidad limitada a ${res.added} ${selected.unitAbbrev} por stock`, "info");
+    }
     setBulkProduct(null);
   };
 
@@ -148,22 +207,49 @@ export function BulkModal() {
           </ToggleGroup>
 
           {mode === "qty" ? (
-            <div className="flex items-center justify-center gap-3">
-              <Button variant="outline" size="icon" onClick={() => changeQty(-(selected?.step ?? 0.01))}>
-                <Minus className="size-4" />
-              </Button>
-              <div className="text-center">
-                <span className="block text-2xl font-bold tabular-nums">{round3(effectiveQty)}</span>
-                <span className="text-xs text-muted-foreground">{selected?.unitAbbrev}</span>
+            editing ? (
+              <div className="space-y-2">
+                <div className="rounded-xl border bg-card px-3 py-2 text-center">
+                  <span className="text-2xl font-bold tabular-nums">{editStr || "0"}</span>
+                  <span className="text-xs text-muted-foreground"> {selected?.unitAbbrev}</span>
+                </div>
+                <Numpad onKey={onNumpadKey} onEnter={commitEdit} />
+                <Button className="w-full" onClick={commitEdit}>Listo</Button>
               </div>
-              <Button variant="outline" size="icon" onClick={() => changeQty(selected?.step ?? 0.01)}>
-                <Plus className="size-4" />
-              </Button>
-            </div>
+            ) : (
+              <div className="flex items-center justify-center gap-3">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onPointerDown={() => startRepeat(-(selected?.step ?? 0.01))}
+                  onPointerUp={stopRepeat}
+                  onPointerLeave={stopRepeat}
+                  onPointerCancel={stopRepeat}
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  <Minus className="size-4" />
+                </Button>
+                <button type="button" onClick={startEdit} className="text-center active:scale-95">
+                  <span className="block text-2xl font-bold tabular-nums">{round3(effectiveQty)}</span>
+                  <span className="text-xs text-muted-foreground">{selected?.unitAbbrev} · tocar para editar</span>
+                </button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onPointerDown={() => startRepeat(selected?.step ?? 0.01)}
+                  onPointerUp={stopRepeat}
+                  onPointerLeave={stopRepeat}
+                  onPointerCancel={stopRepeat}
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  <Plus className="size-4" />
+                </Button>
+              </div>
+            )
           ) : (
             <div>
               <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                ¿Cuánto quieres gastar? ({selected?.unitAbbrev})
+                ¿Cuánto quieres gastar? ($/{selected?.unitAbbrev})
               </p>
               <Input
                 type="number"
@@ -184,6 +270,14 @@ export function BulkModal() {
                 {selected ? money(selected.price) : "—"}/{selected?.unitAbbrev}
               </span>
             </div>
+            {available != null && (
+              <div className="mt-1 flex justify-between text-muted-foreground">
+                <span>Disponible</span>
+                <span className={cn(effectiveQty > available && "font-semibold text-destructive")}>
+                  {available} {selected?.unitAbbrev}
+                </span>
+              </div>
+            )}
             <div className="mt-1 flex justify-between text-base font-semibold">
               <span>Total</span>
               <span>{money(total)}</span>

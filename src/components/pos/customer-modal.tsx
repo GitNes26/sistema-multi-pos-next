@@ -6,6 +6,8 @@ import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePosStore } from "@/stores/pos-store";
+import { money } from "@/lib/pos/money";
+import { pointsToMoney } from "@/lib/pos/pricing";
 
 interface CustomerModalProps {
   open: boolean;
@@ -16,6 +18,7 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
   const customers = usePosStore((s) => s.customers);
   const customerId = usePosStore((s) => s.customerId);
   const setCustomer = usePosStore((s) => s.setCustomer);
+  const loyalty = usePosStore((s) => s.loyalty);
   const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
@@ -96,8 +99,11 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
                       {c.phone ?? c.email ?? c.customerCode ?? "—"}
                     </span>
                   </span>
-                  <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
-                    {Math.floor(c.points)} pts
+                  <span className="flex shrink-0 flex-col items-end">
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
+                      {money(pointsToMoney(c.points, loyalty.pointValue))}
+                    </span>
+                    <span className="mt-0.5 text-[10px] text-muted-foreground">{Math.floor(c.points)} pts</span>
                   </span>
                 </button>
               ))

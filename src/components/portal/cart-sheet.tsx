@@ -118,11 +118,13 @@ export function CartSheet() {
                   variant="outline"
                   size="icon-xs"
                   onClick={() => setQty(item.key, snapToStep(item.qty + item.step, item.step))}
+                  disabled={item.trackInventory && item.qty >= item.stock}
                 >
                   <Plus className="size-3" />
                 </Button>
               </div>
               <span className="text-xs text-muted-foreground">
+                {item.trackInventory ? `${Math.floor(item.stock)} disp. · ` : ""}
                 {money(item.unitPrice)}/{item.unitAbbrev}
               </span>
             </div>

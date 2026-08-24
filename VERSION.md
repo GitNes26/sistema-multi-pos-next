@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.2.1.1] — 2026-08-24
+- **Tipo:** `ui` (Revision)
+- ui: se rediseño la landingPage
+
 ### [0.2.1.0] — 2026-08-24
 - **Tipo:** `chore` (Revision)
 - Inicialización del registro de versiones.

@@ -442,6 +442,7 @@ export interface PortalOrderInput {
   longitude?: number | null;
   paymentMethod: string;
   paymentReference?: string | null;
+  pointsRedeemed?: number;
   subtotal: number;
   discount: number;
   deliveryFee?: number;
@@ -623,6 +624,17 @@ export async function createPortalOrder(
     }
   }
 
+  const pointsRedeemed = Math.max(0, Math.floor(input.pointsRedeemed ?? 0));
+  const orgLoyalty = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { pointValue: true },
+  });
+  const pointValue = toNum(orgLoyalty?.pointValue ?? null) || 0.01;
+  const pointsValue = round2(pointsRedeemed * pointValue);
+  if (pointsRedeemed > 0 && pointsRedeemed > toNum(customer.points)) {
+    throw new PortalError("No tienes suficientes puntos");
+  }
+
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
       data: {
@@ -635,6 +647,8 @@ export async function createPortalOrder(
         discount: round2(input.discount),
         deliveryFee: round2(input.deliveryFee ?? 0),
         total: round2(input.total),
+        pointsRedeemed,
+        pointsValue,
         notes: input.notes ?? null,
         address: input.address ?? null,
         latitude: input.latitude != null ? input.latitude : null,
@@ -668,6 +682,23 @@ export async function createPortalOrder(
         userId: customer.userId,
       },
     });
+
+    // Deducción de puntos por redención
+    if (pointsRedeemed > 0) {
+      await tx.customer.update({
+        where: { id: customerId },
+        data: { points: { decrement: pointsRedeemed } },
+      });
+      await tx.loyaltyTransaction.create({
+        data: {
+          organizationId,
+          customerId,
+          kind: "redeem",
+          points: -pointsRedeemed,
+          note: `Canje en pedido #${Number(created.orderNumber)}`,
+        },
+      });
+    }
 
     return created;
   });
@@ -719,21 +750,26 @@ export async function cancelPortalOrder(
 // ── Lealtad (13.12) ──────────────────────────────────────────────────────────
 
 export async function getLoyalty(organizationId: string, customerId: string) {
-  const [customer, transactions] = await Promise.all([
+  const [customer, org, transactions] = await Promise.all([
     prisma.customer.findUnique({ where: { id: customerId }, select: { points: true } }),
+    prisma.organization.findUnique({ where: { id: organizationId }, select: { pointValue: true, loyaltyEnabled: true } }),
     prisma.loyaltyTransaction.findMany({
       where: { organizationId, customerId },
       orderBy: { createdAt: "desc" },
       take: 200,
+      include: { sale: { select: { saleNumber: true, locationSaleNumber: true } } },
     }),
   ]);
   return {
     points: toNum(customer?.points ?? null),
+    pointValue: toNum(org?.pointValue ?? null) || 0.01,
+    loyaltyEnabled: org?.loyaltyEnabled ?? true,
     transactions: transactions.map((t) => ({
       id: t.id,
       kind: t.kind,
       points: toNum(t.points),
       note: t.note,
+      ticket: t.sale ? Number(t.sale.locationSaleNumber ?? t.sale.saleNumber) : null,
       createdAt: t.createdAt.toISOString(),
     })),
   };
@@ -770,6 +806,82 @@ export async function updatePortalProfile(
   ]);
 
   return (await getPortalCustomer(organizationId, customer.userId))!;
+}
+
+// ── Destinos guardados (direcciones del cliente) ──────────────────────────────
+
+export interface CustomerAddressView {
+  id: string;
+  label: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  notes: string | null;
+}
+
+export interface CustomerAddressInput {
+  label: string;
+  address: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  notes?: string | null;
+}
+
+export async function listCustomerAddresses(
+  organizationId: string,
+  customerId: string
+): Promise<CustomerAddressView[]> {
+  const rows = await prisma.customerAddress.findMany({
+    where: { organizationId, customerId },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.map((a) => ({
+    id: a.id,
+    label: a.label,
+    address: a.address,
+    latitude: a.latitude != null ? toNum(a.latitude) : null,
+    longitude: a.longitude != null ? toNum(a.longitude) : null,
+    notes: a.notes,
+  }));
+}
+
+export async function createCustomerAddress(
+  organizationId: string,
+  customerId: string,
+  input: CustomerAddressInput
+): Promise<CustomerAddressView> {
+  if (!input.label.trim()) throw new PortalError("Ponle un nombre al destino");
+  if (!input.address.trim()) throw new PortalError("Ingresa una dirección");
+
+  const row = await prisma.customerAddress.create({
+    data: {
+      organizationId,
+      customerId,
+      label: input.label.trim(),
+      address: input.address.trim(),
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      notes: input.notes?.trim() || null,
+    },
+  });
+  return {
+    id: row.id,
+    label: row.label,
+    address: row.address,
+    latitude: row.latitude != null ? toNum(row.latitude) : null,
+    longitude: row.longitude != null ? toNum(row.longitude) : null,
+    notes: row.notes,
+  };
+}
+
+export async function deleteCustomerAddress(
+  organizationId: string,
+  customerId: string,
+  addressId: string
+): Promise<void> {
+  await prisma.customerAddress.deleteMany({
+    where: { id: addressId, organizationId, customerId },
+  });
 }
 
 // ── Favoritos (13.9) ─────────────────────────────────────────────────────────

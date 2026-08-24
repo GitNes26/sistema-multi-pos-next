@@ -1,56 +1,71 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { ChevronRight, Megaphone, Sparkles, Package, ShoppingBag, ArrowRight } from "lucide-react";
-import { portalApi } from "@/lib/portal/client";
-import type { PortalHomeData } from "@/lib/portal/server";
-import { money } from "@/lib/pos/money";
-import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, type OrderStatusKey } from "@/lib/orders/client";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card } from "@/components/ui/card";
-import { TapScale } from "@/components/shared/tap-scale";
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { motion } from "framer-motion"
+import {
+  ChevronRight,
+  Megaphone,
+  Sparkles,
+  Package,
+  ShoppingBag,
+  ArrowRight,
+} from "lucide-react"
+import { portalApi } from "@/lib/portal/client"
+import type { PortalHomeData } from "@/lib/portal/server"
+import { money, qty } from "@/lib/pos/money"
+import {
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_COLORS,
+  type OrderStatusKey,
+} from "@/lib/orders/client"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Card } from "@/components/ui/card"
+import { TapScale } from "@/components/shared/tap-scale"
 
 const PUB_TYPE_LABELS: Record<string, string> = {
   product_new: "Nuevo",
   promotion: "Promoción",
   notice: "Aviso",
-};
+}
 
 const PUB_TYPE_COLORS: Record<string, string> = {
   product_new: "bg-emerald-500 text-white",
   promotion: "bg-amber-500 text-white",
   notice: "bg-sky-500 text-white",
-};
+}
 
 const container = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-};
+}
 const item = {
   hidden: { opacity: 0, y: 12 },
   show: { opacity: 1, y: 0 },
-};
+}
 
 export function HomeClient() {
-  const [data, setData] = useState<PortalHomeData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<PortalHomeData | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let active = true;
+    let active = true
     portalApi
       .home()
       .then((d) => active && setData(d))
-      .catch((e) => active && setError(e instanceof Error ? e.message : "Error"));
+      .catch(
+        (e) => active && setError(e instanceof Error ? e.message : "Error")
+      )
     return () => {
-      active = false;
-    };
-  }, []);
+      active = false
+    }
+  }, [])
 
   if (error) {
-    return <p className="p-6 text-center text-sm text-muted-foreground">{error}</p>;
+    return (
+      <p className="p-6 text-center text-sm text-muted-foreground">{error}</p>
+    )
   }
   if (!data) {
     return (
@@ -59,11 +74,11 @@ export function HomeClient() {
         <Skeleton className="h-36 w-full rounded-2xl" />
         <Skeleton className="h-36 w-full rounded-2xl" />
       </div>
-    );
+    )
   }
 
-  const activeOrders = data.activeOrders.filter((o) => o.status !== "cancelled");
-  const banners = data.publications.filter((p) => p.imageUrl);
+  const activeOrders = data.activeOrders.filter((o) => o.status !== "cancelled")
+  const banners = data.publications.filter((p) => p.imageUrl)
 
   return (
     <motion.div
@@ -80,14 +95,17 @@ export function HomeClient() {
             <div className="absolute -bottom-6 -left-6 size-24 rounded-full bg-white/5" />
             <div className="relative flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium opacity-80">Puntos acumulados</p>
+                <p className="text-xs font-medium opacity-80">
+                  Puntos acumulados
+                </p>
                 <motion.p
                   className="mt-1 text-3xl font-extrabold tracking-tight"
                   initial={{ scale: 0.8 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200 }}
                 >
-                  {money(data.points)}
+                  {qty(data.points)}
+                  <small className="text-xs">pts</small>
                 </motion.p>
               </div>
               <div className="flex size-10 items-center justify-center rounded-xl bg-white/15">
@@ -105,20 +123,30 @@ export function HomeClient() {
           <div className="space-y-2">
             {activeOrders.map((o) => (
               <TapScale key={o.id}>
-                <Link href={`/portal/orders/${o.id}`} className="flex items-center justify-between rounded-xl border border-border/60 bg-card p-3.5 shadow-sm">
+                <Link
+                  href={`/portal/orders/${o.id}`}
+                  className="flex items-center justify-between rounded-xl border border-border/60 bg-card p-3.5 shadow-sm"
+                >
                   <div className="flex items-center gap-3">
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <Package className="size-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold">Pedido #{o.orderNumber}</p>
+                      <p className="text-sm font-semibold">
+                        Pedido #{o.orderNumber}
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        {o.itemsCount} producto{o.itemsCount !== 1 ? "s" : ""} · {money(o.total)}
+                        {o.itemsCount} producto{o.itemsCount !== 1 ? "s" : ""} ·{" "}
+                        {money(o.total)}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge className={ORDER_STATUS_COLORS[o.status as OrderStatusKey]}>
+                    <Badge
+                      className={
+                        ORDER_STATUS_COLORS[o.status as OrderStatusKey]
+                      }
+                    >
                       {ORDER_STATUS_LABELS[o.status as OrderStatusKey]}
                     </Badge>
                     <ChevronRight className="size-4 text-muted-foreground" />
@@ -135,14 +163,25 @@ export function HomeClient() {
         <motion.section variants={item}>
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
             {banners.map((pub) => (
-              <div key={pub.id} className="relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl">
+              <div
+                key={pub.id}
+                className="relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={pub.imageUrl ?? ""} alt={pub.title} className="h-full w-full object-cover" />
+                <img
+                  src={pub.imageUrl ?? ""}
+                  alt={pub.title}
+                  className="h-full w-full object-cover"
+                />
                 <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-3.5">
-                  <Badge className={PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}>
+                  <Badge
+                    className={PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}
+                  >
                     {PUB_TYPE_LABELS[pub.type] ?? pub.type}
                   </Badge>
-                  <p className="mt-1.5 line-clamp-2 text-sm font-bold text-white">{pub.title}</p>
+                  <p className="mt-1.5 line-clamp-2 text-sm font-bold text-white">
+                    {pub.title}
+                  </p>
                 </div>
               </div>
             ))}
@@ -158,15 +197,26 @@ export function HomeClient() {
           </h2>
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
             {data.promotions.map((p) => (
-              <Card key={p.id} className="w-56 shrink-0 overflow-hidden rounded-2xl border-border/50">
+              <Card
+                key={p.id}
+                className="w-56 shrink-0 overflow-hidden rounded-2xl border-border/50"
+              >
                 {p.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.imageUrl} alt={p.name} className="h-28 w-full object-cover" />
+                  <img
+                    src={p.imageUrl}
+                    alt={p.name}
+                    className="h-28 w-full object-cover"
+                  />
                 )}
                 <div className="p-3">
-                  <p className="text-sm font-semibold leading-tight">{p.name}</p>
+                  <p className="text-sm font-semibold leading-tight">
+                    {p.name}
+                  </p>
                   {p.description && (
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{p.description}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {p.description}
+                    </p>
                   )}
                 </div>
               </Card>
@@ -180,23 +230,35 @@ export function HomeClient() {
         <motion.section variants={item}>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold">Productos nuevos</h2>
-            <Link href="/portal/store" className="flex items-center gap-0.5 text-xs text-primary font-medium">
+            <Link
+              href="/portal/store"
+              className="flex items-center gap-0.5 text-xs text-primary font-medium"
+            >
               Ver tienda <ArrowRight className="size-3" />
             </Link>
           </div>
           <div className="grid grid-cols-4 gap-2">
             {data.newProducts.slice(0, 8).map((p) => (
               <TapScale key={p.id}>
-                <Link href="/portal/store" className="flex flex-col items-center gap-1 text-center">
+                <Link
+                  href="/portal/store"
+                  className="flex flex-col items-center gap-1 text-center"
+                >
                   <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border bg-muted">
                     {p.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover" />
+                      <img
+                        src={p.imageUrl}
+                        alt={p.name}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       <ShoppingBag className="size-5 text-muted-foreground/30" />
                     )}
                   </div>
-                  <span className="line-clamp-2 text-[11px] leading-tight">{p.name}</span>
+                  <span className="line-clamp-2 text-[11px] leading-tight">
+                    {p.name}
+                  </span>
                 </Link>
               </TapScale>
             ))}
@@ -212,19 +274,34 @@ export function HomeClient() {
           </h2>
           <div className="space-y-2">
             {data.publications.map((pub) => (
-              <div key={pub.id} className="flex items-start gap-3 rounded-xl border border-border/60 bg-card p-3.5 shadow-sm">
+              <div
+                key={pub.id}
+                className="flex items-start gap-3 rounded-xl border border-border/60 bg-card p-3.5 shadow-sm"
+              >
                 {pub.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={pub.imageUrl} alt={pub.title} className="size-12 shrink-0 rounded-xl object-cover" />
+                  <img
+                    src={pub.imageUrl}
+                    alt={pub.title}
+                    className="size-12 shrink-0 rounded-xl object-cover"
+                  />
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-semibold">{pub.title}</p>
-                    <Badge className={PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}>
+                    <p className="truncate text-sm font-semibold">
+                      {pub.title}
+                    </p>
+                    <Badge
+                      className={PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}
+                    >
                       {PUB_TYPE_LABELS[pub.type] ?? pub.type}
                     </Badge>
                   </div>
-                  {pub.content && <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{pub.content}</p>}
+                  {pub.content && (
+                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                      {pub.content}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -232,5 +309,5 @@ export function HomeClient() {
         </motion.section>
       )}
     </motion.div>
-  );
+  )
 }

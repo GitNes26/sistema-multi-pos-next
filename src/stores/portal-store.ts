@@ -51,8 +51,8 @@ interface PortalState {
   setBulkProduct: (product: PortalProduct | null) => void;
   setNavOrder: (order: NavItemId[]) => void;
 
-  addStandard: (product: PortalProduct, variant: PortalVariantOption, qty?: number) => void;
-  addBulk: (product: PortalProduct, opts: BulkInputOptions) => void;
+  addStandard: (product: PortalProduct, variant: PortalVariantOption, qty?: number) => { added: number; limited: boolean };
+  addBulk: (product: PortalProduct, opts: BulkInputOptions) => { added: number; limited: boolean };
   setQty: (key: string, qty: number) => void;
   setComment: (key: string, comment: string) => void;
   removeItem: (key: string) => void;
@@ -70,7 +70,7 @@ function bulkKey(productId: string, unitId: string): string {
   return `b::${productId}::${unitId}`;
 }
 
-export const usePortalStore = create<PortalState>()((set) => ({
+export const usePortalStore = create<PortalState>()((set, get) => ({
   categories: [],
   products: [],
   activeCategory: null,
@@ -89,14 +89,20 @@ export const usePortalStore = create<PortalState>()((set) => ({
   setNavOrder: (navOrder) => set({ navOrder }),
 
   addStandard: (product, variant, qty = 1) => {
+    const key = standardKey(variant.id);
+    const existing = get().items.find((i) => i.key === key);
+    const variantName = variant.name === "Estándar" ? null : variant.name;
+    const track = product.trackInventory;
+    const already = existing ? existing.qty : 0;
+    const maxAllowed = track ? Math.max(0, variant.stock - already) : Number.POSITIVE_INFINITY;
+    const addQty = round3(Math.min(Math.max(1, qty), maxAllowed));
+    if (addQty <= 0) return { added: 0, limited: true };
+
     set((s) => {
-      const key = standardKey(variant.id);
-      const existing = s.items.find((i) => i.key === key);
-      const variantName = variant.name === "Estándar" ? null : variant.name;
       if (existing) {
         return {
           items: s.items.map((i) =>
-            i.key === key ? { ...i, qty: round3(i.qty + Math.max(1, qty)) } : i
+            i.key === key ? { ...i, qty: round3(i.qty + addQty) } : i
           ),
         };
       }
@@ -111,20 +117,28 @@ export const usePortalStore = create<PortalState>()((set) => ({
         unitPrice: variant.price,
         unitAbbrev: "pza",
         unitId: null,
-        qty: Math.max(1, qty),
+        qty: addQty,
         taxRate: product.taxRate,
-        trackInventory: product.trackInventory,
+        trackInventory: track,
         stock: variant.stock,
         step: 1,
       };
       return { items: [...s.items, line] };
     });
+    return { added: addQty, limited: track && addQty < Math.max(1, qty) };
   },
 
   addBulk: (product, opts) => {
+    const key = bulkKey(product.productId, opts.unitId);
+    const existing = get().items.find((i) => i.key === key);
+    const track = product.trackInventory;
+    const already = existing ? existing.qty : 0;
+    const available = track ? product.stock : Number.POSITIVE_INFINITY;
+    const maxAllowed = Math.max(0, available - already);
+    const addQty = round3(Math.min(round3(opts.qty), maxAllowed));
+    if (addQty <= 0) return { added: 0, limited: true };
+
     set((s) => {
-      const key = bulkKey(product.productId, opts.unitId);
-      const qty = round3(opts.qty);
       const line: PortalCartItem = {
         key,
         productId: product.productId,
@@ -136,23 +150,27 @@ export const usePortalStore = create<PortalState>()((set) => ({
         unitPrice: opts.pricePerUnit,
         unitAbbrev: opts.unitAbbrev,
         unitId: opts.unitId,
-        qty,
+        qty: addQty,
         taxRate: product.taxRate,
-        trackInventory: product.trackInventory,
-        stock: 0,
+        trackInventory: track,
+        stock: track ? product.stock : 0,
         step: product.bulk?.step ?? 0.01,
-        bulkQuantityDisplay: `${round3(qty)} ${opts.unitAbbrev} × ${opts.pricePerUnit.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}/${opts.unitAbbrev}`,
+        bulkQuantityDisplay: `${round3(addQty)} ${opts.unitAbbrev} × ${opts.pricePerUnit.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}/${opts.unitAbbrev}`,
       };
-      const existing = s.items.find((i) => i.key === key);
       return {
         items: existing ? s.items.map((i) => (i.key === key ? line : i)) : [...s.items, line],
       };
     });
+    return { added: addQty, limited: track && addQty < round3(opts.qty) };
   },
 
   setQty: (key, qty) =>
     set((s) => ({
-      items: s.items.map((i) => (i.key === key ? { ...i, qty: round3(qty) } : i)),
+      items: s.items.map((i) => {
+        if (i.key !== key) return i;
+        const capped = i.trackInventory ? Math.min(qty, i.stock) : qty;
+        return { ...i, qty: round3(capped) };
+      }),
     })),
 
   setComment: (key, comment) =>

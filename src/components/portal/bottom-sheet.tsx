@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils"
 import {
   Drawer,
   DrawerPortal,
-  DrawerOverlay,
   DrawerContent,
   DrawerHeader,
   DrawerFooter,
@@ -39,7 +38,7 @@ export function BottomSheet({
   bodyClassName,
   showCloseButton = true,
 }: BottomSheetProps) {
-  const [snap, setSnap] = React.useState<number | string | null>(null)
+  const [snap, setSnap] = React.useState<number | string | null>(0.85)
 
   return (
     <Drawer
@@ -48,18 +47,19 @@ export function BottomSheet({
       snapPoints={[0.85, 1]}
       activeSnapPoint={snap}
       setActiveSnapPoint={setSnap}
+      fadeFromIndex={0}
     >
       <DrawerPortal>
-        <DrawerOverlay className="bg-black/50 supports-backdrop-filter:backdrop-blur-sm" />
         <DrawerContent
+          overlayClassName="bg-black/60 backdrop-blur-md supports-backdrop-filter:backdrop-blur-md"
           className={cn(
-            "mx-auto flex max-h-[92vh] flex-col rounded-t-2xl border-t border-border/30 bg-background shadow-[0_-8px_30px_rgba(0,0,0,0.12)]",
+            "mx-auto flex max-h-[92vh] flex-col rounded-t-3xl border-t border-border/30 bg-background shadow-[0_-8px_30px_rgba(0,0,0,0.18)]",
             snap === 1 && "rounded-none",
             className
           )}
         >
           {/* Drag handle */}
-          <div className="mx-auto mt-3 mb-1 flex h-1 w-10 shrink-0 cursor-grab items-center justify-center rounded-full bg-muted-foreground/25 active:bg-muted-foreground/40" />
+          <div className="mx-auto mt-2.5 mb-1 flex h-1.5 w-12 shrink-0 cursor-grab touch-none items-center justify-center rounded-full bg-muted-foreground/25 active:cursor-grabbing active:bg-muted-foreground/40" />
 
           {/* Header */}
           {(title || showCloseButton) && (
