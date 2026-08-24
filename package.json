@@ -1,6 +1,6 @@
 {
   "name": "sistema-multi-pos-react-node-chadcnui",
-  "version": "0.2.0.6",
+  "version": "0.2.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -13,7 +13,10 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "version:bump": "node scripts/version-bump.mjs",
+    "version:init": "node scripts/version-bump.mjs --init",
+    "prepare": "husky"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -33,6 +36,7 @@
     "embla-carousel-react": "^8.6.0",
     "exceljs": "^4.4.0",
     "framer-motion": "^11.18.2",
+    "html5-qrcode": "^2.3.8",
     "input-otp": "^1.4.2",
     "lottie-react": "^3.1.0",
     "lucide-react": "^1.31.0",
@@ -68,6 +72,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.23",
     "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
     "prettier": "^3.9.6",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",

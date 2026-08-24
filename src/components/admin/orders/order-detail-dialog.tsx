@@ -27,6 +27,7 @@ import {
 } from "@/lib/orders/client";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { DeliveryConfirmDialog } from "./delivery-confirm-dialog";
 
 const FLOW: OrderStatusKey[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "at_destination", "delivered"];
 
@@ -37,7 +38,7 @@ function getNextAction(status: string, isDelivery: boolean): { label: string; ic
   if (status === "ready") {
     return isDelivery
       ? { label: "Enviar a domicilio", icon: <Truck className="size-4" />, color: "bg-violet-600 hover:bg-violet-700" }
-      : { label: "Marcar entregado", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" };
+      : { label: "Confirmar recogida (PIN/QR)", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" };
   }
   if (status === "in_transit") return { label: "Confirmar llegada", icon: <MapPin className="size-4" />, color: "bg-purple-600 hover:bg-purple-700" };
   if (status === "at_destination") return { label: "Confirmar entrega (PIN/QR)", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" };
@@ -65,6 +66,7 @@ export function OrderDetailDialog({
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const load = async () => {
     try {
@@ -110,17 +112,11 @@ export function OrderDetailDialog({
         const res = await fetch(`/api/orders/${order.id}/confirm-arrival`, { method: "POST" });
         const data = await res.json();
         if (!data.ok) throw new Error(data.error);
-      } else if (order.status === "at_destination") {
-        // Confirm delivery → needs PIN from employee
-        const pin = window.prompt("Ingresa el PIN de entrega que el cliente muestra en su teléfono:");
-        if (!pin) { setSaving(false); return; }
-        const res = await fetch(`/api/orders/${order.id}/confirm-delivery`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pin: pin.trim() }),
-        });
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.error);
+      } else if (order.status === "at_destination" || (order.status === "ready" && !isDelivery)) {
+        // Confirmación con PIN/QR (domicilio en destino o recogida en sucursal)
+        setConfirmOpen(true);
+        setSaving(false);
+        return;
       } else {
         const targetStatus = getNextStatus(order.status, isDelivery);
         if (targetStatus) await ordersApi.updateStatus(order.id, targetStatus);
@@ -136,7 +132,8 @@ export function OrderDetailDialog({
   };
 
   return (
-    <DialogComponent open={open} onOpenChange={handleClose} size="lg" title="Detalle del pedido">
+    <>
+      <DialogComponent open={open} onOpenChange={handleClose} size="lg" title="Detalle del pedido">
       {loading || !order ? (
         <div className="space-y-3 py-4">
           <div className="h-6 w-32 animate-pulse rounded bg-muted" />
@@ -290,5 +287,21 @@ export function OrderDetailDialog({
         </div>
       )}
     </DialogComponent>
+
+      {order && (
+        <DeliveryConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          orderId={order.id}
+          orderNumber={order.orderNumber}
+          mode={order.deliveryMethod === "delivery" ? "delivery" : "pickup"}
+          onConfirmed={() => {
+            swalToast(order.deliveryMethod === "delivery" ? "Pedido entregado" : "Pedido recogido");
+            onChanged?.();
+            setOpen(false);
+          }}
+        />
+      )}
+    </>
   );
 }

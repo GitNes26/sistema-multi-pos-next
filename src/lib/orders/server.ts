@@ -246,7 +246,18 @@ export async function updateOrderStatus(
       throw new Error(`Transición inválida: ${current.status} → ${status}`);
     }
 
-    await tx.order.update({ where: { id }, data: { status: status as $Enums.OrderStatus } });
+    // Para recoger en sucursal: generar PIN + QR al quedar listo el pedido.
+    const isPickupReady = current.deliveryMethod === "pickup" && status === "ready";
+
+    await tx.order.update({
+      where: { id },
+      data: {
+        status: status as $Enums.OrderStatus,
+        ...(isPickupReady
+          ? { deliveryPin: generatePin(), deliveryQrToken: crypto.randomUUID() }
+          : {}),
+      },
+    });
     await tx.orderStatusHistory.create({
       data: {
         orderId: id,

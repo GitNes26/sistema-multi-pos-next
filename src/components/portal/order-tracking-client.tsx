@@ -188,7 +188,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
               {order.status === "confirmed" && "Pedido confirmado, prepararemos tu pedido pronto"}
               {order.status === "preparing" && "Estamos preparando tu pedido con cariño"}
               {order.status === "ready" && isDelivery && "Tu pedido está listo, pronto saldrá a domicilio"}
-              {order.status === "ready" && !isDelivery && "Tu pedido está listo para recoger"}
+              {order.status === "ready" && !isDelivery && "Tu pedido está listo — muestra el PIN o QR en sucursal para recogerlo"}
               {order.status === "in_transit" && "Tu pedido va en camino a tu dirección"}
               {order.status === "at_destination" && "El repartidor llegó a tu domicilio — muestra el PIN o QR para recibir tu pedido"}
               {order.status === "delivered" && "¡Pedido entregado! Esperamos que lo disfrutes"}
@@ -236,22 +236,25 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
         )}
       </motion.div>
 
-      {/* Delivery confirmation — PIN + QR when at_destination */}
+      {/* Delivery confirmation — PIN + QR (domicilio en destino o recogida en sucursal) */}
       <AnimatePresence>
-        {order.status === "at_destination" && order.deliveryPin && (
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            animate="show"
-            exit={{ opacity: 0, height: 0 }}
-          >
-            <DeliveryConfirmPanel
-              pin={order.deliveryPin}
-              qrToken={order.deliveryQrToken}
-              orderNumber={order.orderNumber}
-            />
-          </motion.div>
-        )}
+        {((order.status === "at_destination") ||
+          (order.status === "ready" && !isDelivery)) &&
+          order.deliveryPin && (
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <DeliveryConfirmPanel
+                pin={order.deliveryPin}
+                qrToken={order.deliveryQrToken}
+                orderNumber={order.orderNumber}
+                mode={isDelivery ? "delivery" : "pickup"}
+              />
+            </motion.div>
+          )}
       </AnimatePresence>
 
       {/* Delivery map — real-time driver location */}

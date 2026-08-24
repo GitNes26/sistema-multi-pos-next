@@ -1,38 +1,49 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ShieldCheck, Copy, Check } from "lucide-react";
-import { useState } from "react";
 import QRCode from "qrcode";
-import { cn } from "@/lib/utils";
 
-// Panel de confirmación de entrega: muestra PIN + QR al cliente cuando
-// el driver está en "at_destination". El driver escanea o teclea para entregar.
+// Panel de confirmación: muestra PIN + QR al cliente para que el empleado
+// lo escanee o lo teclee al entregar (domicilio) o recoger (sucursal).
 
 interface DeliveryConfirmPanelProps {
   pin: string | null;
   qrToken: string | null;
   orderNumber: number;
+  mode: "delivery" | "pickup";
 }
 
-export function DeliveryConfirmPanel({ pin, qrToken, orderNumber }: DeliveryConfirmPanelProps) {
+export function DeliveryConfirmPanel({ pin, qrToken, orderNumber, mode }: DeliveryConfirmPanelProps) {
   const [copied, setCopied] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
-  const qrDataUrl = useMemo(() => {
-    if (!qrToken) return null;
-    let dataUrl = "";
+  useEffect(() => {
+    if (!qrToken) {
+      setQrDataUrl(null);
+      return;
+    }
+    let cancelled = false;
     QRCode.toDataURL(qrToken, {
-      width: 200,
+      width: 240,
       margin: 2,
       color: { dark: "#1e293b", light: "#ffffff" },
     })
-      .then((url) => { dataUrl = url; })
-      .catch(() => {});
-    return dataUrl;
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrDataUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [qrToken]);
 
   if (!pin) return null;
+
+  const isPickup = mode === "pickup";
 
   const handleCopy = async () => {
     try {
@@ -51,12 +62,14 @@ export function DeliveryConfirmPanel({ pin, qrToken, orderNumber }: DeliveryConf
       <div className="mb-3 flex items-center gap-2">
         <ShieldCheck className="size-5 text-purple-600" />
         <h3 className="text-sm font-bold text-purple-700 dark:text-purple-300">
-          Confirmación de entrega
+          {isPickup ? "Confirmación de recogida" : "Confirmación de entrega"}
         </h3>
       </div>
 
       <p className="mb-4 text-xs text-muted-foreground">
-        Comparte este PIN o QR con el repartidor para confirmar que recibiste tu pedido #{orderNumber}.
+        {isPickup
+          ? `Muestra este PIN o QR en sucursal para recoger tu pedido #${orderNumber}.`
+          : `Comparte este PIN o QR con el repartidor para confirmar que recibiste tu pedido #${orderNumber}.`}
       </p>
 
       {/* PIN */}
