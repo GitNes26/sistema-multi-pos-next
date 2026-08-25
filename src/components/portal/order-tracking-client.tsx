@@ -270,7 +270,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
                     i < visibleFlow.length - 1 && "flex-1"
                   )}
                 >
-                  <div className="flex flex-col items-center">
+                  <div className="flex flex-col items-center overflow-x-auto">
                     <motion.div
                       initial={false}
                       animate={{
