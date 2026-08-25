@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.4.1.0] — 2026-08-25
+- **Tipo:** `fix` (Patch)
+- fix(pdf): column overflow + fillColor state leak in reports
+
 ### [0.4.0.0] — 2026-08-25
 - **Tipo:** `feat` (Minor)
 - feat(inventory): DataTable migration + dedup bulk + stock formatting + PDF fixes
