@@ -119,7 +119,7 @@ export function buildInventoryPdf({
         width: bw - 16,
         align: "center",
       });
-      doc.font("Helvetica").fontSize(8.5);
+      doc.fillColor(DARK).font("Helvetica").fontSize(8.5);
 
       y += h;
     }

@@ -78,6 +78,7 @@ export interface InventoryRow {
   productId: string | null;
   variantId: string | null;
   productName: string;
+  productImage: string | null;
   variantName: string | null;
   sku: string | null;
   barcode: string | null;

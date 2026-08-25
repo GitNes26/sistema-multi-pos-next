@@ -172,6 +172,9 @@ async function cleanupDemo(orgId: string, emails: string[]) {
   await d.variantPriceHistory.deleteMany()
   await d.inventoryMovement.deleteMany()
   await d.inventory.deleteMany()
+  await d.customerAddress.deleteMany()
+  await d.branchDeliveryPolicy.deleteMany()
+  await d.deliveryPolicy.deleteMany()
   await d.variantOptionValue.deleteMany()
   await d.shoppingListItem.deleteMany()
   await d.shoppingList.deleteMany()
@@ -278,6 +281,23 @@ export async function seedDemo() {
       accentHue: 30,
       theme: "system",
       fontFamily: "montserrat",
+    },
+  })
+
+  // ── DeliveryPolicy ─────────────────────────────────────────────────────
+  await prisma.deliveryPolicy.create({
+    data: {
+      organizationId: org.id,
+      pickupEnabled: true,
+      pickupMinAmount: 0,
+      pickupFee: 0,
+      pickupFeeEnabled: false,
+      deliveryEnabled: true,
+      deliveryMinAmount: 150,
+      deliveryFee: 45,
+      deliveryFeeEnabled: true,
+      deliveryRadiusKm: 8,
+      deliveryEstimatedMins: 45,
     },
   })
 
@@ -452,6 +472,28 @@ export async function seedDemo() {
       },
     })
     customers.push(customer)
+  }
+
+  // ── Direcciones de clientes ────────────────────────────────────────────
+  const addressData = [
+    { label: "Casa", address: "Av. Reforma 123, Col. Centro, CDMX", lat: 19.4326, lng: -99.1332 },
+    { label: "Oficina", address: "Blvd. Insurgentes 456, Del. Miguel Hidalgo, CDMX", lat: 19.4350, lng: -99.1700 },
+    { label: "Casa", address: "Calle Durango 789, Col. Roma Norte, CDMX", lat: 19.4195, lng: -99.1620 },
+    { label: "Casa", address: "Calzada de Tlalpan 1010, Del. Coyoacán, CDMX", lat: 19.3000, lng: -99.1500 },
+    { label: "Trabajo", address: "Av. Insurgentes Sur 2000, Del. Álvaro Obregón, CDMX", lat: 19.3500, lng: -99.2000 },
+  ]
+  for (let i = 0; i < Math.min(addressData.length, customers.length); i++) {
+    const a = addressData[i]
+    await prisma.customerAddress.create({
+      data: {
+        organizationId: org.id,
+        customerId: customers[i].id,
+        label: a.label,
+        address: a.address,
+        latitude: a.lat,
+        longitude: a.lng,
+      },
+    })
   }
 
   // ── Categorías (jerarquía) ───────────────────────────────────────────────
@@ -902,6 +944,14 @@ export async function seedDemo() {
       items.reduce((acc, it) => acc + (it.lineTotal as number), 0)
     )
     const total = round2(subtotal * 1.16)
+    const isDelivery = deliveryMethod === "delivery"
+    const paymentMethod = pick(["cash", "card", "card"], rnd) as "cash" | "card"
+    const isPaid = status === "delivered" || status === "ready" || (status === "confirmed" && rnd() < 0.5)
+    const deliveryPin = isDelivery && (status === "ready" || status === "delivered")
+      ? String(Math.floor(100000 + rnd() * 900000))
+      : null
+    const pointsRedeemed = rnd() < 0.2 ? round2(Math.floor(rnd() * 50)) : 0
+    const pointsValue = pointsRedeemed > 0 ? round2(pointsRedeemed * 0.1) : 0
 
     const order = await prisma.order.create({
       data: {
@@ -913,6 +963,15 @@ export async function seedDemo() {
         subtotal,
         discount: 0,
         total,
+        address: isDelivery ? addressData[o % addressData.length].address : null,
+        latitude: isDelivery ? addressData[o % addressData.length].lat : null,
+        longitude: isDelivery ? addressData[o % addressData.length].lng : null,
+        paymentMethod,
+        deliveryFee: isDelivery ? 45 : 0,
+        deliveryPin,
+        paidAt: isPaid ? orderDate : null,
+        pointsRedeemed: pointsRedeemed > 0 ? pointsRedeemed : 0,
+        pointsValue: pointsValue > 0 ? pointsValue : 0,
         createdAt: orderDate,
         updatedAt: orderDate,
         items: { create: items },

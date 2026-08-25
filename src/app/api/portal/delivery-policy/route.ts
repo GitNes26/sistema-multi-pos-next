@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
-import { getDeliveryPolicy } from "@/lib/orders/server";
+import { getEffectiveDeliveryPolicy } from "@/lib/orders/server";
 import { getPaymentConfig } from "@/lib/payments/server";
 import { requirePortalCustomer, portalErrorResponse } from "../guard";
 
-export async function GET() {
+export async function GET(req: Request) {
   const ctx = await requirePortalCustomer();
   if ("response" in ctx) return ctx.response;
 
+  const { searchParams } = new URL(req.url);
+  const branchId = searchParams.get("branchId") || undefined;
+
   try {
     const [policy, paymentConfig] = await Promise.all([
-      getDeliveryPolicy(ctx.organizationId),
+      getEffectiveDeliveryPolicy(ctx.organizationId, branchId),
       getPaymentConfig(ctx.organizationId),
     ]);
     const onlinePaymentEnabled = paymentConfig.provider !== "none";

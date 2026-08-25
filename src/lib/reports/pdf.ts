@@ -101,6 +101,7 @@ export function buildReportPdf<T>({
 
     drawTableHeader(y);
     y += ROW_H;
+    doc.fillColor(DARK);
 
     // Draw data rows — each column as a separate text call at fixed coordinates
     for (let i = 0; i < rows.length; i++) {

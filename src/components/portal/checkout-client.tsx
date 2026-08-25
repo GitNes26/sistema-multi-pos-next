@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { SwipeableRow } from "@/components/shared/swipeable-row";
 import { GpsPicker, type GpsValue } from "@/components/base/gps-picker";
+import { PermissionSlider } from "@/components/shared/permission-slider";
 import { cn } from "@/lib/utils";
 
 function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -55,6 +56,7 @@ export function CheckoutClient() {
   const [notes, setNotes] = useState("");
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
+  const [geoPermissionOpen, setGeoPermissionOpen] = useState(false);
 
   const subtotal = cartSubtotal(items);
   const tax = cartTax(items);
@@ -648,6 +650,14 @@ export function CheckoutClient() {
           </div>
         </>
       )}
+
+      <PermissionSlider
+        type="geolocation"
+        open={geoPermissionOpen}
+        onOpenChange={setGeoPermissionOpen}
+        onGranted={() => setGeoPermissionOpen(false)}
+        onDenied={() => setGeoPermissionOpen(false)}
+      />
     </div>
   );
 }

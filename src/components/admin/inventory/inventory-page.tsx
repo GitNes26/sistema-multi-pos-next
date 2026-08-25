@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   ArrowLeftRight,
   Barcode,
@@ -8,7 +9,6 @@ import {
   FileDown,
   FileSpreadsheet,
   Loader2,
-  PackageSearch,
   ScanLine,
   Search,
   TriangleAlert,
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { DialogComponent } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/layout/page-header";
+import { DataTable } from "@/components/base/data-table";
 import { crudApi, inventoryApi, type InventoryRow, type InventoryMovement, type InventoryRevision, type RevisionDetailData, type RevisionItem, type RevisionStatus } from "@/lib/api";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { playSound } from "@/lib/sounds";
@@ -78,6 +79,208 @@ function revisionStatusBadge(status: RevisionStatus) {
   if (status === "completed") return <Badge className="bg-emerald-500 text-white">Completada</Badge>;
   return <Badge variant="destructive">Cancelada</Badge>;
 }
+
+function fmtStock(qty: number, unit: string | null): string {
+  const u = (unit ?? "pza").toLowerCase();
+  if (u === "pza" || u === "pzas" || u === "pieza" || u === "piezas" || u === "ud" || u === "uds") {
+    return String(Math.round(qty));
+  }
+  if (qty === Math.floor(qty)) return String(qty);
+  return qty.toFixed(3).replace(/\.?0+$/, "");
+}
+
+function fmtMin(qty: number, unit: string | null): string {
+  const u = (unit ?? "pza").toLowerCase();
+  if (u === "pza" || u === "pzas" || u === "pieza" || u === "piezas" || u === "ud" || u === "uds") {
+    return String(Math.round(qty));
+  }
+  if (qty === Math.floor(qty)) return String(qty);
+  return qty.toFixed(3).replace(/\.?0+$/, "");
+}
+
+function stockColumns(): ColumnDef<InventoryRow, unknown>[] {
+  return [
+    {
+      accessorKey: "productName",
+      header: "Producto",
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <div className="flex items-center gap-2">
+            {r.productImage ? (
+              <img
+                src={r.productImage}
+                alt={r.productName}
+                className="size-8 rounded-md object-cover"
+              />
+            ) : (
+              <div className="flex size-8 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+                {r.productName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate font-medium">{r.productName}</p>
+              {r.variantName && (
+                <p className="truncate text-xs text-muted-foreground">{r.variantName}</p>
+              )}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "variant",
+      header: "Variante / SKU",
+      accessorFn: (r) => r.variantName ?? r.sku ?? "",
+      cell: ({ row }) => {
+        const r = row.original;
+        if (!r.variantName && !r.sku) return <span className="text-muted-foreground">—</span>;
+        return (
+          <span className="text-muted-foreground">
+            {r.variantName ? (
+              <>
+                {r.variantName}
+                {r.sku && <span className="ml-1 text-xs">· {r.sku}</span>}
+              </>
+            ) : (
+              r.sku
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "productType",
+      header: "Tipo",
+      cell: ({ row }) => (
+        <Badge variant={row.original.productType === "bulk" ? "outline" : "secondary"}>
+          {row.original.productType === "bulk" ? "Granel" : "Estándar"}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "quantity",
+      header: "Stock",
+      cell: ({ row }) => <span className="tabular-nums font-medium">{fmtStock(row.original.quantity, row.original.unit)}</span>,
+    },
+    {
+      accessorKey: "unit",
+      header: "Unidad",
+      cell: ({ row }) => row.original.unit ?? "pza",
+    },
+    {
+      accessorKey: "minThreshold",
+      header: "Mínimo",
+      cell: ({ row }) => <span className="tabular-nums text-muted-foreground">{fmtMin(row.original.minThreshold, row.original.unit)}</span>,
+    },
+    {
+      accessorKey: "status",
+      header: "Estado",
+      cell: ({ row }) => statusBadge(row.original.status),
+    },
+  ];
+}
+
+const movementColumns: ColumnDef<InventoryMovement, unknown>[] = [
+  {
+    accessorKey: "createdAt",
+    header: "Fecha",
+    cell: ({ row }) => <span className="tabular-nums text-muted-foreground">{new Date(row.original.createdAt).toLocaleString()}</span>,
+  },
+  {
+    accessorKey: "type",
+    header: "Tipo",
+    cell: ({ row }) => movementTypeBadge(row.original.type),
+  },
+  {
+    id: "product",
+    header: "Producto",
+    accessorFn: (r) => `${r.productName} ${r.variantName ?? ""}`,
+    cell: ({ row }) => {
+      const m = row.original;
+      return (
+        <span>
+          {m.productName}
+          {m.variantName && <span className="text-muted-foreground"> · {m.variantName}</span>}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: "quantity",
+    header: "Cantidad",
+    cell: ({ row }) => (
+      <span className="tabular-nums font-medium">
+        {row.original.quantity > 0 ? `+${fmtStock(row.original.quantity, row.original.unit)}` : fmtStock(row.original.quantity, row.original.unit)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "unit",
+    header: "Unidad",
+    cell: ({ row }) => row.original.unit ?? "pza",
+  },
+  {
+    accessorKey: "performer",
+    header: "Quién",
+    cell: ({ row }) => row.original.performer ?? "—",
+  },
+  {
+    accessorKey: "reason",
+    header: "Motivo",
+    cell: ({ row }) => <span className="text-muted-foreground">{row.original.reason ?? "—"}</span>,
+  },
+];
+
+const revisionColumns: ColumnDef<InventoryRevision, unknown>[] = [
+  {
+    accessorKey: "revisionNumber",
+    header: "#",
+    cell: ({ row }) => <span className="tabular-nums">#{row.original.revisionNumber}</span>,
+  },
+  {
+    accessorKey: "status",
+    header: "Estado",
+    cell: ({ row }) => revisionStatusBadge(row.original.status),
+  },
+  {
+    accessorKey: "startedAt",
+    header: "Inicio",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">
+        {row.original.startedAt ? new Date(row.original.startedAt).toLocaleString() : "—"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "itemCount",
+    header: "Productos",
+    cell: ({ row }) => <span className="text-right tabular-nums">{row.original.itemCount}</span>,
+  },
+  {
+    accessorKey: "countedCount",
+    header: "Contados",
+    cell: ({ row }) => <span className="text-right tabular-nums">{row.original.countedCount}</span>,
+  },
+  {
+    accessorKey: "differenceCount",
+    header: "Diferencias",
+    cell: ({ row }) => (
+      <span className="text-right tabular-nums">
+        {row.original.differenceCount > 0 ? (
+          <span className="font-medium text-amber-600">{row.original.differenceCount}</span>
+        ) : (
+          row.original.differenceCount
+        )}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "performedBy",
+    header: "Responsable",
+    cell: ({ row }) => row.original.performedBy ?? "—",
+  },
+];
 
 function MovementDialog({
   row,
@@ -674,72 +877,153 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
 
         <TabsContent value="stock">
           <Card>
-            <CardContent className="space-y-3 pt-5">
+            <CardContent className="pt-5">
               {loading ? (
                 <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
-              ) : rows.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-                  <PackageSearch className="size-8" />
-                  <p className="text-sm">Sin existencias para esta ubicación.</p>
-                </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="py-2 pr-3 font-medium">Producto</th>
-                        <th className="py-2 pr-3 font-medium">Variante / SKU</th>
-                        <th className="py-2 pr-3 font-medium">Tipo</th>
-                        <th className="py-2 pr-3 text-right font-medium">Stock</th>
-                        <th className="py-2 pr-3 font-medium">Unidad</th>
-                        <th className="py-2 pr-3 text-right font-medium">Mínimo</th>
-                        <th className="py-2 pr-3 font-medium">Estado</th>
-                        {canManage && <th className="py-2 font-medium" />}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((r) => (
-                        <tr key={r.id} className="border-b last:border-0">
-                          <td className="py-2 pr-3">{r.productName}</td>
-                          <td className="py-2 pr-3 text-muted-foreground">
-                            {r.variantName ? (
-                              <>
-                                {r.variantName}
-                                {r.sku && <span className="ml-1 text-xs">· {r.sku}</span>}
-                              </>
-                            ) : (
-                              r.sku ?? "—"
-                            )}
-                          </td>
-                          <td className="py-2 pr-3">
-                            <Badge variant={r.productType === "bulk" ? "outline" : "secondary"}>
-                              {r.productType === "bulk" ? "Granel" : "Estándar"}
+                <DataTable
+                  columns={[
+                    ...stockColumns(),
+                    ...(canManage
+                      ? [
+                          {
+                            id: "actions" as const,
+                            header: "",
+                            cell: ({ row }: { row: { original: InventoryRow } }) => {
+                              const r = row.original;
+                              return (
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActive(r);
+                                      setDialog("movement");
+                                    }}
+                                  >
+                                    Movimiento
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActive(r);
+                                      setDialog("threshold");
+                                    }}
+                                  >
+                                    Mínimo
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActive(r);
+                                      setDialog("transfer");
+                                    }}
+                                  >
+                                    <ArrowLeftRight className="size-4" />
+                                  </Button>
+                                </div>
+                              );
+                            },
+                          },
+                        ]
+                      : []),
+                  ]}
+                  data={rows}
+                  loading={loading}
+                  emptyMessage="Sin existencias para esta ubicación."
+                  pageSize={20}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  searchable={false}
+                  showColumnVisibility={false}
+                  toolbarSlot={
+                    canManage && rows.filter((r) => r.status !== "ok").length > 0 ? (
+                      <Badge variant="outline" className="text-xs">
+                        <TriangleAlert className="mr-1 size-3" />
+                        {rows.filter((r) => r.status !== "ok").length} bajo stock
+                      </Badge>
+                    ) : undefined
+                  }
+                  renderCard={(r) => (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {r.productImage ? (
+                          <img
+                            src={r.productImage}
+                            alt={r.productName}
+                            className="size-10 rounded-md object-cover"
+                          />
+                        ) : (
+                          <div className="flex size-10 items-center justify-center rounded-md bg-muted text-sm text-muted-foreground">
+                            {r.productName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{r.productName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {r.variantName ?? r.sku ?? "—"} · {r.unit ?? "pza"}
+                          </p>
+                          {r.status !== "ok" && (
+                            <Badge
+                              variant="outline"
+                              className={`mt-1 text-xs ${r.status === "empty" ? "border-red-500 text-red-600" : "border-amber-500 text-amber-600"}`}
+                            >
+                              {r.status === "empty" ? "Sin stock" : `Mín. ${r.minThreshold}`}
                             </Badge>
-                          </td>
-                          <td className="py-2 pr-3 text-right tabular-nums font-medium">{r.quantity}</td>
-                          <td className="py-2 pr-3">{r.unit ?? "pza"}</td>
-                          <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">{r.minThreshold}</td>
-                          <td className="py-2 pr-3">{statusBadge(r.status)}</td>
-                          {canManage && (
-                            <td className="py-2">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button variant="ghost" size="sm" onClick={() => { setActive(r); setDialog("movement"); }}>
-                                  Movimiento
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => { setActive(r); setDialog("threshold"); }}>
-                                  Mínimo
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => { setActive(r); setDialog("transfer"); }}>
-                                  <ArrowLeftRight className="size-4" />
-                                </Button>
-                              </div>
-                            </td>
                           )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="tabular-nums font-medium mr-1">{fmtStock(r.quantity, r.unit)}</span>
+                        {statusBadge(r.status)}
+                        {canManage && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              title="Movimiento"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActive(r);
+                                setDialog("movement");
+                              }}
+                            >
+                              <ArrowLeftRight className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              title="Mínimo"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActive(r);
+                                setDialog("threshold");
+                              }}
+                            >
+                              <TriangleAlert className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              title="Transferir"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActive(r);
+                                setDialog("transfer");
+                              }}
+                            >
+                              <Barcode className="size-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                />
               )}
             </CardContent>
           </Card>
@@ -747,50 +1031,43 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
 
         <TabsContent value="movements">
           <Card>
-            <CardContent className="space-y-3 pt-5">
+            <CardContent className="pt-5">
               {loading ? (
                 <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
-              ) : movements.length === 0 ? (
-                <div className="py-10 text-center text-sm text-muted-foreground">Sin movimientos.</div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="py-2 pr-3 font-medium">Fecha</th>
-                        <th className="py-2 pr-3 font-medium">Tipo</th>
-                        <th className="py-2 pr-3 font-medium">Producto</th>
-                        <th className="py-2 pr-3 text-right font-medium">Cantidad</th>
-                        <th className="py-2 pr-3 font-medium">Unidad</th>
-                        <th className="py-2 pr-3 font-medium">Quién</th>
-                        <th className="py-2 pr-3 font-medium">Motivo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {movements.map((m) => (
-                        <tr key={m.id} className="border-b last:border-0">
-                          <td className="py-2 pr-3 tabular-nums text-muted-foreground">
-                            {new Date(m.createdAt).toLocaleString()}
-                          </td>
-                          <td className="py-2 pr-3">{movementTypeBadge(m.type)}</td>
-                          <td className="py-2 pr-3">
-                            {m.productName}
-                            {m.variantName && <span className="text-muted-foreground"> · {m.variantName}</span>}
-                          </td>
-                          <td className="py-2 pr-3 text-right tabular-nums font-medium">
-                            {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
-                          </td>
-                          <td className="py-2 pr-3">{m.unit ?? "pza"}</td>
-                          <td className="py-2 pr-3">{m.performer ?? "—"}</td>
-                          <td className="py-2 pr-3 text-muted-foreground">{m.reason ?? "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {mTotal > 0 && (
-                <div className="text-right text-sm text-muted-foreground">{mTotal} movimiento(s)</div>
+                <DataTable
+                  columns={movementColumns}
+                  data={movements}
+                  loading={loading}
+                  emptyMessage="Sin movimientos."
+                  pageSize={20}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  searchable={false}
+                  renderCard={(m) => (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">
+                          {m.productName}
+                          {m.variantName && <span className="text-muted-foreground"> · {m.variantName}</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {movementTypeBadge(m.type)} · {new Date(m.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="tabular-nums font-medium">
+                          {m.quantity > 0 ? `+${fmtStock(m.quantity, m.unit)}` : fmtStock(m.quantity, m.unit)}
+                        </span>
+                        <span className="ml-1 text-xs text-muted-foreground">{m.unit ?? "pza"}</span>
+                      </div>
+                    </div>
+                  )}
+                  toolbarSlot={
+                    mTotal > 0 ? (
+                      <div className="text-sm text-muted-foreground">{mTotal} movimiento(s)</div>
+                    ) : undefined
+                  }
+                />
               )}
             </CardContent>
           </Card>
@@ -798,9 +1075,9 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
 
         <TabsContent value="revisions">
           <Card>
-            <CardContent className="space-y-3 pt-5">
+            <CardContent className="pt-5">
               {canRevise && (
-                <div className="flex justify-end">
+                <div className="mb-3 flex justify-end">
                   <Button size="sm" onClick={() => setNewRevisionOpen(true)}>
                     <ClipboardCheck className="size-4" /> Nueva revisión
                   </Button>
@@ -808,86 +1085,87 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
               )}
               {loading ? (
                 <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
-              ) : revisions.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-                  <ClipboardCheck className="size-8" />
-                  <p className="text-sm">Sin revisiones para esta ubicación.</p>
-                </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="py-2 pr-3 font-medium">#</th>
-                        <th className="py-2 pr-3 font-medium">Estado</th>
-                        <th className="py-2 pr-3 font-medium">Inicio</th>
-                        <th className="py-2 pr-3 text-right font-medium">Productos</th>
-                        <th className="py-2 pr-3 text-right font-medium">Contados</th>
-                        <th className="py-2 pr-3 text-right font-medium">Diferencias</th>
-                        <th className="py-2 pr-3 font-medium">Responsable</th>
-                        <th className="py-2 font-medium" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {revisions.map((r) => (
-                        <tr key={r.id} className="border-b last:border-0">
-                          <td className="py-2 pr-3 tabular-nums">#{r.revisionNumber}</td>
-                          <td className="py-2 pr-3">{revisionStatusBadge(r.status)}</td>
-                          <td className="py-2 pr-3 text-muted-foreground">
-                            {r.startedAt ? new Date(r.startedAt).toLocaleString() : "—"}
-                          </td>
-                          <td className="py-2 pr-3 text-right tabular-nums">{r.itemCount}</td>
-                          <td className="py-2 pr-3 text-right tabular-nums">{r.countedCount}</td>
-                          <td className="py-2 pr-3 text-right tabular-nums">
-                            {r.differenceCount > 0 ? (
-                              <span className="font-medium text-amber-600">{r.differenceCount}</span>
-                            ) : (
-                              r.differenceCount
-                            )}
-                          </td>
-                          <td className="py-2 pr-3">{r.performedBy ?? "—"}</td>
-                          <td className="py-2">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                title="Exportar reporte en PDF"
-                                onClick={async () => {
-                                  try {
-                                    await inventoryApi.exportRevisionPdf(r.id);
-                                  } catch (err) {
-                                    swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
-                                  }
-                                }}
-                              >
-                                <FileDown className="size-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={async () => {
-                                  try {
-                                    const res = await inventoryApi.getRevision(r.id);
-                                    setActiveRevision(res.revision);
-                                  } catch (err) {
-                                    swalError("Error", err instanceof Error ? err.message : undefined);
-                                  }
-                                }}
-                              >
-                                {canRevise && (r.status === "draft" || r.status === "in_progress")
-                                  ? "Conteo"
-                                  : "Ver"}
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {revTotal > 0 && (
-                <div className="text-right text-sm text-muted-foreground">{revTotal} revisión(es)</div>
+                <DataTable
+                  columns={[
+                    ...revisionColumns,
+                    {
+                      id: "actions",
+                      header: "",
+                      cell: ({ row }) => {
+                        const r = row.original;
+                        return (
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              title="Exportar reporte en PDF"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await inventoryApi.exportRevisionPdf(r.id);
+                                } catch (err) {
+                                  swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
+                                }
+                              }}
+                            >
+                              <FileDown className="size-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  const res = await inventoryApi.getRevision(r.id);
+                                  setActiveRevision(res.revision);
+                                } catch (err) {
+                                  swalError("Error", err instanceof Error ? err.message : undefined);
+                                }
+                              }}
+                            >
+                              {canRevise && (r.status === "draft" || r.status === "in_progress")
+                                ? "Conteo"
+                                : "Ver"}
+                            </Button>
+                          </div>
+                        );
+                      },
+                    },
+                  ]}
+                  data={revisions}
+                  loading={loading}
+                  emptyMessage="Sin revisiones para esta ubicación."
+                  pageSize={20}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  searchable={false}
+                  onRowClick={(r) => {
+                    inventoryApi.getRevision(r.id).then((res) => setActiveRevision(res.revision)).catch((err) => swalError("Error", err instanceof Error ? err.message : undefined));
+                  }}
+                  renderCard={(r) => (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">#{r.revisionNumber}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {r.startedAt ? new Date(r.startedAt).toLocaleString() : "—"} · {r.performedBy ?? "—"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {revisionStatusBadge(r.status)}
+                        {r.differenceCount > 0 ? (
+                          <Badge className="bg-amber-500 text-white">{r.differenceCount} diffs</Badge>
+                        ) : (
+                          <Badge variant="secondary">{r.differenceCount}</Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  toolbarSlot={
+                    revTotal > 0 ? (
+                      <div className="text-sm text-muted-foreground">{revTotal} revisión(es)</div>
+                    ) : undefined
+                  }
+                />
               )}
             </CardContent>
           </Card>
@@ -1210,7 +1488,10 @@ function RevisionDialog({
                         ? `${item.variantName}${item.sku ? ` · ${item.sku}` : ""}`
                         : item.sku ?? "—"}
                     </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{item.expectedQuantity}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">
+                      {fmtStock(item.expectedQuantity, item.unit)}
+                      <span className="ml-1 text-xs text-muted-foreground">{item.unit ?? "pza"}</span>
+                    </td>
                     <td className="py-2 pr-3 text-right">
                       {editable ? (
                         <span className="inline-flex items-center gap-1">
@@ -1241,7 +1522,7 @@ function RevisionDialog({
                           />
                         </span>
                       ) : (
-                        <span className="tabular-nums">{item.countedQuantity ?? "—"}</span>
+                        <span className="tabular-nums">{item.countedQuantity != null ? fmtStock(item.countedQuantity, item.unit) : "—"}</span>
                       )}
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums">
@@ -1250,9 +1531,9 @@ function RevisionDialog({
                       ) : diff === 0 ? (
                         <span className="text-muted-foreground">0</span>
                       ) : diff > 0 ? (
-                        <span className="font-medium text-emerald-600">+{diff}</span>
+                        <span className="font-medium text-emerald-600">+{fmtStock(diff, item.unit)}</span>
                       ) : (
-                        <span className="font-medium text-destructive">{diff}</span>
+                        <span className="font-medium text-destructive">{fmtStock(diff, item.unit)}</span>
                       )}
                     </td>
                     <td className="py-2 pr-3">

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { cn } from "@/lib/utils";
 import { ordersApi } from "@/lib/orders/client";
+import { PermissionSlider } from "@/components/shared/permission-slider";
 
 // Diálogo del empleado/repartidor para confirmar entrega o recogida:
 // escanea el QR del cliente (cámara) o teclea el PIN (fallback sin cámara).
@@ -36,6 +37,7 @@ export function DeliveryConfirmDialog({
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [cameraPermissionOpen, setCameraPermissionOpen] = useState(false);
   const scannerRef = useRef<unknown>(null);
   const scannerBoxId = useRef(`qr-scan-${orderId}`);
 
@@ -87,6 +89,10 @@ export function DeliveryConfirmDialog({
       );
       setScanning(true);
     } catch (err) {
+      if (err instanceof Error && err.name === "NotAllowedError") {
+        setCameraPermissionOpen(true);
+        return;
+      }
       setError(
         err instanceof Error && err.name === "NotAllowedError"
           ? "Permiso de cámara denegado. Usa el PIN manual."
@@ -235,6 +241,20 @@ export function DeliveryConfirmDialog({
           {error}
         </motion.p>
       )}
+
+      <PermissionSlider
+        type="camera"
+        open={cameraPermissionOpen}
+        onOpenChange={setCameraPermissionOpen}
+        onGranted={() => {
+          setCameraPermissionOpen(false);
+          startScanner();
+        }}
+        onDenied={() => {
+          setError("Permiso de cámara denegado. Usa el PIN manual.");
+          setTab("pin");
+        }}
+      />
     </DialogComponent>
   );
 }

@@ -15,6 +15,7 @@ export interface InventorySnapshotRow {
   productId: string | null;
   variantId: string | null;
   productName: string;
+  productImage: string | null;
   variantName: string | null;
   sku: string | null;
   barcode: string | null;
@@ -48,7 +49,7 @@ export async function ensureInventoryRows(
     where: { organizationId, isActive: true },
     select: { id: true, productType: true, trackInventory: true, bulkUnitId: true, variants: { select: { id: true } } },
   });
-  const targets: { productId: string | null; variantId: string | null; unitId: string | null }[] = [];
+  const targets: { productId: string; variantId: string | null; unitId: string | null }[] = [];
   for (const p of products) {
     if (p.productType === "standard") {
       if (p.variants.length > 0) {
@@ -60,19 +61,34 @@ export async function ensureInventoryRows(
       targets.push({ productId: p.id, variantId: null, unitId: p.bulkUnitId });
     }
   }
-  await prisma.inventory.createMany({
-    data: targets.map((t) => ({
-      organizationId,
-      locationId,
-      locationType,
-      productId: t.productId,
-      variantId: t.variantId,
-      unitId: t.unitId,
-      quantity: 0,
-      minThreshold: 0,
-    })),
-    skipDuplicates: true,
+
+  const existing = await prisma.inventory.findMany({
+    where: { organizationId, locationId, locationType },
+    select: { productId: true, variantId: true },
   });
+  const existingSet = new Set(
+    existing.map((e) => `${e.productId}__${e.variantId ?? "__NULL__"}`)
+  );
+
+  const toCreate = targets.filter(
+    (t) => !existingSet.has(`${t.productId}__${t.variantId ?? "__NULL__"}`)
+  );
+
+  if (toCreate.length) {
+    await prisma.inventory.createMany({
+      data: toCreate.map((t) => ({
+        organizationId,
+        locationId,
+        locationType,
+        productId: t.productId,
+        variantId: t.variantId,
+        unitId: t.unitId,
+        quantity: 0,
+        minThreshold: 0,
+      })),
+      skipDuplicates: true,
+    });
+  }
 }
 
 type Where = Prisma.InventoryWhereInput;
@@ -111,7 +127,7 @@ export async function inventorySnapshot(
     where,
     include: {
       product: {
-        select: { id: true, name: true, productType: true, trackInventory: true },
+        select: { id: true, name: true, productType: true, trackInventory: true, imageUrl: true },
       },
       variant: { select: { id: true, name: true, sku: true, barcode: true } },
       unit: { select: { name: true, abbreviation: true } },
@@ -128,6 +144,7 @@ export async function inventorySnapshot(
       productId: r.productId,
       variantId: r.variantId,
       productName: r.product?.name ?? "—",
+      productImage: r.product?.imageUrl ?? null,
       variantName: r.variant?.name ?? null,
       sku: r.variant?.sku ?? null,
       barcode: r.variant?.barcode ?? null,

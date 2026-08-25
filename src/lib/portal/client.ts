@@ -57,8 +57,10 @@ export const portalApi = {
   locations: () =>
     json<{ ok: boolean; locations: PortalLocation[] }>("/api/portal/locations"),
 
-  deliveryPolicy: () =>
-    json<{ ok: boolean; policy: DeliveryPolicyData | null; onlinePaymentEnabled: boolean }>("/api/portal/delivery-policy"),
+  deliveryPolicy: (branchId?: string) =>
+    json<{ ok: boolean; policy: DeliveryPolicyData | null; onlinePaymentEnabled: boolean }>(
+      `/api/portal/delivery-policy${branchId ? `?branchId=${branchId}` : ""}`
+    ),
 
   // Destinos guardados
   addresses: () => json<{ ok: boolean; addresses: CustomerAddressView[] }>("/api/portal/addresses"),

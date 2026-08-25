@@ -707,7 +707,8 @@ export async function completePreparation(
 
 export interface DeliveryPolicyData {
   id: string;
-  organizationId: string;
+  organizationId?: string;
+  branchId?: string;
   pickupEnabled: boolean;
   pickupMinAmount: number | null;
   pickupFee: number;
@@ -752,7 +753,7 @@ export async function getDeliveryPolicy(organizationId: string): Promise<Deliver
 
 export async function upsertDeliveryPolicy(
   organizationId: string,
-  input: Partial<Omit<DeliveryPolicyData, "id" | "organizationId">>
+  input: Partial<Omit<DeliveryPolicyData, "id" | "organizationId" | "branchId">>
 ): Promise<DeliveryPolicyData> {
   const data: Record<string, unknown> = {};
   if (input.pickupEnabled !== undefined) data.pickupEnabled = input.pickupEnabled;
@@ -814,6 +815,86 @@ export function calculateDeliveryFee(
   }
   if (policy.deliveryFeeEnabled) return { fee: policy.deliveryFee };
   return { fee: 0 };
+}
+
+// ─── Branch Delivery Policy (override por sucursal) ───
+
+export async function getBranchDeliveryPolicy(branchId: string): Promise<DeliveryPolicyData | null> {
+  const p = await prisma.branchDeliveryPolicy.findUnique({ where: { branchId } });
+  if (!p) return null;
+  return {
+    id: p.id,
+    branchId: p.branchId,
+    pickupEnabled: p.pickupEnabled,
+    pickupMinAmount: toNum(p.pickupMinAmount) || null,
+    pickupFee: toNum(p.pickupFee),
+    pickupFeeEnabled: p.pickupFeeEnabled,
+    pickupSchedule: p.pickupScheduleJson ? JSON.parse(p.pickupScheduleJson) : null,
+    deliveryEnabled: p.deliveryEnabled,
+    deliveryMinAmount: toNum(p.deliveryMinAmount) || null,
+    deliveryFee: toNum(p.deliveryFee),
+    deliveryFeeEnabled: p.deliveryFeeEnabled,
+    deliverySchedule: p.deliveryScheduleJson ? JSON.parse(p.deliveryScheduleJson) : null,
+    deliveryRadiusKm: toNum(p.deliveryRadiusKm) || null,
+    deliveryEstimatedMins: p.deliveryEstimatedMins,
+  };
+}
+
+export async function getEffectiveDeliveryPolicy(
+  organizationId: string,
+  branchId?: string
+): Promise<DeliveryPolicyData | null> {
+  if (branchId) {
+    const branchPolicy = await getBranchDeliveryPolicy(branchId);
+    if (branchPolicy) return branchPolicy;
+  }
+  return getDeliveryPolicy(organizationId);
+}
+
+export async function upsertBranchDeliveryPolicy(
+  branchId: string,
+  input: Partial<Omit<DeliveryPolicyData, "id" | "organizationId" | "branchId">>
+): Promise<DeliveryPolicyData> {
+  const data: Record<string, unknown> = {};
+  if (input.pickupEnabled !== undefined) data.pickupEnabled = input.pickupEnabled;
+  if (input.pickupMinAmount !== undefined) data.pickupMinAmount = input.pickupMinAmount;
+  if (input.pickupFee !== undefined) data.pickupFee = input.pickupFee;
+  if (input.pickupFeeEnabled !== undefined) data.pickupFeeEnabled = input.pickupFeeEnabled;
+  if (input.pickupSchedule !== undefined) data.pickupScheduleJson = JSON.stringify(input.pickupSchedule);
+  if (input.deliveryEnabled !== undefined) data.deliveryEnabled = input.deliveryEnabled;
+  if (input.deliveryMinAmount !== undefined) data.deliveryMinAmount = input.deliveryMinAmount;
+  if (input.deliveryFee !== undefined) data.deliveryFee = input.deliveryFee;
+  if (input.deliveryFeeEnabled !== undefined) data.deliveryFeeEnabled = input.deliveryFeeEnabled;
+  if (input.deliverySchedule !== undefined) data.deliveryScheduleJson = JSON.stringify(input.deliverySchedule);
+  if (input.deliveryRadiusKm !== undefined) data.deliveryRadiusKm = input.deliveryRadiusKm;
+  if (input.deliveryEstimatedMins !== undefined) data.deliveryEstimatedMins = input.deliveryEstimatedMins;
+
+  const policy = await prisma.branchDeliveryPolicy.upsert({
+    where: { branchId },
+    create: { branchId, ...data },
+    update: data,
+  });
+
+  return {
+    id: policy.id,
+    branchId: policy.branchId,
+    pickupEnabled: policy.pickupEnabled,
+    pickupMinAmount: toNum(policy.pickupMinAmount) || null,
+    pickupFee: toNum(policy.pickupFee),
+    pickupFeeEnabled: policy.pickupFeeEnabled,
+    pickupSchedule: policy.pickupScheduleJson ? JSON.parse(policy.pickupScheduleJson) : null,
+    deliveryEnabled: policy.deliveryEnabled,
+    deliveryMinAmount: toNum(policy.deliveryMinAmount) || null,
+    deliveryFee: toNum(policy.deliveryFee),
+    deliveryFeeEnabled: policy.deliveryFeeEnabled,
+    deliverySchedule: policy.deliveryScheduleJson ? JSON.parse(policy.deliveryScheduleJson) : null,
+    deliveryRadiusKm: toNum(policy.deliveryRadiusKm) || null,
+    deliveryEstimatedMins: policy.deliveryEstimatedMins,
+  };
+}
+
+export async function restoreBranchToCompanyPolicy(branchId: string): Promise<void> {
+  await prisma.branchDeliveryPolicy.delete({ where: { branchId } }).catch(() => {});
 }
 
 export function isScheduleOpen(
