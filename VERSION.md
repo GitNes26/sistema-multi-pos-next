@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.4.0.0] — 2026-08-25
+- **Tipo:** `feat` (Minor)
+- feat(inventory): DataTable migration + dedup bulk + stock formatting + PDF fixes
+
 ### [0.3.0.0] — 2026-08-24
 - **Tipo:** `feat` (Minor)
 - feat(portal): mejoras en el proceso de pago + corrección del informe PDF pendiente
