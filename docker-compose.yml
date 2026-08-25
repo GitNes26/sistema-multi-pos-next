@@ -29,6 +29,7 @@ services:
       NEXTAUTH_SECRET: cambia-esto-por-un-secreto-largo
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       # Seed de producción (idempotente). SEED_DEMO=true siembra además datos demo.
+      # El schema se sincroniza automáticamente al iniciar (prisma db push).
       SEED_DEMO: "false"
       # Credenciales del superadmin (solo se aplican en el PRIMER arranque)
       SUPERADMIN_EMAIL: admin@multi-pos.com

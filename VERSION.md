@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.4.1.1] — 2026-08-25
+- **Tipo:** `ui` (Revision)
+- ui: se intenta corregir al 100 el inventario, se agregaron campos de politicas de entrega
+
 ### [0.4.1.0] — 2026-08-25
 - **Tipo:** `fix` (Patch)
 - fix(pdf): column overflow + fillColor state leak in reports
