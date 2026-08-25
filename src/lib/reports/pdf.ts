@@ -155,14 +155,24 @@ export function buildReportPdf<T>({
 
 export function buildSalesReportPdf(
   organizationName: string,
-  rows: { folio: number; date: string; locationName: string; customerName: string | null; total: number }[]
+  rows: { folio: number; date: string; locationName: string; customerName: string | null; total: number }[],
+  returnsTotal: number = 0
 ): Promise<Buffer> {
   const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
   const total = rows.reduce((a, r) => a + r.total, 0);
+  const netTotal = total - returnsTotal;
+  const summary = [
+    { label: "Ventas", value: String(rows.length) },
+    { label: "Total bruto", value: money(total) },
+  ];
+  if (returnsTotal > 0) {
+    summary.push({ label: "Devoluciones", value: `-${money(returnsTotal)}` });
+    summary.push({ label: "Total neto", value: money(netTotal) });
+  }
   return buildReportPdf({
     organizationName,
     title: "Reporte de ventas",
-    summary: [{ label: "Ventas", value: String(rows.length) }, { label: "Total", value: money(total) }],
+    summary,
     columns: [
       { header: "Folio", width: 55, render: (r) => String(r.folio) },
       { header: "Fecha", width: 120, render: (r) => new Date(r.date).toLocaleString("es-MX") },

@@ -129,21 +129,19 @@ function stockColumns(): ColumnDef<InventoryRow, unknown>[] {
       },
     },
     {
-      id: "variant",
-      header: "Variante / SKU",
-      accessorFn: (r) => r.variantName ?? r.sku ?? "",
+      id: "skuBarcode",
+      header: "SKU / Código de barras",
+      accessorFn: (r) => r.sku ?? r.barcode ?? "",
       cell: ({ row }) => {
         const r = row.original;
-        if (!r.variantName && !r.sku) return <span className="text-muted-foreground">—</span>;
+        if (!r.sku && !r.barcode)
+          return <span className="text-muted-foreground">—</span>;
         return (
           <span className="text-muted-foreground">
-            {r.variantName ? (
-              <>
-                {r.variantName}
-                {r.sku && <span className="ml-1 text-xs">· {r.sku}</span>}
-              </>
-            ) : (
-              r.sku
+            {r.sku && <span>{r.sku}</span>}
+            {r.sku && r.barcode && <span className="ml-1 text-xs">·</span>}
+            {r.barcode && (
+              <span className="ml-1 text-xs font-mono">{r.barcode}</span>
             )}
           </span>
         );
@@ -965,7 +963,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                         <div className="min-w-0">
                           <p className="truncate font-medium">{r.productName}</p>
                           <p className="text-xs text-muted-foreground">
-                            {r.variantName ?? r.sku ?? "—"} · {r.unit ?? "pza"}
+                            {r.sku ?? r.barcode ?? "—"} · {r.unit ?? "pza"}
                           </p>
                           {r.status !== "ok" && (
                             <Badge

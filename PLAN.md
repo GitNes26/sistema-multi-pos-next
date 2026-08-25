@@ -2586,4 +2586,58 @@ La app es **monolito full-stack** (Next.js): el front (React) y el back (API rou
 ---
 
 *Plan generado: 2026-08-10*
-*Última actualización: 2026-08-21*
+*Última actualización: 2026-08-25*
+
+---
+
+## FASE 21 — SISTEMA DE DEVOLUCIONES/CAMBIOS ✅
+
+### 21.1 Schema (Prisma)
+- **Enums**: `ReturnType` (exchange, refund, coupon, points), `ReturnStatus` (pending, approved, completed, rejected)
+- **Modelo `SaleReturn`**: Vinculado a Sale. Campos: returnType, status, reason, subtotal, tax, total, notes, couponCode, couponAmount, couponExpiresAt, pointsAwarded
+- **Modelo `SaleReturnItem`**: Items devueltos. Campos: saleItemId, productName, quantity, unitPrice, lineTotal, reason, restockable
+- **Relaciones inversas**: Organization, CashSession, Employee, User
+
+### 21.2 Server Logic (`src/lib/returns/server.ts`)
+- **`createReturn()`**: Valida venta, verifica cantidades retornables (respeta devoluciones existentes), calcula totales, crea registro
+- **`approveReturn()`**: Cambia estado de pending → approved
+- **`completeReturn()`**: Procesa la devolución:
+  - Registra movimientos de inventario tipo `return` (+) para productos re-estacionables
+  - **Refund**: Reversa puntos ganados proporcionalmente
+  - **Coupon**: Genera cupón con código único (DEV-XXXXXXXX), vence en 3 meses
+  - **Points**: Bonifica el monto como puntos según `pointsPerCurrency` de la organización
+  - **Exchange**: Solo registra movimiento (el empleado crea nueva venta aparte)
+- **`rejectReturn()`**: Cambia estado a rejected
+- **`getSaleReturns()`**, **`getReturnDetail()`**, **`listReturns()`**: Consultas
+
+### 21.3 API Routes
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `POST` | `/api/sales/[id]/return` | Crear devolución |
+| `GET` | `/api/sales/[id]/returns` | Devoluciones de una venta |
+| `GET` | `/api/sales/returns` | Listado global (filtros: from, to, status, returnType, locationId) |
+| `GET` | `/api/sales/returns/[returnId]` | Detalle de devolución |
+| `PUT` | `/api/sales/returns/[returnId]/approve` | Aprobar devolución |
+| `POST` | `/api/sales/returns/[returnId]/complete` | Procesar/devolver |
+| `GET` | `/api/sales/returns/[returnId]/ticket` | Ticket PDF térmico 80mm |
+
+### 21.4 UI Components
+- **`ReturnDialog`** (`src/components/admin/sales/return-dialog.tsx`):
+  - Selector de tipo: Dinero / Cupón / Puntos / Cambio
+  - Lista de productos con checkboxes, cantidades parciales, motivo por producto
+  - Flag "Re-estacionar" por producto
+  - Resumen con total a devolver
+  - Verifica devoluciones existentes para calcular cantidades máximas
+- **Botón "Devolución"** en `SaleDetailDialog` (junto a "Imprimir")
+
+### 21.5 Ticket de Devolución PDF
+- Formato térmico 80mm (226x400 pts)
+- Contenido: empresa, folio DEV-XXX, fecha, tipo, estado, venta original, items, totales, resolución (cupón/puntos)
+
+### 21.6 Impacto en Reportes
+- Reporte de ventas PDF muestra: Total bruto, Devoluciones (si > 0), Total neto
+- Endpoint de exportación consulta `saleReturn.aggregate` para total de devoluciones completadas
+
+### 21.7 Tipos TypeScript (`src/lib/api.ts`)
+- Interfaces: `SaleReturn`, `SaleReturnItem`, `SaleReturnWithSale`, `SaleReturnDetail`
+- Métodos en `salesApi`: `createReturn`, `saleReturns`, `listReturns`, `returnDetail`, `approveReturn`, `completeReturn`, `returnTicketUrl`

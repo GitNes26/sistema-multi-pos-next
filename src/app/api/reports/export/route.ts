@@ -68,8 +68,22 @@ export async function GET(req: NextRequest) {
         filename = `clientes-${date}.pdf`;
       } else {
         const { rows } = await getSalesReport(guard.organizationId, filters);
-        console.log(`[reports] sales: org=${guard.organizationId} rows=${rows.length}`);
-        buffer = await buildSalesReportPdf(org, rows);
+        // Consultar total de devoluciones completadas en el mismo período
+        const returnsWhere: Record<string, unknown> = { organizationId: guard.organizationId, status: "completed" };
+        if (filters.locationId) returnsWhere.locationId = filters.locationId;
+        if (filters.from || filters.to) {
+          returnsWhere.createdAt = {
+            ...(filters.from ? { gte: new Date(`${filters.from}T00:00:00`) } : {}),
+            ...(filters.to ? { lte: new Date(`${filters.to}T23:59:59.999`) } : {}),
+          };
+        }
+        const returnsAgg = await prisma.saleReturn.aggregate({
+          where: returnsWhere,
+          _sum: { total: true },
+        });
+        const returnsTotal = Number(returnsAgg._sum.total ?? 0);
+        console.log(`[reports] sales: org=${guard.organizationId} rows=${rows.length} returns=${returnsTotal}`);
+        buffer = await buildSalesReportPdf(org, rows, returnsTotal);
         filename = `ventas-${date}.pdf`;
       }
 

@@ -8,6 +8,7 @@ import {
   Printer,
   ReceiptText,
   Search,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ import { swalError, swalToast } from "@/lib/swal";
 import { money, qty } from "@/lib/pos/money";
 import { PAYMENT_METHOD_LABELS } from "@/lib/pos/config";
 import { cn } from "@/lib/utils";
+import { ReturnDialog } from "./return-dialog";
 
 // FASE 9 — Historial de ventas del POS.
 
@@ -403,6 +405,7 @@ function SaleCard({ row, onOpen }: { row: SaleRow; onOpen: () => void }) {
 
 function SaleDetailDialog({ sale, open, onClose }: { sale: SaleDetail; open: boolean; onClose: () => void }) {
   const [printing, setPrinting] = useState(false);
+  const [showReturn, setShowReturn] = useState(false);
 
   const print = () => {
     setPrinting(true);
@@ -534,11 +537,21 @@ function SaleDetailDialog({ sale, open, onClose }: { sale: SaleDetail; open: boo
               </p>
             )}
 
-            <Button onClick={print} className="w-full">
-              <Printer className="size-4" /> Imprimir ticket
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowReturn(true)} className="flex-1">
+                <Undo2 className="size-4" /> Devolución
+              </Button>
+              <Button onClick={print} className="flex-1">
+                <Printer className="size-4" /> Imprimir
+              </Button>
+            </div>
           </>
         )}
+        <ReturnDialog
+          open={showReturn}
+          onOpenChange={setShowReturn}
+          sale={sale}
+        />
     </DialogComponent>
   );
 }

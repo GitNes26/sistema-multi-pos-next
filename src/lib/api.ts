@@ -102,6 +102,52 @@ export interface InventoryMovement {
   createdAt: string;
 }
 
+// ── Devoluciones ─────────────────────────────────────────────────────────────
+
+export interface SaleReturnItem {
+  id: string;
+  saleItemId: string;
+  productName: string;
+  variantName: string | null;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  reason: string | null;
+  restockable: boolean;
+}
+
+export interface SaleReturn {
+  id: string;
+  saleId: string;
+  returnType: "exchange" | "refund" | "coupon" | "points";
+  status: "pending" | "approved" | "completed" | "rejected";
+  reason: string | null;
+  subtotal: number;
+  tax: number;
+  total: number;
+  notes: string | null;
+  couponCode: string | null;
+  couponAmount: number | null;
+  pointsAwarded: number | null;
+  createdAt: string;
+  items: SaleReturnItem[];
+}
+
+export interface SaleReturnWithSale extends SaleReturn {
+  sale: {
+    saleNumber: number;
+    locationSaleNumber: number | null;
+    total: number;
+    customer: { fullName: string } | null;
+  };
+}
+
+export interface SaleReturnDetail extends SaleReturn {
+  sale: SaleDetail;
+  employee: { fullName: string } | null;
+  user: { fullName: string } | null;
+}
+
 export type RevisionStatus = "draft" | "in_progress" | "completed" | "cancelled";
 
 export interface InventoryRevision {
@@ -360,6 +406,34 @@ export const salesApi = {
     download(`/api/sales/export?format=pdf&${new URLSearchParams(
       Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
     )}`, "ventas.pdf"),
+
+  // Devoluciones
+  createReturn: (saleId: string, data: {
+    returnType: "exchange" | "refund" | "coupon" | "points";
+    reason?: string;
+    notes?: string;
+    items: { saleItemId: string; quantity: number; reason?: string; restockable?: boolean }[];
+    exchangeVariantId?: string;
+  }) => request<{ ok: boolean; return: SaleReturn }>(`/api/sales/${saleId}/return`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  }),
+  saleReturns: (saleId: string) =>
+    request<{ ok: boolean; returns: SaleReturn[] }>(`/api/sales/${saleId}/returns`),
+  listReturns: (params: Record<string, string | undefined> = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
+    );
+    return request<{ ok: boolean; returns: SaleReturnWithSale[] }>(`/api/sales/returns?${qs.toString()}`);
+  },
+  returnDetail: (returnId: string) =>
+    request<{ ok: boolean; return: SaleReturnDetail }>(`/api/sales/returns/${returnId}`),
+  approveReturn: (returnId: string) =>
+    request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/approve`, { method: "PUT" }),
+  completeReturn: (returnId: string) =>
+    request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/complete`, { method: "POST" }),
+  returnTicketUrl: (returnId: string) => `/api/sales/returns/${returnId}/ticket`,
 };
 
 async function download(url: string, fallbackName?: string) {

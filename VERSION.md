@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.4.2.1] — 2026-08-25
+- **Tipo:** `docs` (Revision)
+- docs: se actualizo el Dockerfile para actualizar DB
+
 ### [0.4.2.0] — 2026-08-25
 - **Tipo:** `fix` (Patch)
 - fix(docker): use prisma db push instead of migrate deploy for schema sync
