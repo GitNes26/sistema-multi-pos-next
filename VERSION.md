@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.5.2.0] — 2026-08-26
+- **Tipo:** `fix` (Patch)
+- fix(products): delete FK cleanup + identical create/edit form
+
 ### [0.5.1.0] — 2026-08-26
 - **Tipo:** `fix` (Patch)
 - fix(crud): nested dialogs close only inner, not all parents

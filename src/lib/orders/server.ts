@@ -723,12 +723,9 @@ export interface DeliveryPolicyData {
   deliveryEstimatedMins: number | null;
 }
 
-export interface DaySchedule {
-  day: number;
-  enabled: boolean;
-  open: string;
-  close: string;
-}
+import type { DaySchedule } from "@/lib/schedule";
+
+export type { DaySchedule } from "@/lib/schedule";
 
 export async function getDeliveryPolicy(organizationId: string): Promise<DeliveryPolicyData | null> {
   const p = await prisma.deliveryPolicy.findUnique({ where: { organizationId } });

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import type { $Enums, Prisma } from "@prisma/client";
 import { notifyOrderEvent } from "@/lib/notifications/events";
 import { round2, round3 } from "@/lib/pos/money";
+import { parseSchedule, formatSchedule } from "@/lib/schedule";
 
 // FASE 13 — Servidor del portal de clientes: catálogo, pedidos, lealtad,
 // favoritos, listas de compra, perfil y métodos de pago.
@@ -398,6 +399,7 @@ export interface PortalLocation {
   latitude: number | null;
   longitude: number | null;
   openingHours: string | null;
+  openingScheduleJson: string | null;
   allowsPickup: boolean;
   allowsDelivery: boolean;
 }
@@ -413,7 +415,10 @@ export async function listPortalLocations(organizationId: string): Promise<Porta
     address: l.address,
     latitude: l.latitude ? toNum(l.latitude) : null,
     longitude: l.longitude ? toNum(l.longitude) : null,
-    openingHours: l.openingHours,
+    openingHours: l.openingScheduleJson
+      ? formatSchedule(parseSchedule(l.openingScheduleJson))
+      : l.openingHours,
+    openingScheduleJson: l.openingScheduleJson,
     allowsPickup: l.allowsPickup,
     allowsDelivery: l.allowsDelivery,
   }));

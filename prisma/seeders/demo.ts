@@ -1,6 +1,7 @@
 import { $Enums } from "@prisma/client"
 import { prisma } from "../../src/lib/db/client"
 import { seedProduction, SYSTEM_UNITS } from "./production"
+import { emptySchedule } from "../../src/lib/schedule"
 
 // FASE 1.3.2 — Seed de demo
 // Genera una organización completa con datos de ejemplo deterministas.
@@ -418,6 +419,8 @@ export async function seedDemo() {
           managerName: "Carlos Ruiz",
           allowsPickup: loc.allowsPickup ?? true,
           allowsDelivery: loc.allowsDelivery ?? false,
+          openingHours: "Lun-Sab 09:00-18:00",
+          openingScheduleJson: JSON.stringify(emptySchedule()),
         },
       })
     )
@@ -430,6 +433,8 @@ export async function seedDemo() {
       code: "CED-001",
       address: "Parque Industrial Norte",
       managerName: "Almacenero Demo",
+      openingHours: "Lun-Vie 08:00-17:00",
+      openingScheduleJson: JSON.stringify(emptySchedule().map((d, i) => ({ ...d, enabled: i >= 1 && i <= 5, open: "08:00", close: "17:00" }))),
     },
   })
 

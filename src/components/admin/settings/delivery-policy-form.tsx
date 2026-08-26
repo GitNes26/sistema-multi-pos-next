@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { swalToast, swalError } from "@/lib/swal";
-import type { DaySchedule } from "@/lib/orders/server";
+import { ScheduleEditor, emptySchedule, type DaySchedule } from "@/components/base/schedule-editor";
 
 interface PolicyForm {
   pickupEnabled: boolean;
@@ -22,61 +22,6 @@ interface PolicyForm {
   deliverySchedule: DaySchedule[];
   deliveryRadiusKm: string;
   deliveryEstimatedMins: string;
-}
-
-const DAYS = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
-
-function emptySchedule(): DaySchedule[] {
-  return Array.from({ length: 7 }, (_, i) => ({
-    day: i,
-    enabled: i >= 1 && i <= 5,
-    open: "09:00",
-    close: "18:00",
-  }));
-}
-
-function ScheduleEditor({
-  schedule,
-  onChange,
-}: {
-  schedule: DaySchedule[];
-  onChange: (s: DaySchedule[]) => void;
-}) {
-  const update = (idx: number, patch: Partial<DaySchedule>) => {
-    const next = schedule.map((d, i) => (i === idx ? { ...d, ...patch } : d));
-    onChange(next);
-  };
-
-  return (
-    <div className="space-y-1.5">
-      {schedule.map((s, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <span className="w-10 text-xs font-medium text-muted-foreground">
-            {DAYS[s.day]}
-          </span>
-          <Switch
-            checked={s.enabled}
-            onCheckedChange={(v) => update(i, { enabled: v })}
-          />
-          <input
-            type="time"
-            value={s.open}
-            onChange={(e) => update(i, { open: e.target.value })}
-            disabled={!s.enabled}
-            className="h-8 w-24 rounded-md border bg-transparent px-2 text-sm disabled:opacity-40"
-          />
-          <span className="text-xs text-muted-foreground">a</span>
-          <input
-            type="time"
-            value={s.close}
-            onChange={(e) => update(i, { close: e.target.value })}
-            disabled={!s.enabled}
-            className="h-8 w-24 rounded-md border bg-transparent px-2 text-sm disabled:opacity-40"
-          />
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export function DeliveryPolicyForm() {

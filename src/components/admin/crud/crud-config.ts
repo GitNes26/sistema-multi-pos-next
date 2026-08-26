@@ -14,7 +14,8 @@ export type FieldType =
   | "time"
   | "multiselect"
   | "image"
-  | "gps";
+  | "gps"
+  | "schedule";
 
 export interface SelectOption {
   value: string;
@@ -203,7 +204,8 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       { key: "managerName", label: "Encargado", type: "text" },
       { key: "phone", label: "Teléfono", type: "text" },
       { key: "email", label: "Correo", type: "text" },
-      { key: "openingHours", label: "Horario", type: "text", placeholder: "Lun–Sáb 8:00–20:00" },
+      { key: "openingHours", label: "Horario (texto)", type: "text", placeholder: "Lun–Sáb 8:00–20:00", showIf: () => false },
+      { key: "openingScheduleJson", label: "Horario", type: "schedule", full: true },
       {
         key: "gps",
         label: "Ubicación (GPS)",
@@ -357,7 +359,8 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       { key: "managerName", label: "Encargado", type: "text" },
       { key: "phone", label: "Teléfono", type: "text" },
       { key: "email", label: "Correo", type: "text" },
-      { key: "openingHours", label: "Horario", type: "text" },
+      { key: "openingHours", label: "Horario (texto)", type: "text", placeholder: "Lun-Sab 8:00-20:00", showIf: () => false },
+      { key: "openingScheduleJson", label: "Horario", type: "schedule", full: true },
       { key: "latitude", label: "Latitud", type: "number" },
       { key: "longitude", label: "Longitud", type: "number" },
       { key: "timezone", label: "Zona horaria", type: "text", placeholder: "America/Mexico_City" },

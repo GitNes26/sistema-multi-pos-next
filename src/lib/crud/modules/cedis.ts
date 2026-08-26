@@ -12,6 +12,7 @@ export interface CediDto {
   phone: string | null;
   email: string | null;
   openingHours: string | null;
+  openingScheduleJson: string | null;
   imageUrl: string | null;
   notes: string | null;
   timezone: string;
@@ -34,6 +35,7 @@ function serialize(c: {
   phone: string | null;
   email: string | null;
   openingHours: string | null;
+  openingScheduleJson: string | null;
   imageUrl: string | null;
   notes: string | null;
   timezone: string;
@@ -50,6 +52,7 @@ function serialize(c: {
     phone: c.phone,
     email: c.email,
     openingHours: c.openingHours,
+    openingScheduleJson: c.openingScheduleJson,
     imageUrl: c.imageUrl,
     notes: c.notes,
     timezone: c.timezone,
@@ -120,6 +123,7 @@ export const cedisModule: CrudModule<CediDto> = {
         phone: data.phone ? String(data.phone) : null,
         email: data.email ? String(data.email) : null,
         openingHours: data.openingHours ? String(data.openingHours) : null,
+        openingScheduleJson: data.openingScheduleJson ? String(data.openingScheduleJson) : null,
         imageUrl: data.imageUrl ? String(data.imageUrl) : null,
         notes: data.notes ? String(data.notes) : null,
         timezone: data.timezone ? String(data.timezone) : "America/Mexico_City",
@@ -157,6 +161,7 @@ export const cedisModule: CrudModule<CediDto> = {
         ...(data.phone !== undefined ? { phone: data.phone ? String(data.phone) : null } : {}),
         ...(data.email !== undefined ? { email: data.email ? String(data.email) : null } : {}),
         ...(data.openingHours !== undefined ? { openingHours: data.openingHours ? String(data.openingHours) : null } : {}),
+        ...(data.openingScheduleJson !== undefined ? { openingScheduleJson: data.openingScheduleJson ? String(data.openingScheduleJson) : null } : {}),
         ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl ? String(data.imageUrl) : null } : {}),
         ...(data.notes !== undefined ? { notes: data.notes ? String(data.notes) : null } : {}),
         ...(data.timezone !== undefined ? { timezone: data.timezone ? String(data.timezone) : "America/Mexico_City" } : {}),

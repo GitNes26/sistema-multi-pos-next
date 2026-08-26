@@ -12,6 +12,7 @@ export interface LocationDto {
   phone: string | null;
   email: string | null;
   openingHours: string | null;
+  openingScheduleJson: string | null;
   imageUrl: string | null;
   notes: string | null;
   timezone: string;
@@ -34,6 +35,7 @@ type LocationRow = {
   phone: string | null;
   email: string | null;
   openingHours: string | null;
+  openingScheduleJson: string | null;
   imageUrl: string | null;
   notes: string | null;
   timezone: string;
@@ -62,6 +64,7 @@ function serialize(l: LocationRow): LocationDto {
     phone: l.phone,
     email: l.email,
     openingHours: l.openingHours,
+    openingScheduleJson: l.openingScheduleJson,
     imageUrl: l.imageUrl,
     notes: l.notes,
     timezone: l.timezone,
@@ -146,6 +149,7 @@ export const locationsModule: CrudModule<LocationDto> = {
         phone: data.phone ? String(data.phone) : null,
         email: data.email ? String(data.email) : null,
         openingHours: data.openingHours ? String(data.openingHours) : null,
+        openingScheduleJson: data.openingScheduleJson ? String(data.openingScheduleJson) : null,
         imageUrl: data.imageUrl ? String(data.imageUrl) : null,
         notes: data.notes ? String(data.notes) : null,
         timezone: data.timezone ? String(data.timezone) : "America/Mexico_City",
@@ -186,6 +190,7 @@ export const locationsModule: CrudModule<LocationDto> = {
         ...(data.phone !== undefined ? { phone: data.phone ? String(data.phone) : null } : {}),
         ...(data.email !== undefined ? { email: data.email ? String(data.email) : null } : {}),
         ...(data.openingHours !== undefined ? { openingHours: data.openingHours ? String(data.openingHours) : null } : {}),
+        ...(data.openingScheduleJson !== undefined ? { openingScheduleJson: data.openingScheduleJson ? String(data.openingScheduleJson) : null } : {}),
         ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl ? String(data.imageUrl) : null } : {}),
         ...(data.notes !== undefined ? { notes: data.notes ? String(data.notes) : null } : {}),
         ...(data.timezone !== undefined ? { timezone: data.timezone ? String(data.timezone) : "America/Mexico_City" } : {}),

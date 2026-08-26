@@ -17,6 +17,8 @@ import { MultiSelect } from "./multi-select"
 import { Attachment } from "@/components/base/attachment"
 import { GpsPicker } from "@/components/base/gps-picker"
 import { InputGroupField } from "@/components/base/input-group-field"
+import { ScheduleEditor } from "@/components/base/schedule-editor"
+import { parseSchedule, emptySchedule } from "@/lib/schedule"
 import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads"
 import type { CrudField, CrudUiConfig } from "./crud-config"
 import { cn } from "@/lib/utils"
@@ -34,6 +36,10 @@ function defaultValue(
   initial: Record<string, unknown> | null
 ) {
   if (field.type === "gps") return undefined
+  if (field.type === "schedule") {
+    if (initial && initial[field.key] != null) return parseSchedule(initial[field.key])
+    return emptySchedule()
+  }
   if (
     initial &&
     initial[field.key] !== undefined &&
@@ -113,6 +119,9 @@ export function CrudForm({
         field.type === "percent"
       ) {
         v = v === "" || v === undefined || v === null ? "" : Number(v)
+      }
+      if (field.type === "schedule") {
+        v = JSON.stringify(v ?? emptySchedule())
       }
       payload[field.key] = v
     }
@@ -241,6 +250,15 @@ export function CrudForm({
                 </div>
               )
             }
+            case "schedule":
+              return (
+                <div className={cn([className, "rounded-lg border bg-muted/30 p-3"])}>
+                  <ScheduleEditor
+                    schedule={(value as ReturnType<typeof parseSchedule>) ?? emptySchedule()}
+                    onChange={(s) => set(field.key, s)}
+                  />
+                </div>
+              )
             default:
               return (
                 <Input

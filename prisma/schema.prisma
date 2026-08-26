@@ -537,12 +537,13 @@ model Location {
   managerName    String?
   phone          String?
   email          String?
-  openingHours   String?
-  imageUrl       String?
-  notes          String?
-  timezone       String   @default("America/Mexico_City")
-  allowsPickup   Boolean  @default(true)
-  allowsDelivery Boolean  @default(false)
+  openingHours        String?
+  openingScheduleJson String?   @db.Text
+  imageUrl            String?
+  notes               String?
+  timezone            String   @default("America/Mexico_City")
+  allowsPickup        Boolean  @default(true)
+  allowsDelivery      Boolean  @default(false)
   saleSeq        BigInt   @default(0)
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
@@ -570,12 +571,13 @@ model Cedi {
   managerName    String?
   phone          String?
   email          String?
-  openingHours   String?
-  imageUrl       String?
-  notes          String?
-  timezone       String   @default("America/Mexico_City")
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
+  openingHours        String?
+  openingScheduleJson String?   @db.Text
+  imageUrl            String?
+  notes               String?
+  timezone            String   @default("America/Mexico_City")
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
