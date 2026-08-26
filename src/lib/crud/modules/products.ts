@@ -330,19 +330,62 @@ export const productsModule: CrudModule<ProductDto> = {
       include,
     });
 
+    // Actualizar variante default si se proporcionaron datos
+    if (data.initialVariant && productType === "standard") {
+      const v = data.initialVariant as Record<string, unknown>;
+      const defaultVariant = await prisma.productVariant.findFirst({
+        where: { productId: id, name: "Default" },
+      });
+      if (defaultVariant) {
+        await prisma.productVariant.update({
+          where: { id: defaultVariant.id },
+          data: {
+            ...(v.price !== undefined ? { price: Number(v.price) || 0 } : {}),
+            ...(v.cost !== undefined ? { cost: Number(v.cost) || 0 } : {}),
+            ...(v.sku !== undefined ? { sku: v.sku ? String(v.sku) : null } : {}),
+            ...(v.barcode !== undefined ? { barcode: v.barcode ? String(v.barcode) : null } : {}),
+          },
+        });
+      }
+    }
+
     return serialize((product as unknown) as ProductRow);
   },
 
   async remove(organizationId, id) {
     const existing = await prisma.product.findFirst({
       where: { id, organizationId },
-      include: { _count: { select: { saleItems: true, orderItems: true, inventory: true, variants: true } } },
+      include: { _count: { select: { saleItems: true, orderItems: true } } },
     });
     if (!existing) throw new CrudError("Producto no encontrado", 404);
     if (existing._count.saleItems > 0 || existing._count.orderItems > 0) {
       throw new CrudError("No se puede eliminar: el producto tiene ventas o pedidos", 409);
     }
+
+    // Obtener todos los variant IDs del producto para limpiar tablas hijas
+    const variantIds = (
+      await prisma.productVariant.findMany({ where: { productId: id }, select: { id: true } })
+    ).map((v) => v.id);
+
+    // Obtener option IDs para limpiar VariantOptionValue
+    const optionIds = (
+      await prisma.productOption.findMany({ where: { productId: id }, select: { id: true } })
+    ).map((o) => o.id);
+
     await prisma.$transaction([
+      // Limpiar tablas que referencian variantes
+      ...(variantIds.length > 0 ? [
+        prisma.variantOptionValue.deleteMany({ where: { variantId: { in: variantIds } } }),
+        prisma.variantPriceHistory.deleteMany({ where: { variantId: { in: variantIds } } }),
+        prisma.inventoryRevisionItem.deleteMany({ where: { variantId: { in: variantIds } } }),
+        prisma.customerFavorite.deleteMany({ where: { variantId: { in: variantIds } } }),
+        prisma.shoppingListItem.deleteMany({ where: { variantId: { in: variantIds } } }),
+      ] : []),
+      // Limpiar tablas que referencian opciones
+      ...(optionIds.length > 0 ? [
+        prisma.productOption.deleteMany({ where: { productId: id } }),
+      ] : []),
+      // Limpiar tablas que referencian producto directamente
       prisma.productVariant.deleteMany({ where: { productId: id } }),
       prisma.inventory.deleteMany({ where: { productId: id } }),
       prisma.inventoryMovement.deleteMany({ where: { productId: id } }),

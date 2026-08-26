@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.5.1.0] — 2026-08-26
+- **Tipo:** `fix` (Patch)
+- fix(crud): nested dialogs close only inner, not all parents
+
 ### [0.5.0.0] — 2026-08-25
 - **Tipo:** `feat` (Minor)
 - feat(returns): sistema completo de devoluciones/cambios

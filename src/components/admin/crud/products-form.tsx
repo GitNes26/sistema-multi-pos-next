@@ -170,10 +170,30 @@ export function ProductsForm({
     String((initial?.splitPricePerUnit as number) ?? "")
   )
 
-  const [variantSku, setVariantSku] = useState("")
-  const [variantBarcode, setVariantBarcode] = useState("")
-  const [variantPrice, setVariantPrice] = useState("")
-  const [variantCost, setVariantCost] = useState("")
+  const [variantSku, setVariantSku] = useState(
+    (initial?.variants as { name?: string; sku?: string | null }[])?.find(
+      (v) => v.name?.toLowerCase() === "default"
+    )?.sku ?? (initial?.variants as { name?: string; sku?: string | null }[])?.[0]?.sku ?? ""
+  )
+  const [variantBarcode, setVariantBarcode] = useState(
+    (initial?.variants as { name?: string; barcode?: string | null }[])?.find(
+      (v) => v.name?.toLowerCase() === "default"
+    )?.barcode ?? (initial?.variants as { name?: string; barcode?: string | null }[])?.[0]?.barcode ?? ""
+  )
+  const [variantPrice, setVariantPrice] = useState(
+    String(
+      (initial?.variants as { name?: string; price?: number }[])?.find(
+        (v) => v.name?.toLowerCase() === "default"
+      )?.price ?? (initial?.variants as { name?: string; price?: number }[])?.[0]?.price ?? ""
+    )
+  )
+  const [variantCost, setVariantCost] = useState(
+    String(
+      (initial?.variants as { name?: string; cost?: number }[])?.find(
+        (v) => v.name?.toLowerCase() === "default"
+      )?.cost ?? (initial?.variants as { name?: string; cost?: number }[])?.[0]?.cost ?? ""
+    )
+  )
 
   const [options, setOptions] = useState<ProductOption[]>(
     (initial?.options as ProductOption[]) ?? []
@@ -249,7 +269,7 @@ export function ProductsForm({
         splitUnitId: allowSplit ? splitUnitId || null : null,
         splitPricePerUnit: allowSplit ? numOrEmpty(splitPricePerUnit) : 0,
       })
-    } else if (!isEdit) {
+    } else {
       const hasOptions = options.some(
         (o) => o.name.trim() && o.values.some((v) => v.value.trim())
       )
@@ -366,7 +386,6 @@ export function ProductsForm({
         <TypeToggle
           value={productType}
           onChange={setProductType}
-          disabled={isEdit}
         />
       </FieldRow>
 
@@ -524,74 +543,48 @@ export function ProductsForm({
         </>
       ) : (
         <>
-          {/* Variante inicial (solo creación) */}
-          {!isEdit && (
+          {/* Variante base — precio, costo, SKU, código de barras */}
+          <FieldRow
+            label={hasOptions ? "Precio y costo base" : "Variante inicial"}
+            full
+          >
+            <p className="text-xs text-muted-foreground">
+              {hasOptions
+                ? "El precio y costo se aplican a todas las variantes generadas; luego podrás ajustarlos por variante."
+                : isEdit
+                  ? "Edita los datos de la variante base del producto."
+                  : "Crea una variante base para que el producto aparezca en el POS."}
+            </p>
+          </FieldRow>
+          <InputField
+            label="Precio de venta ($)"
+            icon={<DollarSign className="size-4" />}
+            type="number"
+            step="0.01"
+            value={variantPrice}
+            onChange={(e) => setVariantPrice(e.target.value)}
+          />
+          <InputField
+            label="Costo ($)"
+            icon={<DollarSign className="size-4" />}
+            type="number"
+            step="0.01"
+            value={variantCost}
+            onChange={(e) => setVariantCost(e.target.value)}
+          />
+          {!hasOptions && (
             <>
-              <FieldRow
-                label={hasOptions ? "Precio y costo base" : "Variante inicial"}
-                full
-              >
-                <p className="text-xs text-muted-foreground">
-                  {hasOptions
-                    ? "El precio y costo se aplican a todas las variantes generadas; luego podrás ajustarlos por variante."
-                    : "Crea una variante base para que el producto aparezca en el POS."}
-                </p>
-              </FieldRow>
-              <InputField
-                label="Precio de venta ($)"
-                icon={<DollarSign className="size-4" />}
-                type="number"
-                step="0.01"
-                value={variantPrice}
-                onChange={(e) => setVariantPrice(e.target.value)}
-              />
-              <InputField
-                label="Costo ($)"
-                icon={<DollarSign className="size-4" />}
-                type="number"
-                step="0.01"
-                value={variantCost}
-                onChange={(e) => setVariantCost(e.target.value)}
-              />
-              {!hasOptions && (
-                <>
-                  <InputField
-                    label="SKU"
-                    icon={<Hash className="size-4" />}
-                    value={variantSku}
-                    onChange={(e) => setVariantSku(e.target.value)}
-                  />
-                  <InputField
-                    label="Código de barras"
-                    icon={<Barcode className="size-4" />}
-                    value={variantBarcode}
-                    onChange={(e) => setVariantBarcode(e.target.value)}
-                  />
-                </>
-              )}
-            </>
-          )}
-
-          {/* SKU / Código de barras en edición (solo lectura) */}
-          {isEdit && defaultVariant && (
-            <>
-              <FieldRow label="SKU (variante base)" full>
-                <p className="text-xs text-muted-foreground">
-                  El SKU de la variante base. Para editar SKU de cada variante,
-                  usa el botón «Variantes» en la tabla.
-                </p>
-              </FieldRow>
               <InputField
                 label="SKU"
                 icon={<Hash className="size-4" />}
-                value={defaultVariant.sku ?? ""}
-                disabled
+                value={variantSku}
+                onChange={(e) => setVariantSku(e.target.value)}
               />
               <InputField
                 label="Código de barras"
                 icon={<Barcode className="size-4" />}
-                value={defaultVariant.barcode ?? ""}
-                disabled
+                value={variantBarcode}
+                onChange={(e) => setVariantBarcode(e.target.value)}
               />
             </>
           )}
