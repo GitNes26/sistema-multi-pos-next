@@ -7,6 +7,7 @@ interface SwitchFieldProps {
   id?: string
   label: string
   description?: string
+  icon?: React.ReactNode
   checked?: boolean | null
   onCheckedChange: (checked: boolean) => void
   disabled?: boolean
@@ -17,6 +18,7 @@ export function SwitchField({
   id,
   label,
   description,
+  icon,
   checked,
   onCheckedChange,
   disabled,
@@ -32,11 +34,9 @@ export function SwitchField({
         className
       )}
     >
-      <label htmlFor={switchId} className="cursor-pointer">
-        <span className="block text-sm font-medium">{label}</span>
-        {description && (
-          <span className="block text-xs text-muted-foreground">{description}</span>
-        )}
+      <label htmlFor={switchId} className="flex items-center gap-2 cursor-pointer">
+        {icon && <span className="shrink-0 text-muted-foreground">{icon}</span>}
+        <span className="text-sm font-medium">{label}</span>
       </label>
       <Switch
         id={switchId}

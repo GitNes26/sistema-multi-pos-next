@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.9.1.0] — 2026-08-26
+- **Tipo:** `fix` (Patch)
+- fix(inputs): md:pl-9 on all Input with leftIcon/leftAddon for desktop consistency
+
 ### [0.9.0.0] — 2026-08-26
 - **Tipo:** `feat` (Minor)
 - feat(menus): icon preview in combobox, create permissions, SwitchField component
