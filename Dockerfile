@@ -45,7 +45,10 @@ EXPOSE 3000
 # Asegura que /app/public/uploads exista (Dokploy monta un volumen persistente aqui).
 RUN mkdir -p /app/public/uploads
 
-# Sincroniza schema con la BD (db push crea/altera tablas para coincidir con schema.prisma).
-# Luego siembra datos base (idempotente) y arranca el server.
-# Para sembrar tambien datos demo: define SEED_DEMO=true en el environment de Dokploy.
+# ── CMD por defecto: sync schema + seed + arrancar server ──
+# NO usa --force-reset para no perder datos en cada reinicio.
 CMD ["sh", "-c", "npx prisma db push --skip-generate && npm run db:seed && npm run start"]
+
+# ── Para resetear la BD manualmente (SOLO cuando tú lo pidas): ──
+# docker exec -it <container> sh -c "npx prisma db push --force-reset --skip-generate && npm run db:seed"
+# O en Dokploy: cambia el CMD a "db:reset" temporalmente.

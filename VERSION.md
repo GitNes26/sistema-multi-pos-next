@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.7.0.2] — 2026-08-26
+- **Tipo:** `chore` (Revision)
+- chore: add db:reset script (force-reset + seed)
+
 ### [0.7.0.1] — 2026-08-26
 - **Tipo:** `refactor` (Revision)
 - refactor(forms): standardize all form inputs with InputGroupField + icons + validation
