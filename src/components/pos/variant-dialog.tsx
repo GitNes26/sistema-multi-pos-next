@@ -91,7 +91,7 @@ export function VariantDialog({
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              className="pl-9"
+              className="pl-9 md:pl-9"
               placeholder="Buscar variante…"
               value={q}
               onChange={(e) => setQ(e.target.value)}

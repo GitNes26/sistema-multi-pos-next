@@ -254,7 +254,7 @@ export function SalesPage({ canView, icon }: SalesPageProps) {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Cliente, cajero, folio…"
-                className="h-8 pl-9"
+                className="h-8 pl-9 md:pl-9"
               />
             </div>
           </div>

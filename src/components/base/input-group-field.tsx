@@ -73,9 +73,9 @@ export const InputGroupField = React.forwardRef<
             error || hint ? `${id}-describe` : undefined
           }
           className={cn(
-            (leftIcon || leftAddon) && "pl-9",
-            rightAddon && !hasError && "pr-16",
-            hasError && "pr-9",
+            (leftIcon || leftAddon) && "pl-9 md:pl-9",
+            rightAddon && !hasError && "pr-16 md:pr-16",
+            hasError && "pr-9 md:pr-9",
             className
           )}
           {...props}

@@ -185,7 +185,7 @@ export function AddressField({
             onChange={(e) => onAddressChange(e.target.value)}
             placeholder={placeholder}
             disabled={disabled}
-            className="pl-9"
+            className="pl-9 md:pl-9"
             rows={textarea ? 3 : undefined}
           />
         </div>
@@ -214,7 +214,7 @@ export function AddressField({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar dirección, calle o colonia…"
             disabled={disabled || searching}
-            className="pl-9"
+            className="pl-9 md:pl-9"
           />
         </div>
         <Button

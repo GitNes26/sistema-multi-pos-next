@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.9.0.0] — 2026-08-26
+- **Tipo:** `feat` (Minor)
+- feat(menus): icon preview in combobox, create permissions, SwitchField component
+
 ### [0.8.0.0] — 2026-08-26
 - **Tipo:** `feat` (Minor)
 - feat(Dockerfile): DB_RESET=true env var for conditional db reset

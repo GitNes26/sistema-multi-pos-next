@@ -113,7 +113,7 @@ export function CatalogPanel({
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addFirst()}
             placeholder="Buscar por nombre, SKU o código de barras…"
-            className="h-10 pl-9 pr-16"
+            className="h-10 pl-9 md:pl-9 pr-16 md:pr-16"
             aria-label="Buscar productos"
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">

@@ -178,7 +178,7 @@ export function GpsPicker({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar dirección, calle o colonia…"
               disabled={disabled || searching}
-              className="pl-9"
+              className="pl-9 md:pl-9"
             />
           </div>
           <Button

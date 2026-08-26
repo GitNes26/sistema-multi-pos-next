@@ -465,7 +465,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="h-8 pl-9 pr-8"
+                className="h-8 pl-9 md:pl-9 pr-8 md:pr-8"
               />
               {(isDebouncing || loading) && (
                 <Loader2 className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 animate-spin text-muted-foreground" />

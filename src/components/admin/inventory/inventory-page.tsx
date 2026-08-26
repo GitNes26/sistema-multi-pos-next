@@ -722,7 +722,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar producto, SKU…"
-                className="h-8 pl-9"
+                className="h-8 pl-9 md:pl-9"
               />
             </div>
             <Select value={productType} onValueChange={setProductType}>
@@ -820,7 +820,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar producto, SKU…"
-                className="h-8 pl-9"
+                className="h-8 pl-9 md:pl-9"
               />
             </div>
             <Select value={mType} onValueChange={setMType}>

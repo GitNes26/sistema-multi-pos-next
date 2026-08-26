@@ -264,7 +264,7 @@ export function DataTable<TData, TValue>({
                   value={globalFilter}
                   onChange={(e) => setGlobalFilter(e.target.value)}
                   placeholder={searchPlaceholder}
-                  className="h-8 pl-9"
+                  className="h-8 pl-9 md:pl-9"
                 />
               </div>
             )}

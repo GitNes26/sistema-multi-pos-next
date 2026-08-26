@@ -68,7 +68,7 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar por nombre, teléfono o nº de cliente"
-              className="pl-9"
+              className="pl-9 md:pl-9"
             />
           </div>
 
