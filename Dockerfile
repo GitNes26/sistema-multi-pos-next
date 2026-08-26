@@ -46,10 +46,17 @@ EXPOSE 3000
 RUN mkdir -p /app/public/uploads
 
 # ── CMD por defecto: sync schema + seed + arrancar server ──
-# NO usa --force-reset para no perder datos en cada reinicio.
-# CMD ["sh", "-c", "npx prisma db push --skip-generate && npm run db:seed && npm run start"]
-
-# ── Para resetear la BD manualmente (SOLO cuando tú lo pidas): ──
-# docker exec -it <container> sh -c "npx prisma db push --force-reset --skip-generate && npm run db:seed"
-# O en Dokploy: cambia el CMD a "db:reset" temporalmente.
+# Si DB_RESET=true → fuerza reset completo de la BD (borra todo y re-siembra).
+# Ejemplo en Dokploy: DB_RESET=true en las variables de entorno.
+CMD ["sh", "-c", "\
+  if [ \"$DB_RESET\" = \"true\" ]; then \
+    echo '⚠️  DB_RESET=true — Reseteando base de datos...'; \
+    npx prisma db push --force-reset --skip-generate && \
+    npm run db:seed && \
+    echo '✅ BD reseteada y sembrada correctamente.'; \
+  else \
+    npx prisma db push --skip-generate && \
+    npm run db:seed; \
+  fi && \
+  npm run start"]
 CMD ["sh", "-c", "npx prisma db push --force-reset --skip-generate && npm run db:seed && npm run start"]

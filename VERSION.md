@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.7.0.4] — 2026-08-26
+- **Tipo:** `chore` (Revision)
+- se agrego el flujo de devoluciones y cambios, correxion de errores de formulario, y se intenta unificar los inputs, vamos a resetear la BD
+
 ### [0.7.0.3] — 2026-08-26
 - **Tipo:** `docs` (Revision)
 - docs(Dockerfile): clarify db reset is manual, not automatic
