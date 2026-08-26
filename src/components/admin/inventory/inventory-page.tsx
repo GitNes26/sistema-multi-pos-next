@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   FileDown,
   FileSpreadsheet,
+  Hash,
   Loader2,
   ScanLine,
   Search,
@@ -31,6 +32,7 @@ import {
 import { DialogComponent } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable } from "@/components/base/data-table";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { crudApi, inventoryApi, type InventoryRow, type InventoryMovement, type InventoryRevision, type RevisionDetailData, type RevisionItem, type RevisionStatus } from "@/lib/api";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { playSound } from "@/lib/sounds";
@@ -352,15 +354,19 @@ function MovementDialog({
               </SelectContent>
             </Select>
           </div>
+          <InputGroupField
+            label={`Cantidad (${type === "adjustment" ? "puede ser negativa" : row.unit ?? "pza"})`}
+            type="number"
+            step="any"
+            min={0}
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            placeholder="0"
+            leftIcon={<Hash className="size-4" />}
+          />
           <div className="space-y-1.5">
-            <Label>
-              Cantidad ({type === "adjustment" ? "puede ser negativa" : row.unit ?? "pza"})
-            </Label>
-            <Input type="number" step="any" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="0" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Motivo (opcional)</Label>
-            <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. reposición de inventario" />
+            <Label htmlFor="movementReason">Motivo (opcional)</Label>
+            <Textarea id="movementReason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. reposición de inventario" />
           </div>
     </DialogComponent>
   );
@@ -411,10 +417,15 @@ function ThresholdDialog({
         </>
       }
     >
-          <div className="space-y-1.5">
-            <Label>Mínimo ({row.unit ?? "pza"})</Label>
-            <Input type="number" step="any" value={value} onChange={(e) => setValue(e.target.value)} />
-          </div>
+          <InputGroupField
+            label={`Mínimo (${row.unit ?? "pza"})`}
+            type="number"
+            step="any"
+            min={0}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            leftIcon={<Hash className="size-4" />}
+          />
     </DialogComponent>
   );
 }
@@ -520,13 +531,19 @@ function TransferDialog({
               </Select>
             </div>
           </div>
+          <InputGroupField
+            label={`Cantidad (${row.unit ?? "pza"})`}
+            type="number"
+            step="any"
+            min={0}
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            placeholder="0"
+            leftIcon={<Hash className="size-4" />}
+          />
           <div className="space-y-1.5">
-            <Label>Cantidad ({row.unit ?? "pza"})</Label>
-            <Input type="number" step="any" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="0" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Motivo (opcional)</Label>
-            <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. traslado de mercancía" />
+            <Label htmlFor="transferReason">Motivo (opcional)</Label>
+            <Textarea id="transferReason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. traslado de mercancía" />
           </div>
     </DialogComponent>
   );
@@ -1258,8 +1275,8 @@ function NewRevisionDialog({
       }
     >
           <div className="space-y-1.5">
-            <Label>Notas (opcional)</Label>
-            <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej. inventario de fin de mes" />
+            <Label htmlFor="newRevisionNotes">Notas (opcional)</Label>
+            <Textarea id="newRevisionNotes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej. inventario de fin de mes" />
           </div>
     </DialogComponent>
   );

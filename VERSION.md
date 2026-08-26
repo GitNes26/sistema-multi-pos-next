@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.7.0.0] — 2026-08-26
+- **Tipo:** `feat` (Minor)
+- feat(address): reusable AddressField component with GPS everywhere
+
 ### [0.6.0.0] — 2026-08-26
 - **Tipo:** `feat` (Minor)
 - feat(schedule): reusable ScheduleEditor component + structured branch hours

@@ -18,7 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Undo2 } from "lucide-react";
+import { Hash, Loader2, MessageSquare, Undo2 } from "lucide-react";
+import { InputGroupField } from "@/components/base/input-group-field";
 
 const RETURN_TYPES = [
   { value: "refund", label: "Devolución de dinero", desc: "Se reembolsa el efectivo/tarjeta al cliente" },
@@ -207,25 +208,28 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
                       {isSelected && (
                         <div className="mt-3 space-y-2">
                           <div className="flex items-center gap-2">
-                            <Label className="text-xs">Cantidad:</Label>
-                            <Input
+                            <InputGroupField
+                              label="Cantidad"
                               type="number"
                               min={1}
                               max={maxReturnable}
                               value={selectedItems[item.id] ?? maxReturnable}
                               onChange={(e) => handleQtyChange(item.id, Number(e.target.value))}
+                              leftIcon={<Hash className="size-4" />}
                               className="h-8 w-20 text-xs"
                             />
                             <span className="text-xs text-muted-foreground">
                               = {money((selectedItems[item.id] ?? maxReturnable) * Number(item.unitPrice))}
                             </span>
                           </div>
-                          <Input
+                          <InputGroupField
+                            label="Motivo"
                             placeholder="Motivo de devolución de este producto..."
                             value={itemReasons[item.id] ?? ""}
                             onChange={(e) =>
                               setItemReasons((prev) => ({ ...prev, [item.id]: e.target.value }))
                             }
+                            leftIcon={<MessageSquare className="size-4" />}
                             className="h-8 text-xs"
                           />
                           <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -249,16 +253,18 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
 
         {/* Motivo general */}
         <div className="space-y-2">
-          <Label>Motivo general (opcional)</Label>
-          <Input
+          <InputGroupField
+            label="Motivo general (opcional)"
             placeholder="Ej: Producto defectuoso, error en pedido..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            leftIcon={<MessageSquare className="size-4" />}
           />
         </div>
         <div className="space-y-2">
-          <Label>Notas internas (opcional)</Label>
+          <Label htmlFor="returnNotes">Notas internas (opcional)</Label>
           <Textarea
+            id="returnNotes"
             placeholder="Notas para el equipo..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

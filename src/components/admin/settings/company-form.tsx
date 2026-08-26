@@ -175,8 +175,10 @@ export function CompanyForm() {
         onChange={(e) => set("website", e.target.value)}
       />
       <div className="space-y-1.5 sm:col-span-2">
-        <Label>Pie de ticket</Label>
+        <Label htmlFor="ticketFooter">Pie de ticket</Label>
         <Textarea
+          id="ticketFooter"
+          rows={3}
           value={form.ticketFooter ?? ""}
           onChange={(e) => set("ticketFooter", e.target.value)}
         />

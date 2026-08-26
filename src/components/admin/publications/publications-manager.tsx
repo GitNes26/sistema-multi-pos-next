@@ -187,8 +187,10 @@ export function PublicationsManager() {
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
               />
               <div className="space-y-1.5">
-                <Label>Contenido</Label>
+                <Label htmlFor="pubContent">Contenido</Label>
                 <Textarea
+                  id="pubContent"
+                  rows={4}
                   value={form.content ?? ""}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
                 />

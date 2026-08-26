@@ -614,12 +614,15 @@ export function CheckoutClient() {
             </div>
           </section>
 
-          <Textarea
-            placeholder="Notas para tu pedido (opcional)…"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="rounded-2xl"
-          />
+          <div className="space-y-2">
+            <Label>Notas para tu pedido (opcional)</Label>
+            <Textarea
+              placeholder="Notas para tu pedido (opcional)…"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="rounded-2xl"
+            />
+          </div>
 
           {/* Submit — fixed at bottom on mobile */}
           <div className="sticky bottom-0 -mx-4 bg-background px-4 pt-3 pb-4">

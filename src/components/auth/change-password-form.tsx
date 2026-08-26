@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { CheckCircle2, Loader2, Lock } from "lucide-react";
+import { CheckCircle2, KeyRound, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const schema = yup.object({
@@ -73,49 +72,35 @@ export function ChangePasswordForm() {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <div className="space-y-2">
-            <Label htmlFor="oldPassword">Contraseña actual</Label>
-            <div className="relative">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="oldPassword"
-                type="password"
-                autoComplete="current-password"
-                className="pl-9"
-                aria-invalid={!!errors.oldPassword}
-                {...register("oldPassword")}
-              />
-            </div>
-            {errors.oldPassword && (
-              <p className="text-xs text-destructive">{errors.oldPassword.message}</p>
-            )}
-          </div>
+          <InputGroupField
+            id="oldPassword"
+            label="Contraseña actual"
+            type="password"
+            leftIcon={<Lock className="size-4" />}
+            autoComplete="current-password"
+            error={errors.oldPassword?.message}
+            {...register("oldPassword")}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">Nueva contraseña</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              autoComplete="new-password"
-              aria-invalid={!!errors.newPassword}
-              {...register("newPassword")}
-            />
-            {errors.newPassword && (
-              <p className="text-xs text-destructive">{errors.newPassword.message}</p>
-            )}
-          </div>
+          <InputGroupField
+            id="newPassword"
+            label="Nueva contraseña"
+            type="password"
+            leftIcon={<KeyRound className="size-4" />}
+            autoComplete="new-password"
+            error={errors.newPassword?.message}
+            {...register("newPassword")}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="confirm">Confirmar contraseña</Label>
-            <Input
-              id="confirm"
-              type="password"
-              autoComplete="new-password"
-              aria-invalid={!!errors.confirm}
-              {...register("confirm")}
-            />
-            {errors.confirm && <p className="text-xs text-destructive">{errors.confirm.message}</p>}
-          </div>
+          <InputGroupField
+            id="confirm"
+            label="Confirmar contraseña"
+            type="password"
+            leftIcon={<KeyRound className="size-4" />}
+            autoComplete="new-password"
+            error={errors.confirm?.message}
+            {...register("confirm")}
+          />
 
           <Button type="submit" className="w-full" disabled={status.kind === "loading"}>
             {status.kind === "loading" ? <Loader2 className="animate-spin" /> : <Lock />}

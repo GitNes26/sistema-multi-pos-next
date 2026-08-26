@@ -409,6 +409,7 @@ export function PaymentDialog({
                   }
                   placeholder={`${Math.floor(t.customer.points)} pts`}
                   inputMode="numeric"
+                  aria-label="Puntos a canjear"
                   className="h-9"
                 />
                 <Button
@@ -450,6 +451,7 @@ export function PaymentDialog({
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             placeholder="Referencia (opcional) — últimos 4, folio…"
+            aria-label="Referencia"
             className="h-9"
           />
         </div>

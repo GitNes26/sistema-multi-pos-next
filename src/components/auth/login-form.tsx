@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { InputGroupField } from "@/components/base/input-group-field"
 import { Logo } from "@/components/layout/logo"
 import { cn } from "@/lib/utils"
 
@@ -122,26 +123,16 @@ export function LoginForm({
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-            <div className="space-y-1.5">
-              <Label htmlFor="identifier" className="text-sm font-medium">Correo o código</Label>
-              <div className="relative">
-                <User className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="identifier"
-                  autoComplete="username"
-                  placeholder={isPortal ? "correo o nº de cliente" : "correo o nº de nómina"}
-                  className={cn(
-                    "h-12 pl-11 text-base rounded-xl",
-                    errors.identifier && "border-destructive"
-                  )}
-                  aria-invalid={!!errors.identifier}
-                  {...register("identifier")}
-                />
-              </div>
-              {errors.identifier && (
-                <p className="text-xs text-destructive">{errors.identifier.message}</p>
-              )}
-            </div>
+            <InputGroupField
+              id="identifier"
+              label="Correo o código"
+              leftIcon={<User className="size-4" />}
+              autoComplete="username"
+              placeholder={isPortal ? "correo o nº de cliente" : "correo o nº de nómina"}
+              className="h-12 text-base rounded-xl"
+              error={errors.identifier?.message}
+              {...register("identifier")}
+            />
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">

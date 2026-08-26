@@ -7,9 +7,8 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { CheckCircle2, KeyRound, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const schema = yup.object({
@@ -95,33 +94,25 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <div className="space-y-2">
-            <Label htmlFor="password">Nueva contraseña</Label>
-            <div className="relative">
-              <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                className="pl-9"
-                aria-invalid={!!errors.password}
-                {...register("password")}
-              />
-            </div>
-            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-          </div>
+          <InputGroupField
+            id="password"
+            label="Nueva contraseña"
+            type="password"
+            leftIcon={<KeyRound className="size-4" />}
+            autoComplete="new-password"
+            error={errors.password?.message}
+            {...register("password")}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="confirm">Confirmar contraseña</Label>
-            <Input
-              id="confirm"
-              type="password"
-              autoComplete="new-password"
-              aria-invalid={!!errors.confirm}
-              {...register("confirm")}
-            />
-            {errors.confirm && <p className="text-xs text-destructive">{errors.confirm.message}</p>}
-          </div>
+          <InputGroupField
+            id="confirm"
+            label="Confirmar contraseña"
+            type="password"
+            leftIcon={<KeyRound className="size-4" />}
+            autoComplete="new-password"
+            error={errors.confirm?.message}
+            {...register("confirm")}
+          />
 
           <Button type="submit" className="w-full" disabled={status.kind === "loading"}>
             {status.kind === "loading" ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}

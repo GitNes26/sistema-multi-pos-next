@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { LockKeyhole, Unlock } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { usePosStore } from "@/stores/pos-store";
 import { money } from "@/lib/pos/money";
 import { playSound } from "@/lib/sounds";
@@ -166,19 +166,21 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="closingCash">Monto final en caja ($)</Label>
-              <Input
+              <InputGroupField
                 id="closingCash"
+                label="Monto final en caja ($)"
+                leftIcon={<span className="text-sm">$</span>}
                 value={closingCash}
                 onChange={(e) => setClosingCash(e.target.value.replace(/[^\d.,]/g, ""))}
                 placeholder="0.00"
                 inputMode="decimal"
                 autoFocus
               />
-              <Input
+              <InputGroupField
+                label="Notas del corte (opcional)"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Notas del corte (opcional)"
+                placeholder="Notas del corte"
               />
             </div>
           </div>
@@ -201,9 +203,10 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="openingCash">Fondo inicial en caja ($)</Label>
-              <Input
+              <InputGroupField
                 id="openingCash"
+                label="Fondo inicial en caja ($)"
+                leftIcon={<span className="text-sm">$</span>}
                 value={openingCash}
                 onChange={(e) => setOpeningCash(e.target.value.replace(/[^\d.,]/g, ""))}
                 placeholder="0.00"

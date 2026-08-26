@@ -224,6 +224,8 @@ export function GpsPicker({
               <Input
                 type="number"
                 step="any"
+                min={-90}
+                max={90}
                 value={Number.isFinite(value.lat) ? value.lat : ""}
                 onChange={(e) =>
                   onChange?.({ ...value, lat: Number(e.target.value) })
@@ -235,6 +237,8 @@ export function GpsPicker({
               <Input
                 type="number"
                 step="any"
+                min={-180}
+                max={180}
                 value={Number.isFinite(value.lon) ? value.lon : ""}
                 onChange={(e) =>
                   onChange?.({ ...value, lon: Number(e.target.value) })

@@ -6,9 +6,8 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { Loader2, Mail, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const schema = yup.object({
@@ -89,21 +88,15 @@ export function ForgotPasswordForm() {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo electrónico</Label>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                className="pl-9"
-                aria-invalid={!!errors.email}
-                {...register("email")}
-              />
-            </div>
-            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-          </div>
+          <InputGroupField
+            id="email"
+            label="Correo electrónico"
+            type="email"
+            leftIcon={<Mail className="size-4" />}
+            autoComplete="email"
+            error={errors.email?.message}
+            {...register("email")}
+          />
 
           <Button type="submit" className="w-full" disabled={status.kind === "loading"}>
             {status.kind === "loading" ? <Loader2 className="animate-spin" /> : <Send />}
