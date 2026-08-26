@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.11.0.0] — 2026-08-26
+- **Tipo:** `feat` (Minor)
+- feat(crud-form): refactor to use standardized components
+
 ### [0.10.0.0] — 2026-08-26
 - **Tipo:** `feat` (Minor)
 - feat(switch-field): optional icon prop for inline icon+label pattern
