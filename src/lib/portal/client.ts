@@ -98,6 +98,8 @@ export const portalApi = {
     phone?: string;
     email?: string;
     address?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
   }) =>
     json<{ ok: boolean; customer: PortalCustomer }>("/api/portal/profile", {
       method: "PATCH",

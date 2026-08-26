@@ -30,6 +30,8 @@ export interface PortalCustomer {
   points: number;
   imageUrl: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export async function getPortalCustomer(
@@ -47,10 +49,12 @@ export async function getPortalCustomer(
       points: true,
       imageUrl: true,
       address: true,
+      latitude: true,
+      longitude: true,
     },
   });
   if (!c) return null;
-  return { ...c, points: toNum(c.points) };
+  return { ...c, points: toNum(c.points), latitude: c.latitude ? toNum(c.latitude) : null, longitude: c.longitude ? toNum(c.longitude) : null };
 }
 
 // ── Productos del portal (reutiliza la forma del POS + favoritos) ────────────
@@ -785,7 +789,7 @@ export async function getLoyalty(organizationId: string, customerId: string) {
 export async function updatePortalProfile(
   organizationId: string,
   customerId: string,
-  input: { fullName?: string; phone?: string; email?: string; address?: string | null; imageUrl?: string | null }
+  input: { fullName?: string; phone?: string; email?: string; address?: string | null; latitude?: number | null; longitude?: number | null; imageUrl?: string | null }
 ): Promise<PortalCustomer> {
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
   if (!customer) throw new PortalError("Cliente no encontrado", 404);
@@ -805,6 +809,8 @@ export async function updatePortalProfile(
         ...(input.phone !== undefined ? { phone: input.phone || null } : {}),
         ...(input.email !== undefined ? { email: input.email || null } : {}),
         ...(input.address !== undefined ? { address: input.address } : {}),
+        ...(input.latitude !== undefined ? { latitude: input.latitude } : {}),
+        ...(input.longitude !== undefined ? { longitude: input.longitude } : {}),
         ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
       },
     }),

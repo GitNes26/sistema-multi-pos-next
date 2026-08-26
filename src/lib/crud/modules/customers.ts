@@ -12,6 +12,8 @@ export interface CustomerDto {
   points: number;
   imageUrl: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   isActive: boolean;
   salesCount: number;
   ordersCount: number;
@@ -26,12 +28,19 @@ type CustomerRow = {
   points: { toNumber(): number } | number;
   imageUrl: string | null;
   address: string | null;
+  latitude: { toNumber(): number } | number | null;
+  longitude: { toNumber(): number } | number | null;
   isActive: boolean;
   user: { email: string | null } | null;
   _count: { sales: number; orders: number };
 };
 
 const num = (v: { toNumber(): number } | number): number => (typeof v === "number" ? v : v.toNumber());
+
+const decimalOrNull = (v: { toNumber(): number } | number | null): number | null => {
+  if (v === null || v === undefined) return null;
+  return typeof v === "number" ? v : v.toNumber();
+};
 
 function serialize(c: CustomerRow): CustomerDto {
   return {
@@ -44,6 +53,8 @@ function serialize(c: CustomerRow): CustomerDto {
     points: num(c.points),
     imageUrl: c.imageUrl,
     address: c.address,
+    latitude: decimalOrNull(c.latitude),
+    longitude: decimalOrNull(c.longitude),
     isActive: c.isActive,
     salesCount: c._count.sales,
     ordersCount: c._count.orders,
@@ -144,6 +155,12 @@ export const customersModule: CrudModule<CustomerDto> = {
           email: emailRaw || null,
           imageUrl: data.imageUrl ? String(data.imageUrl) : null,
           address: data.address ? String(data.address) : null,
+          latitude: data.latitude !== undefined && data.latitude !== null && data.latitude !== ""
+            ? Number(data.latitude)
+            : null,
+          longitude: data.longitude !== undefined && data.longitude !== null && data.longitude !== ""
+            ? Number(data.longitude)
+            : null,
           isActive: data.isActive !== false,
           ...(data.points !== undefined ? { points: Number(data.points) || 0 } : {}),
         },
@@ -222,6 +239,12 @@ export const customersModule: CrudModule<CustomerDto> = {
         ...(data.points !== undefined ? { points: Number(data.points) || 0 } : {}),
         ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl ? String(data.imageUrl) : null } : {}),
         ...(data.address !== undefined ? { address: data.address ? String(data.address) : null } : {}),
+        ...(data.latitude !== undefined
+          ? { latitude: data.latitude !== null && data.latitude !== "" ? Number(data.latitude) : null }
+          : {}),
+        ...(data.longitude !== undefined
+          ? { longitude: data.longitude !== null && data.longitude !== "" ? Number(data.longitude) : null }
+          : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive !== false } : {}),
         ...(data.customerCode !== undefined
           ? { customerCode: data.customerCode ? String(data.customerCode).trim().toUpperCase() : null }

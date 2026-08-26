@@ -16,6 +16,7 @@ import { OptionSelect } from "./option-select"
 import { MultiSelect } from "./multi-select"
 import { Attachment } from "@/components/base/attachment"
 import { GpsPicker } from "@/components/base/gps-picker"
+import { AddressField } from "@/components/base/address-field"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { ScheduleEditor } from "@/components/base/schedule-editor"
 import { parseSchedule, emptySchedule } from "@/lib/schedule"
@@ -259,6 +260,29 @@ export function CrudForm({
                   />
                 </div>
               )
+            case "address": {
+              const latRaw = field.latKey ? values[field.latKey] : undefined
+              const lonRaw = field.lonKey ? values[field.lonKey] : undefined
+              const lat = Number(latRaw)
+              const lon = Number(lonRaw)
+              return (
+                <div className={className}>
+                  <AddressField
+                    address={String(value ?? "")}
+                    onAddressChange={(v) => set(field.key, v)}
+                    latitude={Number.isFinite(lat) && String(latRaw) !== "" ? lat : null}
+                    longitude={Number.isFinite(lon) && String(lonRaw) !== "" ? lon : null}
+                    onGpsChange={(g) => {
+                      if (field.latKey && g) set(field.latKey, g.lat)
+                      if (field.lonKey && g) set(field.lonKey, g.lon)
+                    }}
+                    label={field.label}
+                    required={field.required}
+                    placeholder={field.placeholder}
+                  />
+                </div>
+              )
+            }
             default:
               return (
                 <Input

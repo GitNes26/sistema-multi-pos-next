@@ -15,7 +15,8 @@ export type FieldType =
   | "multiselect"
   | "image"
   | "gps"
-  | "schedule";
+  | "schedule"
+  | "address";
 
 export interface SelectOption {
   value: string;
@@ -176,7 +177,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         help: "Se asocia a una cuenta de usuario del portal. Contraseña inicial: la misma dirección (el cliente la cambia en su primer acceso).",
       },
       { key: "points", label: "Puntos", type: "number" },
-      { key: "address", label: "Dirección", type: "textarea", full: true },
+      { key: "address", label: "Dirección", type: "address", latKey: "latitude", lonKey: "longitude", full: true },
       { key: "imageUrl", label: "Foto", type: "image", full: true },
       { key: "isActive", label: "Activo", type: "boolean" },
     ],
@@ -200,21 +201,12 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       { key: "name", label: "Nombre", type: "text", required: true, placeholder: "Ej. Sucursal Centro" },
       { key: "code", label: "Código", type: "text", placeholder: "CTR" },
-      { key: "address", label: "Dirección", type: "textarea", full: true },
+      { key: "address", label: "Dirección", type: "address", latKey: "latitude", lonKey: "longitude", full: true },
       { key: "managerName", label: "Encargado", type: "text" },
       { key: "phone", label: "Teléfono", type: "text" },
       { key: "email", label: "Correo", type: "text" },
       { key: "openingHours", label: "Horario (texto)", type: "text", placeholder: "Lun–Sáb 8:00–20:00", showIf: () => false },
       { key: "openingScheduleJson", label: "Horario", type: "schedule", full: true },
-      {
-        key: "gps",
-        label: "Ubicación (GPS)",
-        type: "gps",
-        latKey: "latitude",
-        lonKey: "longitude",
-        full: true,
-        help: "Busca una dirección, usa tu ubicación o teclea lat/lon manualmente.",
-      },
       { key: "timezone", label: "Zona horaria", type: "text", placeholder: "America/Mexico_City" },
       { key: "notes", label: "Notas", type: "textarea", full: true },
       { key: "imageUrl", label: "Imagen", type: "image", full: true },
@@ -355,14 +347,12 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       { key: "name", label: "Nombre", type: "text", required: true, placeholder: "Ej. CEDIS Norte" },
       { key: "code", label: "Código", type: "text", placeholder: "CDN" },
-      { key: "address", label: "Dirección", type: "textarea", full: true },
+      { key: "address", label: "Dirección", type: "address", latKey: "latitude", lonKey: "longitude", full: true },
       { key: "managerName", label: "Encargado", type: "text" },
       { key: "phone", label: "Teléfono", type: "text" },
       { key: "email", label: "Correo", type: "text" },
       { key: "openingHours", label: "Horario (texto)", type: "text", placeholder: "Lun-Sab 8:00-20:00", showIf: () => false },
       { key: "openingScheduleJson", label: "Horario", type: "schedule", full: true },
-      { key: "latitude", label: "Latitud", type: "number" },
-      { key: "longitude", label: "Longitud", type: "number" },
       { key: "timezone", label: "Zona horaria", type: "text", placeholder: "America/Mexico_City" },
       { key: "notes", label: "Notas", type: "textarea", full: true },
       { key: "imageUrl", label: "Imagen", type: "image", full: true },

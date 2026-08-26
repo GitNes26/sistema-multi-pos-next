@@ -453,6 +453,15 @@ export async function seedDemo() {
     }
   }
 
+  // ── Direcciones de clientes ────────────────────────────────────────────
+  const addressData = [
+    { label: "Casa", address: "Av. Reforma 123, Col. Centro, CDMX", lat: 19.4326, lng: -99.1332 },
+    { label: "Oficina", address: "Blvd. Insurgentes 456, Del. Miguel Hidalgo, CDMX", lat: 19.4350, lng: -99.1700 },
+    { label: "Casa", address: "Calle Durango 789, Col. Roma Norte, CDMX", lat: 19.4195, lng: -99.1620 },
+    { label: "Casa", address: "Calzada de Tlalpan 1010, Del. Coyoacán, CDMX", lat: 19.3000, lng: -99.1500 },
+    { label: "Trabajo", address: "Av. Insurgentes Sur 2000, Del. Álvaro Obregón, CDMX", lat: 19.3500, lng: -99.2000 },
+  ]
+
   // ── Clientes ─────────────────────────────────────────────────────────────
   const customers = []
   for (let i = 0; i < CUSTOMERS.length; i++) {
@@ -474,19 +483,14 @@ export async function seedDemo() {
         fullName: c.name,
         phone: c.phone,
         points: round2(rnd() * 500),
+        address: addressData[i % addressData.length]?.address ?? null,
+        latitude: addressData[i % addressData.length]?.lat ?? null,
+        longitude: addressData[i % addressData.length]?.lng ?? null,
       },
     })
     customers.push(customer)
   }
 
-  // ── Direcciones de clientes ────────────────────────────────────────────
-  const addressData = [
-    { label: "Casa", address: "Av. Reforma 123, Col. Centro, CDMX", lat: 19.4326, lng: -99.1332 },
-    { label: "Oficina", address: "Blvd. Insurgentes 456, Del. Miguel Hidalgo, CDMX", lat: 19.4350, lng: -99.1700 },
-    { label: "Casa", address: "Calle Durango 789, Col. Roma Norte, CDMX", lat: 19.4195, lng: -99.1620 },
-    { label: "Casa", address: "Calzada de Tlalpan 1010, Del. Coyoacán, CDMX", lat: 19.3000, lng: -99.1500 },
-    { label: "Trabajo", address: "Av. Insurgentes Sur 2000, Del. Álvaro Obregón, CDMX", lat: 19.3500, lng: -99.2000 },
-  ]
   for (let i = 0; i < Math.min(addressData.length, customers.length); i++) {
     const a = addressData[i]
     await prisma.customerAddress.create({

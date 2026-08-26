@@ -11,6 +11,7 @@ import { swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InputGroupField } from "@/components/base/input-group-field";
+import { AddressField } from "@/components/base/address-field";
 import { NavCustomizer } from "@/components/portal/nav-customizer";
 import { TapScale } from "@/components/shared/tap-scale";
 import packageJson from "../../../package.json";
@@ -32,7 +33,7 @@ const item = {
 
 export function ProfileClient() {
   const [customer, setCustomer] = useState<PortalCustomer | null>(null);
-  const [form, setForm] = useState({ fullName: "", phone: "", email: "", address: "" });
+  const [form, setForm] = useState({ fullName: "", phone: "", email: "", address: "", latitude: null as number | null, longitude: null as number | null });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -47,6 +48,8 @@ export function ProfileClient() {
           phone: d.customer.phone ?? "",
           email: d.customer.email ?? "",
           address: d.customer.address ?? "",
+          latitude: d.customer.latitude,
+          longitude: d.customer.longitude,
         });
       })
       .catch(() => undefined);
@@ -63,6 +66,8 @@ export function ProfileClient() {
         phone: form.phone,
         email: form.email,
         address: form.address,
+        latitude: form.latitude,
+        longitude: form.longitude,
       });
       setCustomer(res.customer);
       swalToast("Perfil actualizado");
@@ -162,11 +167,13 @@ export function ProfileClient() {
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value.toLowerCase() })}
         />
-        <InputGroupField
-          label="Dirección"
-          leftIcon={<MapPin className="size-4" />}
-          value={form.address}
-          onChange={(e) => setForm({ ...form, address: e.target.value })}
+        <AddressField
+          address={form.address}
+          onAddressChange={(address) => setForm({ ...form, address })}
+          latitude={form.latitude}
+          longitude={form.longitude}
+          onGpsChange={(gps) => setForm({ ...form, latitude: gps?.lat ?? null, longitude: gps?.lon ?? null })}
+          className="sm:col-span-2"
         />
         <Button className="w-full h-11 rounded-xl font-semibold" onClick={save} disabled={saving}>
           {saving ? "Guardando…" : "Guardar cambios"}
