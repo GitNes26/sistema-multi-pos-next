@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.7.0.1] — 2026-08-26
+- **Tipo:** `refactor` (Revision)
+- refactor(forms): standardize all form inputs with InputGroupField + icons + validation
+
 ### [0.7.0.0] — 2026-08-26
 - **Tipo:** `feat` (Minor)
 - feat(address): reusable AddressField component with GPS everywhere
