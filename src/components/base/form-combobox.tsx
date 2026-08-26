@@ -183,9 +183,13 @@ export function FormCombobox({
                           type="button"
                           size="xs"
                           variant="outline"
-                          onClick={onCreate}
+                          onClick={() => {
+                            setOpen(false);
+                            setSearch("");
+                            onCreate();
+                          }}
                         >
-                          <Plus /> Agregar “{search.trim() || "nuevo"}”
+                          <Plus /> Agregar &ldquo;{search.trim() || "nuevo"}&rdquo;
                         </Button>
                       )}
                     </div>
@@ -248,7 +252,11 @@ export function FormCombobox({
                       type="button"
                       size="xs"
                       variant="outline"
-                      onClick={onCreate}
+                      onClick={() => {
+                        setOpen(false);
+                        setSearch("");
+                        onCreate();
+                      }}
                     >
                       <Plus />
                       Agregar

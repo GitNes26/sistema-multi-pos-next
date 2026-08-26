@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.5.0.0] — 2026-08-25
+- **Tipo:** `feat` (Minor)
+- feat(returns): sistema completo de devoluciones/cambios
+
 ### [0.4.2.1] — 2026-08-25
 - **Tipo:** `docs` (Revision)
 - docs: se actualizo el Dockerfile para actualizar DB
