@@ -21,8 +21,8 @@ import {
 import { menusApi } from "@/lib/menus/client";
 import type { MenuNode, MenuInput } from "@/lib/menus/server";
 import { MENU_ICON_NAMES, resolveMenuIcon } from "@/lib/menu-icons";
-import { PERMISSIONS } from "@/lib/auth/permission-keys";
-import { swalConfirm, swalError, swalToast } from "@/lib/swal";
+import { usePermissions } from "@/hooks/use-permissions";
+import { swalConfirm, swalError, swalToast, swalPrompt } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FormCombobox } from "@/components/base/form-combobox";
 import { InputGroupField } from "@/components/base/input-group-field";
+import { SwitchField } from "@/components/base/switch-field";
 import { TooltipButton } from "@/components/shared/tooltip-button";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +63,7 @@ export function MenusManager() {
   const [form, setForm] = useState<(MenuInput & { id?: string }) | null>(null);
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const { allPermissions, addPermission } = usePermissions();
 
   const load = useCallback(() => {
     menusApi
@@ -461,8 +463,25 @@ export function MenusManager() {
                   label="Ícono"
                   value={form.icon ?? "Circle"}
                   onChange={(v) => setForm({ ...form, icon: v })}
-                  options={MENU_ICON_NAMES.map((name) => ({ value: name, label: name }))}
+                  options={MENU_ICON_NAMES.map((name) => {
+                    const Ico = resolveMenuIcon(name);
+                    return {
+                      value: name,
+                      label: name,
+                      meta: undefined,
+                    };
+                  })}
                   clearable={false}
+                  contentClassName="max-h-[300px]"
+                  renderOption={(opt) => {
+                    const Ico = resolveMenuIcon(opt.value);
+                    return (
+                      <span className="flex items-center gap-2">
+                        <Ico className="size-4 shrink-0 text-muted-foreground" />
+                        <span>{opt.label}</span>
+                      </span>
+                    );
+                  }}
                 />
                 <div className="flex items-end gap-2">
                   {(() => {
@@ -507,22 +526,36 @@ export function MenusManager() {
                 onChange={(v) => setForm({ ...form, permissionKey: v || null })}
                 options={[
                   { value: "", label: "— Visible para todos —" },
-                  ...PERMISSIONS.map((p) => ({
+                  ...allPermissions.map((p) => ({
                     value: p.key,
                     label: p.key,
                     meta: p.label,
                   })),
                 ]}
                 clearable={false}
+                onCreate={async () => {
+                  const module = await swalPrompt("Nuevo permiso", "Módulo (ej: reports, dashboard)");
+                  if (!module) return;
+                  const action = await swalPrompt("Nuevo permiso", "Acción (ej: view, manage, export)");
+                  if (!action) return;
+                  const label = await swalPrompt("Nuevo permiso", "Etiqueta descriptiva (ej: Ver dashboard)");
+                  if (!label) return;
+                  const ok = addPermission(module.trim(), action.trim(), label.trim());
+                  if (ok) {
+                    swalToast("Permiso creado");
+                    setForm({ ...form, permissionKey: `${module.trim()}.${action.trim()}` });
+                  } else {
+                    swalError("Ese permiso ya existe");
+                  }
+                }}
               />
 
-              <div className="flex items-center justify-between rounded-lg border p-2.5">
-                <label htmlFor="menu-active" className="cursor-pointer">
-                  <span className="block text-sm font-medium">Activo</span>
-                  <span className="block text-xs text-muted-foreground">Visible en el menú</span>
-                </label>
-                <Switch id="menu-active" checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
-              </div>
+              <SwitchField
+                label="Activo"
+                description="Visible en el menú"
+                checked={form.isActive}
+                onCheckedChange={(v) => setForm({ ...form, isActive: v })}
+              />
 
               {/* Vista previa del elemento */}
               <div className="rounded-lg border bg-muted/40 p-2">

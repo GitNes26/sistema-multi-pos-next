@@ -40,6 +40,8 @@ export interface FormComboboxProps {
   error?: string
   className?: string
   contentClassName?: string
+  /** Renderizado personalizado de cada opción en el dropdown. */
+  renderOption?: (option: ComboboxOption) => React.ReactNode
 }
 
 export function FormCombobox({
@@ -53,7 +55,7 @@ export function FormCombobox({
   label,
   helper,
   required,
-  placeholder = "Selecciona…",
+  placeholder = "Seleccionar…",
   searchPlaceholder = "Buscar…",
   emptyText = "Sin resultados",
   disabled,
@@ -63,6 +65,7 @@ export function FormCombobox({
   error,
   className,
   contentClassName,
+  renderOption,
 }: FormComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -210,12 +213,18 @@ export function FormCombobox({
                           "flex cursor-default select-none items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm outline-none data-[selected='true']:bg-accent data-[selected='true']:text-accent-foreground data-[disabled='true']:pointer-events-none data-[disabled='true']:opacity-50 [&_svg]:pointer-events-none"
                         )}
                       >
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="truncate">{option.label}</span>
-                          {option.meta && (
-                            <span className="truncate text-xs text-muted-foreground">
-                              {option.meta}
-                            </span>
+                        <span className="flex min-w-0 flex-1 items-center gap-2">
+                          {renderOption ? (
+                            renderOption(option)
+                          ) : (
+                            <>
+                              <span className="truncate">{option.label}</span>
+                              {option.meta && (
+                                <span className="truncate text-xs text-muted-foreground">
+                                  {option.meta}
+                                </span>
+                              )}
+                            </>
                           )}
                         </span>
                         {option.value === value && (

@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.8.0.0] — 2026-08-26
+- **Tipo:** `feat` (Minor)
+- feat(Dockerfile): DB_RESET=true env var for conditional db reset
+
 ### [0.7.0.4] — 2026-08-26
 - **Tipo:** `chore` (Revision)
 - se agrego el flujo de devoluciones y cambios, correxion de errores de formulario, y se intenta unificar los inputs, vamos a resetear la BD
