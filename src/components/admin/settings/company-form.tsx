@@ -96,7 +96,7 @@ export function CompanyForm() {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <InputGroupField
-        label="Razón socialxD"
+        label="Razón social"
         helper="Nombre legal/fiscal de la empresa."
         leftAddon={<Building2 className="size-4" />}
         value={form.legalName ?? ""}

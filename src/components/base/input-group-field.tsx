@@ -7,11 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { InfoTooltip } from "@/components/base/info-tooltip"
 import { AlertCircle } from "lucide-react"
+// import { type } from './../../types/pos';
 
 export interface InputGroupFieldProps
   extends React.ComponentProps<typeof Input> {
   label?: string
   helper?: React.ReactNode
+  type?: React.HTMLInputTypeAttribute | undefined
   hint?: string
   error?: string
   required?: boolean
@@ -29,6 +31,7 @@ export const InputGroupField = React.forwardRef<
     label,
     helper,
     hint,
+    type,
     error,
     required,
     leftIcon,
@@ -78,6 +81,7 @@ export const InputGroupField = React.forwardRef<
             hasError && "pr-9 md:pr-9",
             className
           )}
+          type={type}
           {...props}
         />
         {hasError && (

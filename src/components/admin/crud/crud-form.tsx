@@ -6,11 +6,13 @@ import {
   Hash,
   Percent,
   Type,
+  FileText,
+  CheckSquare,
+  List,
+  Image as ImageIcon,
 } from "lucide-react"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { swalError } from "@/lib/swal"
 import { OptionSelect } from "./option-select"
 import { MultiSelect } from "./multi-select"
@@ -18,6 +20,7 @@ import { Attachment } from "@/components/base/attachment"
 import { GpsPicker } from "@/components/base/gps-picker"
 import { AddressField } from "@/components/base/address-field"
 import { InputGroupField } from "@/components/base/input-group-field"
+import { SwitchField } from "@/components/base/switch-field"
 import { ScheduleEditor } from "@/components/base/schedule-editor"
 import { parseSchedule, emptySchedule } from "@/lib/schedule"
 import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads"
@@ -55,7 +58,16 @@ function defaultValue(
 
 const INPUT_TYPES = ["text", "number", "money", "percent", "date", "time"]
 
-function fieldIcon(type: string): React.ReactNode {
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  Hash, DollarSign, Percent, CalendarDays, Clock, Type, FileText,
+  CheckSquare, List, ImageIcon,
+}
+
+function fieldIcon(type: string, iconKey?: string): React.ReactNode {
+  if (iconKey) {
+    const Ico = ICON_MAP[iconKey]
+    if (Ico) return <Ico className="size-4" />
+  }
   switch (type) {
     case "number":
       return <Hash className="size-4" />
@@ -67,9 +79,32 @@ function fieldIcon(type: string): React.ReactNode {
       return <CalendarDays className="size-4" />
     case "time":
       return <Clock className="size-4" />
+    case "textarea":
+      return <FileText className="size-4" />
     default:
       return <Type className="size-4" />
   }
+}
+
+function FieldWrapper({
+  field,
+  id,
+  children,
+}: {
+  field: CrudField
+  id: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn(field.full ? "sm:col-span-2" : "")}>
+      <div className="space-y-1.5">
+        {children}
+        {field.help && (
+          <p className="text-xs text-muted-foreground">{field.help}</p>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export function CrudForm({
@@ -87,10 +122,6 @@ export function CrudForm({
 
   const visibleFields = useMemo(() => config.fields, [config.fields])
 
-  // El id del <form> se conserva (formId) para que los botones con `form={formId}`
-  // sigan funcionando; los ids de los campos son únicos por instancia (useId) para
-  // que un modal "crear registro" (mismo módulo o anidado) no colisione con los
-  // inputs/labels del formulario origen.
   const uid = useId().replace(/[:]/g, "")
   const fieldId = (key: string) => `${uid}-f-${key}`
 
@@ -149,228 +180,198 @@ export function CrudForm({
       {visibleFields.map((field) => {
         if (field.showIf && !field.showIf(values)) return null
         const value = values[field.key]
-        const control = ({
-          className,
-          id,
-        }: {
-          className?: string
-          id?: string
-        }) => {
-          switch (field.type) {
-            case "boolean":
-              return (
-                <div
-                  className={cn([
-                    className,
-                    "flex items-center gap-2 border border-input rounded-md px-3 py-2",
-                  ])}
-                >
-                  <div className="flex h-9 items-center gap-2">
-                    <Switch
-                      id={id}
-                      checked={Boolean(value)}
-                      onCheckedChange={(c) => set(field.key, c)}
-                    />
-                    <label
-                      htmlFor={id}
-                      className="cursor-pointer text-sm text-muted-foreground"
-                    >
-                      {value ? "Sí" : "No"}
-                    </label>
-                  </div>
-                </div>
-              )
-            case "textarea":
-              return (
-                <Textarea
-                  id={id}
-                  value={String(value ?? "")}
-                  onChange={(e) => set(field.key, e.target.value)}
-                  placeholder={field.placeholder}
-                  rows={3}
-                  className={className}
-                />
-              )
-            case "select":
-              return (
-                <div className={className}>
-                  <OptionSelect
-                    field={field}
-                    value={String(value ?? "")}
-                    onChange={(v) => set(field.key, v)}
-                  />
-                </div>
-              )
-            case "multiselect":
-              return (
-                <div className={className}>
-                  <MultiSelect
-                    field={field}
-                    value={value}
-                    onChange={(v) => set(field.key, v)}
-                  />
-                </div>
-              )
-            case "image":
-              return (
-                <div className={className}>
-                  <Attachment
-                    value={value ? String(value) : null}
-                    onChange={(v) => set(field.key, v)}
-                    upload={uploadFile}
-                    accept={UPLOAD_IMAGE_ACCEPT}
-                    label=""
-                    widthClass="w-24"
-                    heightClass="h-24"
-                  />
-                </div>
-              )
-            case "gps": {
-              const latRaw = field.latKey ? values[field.latKey] : undefined
-              const lonRaw = field.lonKey ? values[field.lonKey] : undefined
-              const lat = Number(latRaw)
-              const lon = Number(lonRaw)
-              const gpsValue =
-                Number.isFinite(lat) &&
-                Number.isFinite(lon) &&
-                String(latRaw) !== "" &&
-                String(lonRaw) !== ""
-                  ? { lat, lon }
-                  : undefined
-              return (
-                <div className={className}>
-                  <GpsPicker
-                    value={gpsValue}
-                    label={field.label}
-                    helper={field.help}
-                    onChange={(g) => {
-                      if (field.latKey && g) set(field.latKey, g.lat)
-                      if (field.lonKey && g) set(field.lonKey, g.lon)
-                    }}
-                  />
-                </div>
-              )
-            }
-            case "schedule":
-              return (
-                <div className={cn([className, "rounded-lg border bg-muted/30 p-3"])}>
-                  <ScheduleEditor
-                    schedule={(value as ReturnType<typeof parseSchedule>) ?? emptySchedule()}
-                    onChange={(s) => set(field.key, s)}
-                  />
-                </div>
-              )
-            case "address": {
-              const latRaw = field.latKey ? values[field.latKey] : undefined
-              const lonRaw = field.lonKey ? values[field.lonKey] : undefined
-              const lat = Number(latRaw)
-              const lon = Number(lonRaw)
-              return (
-                <div className={className}>
-                  <AddressField
-                    address={String(value ?? "")}
-                    onAddressChange={(v) => set(field.key, v)}
-                    latitude={Number.isFinite(lat) && String(latRaw) !== "" ? lat : null}
-                    longitude={Number.isFinite(lon) && String(lonRaw) !== "" ? lon : null}
-                    onGpsChange={(g) => {
-                      if (field.latKey && g) set(field.latKey, g.lat)
-                      if (field.lonKey && g) set(field.lonKey, g.lon)
-                    }}
-                    label={field.label}
-                    required={field.required}
-                    placeholder={field.placeholder}
-                  />
-                </div>
-              )
-            }
-            default:
-              return (
-                <Input
-                  id={id}
-                  type={
-                    field.type === "date"
-                      ? "date"
-                      : field.type === "time"
-                        ? "time"
-                        : field.type === "number" ||
-                            field.type === "money" ||
-                            field.type === "percent"
-                          ? "number"
-                          : "text"
-                  }
-                  step={
-                    field.type === "percent" || field.type === "number"
-                      ? "any"
-                      : field.type === "money"
-                        ? "0.01"
-                        : undefined
-                  }
-                  value={String(value ?? "")}
-                  onChange={(e) => set(field.key, e.target.value)}
-                  placeholder={field.placeholder}
-                  className={className}
-                />
-              )
-          }
-        }
+        const id = fieldId(field.key)
 
-        if (INPUT_TYPES.includes(field.type)) {
+        // ── boolean → SwitchField ──
+        if (field.type === "boolean") {
           return (
-            <div key={field.key} className={field.full ? "sm:col-span-2" : ""}>
-              <InputGroupField
-                id={fieldId(field.key)}
+            <FieldWrapper key={field.key} field={field} id={id}>
+              <SwitchField
+                id={id}
                 label={field.label}
-                required={field.required}
-                helper={field.help}
-                leftIcon={fieldIcon(field.type)}
-                type={
-                  field.type === "date"
-                    ? "date"
-                    : field.type === "time"
-                      ? "time"
-                      : field.type === "number" ||
-                          field.type === "money" ||
-                          field.type === "percent"
-                        ? "number"
-                        : "text"
-                }
-                step={
-                  field.type === "percent" || field.type === "number"
-                    ? "any"
-                    : field.type === "money"
-                      ? "0.01"
-                      : undefined
-                }
-                placeholder={field.placeholder}
-                value={String(value ?? "")}
-                onChange={(e) => set(field.key, e.target.value)}
+                description={field.description}
+                icon={field.icon ? fieldIcon(field.type, field.icon) : undefined}
+                checked={Boolean(value)}
+                onCheckedChange={(c) => set(field.key, c)}
               />
-            </div>
+            </FieldWrapper>
           )
         }
 
+        // ── textarea → Textarea + Label ──
+        if (field.type === "textarea") {
+          return (
+            <FieldWrapper key={field.key} field={field} id={id}>
+              <Label htmlFor={id}>
+                {field.label}
+                {field.required && <span className="text-destructive"> *</span>}
+              </Label>
+              <Textarea
+                id={id}
+                value={String(value ?? "")}
+                onChange={(e) => set(field.key, e.target.value)}
+                placeholder={field.placeholder}
+                rows={3}
+              />
+            </FieldWrapper>
+          )
+        }
+
+        // ── select → FormCombobox (via OptionSelect) ──
+        if (field.type === "select") {
+          return (
+            <FieldWrapper key={field.key} field={field} id={id}>
+              <OptionSelect
+                id={id}
+                field={field}
+                value={String(value ?? "")}
+                onChange={(v) => set(field.key, v)}
+              />
+            </FieldWrapper>
+          )
+        }
+
+        // ── multiselect → MultiSelect + Label ──
+        if (field.type === "multiselect") {
+          return (
+            <FieldWrapper key={field.key} field={field} id={id}>
+              <Label>
+                {field.label}
+                {field.required && <span className="text-destructive"> *</span>}
+              </Label>
+              <MultiSelect
+                field={field}
+                value={value}
+                onChange={(v) => set(field.key, v)}
+              />
+            </FieldWrapper>
+          )
+        }
+
+        // ── image → Attachment + Label ──
+        if (field.type === "image") {
+          return (
+            <FieldWrapper key={field.key} field={field} id={id}>
+              <Label>
+                {field.label}
+                {field.required && <span className="text-destructive"> *</span>}
+              </Label>
+              <Attachment
+                value={value ? String(value) : null}
+                onChange={(v) => set(field.key, v)}
+                upload={uploadFile}
+                accept={UPLOAD_IMAGE_ACCEPT}
+                label=""
+                widthClass="w-24"
+                heightClass="h-24"
+              />
+            </FieldWrapper>
+          )
+        }
+
+        // ── gps → GpsPicker (maneja su propio label) ──
+        if (field.type === "gps") {
+          const latRaw = field.latKey ? values[field.latKey] : undefined
+          const lonRaw = field.lonKey ? values[field.lonKey] : undefined
+          const lat = Number(latRaw)
+          const lon = Number(lonRaw)
+          const gpsValue =
+            Number.isFinite(lat) &&
+            Number.isFinite(lon) &&
+            String(latRaw) !== "" &&
+            String(lonRaw) !== ""
+              ? { lat, lon }
+              : undefined
+          return (
+            <FieldWrapper key={field.key} field={field} id={id}>
+              <GpsPicker
+                value={gpsValue}
+                label={field.label}
+                helper={field.help}
+                onChange={(g) => {
+                  if (field.latKey && g) set(field.latKey, g.lat)
+                  if (field.lonKey && g) set(field.lonKey, g.lon)
+                }}
+              />
+            </FieldWrapper>
+          )
+        }
+
+        // ── schedule → ScheduleEditor + Label ──
+        if (field.type === "schedule") {
+          return (
+            <FieldWrapper key={field.key} field={field} id={id}>
+              <Label>
+                {field.label}
+                {field.required && <span className="text-destructive"> *</span>}
+              </Label>
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <ScheduleEditor
+                  schedule={(value as ReturnType<typeof parseSchedule>) ?? emptySchedule()}
+                  onChange={(s) => set(field.key, s)}
+                />
+              </div>
+            </FieldWrapper>
+          )
+        }
+
+        // ── address → AddressField (maneja su propio label) ──
+        if (field.type === "address") {
+          const latRaw = field.latKey ? values[field.latKey] : undefined
+          const lonRaw = field.lonKey ? values[field.lonKey] : undefined
+          const lat = Number(latRaw)
+          const lon = Number(lonRaw)
+          return (
+            <FieldWrapper key={field.key} field={field} id={id}>
+              <AddressField
+                address={String(value ?? "")}
+                onAddressChange={(v) => set(field.key, v)}
+                latitude={Number.isFinite(lat) && String(latRaw) !== "" ? lat : null}
+                longitude={Number.isFinite(lon) && String(lonRaw) !== "" ? lon : null}
+                onGpsChange={(g) => {
+                  if (field.latKey && g) set(field.latKey, g.lat)
+                  if (field.lonKey && g) set(field.lonKey, g.lon)
+                }}
+                label={field.label}
+                required={field.required}
+                placeholder={field.placeholder}
+              />
+            </FieldWrapper>
+          )
+        }
+
+        // ── text/number/money/percent/date/time → InputGroupField ──
         return (
-          <div
-            key={field.key}
-            className={field.full ? "sm:col-span-2 space-y-1.5" : "space-y-1.5"}
-          >
-            {field.type === "gps" ? (
-              control({ className: "w-full" })
-            ) : (
-              <>
-                <Label htmlFor={fieldId(field.key)}>
-                  {field.label}
-                  {field.required && (
-                    <span className="text-destructive"> *</span>
-                  )}
-                </Label>
-                {control({ className: "w-full", id: fieldId(field.key) })}
-                {field.help && (
-                  <p className="text-xs text-muted-foreground">{field.help}</p>
-                )}
-              </>
-            )}
-          </div>
+          <FieldWrapper key={field.key} field={field} id={id}>
+            <InputGroupField
+              id={id}
+              label={field.label}
+              required={field.required}
+              helper={field.help}
+              leftIcon={fieldIcon(field.type, field.icon)}
+              type={
+                field.type === "date"
+                  ? "date"
+                  : field.type === "time"
+                    ? "time"
+                    : field.type === "number" ||
+                        field.type === "money" ||
+                        field.type === "percent"
+                      ? "number"
+                      : "text"
+              }
+              step={
+                field.type === "percent" || field.type === "number"
+                  ? "any"
+                  : field.type === "money"
+                    ? "0.01"
+                    : undefined
+              }
+              placeholder={field.placeholder}
+              value={String(value ?? "")}
+              onChange={(e) => set(field.key, e.target.value)}
+            />
+          </FieldWrapper>
         )
       })}
     </form>

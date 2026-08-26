@@ -50,6 +50,9 @@ export function OptionSelect({
     <>
       <FormCombobox
         id={id}
+        label={field.label}
+        required={field.required}
+        helper={field.help}
         options={options}
         value={value ? String(value) : null}
         onChange={onChange}

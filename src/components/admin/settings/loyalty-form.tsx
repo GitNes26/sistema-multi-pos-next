@@ -1,43 +1,47 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { Coins, DollarSign, Sparkles } from "lucide-react";
-import { settingsApi } from "@/lib/settings/client";
-import type { LoyaltySettings } from "@/lib/settings/server";
-import { swalError, swalToast } from "@/lib/swal";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Skeleton } from "@/components/ui/skeleton";
-import { InputGroupField } from "@/components/base/input-group-field";
+import { useEffect, useState } from "react"
+import { Coins, DollarSign, Sparkles } from "lucide-react"
+import { settingsApi } from "@/lib/settings/client"
+import type { LoyaltySettings } from "@/lib/settings/server"
+import { swalError, swalToast } from "@/lib/swal"
+import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Skeleton } from "@/components/ui/skeleton"
+import { InputGroupField } from "@/components/base/input-group-field"
+import { SwitchField } from "@/components/base"
 
 export function LoyaltyForm() {
-  const [form, setForm] = useState<LoyaltySettings | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<LoyaltySettings | null>(null)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     settingsApi
       .loyalty()
       .then((d) => setForm(d.settings))
-      .catch(() => undefined);
-  }, []);
+      .catch(() => undefined)
+  }, [])
 
   const save = async () => {
-    if (!form) return;
-    setSaving(true);
+    if (!form) return
+    setSaving(true)
     try {
       const res = await settingsApi.updateLoyalty({
         pointsPerCurrency: Number(form.pointsPerCurrency),
         pointValue: Number(form.pointValue),
         loyaltyEnabled: form.loyaltyEnabled,
-      });
-      setForm(res.settings);
-      swalToast("Configuración de lealtad guardada");
+      })
+      setForm(res.settings)
+      swalToast("Configuración de lealtad guardada")
     } catch (err) {
-      swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo guardar",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   if (!form) {
     return (
@@ -45,12 +49,21 @@ export function LoyaltyForm() {
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
       </div>
-    );
+    )
   }
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <SwitchField
+        id="loyalty-enabled"
+        label="Lealtad habilitada"
+        description="Acumular y canjear puntos"
+        // icon={<Coins className="size-4" />}
+        className="mb-3"
+        checked={form.loyaltyEnabled}
+        onCheckedChange={(v) => setForm({ ...form, loyaltyEnabled: v })}
+      />
+      <div className="grid gap-4 sm:grid-cols-2 mt-3">
         <InputGroupField
           label="Puntos por unidad de moneda"
           helper="Puntos ganados por cada unidad monetaria gastada."
@@ -59,7 +72,9 @@ export function LoyaltyForm() {
           step="0.01"
           leftIcon={<Coins className="size-4" />}
           value={form.pointsPerCurrency}
-          onChange={(e) => setForm({ ...form, pointsPerCurrency: Number(e.target.value) })}
+          onChange={(e) =>
+            setForm({ ...form, pointsPerCurrency: Number(e.target.value) })
+          }
         />
         <InputGroupField
           label="Valor del punto"
@@ -69,25 +84,16 @@ export function LoyaltyForm() {
           step="0.01"
           leftIcon={<DollarSign className="size-4" />}
           value={form.pointValue}
-          onChange={(e) => setForm({ ...form, pointValue: Number(e.target.value) })}
-        />
-      </div>
-
-      <div className="flex items-center justify-between rounded-lg border p-3">
-        <label htmlFor="loyalty-enabled" className="cursor-pointer">
-          <span className="block text-sm font-medium">Lealtad habilitada</span>
-          <span className="block text-xs text-muted-foreground">Acumular y canjear puntos</span>
-        </label>
-        <Switch
-          id="loyalty-enabled"
-          checked={form.loyaltyEnabled}
-          onCheckedChange={(v) => setForm({ ...form, loyaltyEnabled: v })}
+          onChange={(e) =>
+            setForm({ ...form, pointValue: Number(e.target.value) })
+          }
         />
       </div>
 
       <Button onClick={save} disabled={saving}>
-        <Sparkles className="size-4" /> {saving ? "Guardando…" : "Guardar cambios"}
+        <Sparkles className="size-4" />{" "}
+        {saving ? "Guardando…" : "Guardar cambios"}
       </Button>
     </div>
-  );
+  )
 }

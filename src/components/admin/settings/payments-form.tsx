@@ -150,7 +150,8 @@ export function PaymentsForm() {
       {config.provider !== "none" && (
         <p className="text-xs text-muted-foreground">
           El webhook de MercadoPago se envía a{" "}
-          <code>/api/payments/webhook/mercadopago?org=&#123;id&#125;</code>; el de Stripe a{" "}
+          <code>/api/payments/webhook/mercadopago?org=&#123;id&#125;</code>; <br />
+           el de Stripe a{" "}
           <code>/api/payments/webhook/stripe</code>.
         </p>
       )}

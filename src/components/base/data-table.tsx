@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/base/spinner"
+import { InputGroupField } from "./input-group-field"
 
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -257,16 +258,25 @@ export function DataTable<TData, TValue>({
               </TooltipProvider>
             )}
             {searchable && (
-              <div className="relative w-full max-w-60">
-                <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  value={globalFilter}
-                  onChange={(e) => setGlobalFilter(e.target.value)}
-                  placeholder={searchPlaceholder}
-                  className="h-8 pl-9 md:pl-9"
-                />
-              </div>
+              <InputGroupField
+                // label="Monto mínimo"
+                type="search"
+                placeholder={searchPlaceholder}
+                leftIcon={<Search className="size-4" />}
+                className="w-full"
+                value={globalFilter}
+                 onChange={(e) => setGlobalFilter(e.target.value)}
+              />
+              // <div className="relative w-full ">
+              //   <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
+              //   <Input
+              //     type="search"
+              //     value={globalFilter}
+              //     onChange={(e) => setGlobalFilter(e.target.value)}
+              //     placeholder={searchPlaceholder}
+              //     className="h-8 pl-9 md:pl-9"
+              //   />
+              // </div>
             )}
             {toolbarSlot}
             

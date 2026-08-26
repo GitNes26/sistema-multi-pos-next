@@ -30,6 +30,10 @@ export interface CrudField {
   required?: boolean;
   placeholder?: string;
   help?: string;
+  /** Icono Lucide para input/textarea/select (se muestra a la izquierda). */
+  icon?: string;
+  /** Texto descriptivo para boolean (debajo del label). */
+  description?: string;
   full?: boolean;
   options?: SelectOption[];
   /** Módulo CRUD del que se cargan las opciones (p. ej. "categories"). */
@@ -119,6 +123,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         key: "parentId",
         label: "Categoría padre",
         type: "select",
+        icon: "List",
         optionsModule: "categories",
         optionValue: "id",
         optionLabel: "name",
@@ -144,7 +149,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       { key: "name", label: "Nombre", type: "text", required: true, placeholder: "Ej. Kilogramo" },
       { key: "abbreviation", label: "Abreviatura", type: "text", required: true, placeholder: "kg" },
-      { key: "type", label: "Tipo", type: "select", options: UNIT_TYPES, required: true },
+      { key: "type", label: "Tipo", type: "select", icon: "Hash", options: UNIT_TYPES, required: true },
       { key: "baseUnit", label: "Unidad base", type: "text", placeholder: "Ej. g" },
       { key: "conversionFactor", label: "Factor de conversión", type: "number", placeholder: "1" },
       { key: "isActive", label: "Activa", type: "boolean" },
@@ -208,10 +213,10 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       { key: "openingHours", label: "Horario (texto)", type: "text", placeholder: "Lun–Sáb 8:00–20:00", showIf: () => false },
       { key: "openingScheduleJson", label: "Horario", type: "schedule", full: true },
       { key: "timezone", label: "Zona horaria", type: "text", placeholder: "America/Mexico_City" },
-      { key: "notes", label: "Notas", type: "textarea", full: true },
+      { key: "notes", label: "Notas", type: "textarea", icon: "FileText", full: true },
       { key: "imageUrl", label: "Imagen", type: "image", full: true },
-      { key: "allowsPickup", label: "Permite recoger en tienda", type: "boolean" },
-      { key: "allowsDelivery", label: "Permite delivery", type: "boolean" },
+      { key: "allowsPickup", label: "Permite recoger en tienda", type: "boolean", description: "El cliente puede recoger su pedido en esta sucursal" },
+      { key: "allowsDelivery", label: "Permite delivery", type: "boolean", description: "Se realizan entregas a domicilio desde esta sucursal" },
       { key: "isActive", label: "Activa", type: "boolean" },
     ],
   },
@@ -230,7 +235,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     ],
     fields: [
       { key: "name", label: "Nombre", type: "text", required: true, placeholder: "Ej. Cajero" },
-      { key: "description", label: "Descripción", type: "textarea", full: true },
+      { key: "description", label: "Descripción", type: "textarea", icon: "FileText", full: true },
       { key: "isActive", label: "Activo", type: "boolean" },
     ],
   },
@@ -263,6 +268,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         key: "role",
         label: "Rol",
         type: "select",
+        icon: "CheckSquare",
         required: true,
         options: [
           { value: "cashier", label: "Cajero" },
@@ -276,6 +282,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         key: "positionId",
         label: "Puesto",
         type: "select",
+        icon: "List",
         optionsModule: "positions",
         optionValue: "id",
         optionLabel: "name",
@@ -284,6 +291,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         key: "locationId",
         label: "Sucursal base",
         type: "select",
+        icon: "List",
         optionsModule: "locations",
         optionValue: "id",
         optionLabel: "name",
@@ -320,6 +328,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         key: "locationId",
         label: "Sucursal",
         type: "select",
+        icon: "List",
         optionsModule: "locations",
         optionValue: "id",
         optionLabel: "name",
@@ -354,7 +363,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       { key: "openingHours", label: "Horario (texto)", type: "text", placeholder: "Lun-Sab 8:00-20:00", showIf: () => false },
       { key: "openingScheduleJson", label: "Horario", type: "schedule", full: true },
       { key: "timezone", label: "Zona horaria", type: "text", placeholder: "America/Mexico_City" },
-      { key: "notes", label: "Notas", type: "textarea", full: true },
+      { key: "notes", label: "Notas", type: "textarea", icon: "FileText", full: true },
       { key: "imageUrl", label: "Imagen", type: "image", full: true },
       { key: "isActive", label: "Activo", type: "boolean" },
     ],
@@ -393,9 +402,9 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     ],
     fields: [
       { key: "name", label: "Nombre", type: "text", required: true, placeholder: "Ej. 2x1 en bebidas" },
-      { key: "description", label: "Descripción", type: "textarea", full: true },
-      { key: "benefit", label: "Tipo de beneficio", type: "select", options: BENEFIT_TYPES, required: true },
-      { key: "scope", label: "Alcance", type: "select", options: PROMO_SCOPES, required: true },
+      { key: "description", label: "Descripción", type: "textarea", icon: "FileText", full: true },
+      { key: "benefit", label: "Tipo de beneficio", type: "select", icon: "CheckSquare", options: BENEFIT_TYPES, required: true },
+      { key: "scope", label: "Alcance", type: "select", icon: "List", options: PROMO_SCOPES, required: true },
       {
         key: "value",
         label: "Valor del beneficio",
@@ -418,9 +427,9 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       { key: "minAmount", label: "Mínimo de compra ($)", type: "money" },
       { key: "minQuantity", label: "Mínimo de piezas", type: "number" },
       { key: "couponCode", label: "Código de cupón", type: "text", full: true, help: "Si aplicas, el cajero lo teclea; no se aplica automáticamente." },
-      { key: "requiresCustomer", label: "Requiere cliente registrado", type: "boolean" },
+      { key: "requiresCustomer", label: "Requiere cliente registrado", type: "boolean", description: "El cliente debe tener cuenta para usar esta promoción" },
       { key: "priority", label: "Prioridad", type: "number", help: "Menor número = mayor prioridad." },
-      { key: "exclusive", label: "Exclusiva", type: "boolean", help: "Si aplica, bloquea las demás promociones." },
+      { key: "exclusive", label: "Exclusiva", type: "boolean", help: "Si aplica, bloquea las demás promociones.", description: "Bloquea otras promociones activas" },
       { key: "maxUses", label: "Uso máximo (total)", type: "number" },
       { key: "maxUsesPerCustomer", label: "Uso máximo por cliente", type: "number" },
       { key: "startsAt", label: "Inicio", type: "date", full: false },
