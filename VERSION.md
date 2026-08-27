@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.11.1.0] — 2026-08-27
+- **Tipo:** `fix` (Patch)
+- fix(deploy): remove duplicate CMD in Dockerfile + fix 'module' variable name
+
 ### [0.11.0.1] — 2026-08-26
 - **Tipo:** `ui` (Revision)
 - ui: mejora de diseños y detalles corregidos de los iconos en los inputs
