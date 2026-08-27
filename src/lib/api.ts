@@ -421,16 +421,18 @@ export const salesApi = {
   }),
   saleReturns: (saleId: string) =>
     request<{ ok: boolean; returns: SaleReturn[] }>(`/api/sales/${saleId}/returns`),
-  listReturns: (params: Record<string, string | undefined> = {}) => {
+  listReturns: (params: Record<string, string | number | undefined> = {}) => {
     const qs = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])
     );
-    return request<{ ok: boolean; returns: SaleReturnWithSale[] }>(`/api/sales/returns?${qs.toString()}`);
+    return request<{ ok: boolean; rows: SaleReturnWithSale[]; total: number }>(`/api/sales/returns?${qs.toString()}`);
   },
   returnDetail: (returnId: string) =>
     request<{ ok: boolean; return: SaleReturnDetail }>(`/api/sales/returns/${returnId}`),
   approveReturn: (returnId: string) =>
     request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/approve`, { method: "PUT" }),
+  rejectReturn: (returnId: string) =>
+    request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/reject`, { method: "PUT" }),
   completeReturn: (returnId: string) =>
     request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/complete`, { method: "POST" }),
   returnTicketUrl: (returnId: string) => `/api/sales/returns/${returnId}/ticket`,

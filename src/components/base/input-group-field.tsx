@@ -6,8 +6,7 @@ import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { InfoTooltip } from "@/components/base/info-tooltip"
-import { AlertCircle } from "lucide-react"
-// import { type } from './../../types/pos';
+import { AlertCircle, Eye, EyeOff } from "lucide-react"
 
 export interface InputGroupFieldProps
   extends React.ComponentProps<typeof Input> {
@@ -45,6 +44,8 @@ export const InputGroupField = React.forwardRef<
   ref
 ) {
   const [hasError] = useForwardedError(error)
+  const isPassword = type === "password"
+  const [showPassword, setShowPassword] = React.useState(false)
 
   return (
     <div className={cn("space-y-2", containerClassName)}>
@@ -73,37 +74,45 @@ export const InputGroupField = React.forwardRef<
           id={id}
           aria-invalid={hasError || undefined}
           aria-describedby={
-            error || hint ? `${id}-describe` : undefined
+            hint && !hasError ? `${id}-describe` : undefined
           }
           className={cn(
             (leftIcon || leftAddon) && "pl-9 md:pl-9",
+            isPassword && "pr-10 md:pr-10",
             rightAddon && !hasError && "pr-16 md:pr-16",
-            hasError && "pr-9 md:pr-9",
+            hasError && !isPassword && "pr-9 md:pr-9",
             className
           )}
-          type={type}
+          type={isPassword && showPassword ? "text" : type}
           {...props}
         />
-        {hasError && (
+        {hasError && !isPassword && (
           <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-destructive">
             <AlertCircle className="size-4" />
           </span>
         )}
-        {rightAddon && !hasError && (
+        {isPassword && (
+          <button
+            type="button"
+            tabIndex={-1}
+            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+            onClick={() => setShowPassword((s) => !s)}
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        )}
+        {rightAddon && !hasError && !isPassword && (
           <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-muted-foreground">
             {rightAddon}
           </span>
         )}
       </div>
-      {(error || hint) && (
+      {hint && !hasError && (
         <p
           id={`${id}-describe`}
-          className={cn(
-            "text-xs leading-relaxed",
-            error ? "text-destructive" : "text-muted-foreground"
-          )}
+          className="text-xs leading-relaxed text-muted-foreground"
         >
-          {error || hint}
+          {hint}
         </p>
       )}
     </div>

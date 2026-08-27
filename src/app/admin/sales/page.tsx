@@ -13,6 +13,7 @@ export default async function AdminSalesPage() {
   const session = await getServerSession(authOptions);
   const authed = !!session?.user && session.user.scope !== "portal";
   const canView = authed && hasPermission(session, "sales.view");
+  const canManage = authed && hasPermission(session, "sales.manage");
 
-  return <SalesPage canView={canView} icon={<ShoppingCart className="size-5" />} />;
+  return <SalesPage canView={canView} canManage={canManage} icon={<ShoppingCart className="size-5" />} />;
 }

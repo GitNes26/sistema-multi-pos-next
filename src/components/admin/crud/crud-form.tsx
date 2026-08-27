@@ -1,18 +1,7 @@
 import { useId, useMemo, useRef, useState } from "react"
 import * as yup from "yup"
-import {
-  CalendarDays,
-  Clock,
-  DollarSign,
-  Hash,
-  Percent,
-  Type,
-  FileText,
-  CheckSquare,
-  List,
-  Image as ImageIcon,
-  AlertCircle,
-} from "lucide-react"
+import { icons, AlertCircle } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { OptionSelect } from "./option-select"
@@ -94,8 +83,27 @@ function buildYupSchema(fields: CrudField[]) {
     let schema = yup.string()
     if (f.maxLength !== undefined) schema = schema.max(f.maxLength, `Máximo ${f.maxLength} caracteres`)
     if (f.minLength !== undefined) schema = schema.min(f.minLength, `Mínimo ${f.minLength} caracteres`)
-    if (f.pattern) {
-      schema = schema.matches(new RegExp(f.pattern.regex), f.pattern.message)
+    if (f.yup) {
+      for (const [method, def] of Object.entries(f.yup)) {
+        if (method === "email" && typeof def === "object" && "message" in def) {
+          schema = schema.email(def.message)
+        } else if (method === "url" && typeof def === "object" && "message" in def) {
+          schema = schema.url(def.message)
+        } else if (method === "matches" && Array.isArray(def)) {
+          schema = schema.matches(def[0] as RegExp, def[1])
+        } else if (method === "max" && Array.isArray(def)) {
+          schema = schema.max(def[0] as number, def[1])
+        } else if (method === "min" && Array.isArray(def)) {
+          schema = schema.min(def[0] as number, def[1])
+        } else if (method === "trim" && typeof def === "object" && "message" in def) {
+          schema = schema.trim(def.message)
+        } else if (typeof def === "object" && "message" in def) {
+          // Generic: call method by name with message
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const s = schema as any
+          if (typeof s[method] === "function") schema = s[method](def.message)
+        }
+      }
     }
     if (f.required) {
       schema = schema.required(f.requiredMessage || `${f.label} es obligatorio`)
@@ -113,32 +121,26 @@ function applyTransform(value: unknown, field: CrudField): unknown {
   return value
 }
 
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  Hash, DollarSign, Percent, CalendarDays, Clock, Type, FileText,
-  CheckSquare, List, ImageIcon,
-}
+const getIcon = (name: string): LucideIcon | undefined =>
+  icons[name as keyof typeof icons]
 
 function fieldIcon(type: string, iconKey?: string): React.ReactNode {
   if (iconKey) {
-    const Ico = ICON_MAP[iconKey]
+    const Ico = getIcon(iconKey)
     if (Ico) return <Ico className="size-4" />
   }
-  switch (type) {
-    case "number":
-      return <Hash className="size-4" />
-    case "money":
-      return <DollarSign className="size-4" />
-    case "percent":
-      return <Percent className="size-4" />
-    case "date":
-      return <CalendarDays className="size-4" />
-    case "time":
-      return <Clock className="size-4" />
-    case "textarea":
-      return <FileText className="size-4" />
-    default:
-      return <Type className="size-4" />
+  const fallback: Record<string, string> = {
+    number: "Hash",
+    money: "DollarSign",
+    percent: "Percent",
+    date: "CalendarDays",
+    time: "Clock",
+    textarea: "FileText",
+    password: "Key",
   }
+  const FallbackIcon = getIcon(fallback[type] ?? "Type")
+  if (!FallbackIcon) return null
+  return <FallbackIcon className="size-4" />
 }
 
 function FieldWrapper({
@@ -286,7 +288,7 @@ export function CrudForm({
                 id={id}
                 label={field.label}
                 description={field.description}
-                icon={field.icon ? fieldIcon(field.type, field.icon) : undefined}
+                icon={fieldIcon(field.type, field.icon)}
                 checked={Boolean(value)}
                 onCheckedChange={(c) => set(field.key, c)}
               />
@@ -452,15 +454,17 @@ export function CrudForm({
               helper={error ? undefined : field.help}
               leftIcon={fieldIcon(field.type, field.icon)}
               type={
-                field.type === "date"
-                  ? "date"
-                  : field.type === "time"
-                    ? "time"
-                    : field.type === "number" ||
-                        field.type === "money" ||
-                        field.type === "percent"
-                      ? "number"
-                      : "text"
+                field.type === "password"
+                  ? "password"
+                  : field.type === "date"
+                    ? "date"
+                    : field.type === "time"
+                      ? "time"
+                      : field.type === "number" ||
+                          field.type === "money" ||
+                          field.type === "percent"
+                        ? "number"
+                        : "text"
               }
               step={
                 field.type === "percent" || field.type === "number"

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DialogComponent } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { DatePicker } from "@/components/base/date-picker";
@@ -24,11 +25,13 @@ import { swalError, swalToast } from "@/lib/swal";
 import { money, qty } from "@/lib/pos/money";
 import { PAYMENT_METHOD_LABELS } from "@/lib/pos/config";
 import { ReturnDialog } from "./return-dialog";
+import { ReturnsTab } from "./returns-tab";
 
 // FASE 9 — Historial de ventas del POS.
 
 interface SalesPageProps {
   canView: boolean;
+  canManage?: boolean;
   icon?: React.ReactNode;
 }
 
@@ -48,7 +51,7 @@ interface SaleFilters {
 
 const EMPTY_FILTERS: SaleFilters = { q: "", locationId: "", employeeId: "", cashRegisterId: "", from: "", to: "" };
 
-export function SalesPage({ canView, icon }: SalesPageProps) {
+export function SalesPage({ canView, canManage = false, icon }: SalesPageProps) {
   const [rows, setRows] = useState<SaleRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -221,72 +224,67 @@ export function SalesPage({ canView, icon }: SalesPageProps) {
       <PageHeader
         icon={icon}
         title="Ventas"
-        description="Historial de ventas del punto de venta."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => exportFn("xlsx")} disabled={busy !== null}>
-              {busy === "xlsx" ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
-              Excel
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => exportFn("pdf")} disabled={busy !== null}>
-              {busy === "pdf" ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
-              PDF
-            </Button>
-          </div>
-        }
+        description="Historial de ventas y devoluciones del punto de venta."
       />
 
-      <Card>
-        <CardContent className="space-y-3 pt-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <InputGroupField
-              placeholder="Cliente, cajero, folio…"
-              leftIcon={<Search className="size-4" />}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="h-8 w-64"
-            />
-          </div>
+      <Tabs defaultValue="ventas">
+        <TabsList>
+          <TabsTrigger value="ventas">Ventas</TabsTrigger>
+          <TabsTrigger value="devoluciones">Devoluciones</TabsTrigger>
+        </TabsList>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <FormCombobox
-              value={filters.locationId}
-              onChange={(v) => setFilters((f) => ({ ...f, locationId: v }))}
-              options={[
-                { value: "__all", label: "Todas las sucursales" },
-                ...options.locations.map((l) => ({ value: l.id, label: l.name })),
-              ]}
-              clearable={false}
-              searchable={options.locations.length > 5}
-              className="w-44"
-            />
-            <FormCombobox
-              value={filters.employeeId}
-              onChange={(v) => setFilters((f) => ({ ...f, employeeId: v }))}
-              options={[
-                { value: "__all", label: "Todos los empleados" },
-                ...options.employees.map((e) => ({ value: e.id, label: e.name })),
-              ]}
-              clearable={false}
-              searchable={options.employees.length > 5}
-              className="w-44"
-            />
-            <FormCombobox
-              value={filters.cashRegisterId}
-              onChange={(v) => setFilters((f) => ({ ...f, cashRegisterId: v }))}
-              options={[
-                { value: "__all", label: "Todas las cajas" },
-                ...options.registers.map((r) => ({ value: r.id, label: r.name })),
-              ]}
-              clearable={false}
-              searchable={options.registers.length > 5}
-              className="w-44"
-            />
-            <DatePicker
-              value={filters.from ? new Date(filters.from + "T00:00:00") : null}
-              onChange={(d) => setFilters((f) => ({ ...f, from: d ? d.toISOString().split("T")[0] : "" }))}
-              placeholder="Desde"
-              clearable
+        <TabsContent value="ventas" className="space-y-0">
+          <Card>
+            <CardContent className="space-y-3 pt-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <InputGroupField
+                  placeholder="Cliente, cajero, folio…"
+                  leftIcon={<Search className="size-4" />}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="h-8 w-64"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <FormCombobox
+                  value={filters.locationId}
+                  onChange={(v) => setFilters((f) => ({ ...f, locationId: v }))}
+                  options={[
+                    { value: "__all", label: "Todas las sucursales" },
+                    ...options.locations.map((l) => ({ value: l.id, label: l.name })),
+                  ]}
+                  clearable={false}
+                  searchable={options.locations.length > 5}
+                  className="w-44"
+                />
+                <FormCombobox
+                  value={filters.employeeId}
+                  onChange={(v) => setFilters((f) => ({ ...f, employeeId: v }))}
+                  options={[
+                    { value: "__all", label: "Todos los empleados" },
+                    ...options.employees.map((e) => ({ value: e.id, label: e.name })),
+                  ]}
+                  clearable={false}
+                  searchable={options.employees.length > 5}
+                  className="w-44"
+                />
+                <FormCombobox
+                  value={filters.cashRegisterId}
+                  onChange={(v) => setFilters((f) => ({ ...f, cashRegisterId: v }))}
+                  options={[
+                    { value: "__all", label: "Todas las cajas" },
+                    ...options.registers.map((r) => ({ value: r.id, label: r.name })),
+                  ]}
+                  clearable={false}
+                  searchable={options.registers.length > 5}
+                  className="w-44"
+                />
+                <DatePicker
+                  value={filters.from ? new Date(filters.from + "T00:00:00") : null}
+                  onChange={(d) => setFilters((f) => ({ ...f, from: d ? d.toISOString().split("T")[0] : "" }))}
+                  placeholder="Desde"
+                  clearable
               className="w-40"
             />
             <DatePicker
@@ -303,7 +301,17 @@ export function SalesPage({ canView, icon }: SalesPageProps) {
               </Button>
             )}
 
-            <span className="ml-auto text-sm text-muted-foreground">{total} venta(s)</span>
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8" onClick={() => exportFn("xlsx")} disabled={busy !== null}>
+                {busy === "xlsx" ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" className="h-8" onClick={() => exportFn("pdf")} disabled={busy !== null}>
+                {busy === "pdf" ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
+                PDF
+              </Button>
+              <span className="text-xs text-muted-foreground">{total} venta(s)</span>
+            </div>
           </div>
 
           <DataTable
@@ -351,6 +359,16 @@ export function SalesPage({ canView, icon }: SalesPageProps) {
           )}
         </CardContent>
       </Card>
+      </TabsContent>
+
+      <TabsContent value="devoluciones" className="space-y-0">
+        <Card>
+          <CardContent className="pt-5">
+            <ReturnsTab canView={canView} canManage={canManage} />
+          </CardContent>
+        </Card>
+      </TabsContent>
+      </Tabs>
 
       {detail && <SaleDetailDialog sale={detail} open={detailOpen} onClose={() => setDetailOpen(false)} />}
     </>

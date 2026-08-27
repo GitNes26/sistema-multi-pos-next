@@ -3,6 +3,9 @@
 
 export type FieldType =
   | "text"
+  | "email"
+  | "phone"
+  | "password"
   | "textarea"
   | "number"
   | "money"
@@ -22,6 +25,16 @@ export interface SelectOption {
   value: string
   label: string
 }
+
+/**
+ * Definición de validación Yup simplificada.
+ * Cada clave es un método de `yup.StringSchema` o `yup.NumberSchema`.
+ * Ejemplo: `{ email: { message: "Correo inválido" }, max: [255, "Máx 255"] }`
+ */
+export type YupSchemaDef = Record<
+  string,
+  { message: string } | [number | RegExp, string]
+>
 
 export interface CrudField {
   key: string
@@ -56,8 +69,8 @@ export interface CrudField {
   maxLength?: number
   /** Longitud mínima de caracteres (text/textarea). */
   minLength?: number
-  /** Expresión regular que debe cumplir el valor (text/textarea). */
-  pattern?: { regex: string; message: string }
+  /** Definición de validación Yup. Cada clave es un método de Yup StringSchema/NumberSchema. */
+  yup?: YupSchemaDef
   /** Valor mínimo numérico (number/money/percent). */
   min?: number
   /** Valor máximo numérico (number/money/percent). */
@@ -65,7 +78,10 @@ export interface CrudField {
   /** Mensaje de error personalizado para required. */
   requiredMessage?: string
   /** Validaciones adicionales: array de funciones que retornan string | null. */
-  validate?: ((value: unknown, allValues: Record<string, unknown>) => string | null)[]
+  validate?: ((
+    value: unknown,
+    allValues: Record<string, unknown>
+  ) => string | null)[]
   /** Valor por defecto explícito (sobreescribe el default vacío). */
   defaultValue?: unknown
 }
@@ -138,6 +154,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       {
         key: "name",
+        icon: "Tag",
         label: "Nombre",
         type: "text",
         required: true,
@@ -179,6 +196,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       {
         key: "name",
+        icon: "RulerDimensionLine",
         label: "Nombre",
         type: "text",
         required: true,
@@ -232,6 +250,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       {
         key: "fullName",
+        icon:"UserStar",
         label: "Nombre completo",
         type: "text",
         required: true,
@@ -251,16 +270,17 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         placeholder: "5512345678",
         help: "10 dígitos sin espacios",
         maxLength: 10,
-        pattern: { regex: "^\\d{10}$", message: "Debe contener exactamente 10 dígitos" },
+        yup: { matches: [/^\d{10}$/, "Debe contener exactamente 10 dígitos"] },
       },
       {
         key: "email",
         icon: "Mail",
         label: "Correo",
-        type: "text",
+        type: "email",
         placeholder: "cliente@correo.com",
         help: "Se asocia a una cuenta de usuario del portal. Contraseña inicial: la misma dirección (el cliente la cambia en su primer acceso).",
-        pattern: { regex: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", message: "Ingresa un correo válido" },
+        transform: "lowercase",
+        yup: { email: { message: "Ingresa un correo válido" } },
       },
       { key: "points", icon: "Coins", label: "Puntos", type: "number" },
       {
@@ -272,8 +292,13 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         lonKey: "longitude",
         full: true,
       },
-      { key: "imageUrl", icon: "Image", label: "Foto", type: "image",  },
-      { key: "isActive", icon: "CheckCircle", label: "Activo", type: "boolean" },
+      { key: "imageUrl", icon: "Image", label: "Foto", type: "image" },
+      {
+        key: "isActive",
+        icon: "CheckCircle",
+        label: "Activo",
+        type: "boolean",
+      },
     ],
   },
 
@@ -295,6 +320,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       {
         key: "name",
+        icon:"Store",
         label: "Nombre",
         type: "text",
         required: true,
@@ -308,7 +334,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         placeholder: "CTR",
         transform: "uppercase",
         maxLength: 10,
-        pattern: { regex: "^[A-Z]{1,10}$", message: "Solo letras mayúsculas, máx. 10" },
+        yup: { matches: [/^[A-Z]{1,10}$/, "Solo letras mayúsculas, máx. 10"] },
       },
       {
         key: "address",
@@ -323,16 +349,17 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         key: "phone",
         icon: "Phone",
         label: "Teléfono",
-        type: "text",
+        type: "phone",
         maxLength: 10,
-        pattern: { regex: "^\\d{10}$", message: "Debe contener exactamente 10 dígitos" },
+        yup: { matches: [/^\d{10}$/, "Debe contener exactamente 10 dígitos"] },
       },
       {
         key: "email",
         icon: "Mail",
         label: "Correo",
-        type: "text",
-        pattern: { regex: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", message: "Ingresa un correo válido" },
+        type: "email",
+        transform: "lowercase",
+        yup: { email: { message: "Ingresa un correo válido" } },
       },
       {
         key: "openingHours",
@@ -404,6 +431,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       {
         key: "name",
+        icon: "BriefcaseBusiness",
         label: "Nombre",
         type: "text",
         required: true,
@@ -449,6 +477,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       {
         key: "fullName",
+        icon:"UserCog",
         label: "Nombre completo",
         type: "text",
         required: true,
@@ -461,7 +490,12 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         required: true,
         placeholder: "EMP-001",
         transform: "uppercase",
-        pattern: { regex: "^[A-Z0-9\\-]+$", message: "Solo letras mayúsculas, números y guiones" },
+        yup: {
+          matches: [
+            /^[A-Z0-9\-]+$/,
+            "Solo letras mayúsculas, números y guiones",
+          ],
+        },
       },
       {
         key: "role",
@@ -496,14 +530,23 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         optionLabel: "name",
         help: "Sucursal donde trabaja normalmente el empleado.",
       },
-      { key: "phone", icon: "Phone", label: "Teléfono", type: "text" },
+      {
+        key: "phone",
+        icon: "Phone",
+        label: "Teléfono",
+        type: "text",
+        maxLength: 10,
+        yup: { matches: [/^\d{10}$/, "Debe contener exactamente 10 dígitos"] },
+      },
       {
         key: "email",
         icon: "Mail",
         label: "Correo",
-        type: "text",
+        type: "email",
         placeholder: "empleado@correo.com",
         help: "Correo de acceso y contraseña inicial: es la misma dirección. Si se deja vacío se genera uno automático y ese será también su contraseña. Indícalo al empleado para que lo cambie en su primer acceso.",
+        transform: "lowercase",
+        yup: { email: { message: "Ingresa un correo válido" } },
       },
       { key: "imageUrl", icon: "Image", label: "Foto", type: "image" },
       { key: "isActive", label: "Activo", type: "boolean" },
@@ -525,6 +568,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       {
         key: "name",
+        icon: "HandCoins",
         label: "Nombre",
         type: "text",
         required: true,
@@ -547,7 +591,12 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         help: "Se genera automáticamente: código de sucursal + primera letra de la caja (ej. CTR-C1). Puedes sobrescribirlo.",
         transform: "uppercase",
         maxLength: 10,
-        pattern: { regex: "^[A-Z0-9\\-]{1,10}$", message: "Solo letras mayúsculas, números y guiones, máx. 10" },
+        yup: {
+          matches: [
+            /^[A-Z0-9\-]{1,10}$/,
+            "Solo letras mayúsculas, números y guiones, máx. 10",
+          ],
+        },
       },
       { key: "isActive", label: "Activa", type: "boolean" },
     ],
@@ -570,7 +619,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     fields: [
       {
         key: "name",
-        icon: "Building",
+        icon: "Warehouse",
         label: "Nombre",
         type: "text",
         required: true,
@@ -593,8 +642,22 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         full: true,
       },
       { key: "managerName", icon: "UserKey", label: "Encargado", type: "text" },
-      { key: "phone", icon: "Phone", label: "Teléfono", type: "text" },
-      { key: "email", icon: "Mail", label: "Correo", type: "text" },
+      {
+        key: "phone",
+        icon: "Phone",
+        label: "Teléfono",
+        type: "text",
+        maxLength: 10,
+        yup: { matches: [/^\d{10}$/, "Debe contener exactamente 10 dígitos"] },
+      },
+      {
+        key: "email",
+        icon: "Mail",
+        label: "Correo",
+        type: "email",
+        transform: "lowercase",
+        yup: { email: { message: "Ingresa un correo válido" } },
+      },
       {
         key: "openingHours",
         icon: "Clock",

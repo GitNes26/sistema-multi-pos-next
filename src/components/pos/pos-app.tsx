@@ -190,6 +190,16 @@ export function PosApp({ catalog }: PosAppProps) {
         footerClassName="gap-2"
         footer={
           <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => {
+                if (lastSale) window.open(`/admin/sales?q=${lastSale.sale.saleNumber}`, "_blank");
+              }}
+            >
+              Devolución
+            </Button>
             <Button variant="outline" onClick={printReceipt} className="flex-1">
               <Printer className="size-4" /> Imprimir
             </Button>

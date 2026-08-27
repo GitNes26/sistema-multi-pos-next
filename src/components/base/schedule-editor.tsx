@@ -117,7 +117,7 @@ export function ScheduleEditor({
               {DAYS_LABELS[s.day]}
             </span>
             <Switch
-              className="hover:cursor-pointer"
+              className="hover:cursor-pointer hover:shadow-xl"
               checked={s.enabled}
               onCheckedChange={(v) => updateDay(dayIdx, { enabled: v })}
               disabled={disabled}
@@ -126,13 +126,13 @@ export function ScheduleEditor({
           {s.enabled && (
             <div className="ml-12 space-y-1.5">
               {s.slots.map((slot, slotIdx) => (
-                <div key={slotIdx} className="flex items-center gap-1.5">
+                <div key={slotIdx} className="flex items-center gap-2">
                   <TimePicker
                     value={slot.open}
                     onChange={(v) => updateSlot(dayIdx, slotIdx, { open: v ?? "09:00" })}
                     disabled={disabled}
                     clearable={false}
-                    className="w-28"
+                    size="sm"
                   />
                   <span className="text-xs text-muted-foreground">a</span>
                   <TimePicker
@@ -140,7 +140,7 @@ export function ScheduleEditor({
                     onChange={(v) => updateSlot(dayIdx, slotIdx, { close: v ?? "18:00" })}
                     disabled={disabled}
                     clearable={false}
-                    className="w-28"
+                    size="sm"
                   />
                   {s.slots.length > 1 && (
                     <Button

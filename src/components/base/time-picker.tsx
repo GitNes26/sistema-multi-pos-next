@@ -18,6 +18,91 @@ import { InfoTooltip } from "@/components/base/info-tooltip"
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1)
 const MINUTES = Array.from({ length: 60 }, (_, i) => i)
 
+type TimePickerSize = "xs" | "sm" | "default" | "lg" | "xl" | "2xl" | "3xl" | "4xl"
+
+const SIZE_MAP: Record<TimePickerSize, {
+  container: string
+  icon: string
+  trigger: string
+  dot: string
+  clearBtn: string
+  clearIcon: string
+  placeholder: string
+}> = {
+  xs: {
+    container: "h-6 gap-0.5 rounded px-1",
+    icon: "size-3",
+    trigger: "h-4 w-16 text-[10px]",
+    dot: "text-[10px]",
+    clearBtn: "size-5",
+    clearIcon: "size-2.5",
+    placeholder: "text-[10px]",
+  },
+  sm: {
+    container: "h-7 gap-0.5 rounded-md px-1",
+    icon: "size-3.5",
+    trigger: "h-5 w-16 text-xs",
+    dot: "text-xs",
+    clearBtn: "size-6",
+    clearIcon: "size-3",
+    placeholder: "text-xs",
+  },
+  default: {
+    container: "h-9 gap-1 rounded-md px-1.5",
+    icon: "size-4",
+    trigger: "h-4 w-16 text-sm",
+    dot: "text-sm",
+    clearBtn: "size-7",
+    clearIcon: "size-3.5",
+    placeholder: "text-sm",
+  },
+  lg: {
+    container: "h-10 gap-1.5 rounded-lg px-2",
+    icon: "size-5",
+    trigger: "h-7 w-16 text-base",
+    dot: "text-base",
+    clearBtn: "size-8",
+    clearIcon: "size-4",
+    placeholder: "text-base",
+  },
+  xl: {
+    container: "h-11 gap-1.5 rounded-lg px-2",
+    icon: "size-5",
+    trigger: "h-8 w-16 text-base",
+    dot: "text-base",
+    clearBtn: "size-9",
+    clearIcon: "size-4.5",
+    placeholder: "text-base",
+  },
+  "2xl": {
+    container: "h-12 gap-2 rounded-xl px-2.5",
+    icon: "size-6",
+    trigger: "h-8 w-18 text-lg",
+    dot: "text-lg",
+    clearBtn: "size-10",
+    clearIcon: "size-5",
+    placeholder: "text-lg",
+  },
+  "3xl": {
+    container: "h-14 gap-2 rounded-xl px-3",
+    icon: "size-7",
+    trigger: "h-10 w-20 text-xl",
+    dot: "text-xl",
+    clearBtn: "size-11",
+    clearIcon: "size-5",
+    placeholder: "text-xl",
+  },
+  "4xl": {
+    container: "h-16 gap-2.5 rounded-2xl px-3",
+    icon: "size-8",
+    trigger: "h-12 w-22 text-2xl",
+    dot: "text-2xl",
+    clearBtn: "size-12",
+    clearIcon: "size-6",
+    placeholder: "text-2xl",
+  },
+}
+
 export interface TimePickerProps {
   value?: string | null
   onChange?: (time: string | null) => void
@@ -27,6 +112,7 @@ export interface TimePickerProps {
   clearable?: boolean
   error?: string
   className?: string
+  size?: TimePickerSize | `${number}`
 }
 
 export function TimePicker({
@@ -38,8 +124,10 @@ export function TimePicker({
   clearable = true,
   error,
   className,
+  size = "default",
 }: TimePickerProps) {
   const parts = React.useMemo(() => parseTime(value), [value])
+  const s = SIZE_MAP[size as TimePickerSize] ?? SIZE_MAP.default
 
   const emit = (
     h: number | null,
@@ -69,11 +157,12 @@ export function TimePicker({
 
       <div
         className={cn(
-          "flex h-8 w-full items-center gap-1 rounded-md border border-input px-1.5",
+          "flex w-full items-center border border-input",
+          s.container,
           error && "border-destructive ring-3 ring-destructive/20"
         )}
       >
-        <Clock className="size-4 shrink-0 text-muted-foreground" />
+        <Clock className={cn("shrink-0 text-muted-foreground", s.icon)} />
         <Select
           disabled={disabled}
           value={value ? String(parts.h) : undefined}
@@ -81,10 +170,13 @@ export function TimePicker({
         >
           <SelectTrigger
             data-slot="time-picker-part"
-            className="h-6 w-14 border-0 bg-transparent px-1 text-center shadow-none focus-visible:ring-0"
+            className={cn(
+              "border-0 bg-transparent px-1 text-center shadow-none focus-visible:ring-0",
+              s.trigger
+            )}
             aria-label="Hora"
           >
-            <SelectValue placeholder="Hora" />
+            <SelectValue placeholder="Hora" className={s.placeholder} />
           </SelectTrigger>
           <SelectContent>
             {HOURS.map((h) => (
@@ -94,7 +186,7 @@ export function TimePicker({
             ))}
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground">:</span>
+        <span className={cn("text-muted-foreground", s.dot)}>:</span>
         <Select
           disabled={disabled}
           value={value ? String(parts.m) : undefined}
@@ -102,10 +194,13 @@ export function TimePicker({
         >
           <SelectTrigger
             data-slot="time-picker-part"
-            className="h-6 w-14 border-0 bg-transparent px-1 text-center shadow-none focus-visible:ring-0"
+            className={cn(
+              "border-0 bg-transparent px-1 text-center shadow-none focus-visible:ring-0",
+              s.trigger
+            )}
             aria-label="Minuto"
           >
-            <SelectValue placeholder="Min" />
+            <SelectValue placeholder="Min" className={s.placeholder} />
           </SelectTrigger>
           <SelectContent className="max-h-56">
             {MINUTES.map((m) => (
@@ -122,10 +217,13 @@ export function TimePicker({
         >
           <SelectTrigger
             data-slot="time-picker-part"
-            className="h-6 w-16 border-0 bg-transparent px-1 text-center shadow-none focus-visible:ring-0"
+            className={cn(
+              "border-0 bg-transparent px-1 text-center shadow-none focus-visible:ring-0",
+              s.trigger
+            )}
             aria-label="Periodo"
           >
-            <SelectValue placeholder="AM/PM" />
+            <SelectValue placeholder="AM/PM" className={s.placeholder} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="AM">AM</SelectItem>
@@ -138,10 +236,10 @@ export function TimePicker({
             variant="ghost"
             size="icon-xs"
             aria-label="Limpiar hora"
-            className="ml-auto"
+            className={cn("ml-auto", s.clearBtn)}
             onClick={() => onChange?.(null)}
           >
-            <X className="size-3.5" />
+            <X className={s.clearIcon} />
           </Button>
         )}
       </div>

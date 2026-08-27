@@ -19,6 +19,7 @@ export const PERMISSIONS = [
   { key: "promotions.view", module: "promotions", action: "view", label: "Ver promociones" },
   { key: "promotions.manage", module: "promotions", action: "manage", label: "Crear/editar promociones" },
   { key: "sales.view", module: "sales", action: "view", label: "Ver historial de ventas" },
+  { key: "sales.manage", module: "sales", action: "manage", label: "Gestionar devoluciones de ventas" },
   { key: "reports.view", module: "reports", action: "view", label: "Ver reportes" },
   { key: "reports.export", module: "reports", action: "export", label: "Exportar reportes" },
   { key: "cash.open", module: "cash", action: "open", label: "Abrir caja" },

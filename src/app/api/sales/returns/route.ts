@@ -9,14 +9,16 @@ export async function GET(req: NextRequest) {
 
   try {
     const sp = req.nextUrl.searchParams;
-    const returns = await listReturns(guard.organizationId, {
+    const result = await listReturns(guard.organizationId, {
       from: sp.get("from") ?? undefined,
       to: sp.get("to") ?? undefined,
       status: sp.get("status") ?? undefined,
       returnType: sp.get("returnType") ?? undefined,
       locationId: sp.get("locationId") ?? undefined,
+      page: sp.has("page") ? Number(sp.get("page")) : undefined,
+      pageSize: sp.has("pageSize") ? Number(sp.get("pageSize")) : undefined,
     });
-    return NextResponse.json({ ok: true, returns });
+    return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     return salesErrorResponse(err);
   }

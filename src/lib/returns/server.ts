@@ -364,7 +364,7 @@ export async function getReturnDetail(organizationId: string, returnId: string) 
 
 export async function listReturns(
   organizationId: string,
-  filters: { from?: string; to?: string; status?: string; returnType?: string; locationId?: string }
+  filters: { from?: string; to?: string; status?: string; returnType?: string; locationId?: string; page?: number; pageSize?: number }
 ) {
   const where: Record<string, unknown> = { organizationId };
   if (filters.status) where.status = filters.status;
@@ -377,13 +377,22 @@ export async function listReturns(
     };
   }
 
-  return prisma.saleReturn.findMany({
-    where,
-    include: {
-      items: true,
-      sale: { select: { saleNumber: true, locationSaleNumber: true, total: true, customer: { select: { fullName: true } } } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(100, filters.pageSize ?? 20);
+
+  const [rows, total] = await Promise.all([
+    prisma.saleReturn.findMany({
+      where,
+      include: {
+        items: true,
+        sale: { select: { saleNumber: true, locationSaleNumber: true, total: true, customer: { select: { fullName: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.saleReturn.count({ where }),
+  ]);
+
+  return { rows, total, page, pageSize };
 }

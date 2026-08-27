@@ -4,7 +4,7 @@ import { approveReturn } from "@/lib/returns/server";
 
 // PUT /api/sales/returns/[returnId]/approve — Aprobar devolución
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ returnId: string }> }) {
-  const guard = await salesGuard("sales.view");
+  const guard = await salesGuard("sales.manage");
   if (guard instanceof NextResponse) return guard;
 
   try {
