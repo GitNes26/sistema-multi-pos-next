@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.11.1.1] — 2026-08-27
+- **Tipo:** `chore` (Revision)
+- semodifco el Dockerfile para que funcione
+
 ### [0.11.1.0] — 2026-08-27
 - **Tipo:** `fix` (Patch)
 - fix(deploy): remove duplicate CMD in Dockerfile + fix 'module' variable name
