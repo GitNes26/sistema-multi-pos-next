@@ -59,4 +59,3 @@ CMD ["sh", "-c", "\
     npm run db:seed; \
   fi && \
   npm run start"]
-CMD ["sh", "-c", "npx prisma db push --force-reset --skip-generate && npm run db:seed && npm run start"]

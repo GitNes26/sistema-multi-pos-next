@@ -534,16 +534,16 @@ export function MenusManager() {
                 ]}
                 clearable={false}
                 onCreate={async () => {
-                  const module = await swalPrompt("Nuevo permiso", "Módulo (ej: reports, dashboard)");
-                  if (!module) return;
+                  const mod = await swalPrompt("Nuevo permiso", "Módulo (ej: reports, dashboard)");
+                  if (!mod) return;
                   const action = await swalPrompt("Nuevo permiso", "Acción (ej: view, manage, export)");
                   if (!action) return;
                   const label = await swalPrompt("Nuevo permiso", "Etiqueta descriptiva (ej: Ver dashboard)");
                   if (!label) return;
-                  const ok = addPermission(module.trim(), action.trim(), label.trim());
+                  const ok = addPermission(mod.trim(), action.trim(), label.trim());
                   if (ok) {
                     swalToast("Permiso creado");
-                    setForm({ ...form, permissionKey: `${module.trim()}.${action.trim()}` });
+                    setForm({ ...form, permissionKey: `${mod.trim()}.${action.trim()}` });
                   } else {
                     swalError("Ese permiso ya existe");
                   }
