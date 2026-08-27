@@ -109,7 +109,7 @@ export function LoginForm({
 
         {/* Form card */}
         <motion.div
-          className="rounded-2xl border border-border/50 bg-card p-5 shadow-sm"
+          className="rounded-2xl border border-border/50 bg-card/80 p-5 shadow-lg shadow-black/5 backdrop-blur-sm"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}

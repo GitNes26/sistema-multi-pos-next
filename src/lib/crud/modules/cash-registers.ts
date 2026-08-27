@@ -18,7 +18,7 @@ const select = {
   folioPrefix: true,
   locationId: true,
   isActive: true,
-  location: { select: { name: true } },
+  location: { select: { name: true, code: true } },
   _count: { select: { cashSessions: true, sales: true } },
 } as const;
 
@@ -28,7 +28,7 @@ type CashRegisterRow = {
   folioPrefix: string | null;
   locationId: string;
   isActive: boolean;
-  location: { name: string } | null;
+  location: { name: string; code: string | null } | null;
   _count: { cashSessions: number; sales: number };
 };
 
@@ -93,12 +93,20 @@ export const cashRegistersModule: CrudModule<CashRegisterDto> = {
     const location = await prisma.location.findFirst({ where: { id: locationId, organizationId } });
     if (!location) throw new CrudError("La sucursal no existe", 400, "locationId");
 
+    // Auto-generate folioPrefix: [locationCode]-[Caja#] if not provided
+    let folioPrefix = data.folioPrefix ? String(data.folioPrefix).trim() : null;
+    if (!folioPrefix) {
+      const locCode = (location.code || location.name.substring(0, 3)).toUpperCase().replace(/[^A-Z0-9]/g, "").substring(0, 6);
+      const cajaNum = name.replace(/[^0-9]/g, "") || "1";
+      folioPrefix = `${locCode}-C${cajaNum}`;
+    }
+
     const r = await prisma.cashRegister.create({
       data: {
         organizationId,
         locationId,
         name,
-        folioPrefix: data.folioPrefix ? String(data.folioPrefix) : null,
+        folioPrefix,
         isActive: data.isActive !== false,
       },
       select,

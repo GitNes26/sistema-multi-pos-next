@@ -233,81 +233,69 @@ export function DataTable<TData, TValue>({
   }
 
   return (
-    <div className={cn("w-full space-y-3", className)}>
+    <div className={cn("w-full space-y-2", className)}>
       {(searchable || showColumnVisibility || toolbarSlot || onRefresh) && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-1 items-center gap-2">
-            {onRefresh && (
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={onRefresh}
-                      aria-label="Refrescar"
-                    >
-                      <RefreshCw
-                        className={cn("size-4", refreshing && "animate-spin")}
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Refrescar</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {searchable && (
-              <InputGroupField
-                // label="Monto mínimo"
-                type="search"
-                placeholder={searchPlaceholder}
-                leftIcon={<Search className="size-4" />}
-                className="w-full"
-                value={globalFilter}
-                 onChange={(e) => setGlobalFilter(e.target.value)}
-              />
-              // <div className="relative w-full ">
-              //   <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
-              //   <Input
-              //     type="search"
-              //     value={globalFilter}
-              //     onChange={(e) => setGlobalFilter(e.target.value)}
-              //     placeholder={searchPlaceholder}
-              //     className="h-8 pl-9 md:pl-9"
-              //   />
-              // </div>
-            )}
-            {toolbarSlot}
-            
-          </div>
-          {showColumnVisibility && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8">
-                  <EyeOff className="size-4" />
-                  Columnas
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Columnas visibles</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {table
-                  .getAllLeafColumns()
-                  .filter((c) => c.getCanHide())
-                  .map((column) => (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(v) => column.toggleVisibility(v)}
-                      onSelect={(e) => e.preventDefault()}
-                    >
-                      {String(headerLabel(column))}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <div className="flex flex-wrap items-center gap-2">
+          {onRefresh && (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={onRefresh}
+                    aria-label="Refrescar"
+                  >
+                    <RefreshCw
+                      className={cn("size-4", refreshing && "animate-spin")}
+                    />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Refrescar</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
+          {searchable && (
+            <InputGroupField
+              type="search"
+              placeholder={searchPlaceholder}
+              leftIcon={<Search className="size-4" />}
+              className="w-full max-w-56"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+            />
+          )}
+          {toolbarSlot}
+          <div className="ml-auto flex items-center gap-2">
+            {showColumnVisibility && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8">
+                    <EyeOff className="size-4" />
+                    Columnas
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>Columnas visibles</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {table
+                    .getAllLeafColumns()
+                    .filter((c) => c.getCanHide())
+                    .map((column) => (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(v) => column.toggleVisibility(v)}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        {String(headerLabel(column))}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
       )}
 
@@ -429,7 +417,7 @@ function PaginationFooter<TData>({
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="hidden sm:inline">Filas por página</span>
         <Select
           value={String(table.getState().pagination.pageSize)}
@@ -463,23 +451,25 @@ function PaginationFooter<TData>({
         <Button
           variant="ghost"
           size="icon"
+          className="h-7 w-7"
           disabled={!table.getCanPreviousPage()}
           onClick={() => table.previousPage()}
           aria-label="Página anterior"
         >
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className="size-3.5" />
         </Button>
-        <span className="px-2 text-sm tabular-nums text-muted-foreground">
+        <span className="px-1.5 text-xs tabular-nums text-muted-foreground">
           {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
         </span>
         <Button
           variant="ghost"
           size="icon"
+          className="h-7 w-7"
           disabled={!table.getCanNextPage()}
           onClick={() => table.nextPage()}
           aria-label="Página siguiente"
         >
-          <ChevronRight className="size-4" />
+          <ChevronRight className="size-3.5" />
         </Button>
       </div>
     </div>

@@ -457,23 +457,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
       />
 
       <Card>
-        <CardContent className="space-y-3 pt-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="relative w-full max-w-64">
-              <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={searchPlaceholder}
-                className="h-8 pl-9 md:pl-9 pr-8 md:pr-8"
-              />
-              {(isDebouncing || loading) && (
-                <Loader2 className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 animate-spin text-muted-foreground" />
-              )}
-            </div>
-            <span className="text-sm text-muted-foreground">{total} registro(s)</span>
-          </div>
-
+        <CardContent className="space-y-2 pt-5">
           <DataTable
             columns={tableColumns}
             data={rows}
@@ -485,22 +469,39 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
             rowKey={(r) => String(r.id)}
             onRefresh={() => load()}
             refreshing={loading}
+            toolbarSlot={
+              <div className="flex flex-1 items-center gap-2">
+                <div className="relative w-full max-w-56">
+                  <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
+                  <Input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder={searchPlaceholder}
+                    className="h-8 pl-9 md:pl-9 pr-8 md:pr-8"
+                  />
+                  {(isDebouncing || loading) && (
+                    <Loader2 className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">{total} reg.</span>
+              </div>
+            }
           />
 
           {!loading && total > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-              <span className="text-sm tabular-nums text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
+              <span className="text-xs tabular-nums text-muted-foreground">
                 {from}–{to} de {total}
               </span>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                  <ChevronLeft className="size-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                  <ChevronLeft className="size-3.5" />
                 </Button>
-                <span className="px-2 text-sm tabular-nums text-muted-foreground">
+                <span className="px-1.5 text-xs tabular-nums text-muted-foreground">
                   {page} / {pageCount}
                 </span>
-                <Button variant="ghost" size="icon" disabled={page >= pageCount || loading} onClick={() => setPage((p) => p + 1)}>
-                  <ChevronRight className="size-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= pageCount || loading} onClick={() => setPage((p) => p + 1)}>
+                  <ChevronRight className="size-3.5" />
                 </Button>
               </div>
             </div>

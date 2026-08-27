@@ -11,24 +11,18 @@ import {
   Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { DialogComponent } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/layout/page-header";
+import { InputGroupField } from "@/components/base/input-group-field";
+import { DatePicker } from "@/components/base/date-picker";
+import { FormCombobox } from "@/components/base/form-combobox";
 import { DataTable } from "@/components/base/data-table";
 import { crudApi, salesApi, type SaleRow, type SaleDetail } from "@/lib/api";
 import { swalError, swalToast } from "@/lib/swal";
 import { money, qty } from "@/lib/pos/money";
 import { PAYMENT_METHOD_LABELS } from "@/lib/pos/config";
-import { cn } from "@/lib/utils";
 import { ReturnDialog } from "./return-dialog";
 
 // FASE 9 — Historial de ventas del POS.
@@ -212,9 +206,6 @@ export function SalesPage({ canView, icon }: SalesPageProps) {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
-  const filterChip = (active: boolean) =>
-    active ? "bg-primary text-primary-foreground" : "";
-
   if (!canView) {
     return (
       <Card>
@@ -248,85 +239,65 @@ export function SalesPage({ canView, icon }: SalesPageProps) {
       <Card>
         <CardContent className="space-y-3 pt-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="relative w-full max-w-64">
-              <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Cliente, cajero, folio…"
-                className="h-8 pl-9 md:pl-9"
-              />
-            </div>
+            <InputGroupField
+              placeholder="Cliente, cajero, folio…"
+              leftIcon={<Search className="size-4" />}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="h-8 w-64"
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Select
+            <FormCombobox
               value={filters.locationId}
-              onValueChange={(v) => setFilters((f) => ({ ...f, locationId: v }))}
-            >
-              <SelectTrigger className={cn("h-8 w-44 text-xs", filterChip(!!filters.locationId))}>
-                <SelectValue placeholder="Sucursal" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todas las sucursales</SelectItem>
-                {options.locations.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
+              onChange={(v) => setFilters((f) => ({ ...f, locationId: v }))}
+              options={[
+                { value: "__all", label: "Todas las sucursales" },
+                ...options.locations.map((l) => ({ value: l.id, label: l.name })),
+              ]}
+              clearable={false}
+              searchable={options.locations.length > 5}
+              className="w-44"
+            />
+            <FormCombobox
               value={filters.employeeId}
-              onValueChange={(v) => setFilters((f) => ({ ...f, employeeId: v }))}
-            >
-              <SelectTrigger className={cn("h-8 w-44 text-xs", filterChip(!!filters.employeeId))}>
-                <SelectValue placeholder="Empleado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todos los empleados</SelectItem>
-                {options.employees.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
+              onChange={(v) => setFilters((f) => ({ ...f, employeeId: v }))}
+              options={[
+                { value: "__all", label: "Todos los empleados" },
+                ...options.employees.map((e) => ({ value: e.id, label: e.name })),
+              ]}
+              clearable={false}
+              searchable={options.employees.length > 5}
+              className="w-44"
+            />
+            <FormCombobox
               value={filters.cashRegisterId}
-              onValueChange={(v) => setFilters((f) => ({ ...f, cashRegisterId: v }))}
-            >
-              <SelectTrigger className={cn("h-8 w-44 text-xs", filterChip(!!filters.cashRegisterId))}>
-                <SelectValue placeholder="Caja" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todas las cajas</SelectItem>
-                {options.registers.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Input
-              type="date"
-              value={filters.from}
-              onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
-              className="h-8 w-40"
-              aria-label="Desde"
+              onChange={(v) => setFilters((f) => ({ ...f, cashRegisterId: v }))}
+              options={[
+                { value: "__all", label: "Todas las cajas" },
+                ...options.registers.map((r) => ({ value: r.id, label: r.name })),
+              ]}
+              clearable={false}
+              searchable={options.registers.length > 5}
+              className="w-44"
             />
-            <Input
-              type="date"
-              value={filters.to}
-              onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
-              className="h-8 w-40"
-              aria-label="Hasta"
+            <DatePicker
+              value={filters.from ? new Date(filters.from + "T00:00:00") : null}
+              onChange={(d) => setFilters((f) => ({ ...f, from: d ? d.toISOString().split("T")[0] : "" }))}
+              placeholder="Desde"
+              clearable
+              className="w-40"
+            />
+            <DatePicker
+              value={filters.to ? new Date(filters.to + "T00:00:00") : null}
+              onChange={(d) => setFilters((f) => ({ ...f, to: d ? d.toISOString().split("T")[0] : "" }))}
+              placeholder="Hasta"
+              clearable
+              className="w-40"
             />
 
-            {(filters.locationId || filters.employeeId || filters.cashRegisterId || filters.from || filters.to) && (
+            {(filters.locationId !== "__all" || filters.employeeId !== "__all" || filters.cashRegisterId !== "__all" || filters.from || filters.to) && (
               <Button variant="ghost" size="sm" className="h-8" onClick={() => setFilters(EMPTY_FILTERS)}>
                 Limpiar
               </Button>

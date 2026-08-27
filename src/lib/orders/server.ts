@@ -920,11 +920,16 @@ export function isScheduleOpen(
   const todaySchedule = schedule.find((s) => s.day === today);
   if (!todaySchedule || !todaySchedule.enabled) return { open: false, nextOpen: "Cerrado hoy" };
 
-  const [openH, openM] = todaySchedule.open.split(":").map(Number);
-  const [closeH, closeM] = todaySchedule.close.split(":").map(Number);
-  const openMin = openH * 60 + openM;
-  const closeMin = closeH * 60 + closeM;
-
-  if (currentMinutes >= openMin && currentMinutes < closeMin) return { open: true };
-  return { open: false, nextOpen: `Abre a las ${todaySchedule.open}` };
+  for (const slot of todaySchedule.slots) {
+    const [openH, openM] = slot.open.split(":").map(Number);
+    const [closeH, closeM] = slot.close.split(":").map(Number);
+    const openMin = openH * 60 + openM;
+    const closeMin = closeH * 60 + closeM;
+    if (currentMinutes >= openMin && currentMinutes < closeMin) return { open: true };
+  }
+  const nextSlot = todaySchedule.slots.find((slot) => {
+    const [openH, openM] = slot.open.split(":").map(Number);
+    return currentMinutes < openH * 60 + openM;
+  });
+  return { open: false, nextOpen: `Abre a las ${nextSlot?.open ?? todaySchedule.slots[0]?.open ?? "09:00"}` };
 }

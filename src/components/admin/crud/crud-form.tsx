@@ -1,4 +1,5 @@
-import { useId, useMemo, useState } from "react"
+import { useId, useMemo, useRef, useState } from "react"
+import * as yup from "yup"
 import {
   CalendarDays,
   Clock,
@@ -10,10 +11,10 @@ import {
   CheckSquare,
   List,
   Image as ImageIcon,
+  AlertCircle,
 } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { swalError } from "@/lib/swal"
 import { OptionSelect } from "./option-select"
 import { MultiSelect } from "./multi-select"
 import { Attachment } from "@/components/base/attachment"
@@ -31,7 +32,7 @@ interface CrudFormProps {
   config: CrudUiConfig
   initial: Record<string, unknown> | null
   onSubmit: (values: Record<string, unknown>) => Promise<void>
-  onSavingChange?: (saving: boolean) => void
+  onSavingChange?: (selling: boolean) => void
   formId?: string
 }
 
@@ -51,12 +52,66 @@ function defaultValue(
   ) {
     return initial[field.key]
   }
+  if (field.defaultValue !== undefined) return field.defaultValue
   if (field.type === "boolean") return false
   if (field.type === "multiselect") return [] as string[]
   return ""
 }
 
-const INPUT_TYPES = ["text", "number", "money", "percent", "date", "time"]
+function buildYupSchema(fields: CrudField[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const shape: Record<string, yup.Schema<any>> = {}
+  for (const f of fields) {
+    if (f.type === "gps" || f.type === "image" || f.type === "schedule" || f.type === "address") continue
+
+    if (f.type === "number" || f.type === "money" || f.type === "percent") {
+      let schema = yup
+        .number()
+        .transform((v, orig) => (orig === "" || orig === undefined ? undefined : v))
+      if (f.min !== undefined) schema = schema.min(f.min, `Mínimo ${f.min}`)
+      if (f.max !== undefined) schema = schema.max(f.max, `Máximo ${f.max}`)
+      if (f.required) {
+        schema = schema.required(f.requiredMessage || `${f.label} es obligatorio`)
+      }
+      shape[f.key] = schema
+      continue
+    }
+
+    if (f.type === "multiselect") {
+      shape[f.key] = f.required
+        ? yup.array().of(yup.string()).min(1, `${f.label} es obligatorio`).required()
+        : yup.array().of(yup.string()).optional()
+      continue
+    }
+    if (f.type === "boolean") {
+      shape[f.key] = f.required
+        ? yup.boolean().isTrue(`${f.label} es obligatorio`)
+        : yup.boolean().optional()
+      continue
+    }
+
+    // text / textarea / select
+    let schema = yup.string()
+    if (f.maxLength !== undefined) schema = schema.max(f.maxLength, `Máximo ${f.maxLength} caracteres`)
+    if (f.minLength !== undefined) schema = schema.min(f.minLength, `Mínimo ${f.minLength} caracteres`)
+    if (f.pattern) {
+      schema = schema.matches(new RegExp(f.pattern.regex), f.pattern.message)
+    }
+    if (f.required) {
+      schema = schema.required(f.requiredMessage || `${f.label} es obligatorio`)
+    }
+    shape[f.key] = schema
+  }
+  return yup.object().shape(shape)
+}
+
+function applyTransform(value: unknown, field: CrudField): unknown {
+  if (typeof value !== "string") return value
+  if (field.transform === "uppercase") return value.toUpperCase()
+  if (field.transform === "lowercase") return value.toLowerCase()
+  if (field.transform === "trim") return value.trim()
+  return value
+}
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Hash, DollarSign, Percent, CalendarDays, Clock, Type, FileText,
@@ -89,17 +144,25 @@ function fieldIcon(type: string, iconKey?: string): React.ReactNode {
 function FieldWrapper({
   field,
   id,
+  error,
   children,
 }: {
   field: CrudField
   id: string
+  error?: string
   children: React.ReactNode
 }) {
   return (
     <div className={cn(field.full ? "sm:col-span-2" : "")}>
       <div className="space-y-1.5">
         {children}
-        {field.help && (
+        {error && (
+          <p className="flex items-center gap-1 text-xs text-destructive">
+            <AlertCircle className="size-3 shrink-0" />
+            {error}
+          </p>
+        )}
+        {!error && field.help && (
           <p className="text-xs text-muted-foreground">{field.help}</p>
         )}
       </div>
@@ -119,32 +182,61 @@ export function CrudForm({
     for (const f of config.fields) v[f.key] = defaultValue(f, initial)
     return v
   })
-
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const fieldRefs = useRef<Record<string, HTMLInputElement | HTMLTextAreaElement | null>>({})
+  const schema = useMemo(() => buildYupSchema(config.fields), [config.fields])
   const visibleFields = useMemo(() => config.fields, [config.fields])
 
   const uid = useId().replace(/[:]/g, "")
   const fieldId = (key: string) => `${uid}-f-${key}`
 
-  const set = (key: string, value: unknown) =>
+  const set = (key: string, value: unknown) => {
     setValues((prev) => ({ ...prev, [key]: value }))
+    if (errors[key]) {
+      setErrors((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    }
+  }
+
+  const validateForm = async (): Promise<boolean> => {
+    try {
+      await schema.validate(values, { abortEarly: false })
+      setErrors({})
+      return true
+    } catch (err) {
+      if (err instanceof yup.ValidationError) {
+        const newErrors: Record<string, string> = {}
+        for (const e of err.inner) {
+          if (e.path && !newErrors[e.path]) newErrors[e.path] = e.message
+        }
+        setErrors(newErrors)
+        const firstErrorField = err.inner[0]?.path
+        if (firstErrorField) {
+          const el = fieldRefs.current[firstErrorField]
+          if (el) {
+            el.focus()
+            el.scrollIntoView({ behavior: "smooth", block: "center" })
+          }
+        }
+      }
+      return false
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    for (const field of visibleFields) {
-      if (field.showIf && !field.showIf(values)) continue
-      if (!field.required) continue
-      const v = values[field.key]
-      if (v === "" || v === undefined || v === null) {
-        swalError("Campo obligatorio", `Completa el campo «${field.label}».`)
-        return
-      }
-    }
+    const valid = await validateForm()
+    if (!valid) return
 
     const payload: Record<string, unknown> = {}
     for (const field of visibleFields) {
       if (field.showIf && !field.showIf(values)) continue
       if (field.type === "gps") continue
       let v = values[field.key]
+      v = applyTransform(v, field)
       if (
         field.type === "number" ||
         field.type === "money" ||
@@ -162,10 +254,7 @@ export function CrudForm({
     try {
       await onSubmit(payload)
     } catch (err) {
-      swalError(
-        "No se pudo guardar",
-        err instanceof Error ? err.message : undefined
-      )
+      // Error handled by parent (swalError)
     } finally {
       onSavingChange?.(false)
     }
@@ -181,11 +270,18 @@ export function CrudForm({
         if (field.showIf && !field.showIf(values)) return null
         const value = values[field.key]
         const id = fieldId(field.key)
+        const error = errors[field.key]
+
+        const errorClass = error ? "border-destructive focus-visible:ring-destructive/20" : ""
+
+        const setRef = (el: HTMLInputElement | HTMLTextAreaElement | null) => {
+          fieldRefs.current[field.key] = el
+        }
 
         // ── boolean → SwitchField ──
         if (field.type === "boolean") {
           return (
-            <FieldWrapper key={field.key} field={field} id={id}>
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
               <SwitchField
                 id={id}
                 label={field.label}
@@ -201,17 +297,20 @@ export function CrudForm({
         // ── textarea → Textarea + Label ──
         if (field.type === "textarea") {
           return (
-            <FieldWrapper key={field.key} field={field} id={id}>
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
               <Label htmlFor={id}>
                 {field.label}
                 {field.required && <span className="text-destructive"> *</span>}
               </Label>
               <Textarea
+                ref={setRef}
                 id={id}
                 value={String(value ?? "")}
                 onChange={(e) => set(field.key, e.target.value)}
                 placeholder={field.placeholder}
                 rows={3}
+                aria-invalid={!!error || undefined}
+                className={cn(error && "border-destructive focus-visible:ring-destructive/20")}
               />
             </FieldWrapper>
           )
@@ -220,12 +319,13 @@ export function CrudForm({
         // ── select → FormCombobox (via OptionSelect) ──
         if (field.type === "select") {
           return (
-            <FieldWrapper key={field.key} field={field} id={id}>
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
               <OptionSelect
                 id={id}
                 field={field}
                 value={String(value ?? "")}
                 onChange={(v) => set(field.key, v)}
+                error={error}
               />
             </FieldWrapper>
           )
@@ -234,7 +334,7 @@ export function CrudForm({
         // ── multiselect → MultiSelect + Label ──
         if (field.type === "multiselect") {
           return (
-            <FieldWrapper key={field.key} field={field} id={id}>
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
               <Label>
                 {field.label}
                 {field.required && <span className="text-destructive"> *</span>}
@@ -251,7 +351,7 @@ export function CrudForm({
         // ── image → Attachment + Label ──
         if (field.type === "image") {
           return (
-            <FieldWrapper key={field.key} field={field} id={id}>
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
               <Label>
                 {field.label}
                 {field.required && <span className="text-destructive"> *</span>}
@@ -283,7 +383,7 @@ export function CrudForm({
               ? { lat, lon }
               : undefined
           return (
-            <FieldWrapper key={field.key} field={field} id={id}>
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
               <GpsPicker
                 value={gpsValue}
                 label={field.label}
@@ -300,7 +400,7 @@ export function CrudForm({
         // ── schedule → ScheduleEditor + Label ──
         if (field.type === "schedule") {
           return (
-            <FieldWrapper key={field.key} field={field} id={id}>
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
               <Label>
                 {field.label}
                 {field.required && <span className="text-destructive"> *</span>}
@@ -322,7 +422,7 @@ export function CrudForm({
           const lat = Number(latRaw)
           const lon = Number(lonRaw)
           return (
-            <FieldWrapper key={field.key} field={field} id={id}>
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
               <AddressField
                 address={String(value ?? "")}
                 onAddressChange={(v) => set(field.key, v)}
@@ -342,12 +442,14 @@ export function CrudForm({
 
         // ── text/number/money/percent/date/time → InputGroupField ──
         return (
-          <FieldWrapper key={field.key} field={field} id={id}>
+          <FieldWrapper key={field.key} field={field} id={id} error={error}>
             <InputGroupField
               id={id}
+              ref={setRef}
               label={field.label}
               required={field.required}
-              helper={field.help}
+              error={error}
+              helper={error ? undefined : field.help}
               leftIcon={fieldIcon(field.type, field.icon)}
               type={
                 field.type === "date"
@@ -367,9 +469,11 @@ export function CrudForm({
                     ? "0.01"
                     : undefined
               }
+              maxLength={field.maxLength}
               placeholder={field.placeholder}
               value={String(value ?? "")}
               onChange={(e) => set(field.key, e.target.value)}
+              className={errorClass}
             />
           </FieldWrapper>
         )

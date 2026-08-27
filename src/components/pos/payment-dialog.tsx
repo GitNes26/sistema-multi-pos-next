@@ -49,11 +49,23 @@ const METHOD_ICONS: Partial<Record<$Enums.PaymentMethod, React.ReactNode>> = {
   other: <MoreHorizontal className="size-5" />,
 }
 
-const METHOD_COLORS: Record<string, string> = {
-  cash: "bg-emerald-600 hover:bg-emerald-700 text-white",
-  card: "bg-blue-600 hover:bg-blue-700 text-white",
-  wallet: "bg-violet-600 hover:bg-violet-700 text-white",
-  other: "bg-muted hover:bg-muted/80",
+const METHOD_COLORS: Record<string, { unselected: string; selected: string }> = {
+  cash: {
+    unselected: "border-emerald-500/50 text-emerald-600 hover:bg-emerald-500/10 hover:border-emerald-500/70",
+    selected: "border-emerald-500 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.35)]",
+  },
+  card: {
+    unselected: "border-blue-500/50 text-blue-600 hover:bg-blue-500/10 hover:border-blue-500/70",
+    selected: "border-blue-500 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-[0_0_20px_rgba(59,130,246,0.35)]",
+  },
+  wallet: {
+    unselected: "border-violet-500/50 text-violet-600 hover:bg-violet-500/10 hover:border-violet-500/70",
+    selected: "border-violet-500 bg-gradient-to-br from-violet-500 to-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.35)]",
+  },
+  other: {
+    unselected: "border-muted-foreground/30 text-muted-foreground hover:bg-muted/50 hover:border-muted-foreground/50",
+    selected: "border-muted-foreground bg-gradient-to-br from-muted-foreground to-foreground text-white shadow-[0_0_20px_rgba(113,113,122,0.3)]",
+  },
 }
 
 export function PaymentDialog({
@@ -312,8 +324,8 @@ export function PaymentDialog({
                       type="button"
                       onClick={() => addRemaining("cash")}
                       className={cn(
-                        "flex items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-bold transition active:scale-[0.97]",
-                        METHOD_COLORS.cash
+                        "flex items-center justify-center gap-2 rounded-xl border px-4 py-3.5 text-sm font-bold transition active:scale-[0.97]",
+                        METHOD_COLORS.cash.selected
                       )}
                     >
                       <Banknote className="size-5" />
@@ -323,8 +335,8 @@ export function PaymentDialog({
                       type="button"
                       onClick={() => addRemaining("card")}
                       className={cn(
-                        "flex items-center justify-center gap-2 rounded-xl px-4 py-3.5 text-sm font-bold transition active:scale-[0.97]",
-                        METHOD_COLORS.card
+                        "flex items-center justify-center gap-2 rounded-xl border px-4 py-3.5 text-sm font-bold transition active:scale-[0.97]",
+                        METHOD_COLORS.card.selected
                       )}
                     >
                       <CreditCard className="size-5" />
@@ -353,8 +365,9 @@ export function PaymentDialog({
                       onClick={() => setMethod(m)}
                       className={cn(
                         "flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-[10px] font-medium transition",
-                        // method === m ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"
-                        METHOD_COLORS[m]
+                        method === m
+                          ? METHOD_COLORS[m].selected
+                          : METHOD_COLORS[m].unselected
                       )}
                     >
                       {METHOD_ICONS[m]}

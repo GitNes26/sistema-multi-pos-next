@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.12.0.0] — 2026-08-27
+- **Tipo:** `feat` (Minor)
+- feat(schedule-editor): real-time legend + TimePicker component
+
 ### [0.11.1.1] — 2026-08-27
 - **Tipo:** `chore` (Revision)
 - semodifco el Dockerfile para que funcione

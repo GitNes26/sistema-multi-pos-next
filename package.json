@@ -1,6 +1,6 @@
 {
   "name": "sistema-multi-pos-react-node-chadcnui",
-  "version": "0.11.1.1",
+  "version": "0.12.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -70,6 +70,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "docx": "^9.7.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.23",
     "eslint-config-prettier": "^10.1.8",

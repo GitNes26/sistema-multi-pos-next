@@ -11,11 +11,13 @@ export function OptionSelect({
   value,
   onChange,
   id,
+  error,
 }: {
   field: CrudField;
   value: string;
   onChange: (v: string) => void;
   id?: string;
+  error?: string;
 }) {
   const [options, setOptions] = useState<ComboboxOption[]>(field.options ?? []);
   const [loading, setLoading] = useState(false);
@@ -53,6 +55,7 @@ export function OptionSelect({
         label={field.label}
         required={field.required}
         helper={field.help}
+        error={error}
         options={options}
         value={value ? String(value) : null}
         onChange={onChange}

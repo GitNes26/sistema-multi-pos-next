@@ -31,8 +31,10 @@ import {
 } from "@/components/ui/select";
 import { DialogComponent } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/layout/page-header";
-import { DataTable } from "@/components/base/data-table";
 import { InputGroupField } from "@/components/base/input-group-field";
+import { DatePicker } from "@/components/base/date-picker";
+import { FormCombobox } from "@/components/base/form-combobox";
+import { DataTable } from "@/components/base/data-table";
 import { crudApi, inventoryApi, type InventoryRow, type InventoryMovement, type InventoryRevision, type RevisionDetailData, type RevisionItem, type RevisionStatus } from "@/lib/api";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { playSound } from "@/lib/sounds";
@@ -684,57 +686,50 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
       <PageHeader icon={icon} title="Inventario" description="Existencias, movimientos, mínimos y transferencias." />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Select
+        <FormCombobox
           value={locationType}
-          onValueChange={(v) => {
+          onChange={(v) => {
             setLocationType(v as "location" | "cedis");
             setLocationId("");
           }}
-        >
-          <SelectTrigger className="w-32">
-            <SelectValue placeholder="Tipo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="location">Sucursal</SelectItem>
-            <SelectItem value="cedis">CEDIS</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={locationId} onValueChange={setLocationId}>
-          <SelectTrigger className="min-w-48">
-            <SelectValue placeholder="Selecciona una ubicación…" />
-          </SelectTrigger>
-          <SelectContent>
-            {currentLocations.map((l) => (
-              <SelectItem key={l.id} value={l.id}>
-                {l.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={[
+            { value: "location", label: "Sucursal" },
+            { value: "cedis", label: "CEDIS" },
+          ]}
+          clearable={false}
+          searchable={false}
+          className="w-32"
+        />
+        <FormCombobox
+          value={locationId}
+          onChange={setLocationId}
+          options={currentLocations.map((l) => ({ value: l.id, label: l.name }))}
+          clearable={false}
+          searchable={currentLocations.length > 5}
+          className="min-w-48"
+        />
 
         {tab === "stock" && (
           <>
-            <div className="relative w-full max-w-56">
-              <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
-              <Input
-                type="search"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar producto, SKU…"
-                className="h-8 pl-9 md:pl-9"
-              />
-            </div>
-            <Select value={productType} onValueChange={setProductType}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Todos los tipos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
-                <SelectItem value="standard">Estándar</SelectItem>
-                <SelectItem value="bulk">Granel</SelectItem>
-              </SelectContent>
-            </Select>
+            <InputGroupField
+              placeholder="Buscar producto, SKU…"
+              leftIcon={<Search className="size-4" />}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="h-8 w-56"
+            />
+            <FormCombobox
+              value={productType}
+              onChange={setProductType}
+              options={[
+                { value: "", label: "Todos" },
+                { value: "standard", label: "Estándar" },
+                { value: "bulk", label: "Granel" },
+              ]}
+              clearable={false}
+              searchable={false}
+              className="w-36"
+            />
             <Button
               variant={lowOnly ? "default" : "outline"}
               size="sm"
@@ -813,44 +808,39 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
 
         {tab === "movements" && (
           <>
-            <div className="relative w-full max-w-56">
-              <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
-              <Input
-                type="search"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar producto, SKU…"
-                className="h-8 pl-9 md:pl-9"
-              />
-            </div>
-            <Select value={mType} onValueChange={setMType}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Todos los tipos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
-                {MOVEMENT_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-                <SelectItem value="transfer_in">Transferencia +</SelectItem>
-                <SelectItem value="transfer_out">Transferencia −</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              type="date"
-              value={mFrom}
-              onChange={(e) => setMFrom(e.target.value)}
-              className="h-8 w-auto"
-              title="Desde"
+            <InputGroupField
+              placeholder="Buscar producto, SKU…"
+              leftIcon={<Search className="size-4" />}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="h-8 w-56"
             />
-            <Input
-              type="date"
-              value={mTo}
-              onChange={(e) => setMTo(e.target.value)}
-              className="h-8 w-auto"
-              title="Hasta"
+            <FormCombobox
+              value={mType}
+              onChange={setMType}
+              options={[
+                { value: "", label: "Todos" },
+                ...MOVEMENT_TYPES.map((t) => ({ value: t.value, label: t.label })),
+                { value: "transfer_in", label: "Transferencia +" },
+                { value: "transfer_out", label: "Transferencia −" },
+              ]}
+              clearable={false}
+              searchable={false}
+              className="w-40"
+            />
+            <DatePicker
+              value={mFrom ? new Date(mFrom + "T00:00:00") : null}
+              onChange={(d) => setMFrom(d ? d.toISOString().split("T")[0] : "")}
+              placeholder="Desde"
+              clearable
+              className="w-40"
+            />
+            <DatePicker
+              value={mTo ? new Date(mTo + "T00:00:00") : null}
+              onChange={(d) => setMTo(d ? d.toISOString().split("T")[0] : "")}
+              placeholder="Hasta"
+              clearable
+              className="w-40"
             />
             {locationId && (
               <Button

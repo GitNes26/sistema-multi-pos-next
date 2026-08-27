@@ -26,6 +26,7 @@ import { OptionSelect } from "./option-select"
 import { Attachment } from "@/components/base/attachment"
 import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads"
 import type { CrudField } from "./crud-config"
+import { InfoTooltip, SwitchField } from "@/components/base"
 
 interface ProductFormProps {
   initial: Record<string, unknown> | null
@@ -99,7 +100,7 @@ function TypeToggle({
           disabled={disabled}
           onClick={() => onChange(opt.value)}
           className={cn(
-            "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition",
+            "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition hover:cursor-pointer",
             value === opt.value
               ? "bg-primary text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
@@ -173,25 +174,36 @@ export function ProductsForm({
   const [variantSku, setVariantSku] = useState(
     (initial?.variants as { name?: string; sku?: string | null }[])?.find(
       (v) => v.name?.toLowerCase() === "default"
-    )?.sku ?? (initial?.variants as { name?: string; sku?: string | null }[])?.[0]?.sku ?? ""
+    )?.sku ??
+      (initial?.variants as { name?: string; sku?: string | null }[])?.[0]
+        ?.sku ??
+      ""
   )
   const [variantBarcode, setVariantBarcode] = useState(
     (initial?.variants as { name?: string; barcode?: string | null }[])?.find(
       (v) => v.name?.toLowerCase() === "default"
-    )?.barcode ?? (initial?.variants as { name?: string; barcode?: string | null }[])?.[0]?.barcode ?? ""
+    )?.barcode ??
+      (initial?.variants as { name?: string; barcode?: string | null }[])?.[0]
+        ?.barcode ??
+      ""
   )
   const [variantPrice, setVariantPrice] = useState(
     String(
       (initial?.variants as { name?: string; price?: number }[])?.find(
         (v) => v.name?.toLowerCase() === "default"
-      )?.price ?? (initial?.variants as { name?: string; price?: number }[])?.[0]?.price ?? ""
+      )?.price ??
+        (initial?.variants as { name?: string; price?: number }[])?.[0]
+          ?.price ??
+        ""
     )
   )
   const [variantCost, setVariantCost] = useState(
     String(
       (initial?.variants as { name?: string; cost?: number }[])?.find(
         (v) => v.name?.toLowerCase() === "default"
-      )?.cost ?? (initial?.variants as { name?: string; cost?: number }[])?.[0]?.cost ?? ""
+      )?.cost ??
+        (initial?.variants as { name?: string; cost?: number }[])?.[0]?.cost ??
+        ""
     )
   )
 
@@ -232,7 +244,7 @@ export function ProductsForm({
   const unitField = useMemo<CrudField>(
     () => ({
       key: "unit",
-      label: "Unidad",
+      label: "Unidad de medida",
       type: "select",
       optionsModule: "units",
       optionValue: "id",
@@ -383,10 +395,7 @@ export function ProductsForm({
       className="grid gap-4 sm:grid-cols-2"
     >
       <FieldRow label="Tipo de producto" full>
-        <TypeToggle
-          value={productType}
-          onChange={setProductType}
-        />
+        <TypeToggle value={productType} onChange={setProductType} />
       </FieldRow>
 
       <InputField
@@ -409,14 +418,14 @@ export function ProductsForm({
         />
       </FieldRow>
 
-      <FieldRow label="Categoría" htmlFor="product-category">
-        <OptionSelect
-          id="product-category"
-          field={categoryField}
-          value={categoryId}
-          onChange={setCategoryId}
-        />
-      </FieldRow>
+      {/* <FieldRow label="Categoría" htmlFor="product-category"> */}
+      <OptionSelect
+        id="product-category"
+        field={categoryField}
+        value={categoryId}
+        onChange={setCategoryId}
+      />
+      {/* </FieldRow> */}
 
       <InputField
         label="IVA / Impuesto (%)"
@@ -441,7 +450,21 @@ export function ProductsForm({
       </FieldRow>
 
       <div className="flex flex-wrap gap-6 sm:col-span-2">
-        <div className="flex items-center justify-between gap-2  border border-input rounded-md p-3">
+        <SwitchField
+          id="prod-active"
+          label="Activo"
+          description="Visible en el menú"
+          checked={isActive}
+          onCheckedChange={setIsActive}
+        />
+        <SwitchField
+          id="prod-track"
+          label="Controlar inventario"
+          description="Seguimiento de existencias"
+          checked={trackInventory}
+          onCheckedChange={setTrackInventory}
+        />
+        {/* <div className="flex items-center justify-between gap-2  border border-input rounded-md p-3">
           <Switch
             id="prod-active"
             checked={isActive}
@@ -450,8 +473,8 @@ export function ProductsForm({
           <label htmlFor="prod-active" className="cursor-pointer text-sm">
             Activo
           </label>
-        </div>
-        <div className="flex items-center justify-between gap-2  border border-input rounded-md p-3">
+        </div> */}
+        {/* <div className="flex items-center justify-between gap-2  border border-input rounded-md p-3">
           <Switch
             id="prod-track"
             checked={trackInventory}
@@ -460,19 +483,20 @@ export function ProductsForm({
           <label htmlFor="prod-track" className="cursor-pointer text-sm">
             Controlar inventario
           </label>
-        </div>
+        </div> */}
       </div>
 
       {productType === "bulk" ? (
         <>
-          <FieldRow label="Unidad de medida" htmlFor="product-unit">
-            <OptionSelect
-              id="product-unit"
-              field={unitField}
-              value={bulkUnitId}
-              onChange={setBulkUnitId}
-            />
-          </FieldRow>
+          {/* <FieldRow label="Unidad de medida" htmlFor="product-unit"> */}
+          <OptionSelect
+            id="product-unit"
+            field={unitField}
+            value={bulkUnitId}
+            onChange={setBulkUnitId}
+          />
+          <InfoTooltip text="UNIDAD DE MEDIDA - La unidad de medida es la unidad en la que se venderá el producto, por ejemplo, kg, L, m, etc." />
+          {/* </FieldRow> */}
           <InputField
             label="Precio por unidad ($)"
             icon={<DollarSign className="size-4" />}
@@ -509,7 +533,14 @@ export function ProductsForm({
             onChange={(e) => setBulkStep(e.target.value)}
             placeholder="0.01"
           />
-          <div className="flex items-center justify-between gap-2 sm:col-span-2 border border-input rounded-md p-3">
+          <SwitchField
+            id="prod-split"
+            label="Permitir por pieza (venta dividida)"
+            description="Permite vender el producto en cantidades menores a la unidad de medida, por ejemplo, 0.5kg o 0.25L."
+            checked={allowSplit}
+            onCheckedChange={setAllowSplit}
+          />
+          {/* <div className="flex items-center justify-between gap-2 sm:col-span-2 border border-input rounded-md p-3">
             <Switch
               id="prod-split"
               checked={allowSplit}
@@ -518,17 +549,18 @@ export function ProductsForm({
             <label htmlFor="prod-split" className="cursor-pointer text-sm">
               Permitir por pieza (venta dividida)
             </label>
-          </div>
+          </div> */}
           {allowSplit && (
             <>
-              <FieldRow label="Unidad por pieza" htmlFor="product-split-unit">
-                <OptionSelect
-                  id="product-split-unit"
-                  field={unitField}
-                  value={splitUnitId}
-                  onChange={setSplitUnitId}
-                />
-              </FieldRow>
+              {/* <FieldRow label="Unidad por pieza" htmlFor="product-split-unit"> */}
+              <OptionSelect
+                id="product-split-unit"
+                field={unitField}
+                value={splitUnitId}
+                onChange={setSplitUnitId}
+              />
+              <InfoTooltip text="UNIDAD POR PIEZA - La unidad por pieza es la unidad de medida en la que se venderá el producto si se permite la venta dividida." />
+              {/* </FieldRow> */}
               <InputField
                 label="Precio por pieza ($)"
                 icon={<DollarSign className="size-4" />}
