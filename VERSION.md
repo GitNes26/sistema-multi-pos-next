@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.12.1.0] — 2026-08-27
+- **Tipo:** `fix` (Patch)
+- fix: se corrgiieron detalles de los formularios para que saliera el icono correcto, y botones para la parte de Devoluciones y cambios
+
 ### [0.12.0.1] — 2026-08-27
 - **Tipo:** `chore` (Revision)
 - se hicieron cambios de los inputs a los correctos, y se agrego horario quebrado al horario y componente

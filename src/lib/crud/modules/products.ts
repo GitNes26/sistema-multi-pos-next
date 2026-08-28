@@ -666,6 +666,137 @@ export async function getProductOptions(organizationId: string, productId: strin
   }));
 }
 
+/**
+ * after saving option definitions, this function:
+ * 1. reads the fresh option values grouped by option
+ * 2. computes the cartesian product
+ * 3. matches existing variants to new combinations
+ * 4. deletes orphaned variants, creates missing ones, syncs inventory
+ */
+async function regenerateVariantsFromOptions(organizationId: string, productId: string) {
+  // 1. Fetch fresh option values grouped by option (in position order)
+  const freshOptions = await prisma.productOption.findMany({
+    where: { productId },
+    orderBy: { position: "asc" },
+    select: {
+      name: true,
+      values: {
+        orderBy: { position: "asc" },
+        select: { id: true, value: true },
+      },
+    },
+  });
+
+  // If no options remain, we're done (the product went from options → no options;
+  // the "Default" variant should already exist from initial creation).
+  if (freshOptions.length === 0) return;
+
+  // 2. Compute new cartesian product of option value IDs
+  const valueIdArrays = freshOptions.map((o) => o.values.map((v) => v.id));
+  const newCombos = cartesianProduct(valueIdArrays);
+
+  // Build a string key for each combination (sorted IDs joined) for fast lookup
+  const comboKey = (ids: string[]) => [...ids].sort().join(",");
+  const newComboKeys = new Set(newCombos.map(comboKey));
+
+  // 3. Fetch existing variants with their linked option value IDs
+  const existingVariants = await prisma.productVariant.findMany({
+    where: { productId },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      cost: true,
+      optionValues: { select: { optionValueId: true } },
+    },
+  });
+
+  // Map each variant to its combo key
+  const variantKeyMap = new Map(
+    existingVariants.map((v) => [
+      v.id,
+      comboKey(v.optionValues.map((ov) => ov.optionValueId)),
+    ])
+  );
+
+  // 4. Determine which variants to delete and which combos need new variants
+  const variantsToDelete: string[] = [];
+  const combosNeedingVariant: string[][] = [];
+
+  for (const v of existingVariants) {
+    const key = variantKeyMap.get(v.id)!;
+    if (!newComboKeys.has(key)) {
+      variantsToDelete.push(v.id);
+    }
+  }
+
+  for (const combo of newCombos) {
+    const key = comboKey(combo);
+    const exists = existingVariants.some((v) => variantKeyMap.get(v.id) === key);
+    if (!exists) combosNeedingVariant.push(combo);
+  }
+
+  // 5. Delete orphaned variants (only if they have no sales/orders/inventory movements)
+  if (variantsToDelete.length > 0) {
+    // Check which variants have references
+    const safe: string[] = [];
+    const blocked: string[] = [];
+    for (const vid of variantsToDelete) {
+      const [saleCount, orderCount, movCount] = await Promise.all([
+        prisma.saleItem.count({ where: { variantId: vid } }),
+        prisma.orderItem.count({ where: { variantId: vid } }),
+        prisma.inventoryMovement.count({ where: { variantId: vid } }),
+      ]);
+      if (saleCount + orderCount + movCount === 0) {
+        safe.push(vid);
+      } else {
+        blocked.push(vid);
+      }
+    }
+
+    if (safe.length > 0) {
+      await prisma.$transaction([
+        prisma.variantOptionValue.deleteMany({ where: { variantId: { in: safe } } }),
+        prisma.inventory.deleteMany({ where: { variantId: { in: safe } } }),
+        prisma.productVariant.deleteMany({ where: { id: { in: safe } } }),
+      ]);
+    }
+  }
+
+  // 6. Create new variants for missing combinations
+  // Get the default price/cost from the first existing variant or use 0
+  const firstVariant = existingVariants[0];
+  const defaultPrice = firstVariant?.price ?? 0;
+  const defaultCost = firstVariant?.cost ?? 0;
+
+  // Build a reverse map: optionValueId → option name + value for naming
+  const valueLabelMap = new Map<string, string>();
+  for (const opt of freshOptions) {
+    for (const val of opt.values) {
+      valueLabelMap.set(val.id, val.value);
+    }
+  }
+
+  for (const combo of combosNeedingVariant) {
+    const label = combo
+      .map((vid) => valueLabelMap.get(vid) ?? vid)
+      .join(" · ");
+
+    const variant = await prisma.productVariant.create({
+      data: {
+        productId,
+        organizationId,
+        name: label,
+        price: defaultPrice,
+        cost: defaultCost,
+        isActive: true,
+        optionValues: { create: combo.map((vid) => ({ optionValueId: vid })) },
+      },
+    });
+    await syncVariantInventory(organizationId, productId, variant.id);
+  }
+}
+
 export async function saveProductOptions(
   organizationId: string,
   productId: string,
@@ -732,6 +863,9 @@ export async function saveProductOptions(
       ]);
     }
   }
+
+  // ── Regenerar variantes según las nuevas combinaciones de opciones ──
+  await regenerateVariantsFromOptions(organizationId, productId);
 
   return getProductOptions(organizationId, productId);
 }

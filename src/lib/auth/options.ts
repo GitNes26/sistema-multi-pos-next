@@ -63,7 +63,7 @@ type ResolvedLoginUser = {
   isSuperadmin: boolean;
   employees: { organizationId: string }[];
   customers: { organizationId: string }[];
-  memberships: { organizationId: string; role: $Enums.OrgRole }[];
+  memberships: { organizationId: string; role: $Enums.OrgRole; roleId: string | null }[];
 };
 
 export async function resolveLoginUser(identifier: string): Promise<ResolvedLoginUser | null> {
@@ -82,7 +82,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
       isSuperadmin: true,
       employees: { select: { organizationId: true } },
       customers: { select: { organizationId: true } },
-      memberships: { select: { organizationId: true, role: true } },
+      memberships: { select: { organizationId: true, role: true, roleId: true } },
     },
   });
 
@@ -92,7 +92,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
       ...byEmail,
       employees: byEmail.employees.map((e) => ({ organizationId: e.organizationId })),
       customers: byEmail.customers.map((c) => ({ organizationId: c.organizationId })),
-      memberships: byEmail.memberships.map((m) => ({ organizationId: m.organizationId, role: m.role })),
+      memberships: byEmail.memberships.map((m) => ({ organizationId: m.organizationId, role: m.role, roleId: m.roleId })),
     };
   }
 
@@ -109,7 +109,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
           passwordHash: true,
           isActive: true,
           isSuperadmin: true,
-          memberships: { select: { organizationId: true, role: true } },
+          memberships: { select: { organizationId: true, role: true, roleId: true } },
         },
       },
       organizationId: true,
@@ -128,7 +128,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
       isSuperadmin: u.isSuperadmin,
       employees: [{ organizationId: byEmployee.organizationId }],
       customers: [],
-      memberships: u.memberships.map((m) => ({ organizationId: m.organizationId, role: m.role })),
+      memberships: u.memberships.map((m) => ({ organizationId: m.organizationId, role: m.role, roleId: m.roleId })),
     };
   }
 
@@ -173,13 +173,14 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
 function inferKindFromUser(user: NonNullable<Awaited<ReturnType<typeof resolveLoginUser>>>) {
   // SuperAdmin por rol (flag), no por ausencia de empleado/cliente.
   if (user.isSuperadmin) {
-    return { scope: "superadmin" as AuthScope, role: "superadmin" as const, organizationId: null as string | null };
+    return { scope: "superadmin" as AuthScope, role: "superadmin" as const, organizationId: null as string | null, roleId: null as string | null };
   }
   if (user.customers.length > 0 && user.employees.length === 0) {
     return {
       scope: "portal" as AuthScope,
       role: "customer" as const,
       organizationId: user.customers[0].organizationId as string | null,
+      roleId: null as string | null,
     };
   }
   // App: preferir la organización del empleado; si no, la primera membresía.
@@ -189,7 +190,8 @@ function inferKindFromUser(user: NonNullable<Awaited<ReturnType<typeof resolveLo
     user.memberships?.[0];
   const org = employeeOrg ?? membership?.organizationId ?? user.customers[0]?.organizationId ?? null;
   const role = membership ? effectiveRole(membership.role) : "cashier";
-  return { scope: "app" as AuthScope, role, organizationId: org };
+  const roleId = membership?.roleId ?? null;
+  return { scope: "app" as AuthScope, role, organizationId: org, roleId };
 }
 
 export const authOptions: NextAuthOptions = {
@@ -214,7 +216,7 @@ export const authOptions: NextAuthOptions = {
           kind.scope === "superadmin"
             ? (await permissionsForRole("superadmin"))
             : kind.scope === "app"
-              ? await permissionsForRole(kind.role)
+              ? await permissionsForRole(kind.role, kind.roleId, kind.organizationId)
               : [];
 
         return {

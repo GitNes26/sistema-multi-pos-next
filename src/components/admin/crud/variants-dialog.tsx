@@ -9,6 +9,7 @@ import {
   Hash,
   ImageIcon,
   Loader2,
+  Plus,
   Tag,
   Trash2,
   X,
@@ -393,10 +394,10 @@ export function VariantsDialog({
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cerrar
           </Button>
-          {/* <Button size="sm" disabled={creating} onClick={() => void createVariant()}>
+          <Button size="sm" disabled={creating} onClick={() => void createVariant()}>
             {creating ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
             Agregar variante
-          </Button> */}
+          </Button>
         </>
       }
     >

@@ -18,7 +18,9 @@ export async function PATCH(
   try {
     const body = await req.json();
 
-    if (body.role) {
+    if (body.roleId) {
+      await updateMembershipRole(membershipId, undefined, body.roleId);
+    } else if (body.role) {
       await updateMembershipRole(membershipId, body.role);
     }
     if (typeof body.isActive === "boolean") {

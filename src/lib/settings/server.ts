@@ -77,6 +77,7 @@ export interface OrgUserRow {
   avatarUrl: string | null;
   isActive: boolean;
   role: string;
+  roleId: string | null;
   isEmployee: boolean;
 }
 
@@ -104,21 +105,31 @@ export async function listOrgUsers(organizationId: string): Promise<OrgUserRow[]
     avatarUrl: m.user.avatarUrl,
     isActive: m.user.isActive,
     role: m.role,
+    roleId: m.roleId,
     isEmployee: employeeUserIds.has(m.user.id),
   }));
 }
 
 export async function updateMembershipRole(
   membershipId: string,
-  role: string
+  role?: string,
+  roleId?: string
 ): Promise<{ ok: boolean }> {
-  if (!["owner", "manager", "cashier"].includes(role)) {
-    throw new Error("Rol inválido");
+  const data: { role?: $Enums.OrgRole; roleId?: string | null } = {};
+  if (roleId) {
+    // Asignar rol por foreign key (sistema híbrido)
+    const roleRecord = await prisma.role.findUnique({ where: { id: roleId }, select: { id: true } });
+    if (!roleRecord) throw new Error("Rol no encontrado");
+    data.roleId = roleId;
+    // Also update the enum for backward compatibility
+    if (role && ["owner", "manager", "cashier"].includes(role)) {
+      data.role = role as $Enums.OrgRole;
+    }
+  } else if (role && ["owner", "manager", "cashier"].includes(role)) {
+    data.role = role as $Enums.OrgRole;
   }
-  await prisma.membership.update({
-    where: { id: membershipId },
-    data: { role: role as $Enums.OrgRole },
-  });
+  if (Object.keys(data).length === 0) throw new Error("Rol inválido");
+  await prisma.membership.update({ where: { id: membershipId }, data });
   return { ok: true };
 }
 
@@ -181,12 +192,14 @@ export async function setRolePermissions(roleId: string, keys: string[]): Promis
 
 export async function createRole(
   organizationId: string,
-  input: { name: string; description?: string | null; copyRoleId?: string | null }
+  input: { name: string; description?: string | null; copyRoleId?: string | null; global?: boolean }
 ): Promise<RoleRow> {
   if (!input.name?.trim()) throw new Error("El nombre es obligatorio");
+  // SuperAdmin puede crear roles globales (organizationId = null)
+  const scopeOrgId = input.global ? null : organizationId;
   const created = await prisma.role.create({
     data: {
-      organizationId,
+      organizationId: scopeOrgId,
       name: input.name.trim(),
       description: input.description ?? null,
       isSystem: false,
@@ -219,15 +232,13 @@ export async function createRole(
 
 export async function updateRole(
   roleId: string,
-  input: { name?: string; description?: string | null }
+  input: { name?: string; description?: string | null; global?: boolean }
 ): Promise<{ ok: boolean }> {
-  await prisma.role.update({
-    where: { id: roleId },
-    data: {
-      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
-      ...(input.description !== undefined ? { description: input.description } : {}),
-    },
-  });
+  const data: Record<string, unknown> = {};
+  if (input.name !== undefined) data.name = input.name.trim();
+  if (input.description !== undefined) data.description = input.description;
+  if (input.global !== undefined) data.organizationId = input.global ? null : undefined;
+  await prisma.role.update({ where: { id: roleId }, data });
   return { ok: true };
 }
 
@@ -245,6 +256,7 @@ export interface InvitationRow {
   id: string;
   email: string;
   role: string;
+  roleId: string | null;
   status: string;
   locationId: string | null;
   createdAt: string;
@@ -260,6 +272,7 @@ export async function listInvitations(organizationId: string): Promise<Invitatio
     id: i.id,
     email: i.email,
     role: i.role,
+    roleId: null, // UserInvitation uses enum, not roleId
     status: i.status,
     locationId: i.locationId,
     createdAt: i.createdAt.toISOString(),
@@ -269,13 +282,28 @@ export async function listInvitations(organizationId: string): Promise<Invitatio
 
 export async function createInvitation(
   organizationId: string,
-  input: { email: string; role?: string; locationId?: string | null }
+  input: { email: string; role?: string; roleId?: string; locationId?: string | null }
 ): Promise<InvitationRow> {
   const email = input.email.trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error("Email inválido");
   }
-  const role = input.role && ["owner", "manager", "cashier"].includes(input.role) ? input.role : "cashier";
+
+  // Determine the role enum value
+  let roleEnum: $Enums.OrgRole = "cashier";
+  if (input.roleId) {
+    // Look up the role name from the Role model and map to enum
+    const roleRecord = await prisma.role.findUnique({ where: { id: input.roleId }, select: { name: true } });
+    if (roleRecord) {
+      const nameLower = roleRecord.name.toLowerCase();
+      if (nameLower.includes("owner") || nameLower.includes("propietario")) roleEnum = "owner";
+      else if (nameLower.includes("manager") || nameLower.includes("gerente")) roleEnum = "manager";
+      else if (nameLower.includes("admin")) roleEnum = "admin";
+      else roleEnum = "cashier";
+    }
+  } else if (input.role && ["owner", "manager", "cashier", "admin"].includes(input.role)) {
+    roleEnum = input.role as $Enums.OrgRole;
+  }
 
   // No duplicar invitaciones pendientes.
   const existing = await prisma.userInvitation.findFirst({
@@ -284,13 +312,14 @@ export async function createInvitation(
   if (existing) throw new Error("Ya existe una invitación pendiente para este email");
 
   const created = await prisma.userInvitation.create({
-    data: { organizationId, email, role: role as $Enums.OrgRole, locationId: input.locationId ?? null },
+    data: { organizationId, email, role: roleEnum, locationId: input.locationId ?? null },
   });
 
   return {
     id: created.id,
     email: created.email,
     role: created.role,
+    roleId: input.roleId ?? null,
     status: created.status,
     locationId: created.locationId,
     createdAt: created.createdAt.toISOString(),

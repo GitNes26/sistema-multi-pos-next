@@ -24,7 +24,7 @@ export default async function UsersSettingsPage() {
         title="Usuarios y permisos"
         description="Gestiona miembros, roles, permisos e invitaciones."
       />
-      <UsersManager />
+      <UsersManager isSuperadmin={session?.user?.role === "superadmin"} />
     </div>
   );
 }

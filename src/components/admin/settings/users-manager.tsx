@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Copy,
+  Globe,
   Mail,
   Plus,
   ShieldCheck,
@@ -25,12 +26,6 @@ import { InputGroupField } from "@/components/base/input-group-field";
 import { TooltipButton } from "@/components/shared/tooltip-button";
 import { cn } from "@/lib/utils";
 
-const ROLE_OPTIONS = [
-  { value: "owner", label: "Propietario" },
-  { value: "manager", label: "Gerente" },
-  { value: "cashier", label: "Cajero" },
-];
-
 const ROLE_LABELS: Record<string, string> = {
   owner: "Propietario",
   manager: "Gerente",
@@ -44,7 +39,7 @@ const MODULES_BY_GROUP = PERMISSIONS.reduce<Record<string, PermItem[]>>((acc, p)
   return acc;
 }, {});
 
-export function UsersManager() {
+export function UsersManager({ isSuperadmin }: { isSuperadmin: boolean }) {
   const [tab, setTab] = useState("users");
   return (
     <Tabs value={tab} onValueChange={setTab}>
@@ -54,10 +49,10 @@ export function UsersManager() {
         <TabsTrigger value="invitations">Invitaciones</TabsTrigger>
       </TabsList>
       <TabsContent value="users">
-        <UsersTab />
+        <UsersTab isSuperadmin={isSuperadmin} />
       </TabsContent>
       <TabsContent value="roles">
-        <RolesTab />
+        <RolesTab isSuperadmin={isSuperadmin} />
       </TabsContent>
       <TabsContent value="invitations">
         <InvitationsTab />
@@ -66,22 +61,24 @@ export function UsersManager() {
   );
 }
 
-// ── Usuarios (15.4) ──────────────────────────────────────────────────────────
+// ── Usuarios ─────────────────────────────────────────────────────────────────
 
-function UsersTab() {
+function UsersTab({ isSuperadmin }: { isSuperadmin: boolean }) {
   const [users, setUsers] = useState<OrgUserRow[] | null>(null);
+  const [roles, setRoles] = useState<RoleRow[]>([]);
 
   const load = useCallback(() => {
     settingsApi.users().then((d) => setUsers(d.users)).catch(() => undefined);
+    settingsApi.roles().then((d) => setRoles(d.roles)).catch(() => undefined);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const changeRole = async (u: OrgUserRow, role: string) => {
+  const changeRole = async (u: OrgUserRow, roleId: string) => {
     try {
-      await settingsApi.updateUser(u.membershipId, { role });
+      await settingsApi.updateUser(u.membershipId, { roleId });
       load();
       swalToast("Rol actualizado");
     } catch (err) {
@@ -142,11 +139,15 @@ function UsersTab() {
             <p className="truncate text-xs text-muted-foreground">{u.email}</p>
           </div>
           <FormCombobox
-            className="w-36"
-            value={u.role}
+            className="w-40"
+            value={u.roleId ?? u.role}
             onChange={(v) => changeRole(u, v)}
-            options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
-            searchable={false}
+            options={roles.map((r) => ({
+              value: r.id,
+              label: r.name,
+              description: r.isSystem ? "Sistema" : r.organizationId ? "Empresa" : "Global",
+            }))}
+            searchable
             clearable={false}
           />
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -162,9 +163,9 @@ function UsersTab() {
   );
 }
 
-// ── Roles y permisos (14.x / 15.4) ───────────────────────────────────────────
+// ── Roles y permisos ─────────────────────────────────────────────────────────
 
-function RolesTab() {
+function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
   const [roles, setRoles] = useState<RoleRow[] | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
   const [perms, setPerms] = useState<Set<string>>(new Set());
@@ -242,6 +243,25 @@ function RolesTab() {
     }
   };
 
+  const toggleScope = async (role: RoleRow) => {
+    if (!isSuperadmin) return;
+    const newGlobal = role.organizationId !== null; // toggle
+    const label = newGlobal ? "global (todas las empresas)" : `solo ${role.organizationId}`;
+    const ok = await swalConfirm(
+      "Cambiar alcance del rol",
+      `¿Cambiar "${role.name}" a ${label}?`,
+      { confirmText: "Cambiar" }
+    );
+    if (!ok) return;
+    try {
+      await settingsApi.updateRole(role.id, { global: newGlobal });
+      loadRoles();
+      swalToast("Alcance actualizado");
+    } catch (err) {
+      swalError("No se pudo actualizar", err instanceof Error ? err.message : undefined);
+    }
+  };
+
   const remove = async (role: RoleRow) => {
     const ok = await swalConfirm("Eliminar rol", `¿Eliminar el rol "${role.name}"?`, { danger: true });
     if (!ok) return;
@@ -275,6 +295,11 @@ function RolesTab() {
                 <span className="truncate font-medium">{r.name}</span>
                 <span className="flex items-center gap-1.5">
                   {r.isSystem && <Badge variant="outline">Sistema</Badge>}
+                  {r.organizationId === null && !r.isSystem && (
+                    <TooltipButton label="Rol global" variant="ghost" size="icon-xs">
+                      <Globe className="size-3 text-blue-500" />
+                    </TooltipButton>
+                  )}
                   <span className="text-xs text-muted-foreground">{r.permissionCount}</span>
                 </span>
               </button>
@@ -302,16 +327,34 @@ function RolesTab() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">{selected.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{selected.name}</p>
+                  {selected.isSystem && <Badge variant="outline">Sistema</Badge>}
+                  {selected.organizationId === null && !selected.isSystem && (
+                    <Badge variant="secondary">Global</Badge>
+                  )}
+                </div>
                 {selected.description && (
                   <p className="text-xs text-muted-foreground">{selected.description}</p>
                 )}
               </div>
-              {!selected.isSystem && (
-                <TooltipButton label="Eliminar rol" variant="ghost" size="icon-xs" onClick={() => remove(selected)}>
-                  <Trash2 className="size-3.5 text-destructive" />
-                </TooltipButton>
-              )}
+              <div className="flex items-center gap-1">
+                {isSuperadmin && !selected.isSystem && (
+                  <TooltipButton
+                    label={selected.organizationId === null ? "Hacer de empresa" : "Hacer global"}
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => toggleScope(selected)}
+                  >
+                    <Globe className={cn("size-3.5", selected.organizationId === null ? "text-blue-500" : "text-muted-foreground")} />
+                  </TooltipButton>
+                )}
+                {!selected.isSystem && (
+                  <TooltipButton label="Eliminar rol" variant="ghost" size="icon-xs" onClick={() => remove(selected)}>
+                    <Trash2 className="size-3.5 text-destructive" />
+                  </TooltipButton>
+                )}
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -347,16 +390,21 @@ function RolesTab() {
   );
 }
 
-// ── Invitaciones (15.5) ──────────────────────────────────────────────────────
+// ── Invitaciones ─────────────────────────────────────────────────────────────
 
 function InvitationsTab() {
   const [invitations, setInvitations] = useState<InvitationRow[] | null>(null);
+  const [roles, setRoles] = useState<RoleRow[]>([]);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("cashier");
+  const [role, setRole] = useState("");
   const [sending, setSending] = useState(false);
 
   const load = useCallback(() => {
     settingsApi.invitations().then((d) => setInvitations(d.invitations)).catch(() => undefined);
+    settingsApi.roles().then((d) => {
+      setRoles(d.roles);
+      if (d.roles.length > 0 && !role) setRole(d.roles[0].id);
+    }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -366,7 +414,7 @@ function InvitationsTab() {
   const send = async () => {
     setSending(true);
     try {
-      await settingsApi.createInvitation({ email, role });
+      await settingsApi.createInvitation({ email, roleId: role });
       setEmail("");
       load();
       swalToast("Invitación enviada");
@@ -407,8 +455,12 @@ function InvitationsTab() {
             label="Rol"
             value={role}
             onChange={setRole}
-            options={ROLE_OPTIONS.map((r) => ({ value: r.value, label: r.label }))}
-            searchable={false}
+            options={roles.map((r) => ({
+              value: r.id,
+              label: r.name,
+              description: r.isSystem ? "Sistema" : r.organizationId ? "Empresa" : "Global",
+            }))}
+            searchable
             clearable={false}
           />
         </div>
@@ -428,7 +480,7 @@ function InvitationsTab() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{i.email}</p>
                 <p className="text-xs text-muted-foreground">
-                  {ROLE_LABELS[i.role] ?? i.role} · {i.status === "pending" ? "Pendiente" : i.status}
+                  {roles.find((r) => r.id === i.roleId)?.name ?? ROLE_LABELS[i.role] ?? i.role} · {i.status === "pending" ? "Pendiente" : i.status}
                 </p>
               </div>
               {i.status === "pending" && (

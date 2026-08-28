@@ -61,7 +61,7 @@ export const settingsApi = {
     }),
 
   users: () => json<{ ok: boolean; users: OrgUserRow[] }>("/api/settings/users"),
-  updateUser: (membershipId: string, input: { role?: string; isActive?: boolean }) =>
+  updateUser: (membershipId: string, input: { role?: string; roleId?: string; isActive?: boolean }) =>
     json<{ ok: boolean }>(`/api/settings/users/${membershipId}`, {
       method: "PATCH",
       body: JSON.stringify(input),
@@ -72,12 +72,12 @@ export const settingsApi = {
   roles: () => json<{ ok: boolean; roles: RoleRow[] }>("/api/settings/roles"),
   rolePermissions: (roleId: string) =>
     json<{ ok: boolean; permissions: string[] }>(`/api/settings/roles/${roleId}`),
-  createRole: (input: { name: string; description?: string | null; copyRoleId?: string | null }) =>
+  createRole: (input: { name: string; description?: string | null; copyRoleId?: string | null; global?: boolean }) =>
     json<{ ok: boolean; role: RoleRow }>("/api/settings/roles", {
       method: "POST",
       body: JSON.stringify(input),
     }),
-  updateRole: (roleId: string, input: { name?: string; description?: string | null }) =>
+  updateRole: (roleId: string, input: { name?: string; description?: string | null; global?: boolean }) =>
     json<{ ok: boolean }>(`/api/settings/roles/${roleId}`, {
       method: "PATCH",
       body: JSON.stringify(input),
@@ -91,7 +91,7 @@ export const settingsApi = {
     }),
 
   invitations: () => json<{ ok: boolean; invitations: InvitationRow[] }>("/api/settings/invitations"),
-  createInvitation: (input: { email: string; role?: string; locationId?: string | null }) =>
+  createInvitation: (input: { email: string; role?: string; roleId?: string; locationId?: string | null }) =>
     json<{ ok: boolean; invitation: InvitationRow }>("/api/settings/invitations", {
       method: "POST",
       body: JSON.stringify(input),
