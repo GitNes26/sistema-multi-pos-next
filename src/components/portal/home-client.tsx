@@ -23,8 +23,8 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card } from "@/components/ui/card"
 import { TapScale } from "@/components/shared/tap-scale"
-import { PermissionSlider, type PermissionType } from "@/components/shared/permission-slider"
-import { usePortalPermissions } from "@/hooks/use-portal-permissions"
+import { PermissionSlider } from "@/components/shared/permission-slider"
+import { usePortalPermissions, type PortalPermissionType } from "@/hooks/use-portal-permissions"
 
 const PUB_TYPE_LABELS: Record<string, string> = {
   product_new: "Nuevo",
@@ -50,9 +50,9 @@ const item = {
 export function HomeClient() {
   const [data, setData] = useState<PortalHomeData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const { needsPermissions, markRequested } = usePortalPermissions()
-  const [permQueue, setPermQueue] = useState<PermissionType[]>([])
-  const [activePerm, setActivePerm] = useState<PermissionType | null>(null)
+  const { needsPermissions, pendingTypes, markTypeRequested } = usePortalPermissions()
+  const [permQueue, setPermQueue] = useState<PortalPermissionType[]>([])
+  const [activePerm, setActivePerm] = useState<PortalPermissionType | null>(null)
 
   useEffect(() => {
     let active = true
@@ -67,11 +67,11 @@ export function HomeClient() {
     }
   }, [])
 
-  // Post-login: show permission sliders on first visit
+  // Post-login: show permission sliders on first visit (solo pendientes)
   useEffect(() => {
     if (!needsPermissions || permQueue.length > 0 || activePerm) return
-    setPermQueue(["notifications", "geolocation", "camera"])
-  }, [needsPermissions, permQueue.length, activePerm])
+    setPermQueue([...pendingTypes])
+  }, [needsPermissions, pendingTypes, permQueue.length, activePerm])
 
   useEffect(() => {
     if (permQueue.length > 0 && !activePerm) {
@@ -79,12 +79,10 @@ export function HomeClient() {
     }
   }, [permQueue, activePerm])
 
-  const handlePermDone = () => {
+  const handlePermDone = (type: PortalPermissionType) => {
+    markTypeRequested(type)
     setActivePerm(null)
     setPermQueue((prev) => prev.slice(1))
-    if (permQueue.length <= 1) {
-      markRequested()
-    }
   }
 
   if (error) {
@@ -339,9 +337,9 @@ export function HomeClient() {
         <PermissionSlider
           type={activePerm}
           open={!!activePerm}
-          onOpenChange={(open) => { if (!open) handlePermDone() }}
-          onGranted={() => handlePermDone()}
-          onDenied={() => handlePermDone()}
+          onOpenChange={(open) => { if (!open) handlePermDone(activePerm) }}
+          onGranted={() => handlePermDone(activePerm)}
+          onDenied={() => handlePermDone(activePerm)}
         />
       )}
     </motion.div>

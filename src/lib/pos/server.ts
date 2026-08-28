@@ -96,7 +96,7 @@ export async function getPosCatalog(
       }),
       prisma.companyProfile.findUnique({
         where: { organizationId },
-        select: { tradeName: true, legalName: true, logoUrl: true, address: true, city: true, phone: true },
+        select: { tradeName: true, legalName: true, logoUrl: true, address: true, city: true, phone: true, ticketFooter: true },
       }),
       prisma.organization.findUnique({
         where: { id: organizationId },
@@ -178,7 +178,7 @@ export async function getPosCatalog(
       p.price = def.price;
       p.imageUrl = def.imageUrl;
       p.stock = def.stock;
-      p.name = def.name === "Default" ? p.name : `${p.name} ${def.name}`;
+      // NO mutar p.name — el cliente construye el displayName con product.name + variant.name
     }
   }
 
@@ -260,13 +260,14 @@ export async function getPosCatalog(
       address: location.address ?? null,
       phone: location.phone ?? null,
     },
-    company: {
-      name: companyProfile?.tradeName ?? companyProfile?.legalName ?? null,
-      logoUrl: companyProfile?.logoUrl ?? null,
-      address: companyProfile?.address ?? null,
-      city: companyProfile?.city ?? null,
-      phone: companyProfile?.phone ?? null,
-    },
+company: {
+  name: companyProfile?.tradeName ?? companyProfile?.legalName ?? null,
+  logoUrl: companyProfile?.logoUrl ?? null,
+  address: companyProfile?.address ?? null,
+  city: companyProfile?.city ?? null,
+  phone: companyProfile?.phone ?? null,
+  ticketFooter: companyProfile?.ticketFooter ?? null,
+},
     products,
     categories: categoriesWithCount,
     customers: customers.map((c) => ({

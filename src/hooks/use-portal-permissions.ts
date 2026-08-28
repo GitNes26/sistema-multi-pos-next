@@ -13,7 +13,7 @@ interface PermissionStatus {
 }
 
 interface StoredPermissions {
-  requested: boolean
+  requestedTypes: string[]
   lastCheck: string
 }
 
@@ -64,13 +64,15 @@ async function queryPermission(type: PortalPermissionType): Promise<PermissionSt
   return "unsupported"
 }
 
+const ALL_TYPES: PortalPermissionType[] = ["notifications", "geolocation", "camera"]
+
 export function usePortalPermissions() {
   const [statuses, setStatuses] = useState<PermissionStatus>({
     camera: "unsupported",
     geolocation: "unsupported",
     notifications: "unsupported",
   })
-  const [hasRequested, setHasRequested] = useState(false)
+  const [requestedTypes, setRequestedTypes] = useState<Set<string>>(new Set())
 
   const checkAll = useCallback(async () => {
     const [camera, geolocation, notifications] = await Promise.all([
@@ -84,21 +86,28 @@ export function usePortalPermissions() {
   useEffect(() => {
     checkAll()
     const stored = getStorage()
-    setHasRequested(stored?.requested ?? false)
+    setRequestedTypes(new Set(stored?.requestedTypes ?? []))
   }, [checkAll])
 
-  const markRequested = useCallback(() => {
-    setHasRequested(true)
-    setStorage({ requested: true, lastCheck: new Date().toISOString() })
+  const markTypeRequested = useCallback((type: PortalPermissionType) => {
+    setRequestedTypes((prev) => {
+      const next = new Set(prev)
+      next.add(type)
+      setStorage({ requestedTypes: Array.from(next), lastCheck: new Date().toISOString() })
+      return next
+    })
   }, [])
 
-  const needsPermissions = !hasRequested || Object.values(statuses).some((s) => s === "prompt")
+  // Sliders se muestran solo para tipos que NO fueron solicitados aún
+  const pendingTypes = ALL_TYPES.filter((t) => !requestedTypes.has(t))
+  const needsPermissions = pendingTypes.length > 0
 
   return {
     statuses,
-    hasRequested,
+    requestedTypes,
+    pendingTypes,
     needsPermissions,
     checkAll,
-    markRequested,
+    markTypeRequested,
   }
 }

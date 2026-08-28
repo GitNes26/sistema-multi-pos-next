@@ -119,7 +119,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
         };
       }
       const qty = Math.max(1, opts?.qty ?? 1);
-      const displayName = v ? (v.name === "Default" ? product.name : `${product.name} ${v.name}`) : product.name;
+      const displayName = v ? (v.name === "Default" ? product.name : `${product.name} · ${v.name}`) : product.name;
       const line: PosLineItem = {
         key,
         productId: product.productId,

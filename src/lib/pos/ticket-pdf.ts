@@ -122,7 +122,7 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
   if (sale.customer) {
     doc.font("Courier").fontSize(8);
     doc.text(`Puntos ganados: ${Math.floor(Number(sale.pointsEarned))}`, 12);
-    const newPoints = Math.floor(Number(sale.customer.points) + Number(sale.pointsEarned) - Number(sale.pointsRedeemed));
+    const newPoints = Math.floor(Number(sale.customer.points));
     doc.text(`Puntos totales: ${newPoints}`, 12);
   }
 

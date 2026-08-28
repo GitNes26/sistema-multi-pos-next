@@ -168,6 +168,10 @@ export function AppearanceSettingsForm() {
       cardSize: data!.settings!.cardSize as never,
       sidebarStyle: data!.settings!.sidebarStyle as never,
     })
+    // Sync theme mode from API response
+    if (data?.settings?.theme && (THEMES as readonly string[]).includes(data.settings.theme)) {
+      setTheme(data.settings.theme as ThemeMode)
+    }
     resetOverrides()
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
@@ -183,6 +187,7 @@ export function AppearanceSettingsForm() {
     setSaving(false)
     if (!res.ok) return
     setTenant({ ...DEFAULT_APP_SETTINGS } as never)
+    setTheme(DEFAULT_APP_SETTINGS.theme as ThemeMode)
     resetOverrides()
   }
 

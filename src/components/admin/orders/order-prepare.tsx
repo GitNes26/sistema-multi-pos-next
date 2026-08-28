@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
   CheckCircle2,
@@ -12,159 +12,211 @@ import {
   ScanLine,
   Timer,
   UserRound,
-} from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { swalError, swalToast } from "@/lib/swal";
-import { playSound } from "@/lib/sounds";
-import { cn } from "@/lib/utils";
+} from "lucide-react"
 import {
-  ORDER_STATUS_LABELS,
-  ordersApi,
-} from "@/lib/orders/client";
-import type { PreparationView } from "@/lib/orders/server";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { swalError, swalToast } from "@/lib/swal"
+import { playSound } from "@/lib/sounds"
+import { cn } from "@/lib/utils"
+import { ORDER_STATUS_LABELS, ordersApi } from "@/lib/orders/client"
+import type { PreparationView } from "@/lib/orders/server"
 
 // FASE 12.3 — Página de preparación de pedido: timer, checklist, progreso, notas.
 
 function useNow(startedAtMs: number | null, running: boolean) {
-  const [now, setNow] = useState<number>(() => Date.now());
+  const [now, setNow] = useState<number>(() => Date.now())
   useEffect(() => {
-    if (!running || !startedAtMs) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [running, startedAtMs]);
-  return now;
+    if (!running || !startedAtMs) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [running, startedAtMs])
+  return now
 }
 
 function formatElapsed(s: number): string {
-  const hours = Math.floor(s / 3600);
-  const mins = Math.floor((s % 3600) / 60);
-  const secs = Math.floor(s % 60);
-  return [hours, mins, secs].map((v) => String(v).padStart(2, "0")).join(":");
+  const hours = Math.floor(s / 3600)
+  const mins = Math.floor((s % 3600) / 60)
+  const secs = Math.floor(s % 60)
+  return [hours, mins, secs].map((v) => String(v).padStart(2, "0")).join(":")
 }
 
 export function OrderPrepare({ orderId }: { orderId: string }) {
-  const router = useRouter();
-  const [prep, setPrep] = useState<PreparationView | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [scan, setScan] = useState("");
-  const [generalNotes, setGeneralNotes] = useState("");
-  const scanRef = useRef<HTMLInputElement>(null);
+  const router = useRouter()
+  const [prep, setPrep] = useState<PreparationView | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [scan, setScan] = useState("")
+  const [generalNotes, setGeneralNotes] = useState("")
+  const scanRef = useRef<HTMLInputElement>(null)
 
-  const startedMs = prep?.startedAt ? new Date(prep.startedAt).getTime() : null;
-  const running = Boolean(prep && !prep.completedAt && prep.startedAt);
-  const now = useNow(startedMs, running);
+  const startedMs = prep?.startedAt ? new Date(prep.startedAt).getTime() : null
+  const running = Boolean(prep && !prep.completedAt && prep.startedAt)
+  const now = useNow(startedMs, running)
   const elapsedSecs = prep?.startedAt
     ? prep.completedAt
-      ? prep.elapsedSeconds ?? Math.round((new Date(prep.completedAt).getTime() - new Date(prep.startedAt).getTime()) / 1000)
+      ? (prep.elapsedSeconds ??
+        Math.round(
+          (new Date(prep.completedAt).getTime() -
+            new Date(prep.startedAt).getTime()) /
+            1000
+        ))
       : Math.round((now - new Date(prep.startedAt).getTime()) / 1000)
-    : 0;
+    : 0
 
   const load = useCallback(async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const r = await ordersApi.preparation(orderId);
-      setPrep(r.prep);
+      const r = await ordersApi.preparation(orderId)
+      setPrep(r.prep)
     } catch {
-      setPrep(null);
+      setPrep(null)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [orderId]);
+  }, [orderId])
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load()
+  }, [load])
 
-  const foundCount = prep?.items.filter((i) => i.found).length ?? 0;
-  const totalItems = prep?.items.length ?? 0;
-  const progress = totalItems > 0 ? Math.round((foundCount / totalItems) * 100) : 0;
+  const foundCount = prep?.items.filter((i) => i.found).length ?? 0
+  const totalItems = prep?.items.length ?? 0
+  const progress =
+    totalItems > 0 ? Math.round((foundCount / totalItems) * 100) : 0
 
   const start = async () => {
-    setBusy(true);
+    setBusy(true)
     try {
-      const r = await ordersApi.startPreparation(orderId);
-      setPrep(r.prep);
-      swalToast("Preparación iniciada");
-      setTimeout(() => scanRef.current?.focus(), 100);
+      const r = await ordersApi.startPreparation(orderId)
+      setPrep(r.prep)
+      swalToast("Preparación iniciada")
+      setTimeout(() => scanRef.current?.focus(), 100)
     } catch (err) {
-      swalError("No se pudo iniciar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo iniciar",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
   const toggleFound = async (item: PreparationView["items"][number]) => {
-    const next = !item.found;
+    const next = !item.found
     setPrep((p) =>
       p
-        ? { ...p, items: p.items.map((i) => (i.id === item.id ? { ...i, found: next, scanned: true } : i)) }
+        ? {
+            ...p,
+            items: p.items.map((i) =>
+              i.id === item.id ? { ...i, found: next, scanned: true } : i
+            ),
+          }
         : p
-    );
+    )
     try {
-      const r = await ordersApi.setPreparationItem(orderId, item.id, { found: next, scanned: true });
-      setPrep((p) => (p ? { ...p, items: p.items.map((i) => (i.id === item.id ? r.item : i)) } : p));
+      const r = await ordersApi.setPreparationItem(orderId, item.id, {
+        found: next,
+        scanned: true,
+      })
+      setPrep((p) =>
+        p
+          ? { ...p, items: p.items.map((i) => (i.id === item.id ? r.item : i)) }
+          : p
+      )
     } catch (err) {
-      swalError("No se pudo actualizar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo actualizar",
+        err instanceof Error ? err.message : undefined
+      )
     }
-  };
+  }
 
-  const saveNotes = async (item: PreparationView["items"][number], notes: string | null) => {
+  const saveNotes = async (
+    item: PreparationView["items"][number],
+    notes: string | null
+  ) => {
     setPrep((p) =>
-      p ? { ...p, items: p.items.map((i) => (i.id === item.id ? { ...i, notes } : i)) } : p
-    );
+      p
+        ? {
+            ...p,
+            items: p.items.map((i) => (i.id === item.id ? { ...i, notes } : i)),
+          }
+        : p
+    )
     try {
-      await ordersApi.setPreparationItem(orderId, item.id, { notes });
+      await ordersApi.setPreparationItem(orderId, item.id, { notes })
     } catch {
       // silencioso
     }
-  };
+  }
 
   const submitScan = () => {
-    const q = scan.trim().toLowerCase();
-    if (!q || !prep) return;
-    const target = prep.items.find((i) => !i.found && (i.productName.toLowerCase().includes(q) || (i.variantName ?? "").toLowerCase().includes(q)));
+    const q = scan.trim().toLowerCase()
+    if (!q || !prep) return
+    const target = prep.items.find(
+      (i) =>
+        !i.found &&
+        (i.productName.toLowerCase().includes(q) ||
+          (i.variantName ?? "").toLowerCase().includes(q))
+    )
     if (target) {
-      playSound("scan");
-      toggleFound(target);
-      swalToast(`Encontrado: ${target.productName}`);
+      playSound("scan")
+      toggleFound(target)
+      swalToast(`Encontrado: ${target.productName}`)
     } else {
-      playSound("error");
-      swalError("Sin coincidencia", "Escribe el nombre del producto o su variante.");
+      playSound("error")
+      swalError(
+        "Sin coincidencia",
+        "Escribe el nombre del producto o su variante."
+      )
     }
-    setScan("");
-  };
+    setScan("")
+  }
 
   const complete = async () => {
-    setBusy(true);
+    setBusy(true)
     try {
-      const r = await ordersApi.completePreparation(orderId, generalNotes || undefined);
-      setPrep(r.prep);
-      swalToast("Preparación completada");
+      const r = await ordersApi.completePreparation(
+        orderId,
+        generalNotes || undefined
+      )
+      setPrep(r.prep)
+      swalToast("Preparación completada")
     } catch (err) {
-      swalError("No se pudo completar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo completar",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
   const markReady = async () => {
-    setBusy(true);
+    setBusy(true)
     try {
-      await ordersApi.updateStatus(orderId, "ready", "Listo para entrega");
-      swalToast("Pedido marcado como listo");
-      router.push("/admin/orders");
+      await ordersApi.updateStatus(orderId, "ready", "Listo para entrega")
+      swalToast("Pedido marcado como listo")
+      router.push("/admin/orders")
     } catch (err) {
-      swalError("No se pudo marcar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo marcar",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -172,7 +224,7 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
         <div className="h-24 animate-pulse rounded-lg bg-muted" />
         <div className="h-64 animate-pulse rounded-lg bg-muted" />
       </div>
-    );
+    )
   }
 
   if (!prep) {
@@ -182,22 +234,28 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
           <PackageCheck className="size-10 text-muted-foreground/50" />
           <div>
             <p className="font-medium">Preparación no iniciada</p>
-            <p className="text-sm text-muted-foreground">Inicia la preparación para comenzar el timer y el check-list.</p>
+            <p className="text-sm text-muted-foreground">
+              Inicia la preparación para comenzar el timer y el check-list.
+            </p>
           </div>
           <Button onClick={start} disabled={busy}>
             <Play className="size-4" /> Iniciar preparación
           </Button>
         </CardContent>
       </Card>
-    );
+    )
   }
 
-  const done = Boolean(prep.completedAt);
+  const done = Boolean(prep.completedAt)
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => router.push("/admin/orders")}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push("/admin/orders")}
+        >
           <ArrowLeft className="size-4" /> Pedidos
         </Button>
       </div>
@@ -209,7 +267,9 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
               <PackageCheck className="size-4" /> Pedido #{prep.orderNumber}
             </CardTitle>
             <CardDescription>
-              {ORDER_STATUS_LABELS[prep.status as keyof typeof ORDER_STATUS_LABELS] ?? prep.status}
+              {ORDER_STATUS_LABELS[
+                prep.status as keyof typeof ORDER_STATUS_LABELS
+              ] ?? prep.status}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
@@ -221,7 +281,12 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
             )}
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="size-4" />
-              <span className={cn("tabular-nums font-semibold", !done && "text-primary")}>
+              <span
+                className={cn(
+                  "tabular-nums font-semibold",
+                  !done && "text-primary"
+                )}
+              >
                 {formatElapsed(elapsedSecs)}
               </span>
               {done && <Badge variant="secondary">Completada</Badge>}
@@ -243,7 +308,9 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
           </CardHeader>
           <CardContent>
             <Progress value={progress} className="h-3" />
-            <div className="mt-1 text-right text-xs tabular-nums text-muted-foreground">{progress}%</div>
+            <div className="mt-1 text-right text-xs tabular-nums text-muted-foreground">
+              {progress}%
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -261,8 +328,8 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
                 onChange={(e) => setScan(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    e.preventDefault();
-                    submitScan();
+                    e.preventDefault()
+                    submitScan()
                   }
                 }}
               />
@@ -293,12 +360,23 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
                       <CircleDot className="size-5 shrink-0 text-muted-foreground/50" />
                     )}
                     <span className="min-w-0">
-                      <span className={cn("block text-sm font-medium", item.found && "text-muted-foreground line-through")}>
-                        {item.bulkQuantityDisplay ?? `${item.quantity} × ${item.productName}`}
-                        {item.variantName && item.productName !== item.variantName ? ` (${item.variantName})` : ""}
+                      <span
+                        className={cn(
+                          "block text-sm font-medium",
+                          item.found && "text-muted-foreground line-through"
+                        )}
+                      >
+                        {item.bulkQuantityDisplay ??
+                          `${item.quantity} × ${item.productName}`}
+                        {item.variantName &&
+                        item.productName !== item.variantName
+                          ? ` (${item.variantName})`
+                          : ""}
                       </span>
                       {item.comment && (
-                        <span className="block text-xs text-muted-foreground">Pedido: “{item.comment}”</span>
+                        <span className="block text-xs text-muted-foreground">
+                          Pedido: “{item.comment}”
+                        </span>
                       )}
                     </span>
                   </button>
@@ -314,7 +392,9 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
                   </div>
                 )}
                 {done && item.notes && (
-                  <p className="mt-1 pl-7 text-xs text-muted-foreground">Comentario: “{item.notes}”</p>
+                  <p className="mt-1 pl-7 text-xs text-muted-foreground">
+                    Comentario: “{item.notes}”
+                  </p>
                 )}
               </li>
             ))}
@@ -332,7 +412,10 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
               onChange={(e) => setGeneralNotes(e.target.value)}
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => router.push("/admin/orders")}>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/admin/orders")}
+              >
                 Volver
               </Button>
               <Button onClick={complete} disabled={busy}>
@@ -343,11 +426,14 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
         </Card>
       ) : (
         <div className="flex justify-end">
-          <Button onClick={markReady} disabled={busy || prep.status === "ready"}>
+          <Button
+            onClick={markReady}
+            disabled={busy || prep.status === "ready"}
+          >
             {busy ? "Guardando…" : "Marcar pedido como listo"}
           </Button>
         </div>
       )}
     </div>
-  );
+  )
 }

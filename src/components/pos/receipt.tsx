@@ -36,9 +36,7 @@ export function Receipt({
   })
 
   const newPoints = customer
-    ? Math.floor(
-        customer.points + payload.pointsEarned - payload.pointsRedeemed
-      )
+    ? Math.floor(customer.points)
     : null
 
   return (

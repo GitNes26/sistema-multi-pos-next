@@ -569,6 +569,7 @@ memberships                    -- Vincula usuario ↔ organización + rol
 ├── user_id: UUID (FK → users.id)
 ├── organization_id: UUID (FK → organizations.id)
 ├── role: org_role NOT NULL
+├── role_id: UUID (FK → roles.id, nullable)  -- Rol custom (híbrido: fallback a `role` si es NULL)
 ├── created_at
 ├── UNIQUE(user_id, organization_id)
 
@@ -982,6 +983,7 @@ promotions                      -- Reglas de promoción
 ├── organization_id: UUID (FK)
 ├── name: VARCHAR(255) NOT NULL
 ├── description: TEXT
+├── description_final: TEXT        -- Auto-generada por generateDescriptionFinal()
 ├── image_url: TEXT
 ├── benefit: promo_benefit NOT NULL
 ├── scope: promo_scope DEFAULT 'order'
@@ -1117,10 +1119,11 @@ permissions                     -- Permisos predefinidos
 
 roles                           -- Roles personalizados por org
 ├── id: UUID (PK)
-├── organization_id: UUID (FK)
+├── organization_id: UUID (FK, nullable)  -- NULL = rol global (disponible en todas las orgs)
 ├── name: VARCHAR(100) NOT NULL
 ├── description: TEXT
 ├── is_system: BOOLEAN DEFAULT false  -- Roles del sistema no se borran
+├── memberships: Membership[]        -- Usuarios vinculados a este rol
 ├── created_at, updated_at
 
 role_permissions                 -- Permisos por rol
@@ -1167,6 +1170,9 @@ publications                    -- Publicaciones/newsfeed
 ├── type: VARCHAR(20)              -- product_new|promotion|notice
 ├── is_active: BOOLEAN DEFAULT true
 ├── published_at: DATETIME
+├── starts_at: DATETIME
+├── ends_at: DATETIME
+├── metadata: JSONB                -- Vínculo con otras entidades (ej: { promotionId: "..." })
 ├── created_at, updated_at
 ```
 
@@ -1657,6 +1663,18 @@ Sección Apariencia (/settings/appearance):
 └── Estilo sidebar: Full / Compact / Collapsed
 ```
 
+### 8.4 Theme Toggle (Portal Header)
+
+```
+Portal: theme-toggle.tsx ciclo Claro → Oscuro → Sistema
+├── Sun icon = Claro
+├── Moon icon = Oscuro
+├── Monitor icon = Sistema (usa prefers-color-scheme del dispositivo)
+├── Persistencia en localStorage (multi-pos-appearance-v1)
+├── ThemeProvider escucha cambios del SO cuando está en "system"
+└── Admin: appearance-settings-form.tsx tiene las 4 opciones (System/Light/Dark/POS)
+```
+
 ---
 
 ## FASE 0 — INFRAESTRUCTURA Y CONFIGURACIÓN BASE ✅
@@ -1748,6 +1766,12 @@ Sección Apariencia (/settings/appearance):
 - ✅ 4.13 SweetAlert2 wrappers (`src/lib/swal.ts`: swalToast, swalMessage, swalError, swalConfirm, swalLoading, swalPrompt) + theming en globals.css
 - ✅ 4.14 GPS Picker (`gps-picker.tsx`: geolocalización + geocode/reverse Nominatim + mapa OSM + dirección completa)
 - ✅ 4.15 Sound player (`src/lib/sounds.ts`: volume/rate + persistencia localStorage + `useSound`)
+- ✅ 4.16 SwitchField (`src/components/base/switch-field.tsx`: Switch + label + helper + icono inline)
+- ✅ 4.17 TimePicker con sizes (`src/components/base/time-picker.tsx`: 8 tamaños xs→4xl + default)
+- ✅ 4.18 InputGroupField password toggle — tipo `password` con botón Eye/EyeOff para mostrar/ocultar
+- ✅ 4.19 Dynamic icons en CrudConfig — `getIcon(name)` resuelve iconos de lucide-react en runtime; `ICON_MAP` estático eliminado
+- ✅ 4.20 PermissionSlider (`src/components/shared/permission-slider.tsx`: cámara, geolocalización, archivos, micrófono, notificaciones — con estado granted/denied/idle)
+- ✅ 4.21 PullToRefresh + SwipeableRow + EmptyState — componentes shared para portal móvil
 - Nota: `@tanstack/react-table` quedó en v8 (la v9 cambió la API; se prefirió la estable). `sweetalert2` agregado. Barrel `src/components/base/index.ts`.
 
 ---
@@ -1873,6 +1897,13 @@ Sección Apariencia (/settings/appearance):
 - ✅ Límites de uso (máximo global y por cliente)
 - ✅ Exclusividad y prioridad
 - ✅ Targets (multi-select de sucursales, categorías, productos, variantes y variante de regalo)
+- ✅ `descriptionFinal` auto-generada — `generateDescriptionFinal()` crea texto descriptivo de la promo para clientes
+- ✅ Auto-crear publicación — al crear/editar promo activa, se crea Publication tipo "promotion" con metadata `{ promotionId }`
+- ✅ Sync publicación — `update()` actualiza publicación vinculada; `remove()` la elimina
+- ✅ `Publication.metadata` (JSON) — campo agregado a schema para vincular publicaciones con promociones
+- ✅ Yup validation — `f.yup` en CrudField para validación personalizada (email, matches, min, max, trim, url)
+- ✅ `buildYupSchema()` — construye schema dinámico desde CrudField[] con soporte para `f.yup`, `f.requiredMessage`, `f.validate`
+- ✅ Password field — tipo `password` en CrudForm con toggle Eye/EyeOff en InputGroupField
 - ✅ 7.6 Sucursales
 - ✅ CRUD completo — `/admin/locations`
 - ✅ GPS (lat/lon + dirección completa) — `GpsPicker` integrado en el formulario (tipo de campo `gps` del CRUD genérico)
@@ -1956,6 +1987,9 @@ Sección Apariencia (/settings/appearance):
   - ✅ Stock bajo — persistida + SSE (8.9) con empleado vinculado
   - ✅ Pedido nuevo / listo / entregado / cancelado — helper `notifyOrderEvent` listo en `src/lib/notifications/events.ts`; se activa cuando exista el flujo de pedidos (FASE 12/13)
 - ✅ 11.7 Empleado vinculado a cada movimiento/notificación — `employeeId` persistido en `Notification` (ventas, movimientos de inventario, low-stock)
+- ✅ 11.8 Notificaciones del portal — `GET /api/portal/notifications` (filtra por `userId`), `PATCH /api/portal/notifications/[id]` (mark read)
+- ✅ 11.9 Portal notifications client — `notifications-client.tsx` (pull-to-refresh, swipeable, animated, polling 30s con sonido)
+- ✅ 11.10 Auto-crear notificaciones para clientes — `createPublication()` crea `Notification` por cada customer de la organización
 
 ---
 
@@ -2023,6 +2057,13 @@ Sección Apariencia (/settings/appearance):
 - ✅ 13.13 Perfil de cliente (editar datos) — `profile-client.tsx`
 - ✅ 13.14 Métodos de pago guardados (last4, brand, exp_month, exp_year) — `payment-methods-client.tsx`
 - ✅ 13.15 Notificación de tarjetas por vencer — `listExpiringCards` (próximos 2 meses)
+- ✅ 13.16 Theme toggle con ciclo Claro/Oscuro/Sistema — `theme-toggle.tsx` (iconos Sun→Moon→Monitor, respeta `prefers-color-scheme`)
+- ✅ 13.17 Permisos del navegador en portal
+  - ✅ Hook `usePortalPermissions` — gestiona estado de permisos (camera, geolocation, notifications) con persistencia en `localStorage`
+  - ✅ Sección de permisos en perfil — `portal-permissions-section.tsx` (estado, botones "Permitir", "Verificar estado")
+  - ✅ Sliders post-login — en `home-client.tsx`, primera visita muestra sliders en orden: Notificaciones → Ubicación → Cámara
+  - ✅ Permiso contextual — `GpsPicker` acepta `onPermissionError` callback; checkout abre `PermissionSlider` al fallar geolocalización
+  - ✅ `PermissionType` exportado desde `permission-slider.tsx`
 
 ---
 
@@ -2032,10 +2073,15 @@ Sección Apariencia (/settings/appearance):
 
 - ✅ Crear, editar, duplicar roles
 - ✅ Roles del sistema no se borran (is_system flag)
+- ✅ Roles híbridos: roles globales (`organizationId=NULL`) + roles por empresa
+- ✅ `Membership.roleId` (nullable FK→Role) — vincula usuario a rol custom
+- ✅ `permissionsForRole(role, roleId?, organizationId?)` — resolución de permisos con soporte para roles custom por empresa, globales, y fallback a sistema
+- ✅ SuperAdmin puede toggle scope (global ↔ por empresa) en `RolesTab`
+- ✅ Roles de sistema: Cajero, Gerente, Admin, Owner (seed en `migrate-hybrid-roles.ts`)
 
 ### 14.2 Matriz de Permisos ✅
 
-- ✅ 23+ permisos predefinidos, por sección
+- ✅ 23+ permisos predefinidos, por sección (incluye `sales.manage` para devoluciones)
 - ✅ Checkboxes por sección (marcar todos los de un módulo)
 - ✅ Solo lectura / Solo escritura
 - ✅ Duplicar rol existente como base
@@ -2044,6 +2090,11 @@ Sección Apariencia (/settings/appearance):
 
 - ✅ Asignar/quitar permisos a roles
 - ✅ Defaults por rol (owner=todos, manager=todos-excepto-users, cashier=POS+view)
+- ✅ `FormCombobox` en Users e Invitations para seleccionar rol
+- ✅ Badge "Global" + toggle scope para superAdmin en RolesTab
+- ✅ API `createRole()` y `updateRole()` soportan `global?: boolean`
+- ✅ API `updateMembershipRole()` soporta `roleId`
+- ✅ API `createInvitation()` soporta `roleId`
 
 ### 14.4 Menú Dinámico (BD) ✅
 
@@ -2296,6 +2347,11 @@ Nota: pago confirmado marca el pedido `pending → confirmed` (SSE + notificaci�
 - ✅ 18.3 Vista de publicaciones para clientes (home del portal) — `home-client.tsx` (sección Avisos con tipo/imagen)
 - ✅ 18.4 Banners promocionales en el portal — carrusel de publicaciones con imagen en el home del portal
 - ✅ 18.5 Gestión desde admin (/publications) — `/admin/publications` + `publications-manager.tsx` (permiso `publications.manage`)
+- ✅ 18.6 Auto-crear publicación desde promoción — `promotions.ts` `create()` llama `createPublication()` con tipo "promotion" cuando la promo está activa
+- ✅ 18.7 Sync publicación ↔ promoción — `update()` actualiza publicación vinculada; `remove()` la elimina. Vínculo via `metadata.promotionId` en Publication
+- ✅ 18.8 Publication.metadata (JSON) — campo agregado a schema Prisma para vincular publicaciones con otras entidades
+- ✅ 18.9 Notificaciones push al crear publicación — `createPublication()` crea `Notification` para cada customer de la organización (via `userId`)
+- ✅ 18.10 Portal notificaciones con sonido — `NotificationsClient` polls cada 30s, reproduce `notification.mp3` al llegar notificaciones nuevas
 
 ---
 

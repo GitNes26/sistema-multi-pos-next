@@ -18,14 +18,24 @@ import { Logo } from "@/components/layout/logo"
 import { cn } from "@/lib/utils"
 
 const validationSchema = yup.object({
-  identifier: yup.string().required("Correo o código requerido").min(3, "Demasiado corto"),
-  password: yup.string().required("Contraseña requerida").min(6, "Mínimo 6 caracteres"),
+  identifier: yup
+    .string()
+    .required("Correo o código requerido")
+    .min(3, "Demasiado corto"),
+  password: yup
+    .string()
+    .required("Contraseña requerida")
+    .min(6, "Mínimo 6 caracteres"),
 })
 
 type LoginValues = yup.InferType<typeof validationSchema>
 
 const DEMO_ACCOUNTS = [
-  { label: "Cliente demo", identifier: "cli-001@portal.local", password: "demo1234" },
+  {
+    label: "Cliente demo",
+    identifier: "cli-001@portal.local",
+    password: "demo1234",
+  },
 ]
 
 export function LoginForm({
@@ -42,7 +52,11 @@ export function LoginForm({
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginValues>({
     resolver: yupResolver(validationSchema),
     defaultValues: { identifier: "", password: "" },
   })
@@ -122,13 +136,19 @@ export function LoginForm({
             </Alert>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-4"
+            noValidate
+          >
             <InputGroupField
               id="identifier"
               label="Correo o código"
               leftIcon={<User className="size-4" />}
               autoComplete="username"
-              placeholder={isPortal ? "correo o nº de cliente" : "correo o nº de nómina"}
+              placeholder={
+                isPortal ? "correo o nº de cliente" : "correo o nº de nómina"
+              }
               className="h-12 text-base rounded-xl"
               error={errors.identifier?.message}
               {...register("identifier")}
@@ -136,7 +156,9 @@ export function LoginForm({
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium">Contraseña</Label>
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Contraseña
+                </Label>
                 <Link
                   href={isPortal ? "/portal/auth/forgot" : "/auth/forgot"}
                   className="text-xs text-primary underline-offset-4 hover:underline"
@@ -151,7 +173,7 @@ export function LoginForm({
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   className={cn(
-                    "h-12 pl-11 pr-11 text-base rounded-xl",
+                    "h-12 pl-11 md:pl-11 pr-11 md:pr-11 text-base rounded-xl",
                     errors.password && "border-destructive"
                   )}
                   aria-invalid={!!errors.password}
@@ -163,11 +185,17 @@ export function LoginForm({
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   aria-label={showPassword ? "Ocultar" : "Mostrar"}
                 >
-                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
                 </button>
               </div>
               {errors.password && (
-                <p className="text-xs text-destructive">{errors.password.message}</p>
+                <p className="text-xs text-destructive">
+                  {errors.password.message}
+                </p>
               )}
             </div>
 
@@ -201,7 +229,12 @@ export function LoginForm({
               size="sm"
               className="text-xs text-muted-foreground"
               disabled={loading}
-              onClick={() => void runLogin(DEMO_ACCOUNTS[0].identifier, DEMO_ACCOUNTS[0].password)}
+              onClick={() =>
+                void runLogin(
+                  DEMO_ACCOUNTS[0].identifier,
+                  DEMO_ACCOUNTS[0].password
+                )
+              }
             >
               Demo rápido: Cliente
             </Button>

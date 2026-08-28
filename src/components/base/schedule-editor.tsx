@@ -4,9 +4,18 @@ import { Plus, Trash2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { TimePicker } from "@/components/base/time-picker"
-import { emptySchedule, DAYS_LABELS, type DaySchedule, type DayScheduleSlot } from "@/lib/schedule"
+import {
+  emptySchedule,
+  DAYS_LABELS,
+  type DaySchedule,
+  type DayScheduleSlot,
+} from "@/lib/schedule"
 
-export { emptySchedule, type DaySchedule, type DayScheduleSlot } from "@/lib/schedule"
+export {
+  emptySchedule,
+  type DaySchedule,
+  type DayScheduleSlot,
+} from "@/lib/schedule"
 export { formatSchedule, parseSchedule, DAYS_LABELS } from "@/lib/schedule"
 
 interface ScheduleEditorProps {
@@ -15,7 +24,7 @@ interface ScheduleEditorProps {
   disabled?: boolean
 }
 
-function buildLegend(schedule: DaySchedule[]): string {
+export function buildLegend(schedule: DaySchedule[]): string {
   const enabled = schedule.filter((d) => d.enabled)
   if (enabled.length === 0) return "Cerrado todos los días"
 
@@ -73,10 +82,16 @@ export function ScheduleEditor({
     onChange(next)
   }
 
-  const updateSlot = (dayIdx: number, slotIdx: number, patch: Partial<DayScheduleSlot>) => {
+  const updateSlot = (
+    dayIdx: number,
+    slotIdx: number,
+    patch: Partial<DayScheduleSlot>
+  ) => {
     const next = schedule.map((d, i) => {
       if (i !== dayIdx) return d
-      const slots = d.slots.map((s, j) => (j === slotIdx ? { ...s, ...patch } : s))
+      const slots = d.slots.map((s, j) =>
+        j === slotIdx ? { ...s, ...patch } : s
+      )
       return { ...d, slots }
     })
     onChange(next)
@@ -129,7 +144,9 @@ export function ScheduleEditor({
                 <div key={slotIdx} className="flex items-center gap-2">
                   <TimePicker
                     value={slot.open}
-                    onChange={(v) => updateSlot(dayIdx, slotIdx, { open: v ?? "09:00" })}
+                    onChange={(v) =>
+                      updateSlot(dayIdx, slotIdx, { open: v ?? "09:00" })
+                    }
                     disabled={disabled}
                     clearable={false}
                     size="sm"
@@ -137,7 +154,9 @@ export function ScheduleEditor({
                   <span className="text-xs text-muted-foreground">a</span>
                   <TimePicker
                     value={slot.close}
-                    onChange={(v) => updateSlot(dayIdx, slotIdx, { close: v ?? "18:00" })}
+                    onChange={(v) =>
+                      updateSlot(dayIdx, slotIdx, { close: v ?? "18:00" })
+                    }
                     disabled={disabled}
                     clearable={false}
                     size="sm"

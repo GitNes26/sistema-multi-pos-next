@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
       locationId,
       q: req.nextUrl.searchParams.get("q") ?? undefined,
       productType: req.nextUrl.searchParams.get("productType") ?? undefined,
-      lowOnly: req.nextUrl.searchParams.get("lowOnly") === "1",
+      lowOnly: req.nextUrl.searchParams.get("lowOnly") === "true",
     });
     return NextResponse.json({ ok: true, rows });
   } catch (err) {

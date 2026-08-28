@@ -99,8 +99,8 @@ export async function createPublication(
         type: input.type as $Enums.PublicationType,
         isActive: input.isActive ?? true,
         publishedAt: input.publishedAt ? new Date(input.publishedAt) : new Date(),
-        startsAt: input.startsAt ? new Date(input.startsAt) : null,
-        endsAt: input.endsAt ? new Date(input.endsAt) : null,
+        startsAt: input.startsAt ? new Date(input.startsAt.includes("T") ? input.startsAt : input.startsAt + "T00:00:00") : null,
+        endsAt: input.endsAt ? new Date(input.endsAt.includes("T") ? input.endsAt : input.endsAt + "T00:00:00") : null,
         metadata: (input.metadata as Prisma.InputJsonValue) ?? undefined,
       },
     });
@@ -151,10 +151,10 @@ export async function updatePublication(
         ? { publishedAt: input.publishedAt ? new Date(input.publishedAt) : null }
         : {}),
       ...(input.startsAt !== undefined
-        ? { startsAt: input.startsAt ? new Date(input.startsAt) : null }
+        ? { startsAt: input.startsAt ? new Date(input.startsAt.includes("T") ? input.startsAt : input.startsAt + "T00:00:00") : null }
         : {}),
       ...(input.endsAt !== undefined
-        ? { endsAt: input.endsAt ? new Date(input.endsAt) : null }
+        ? { endsAt: input.endsAt ? new Date(input.endsAt.includes("T") ? input.endsAt : input.endsAt + "T00:00:00") : null }
         : {}),
     },
   });
