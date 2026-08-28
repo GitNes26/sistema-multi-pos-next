@@ -152,7 +152,7 @@ function addEntry(version, levelName, prefix, message) {
 }
 
 function git(cmd) {
-  return execSync(cmd, { cwd: ROOT, encoding: "utf8", stdio: "inherit" }).trim()
+  execSync(cmd, { cwd: ROOT, stdio: "inherit" })
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────

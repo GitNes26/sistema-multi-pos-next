@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.12.4.0] — 2026-08-28
+- **Tipo:** `fix` (Patch)
+- fix:se agrego pie y logo al ticket y correxion de politicas, ademas guardamos para ver una implementacion de impeccable
+
 ### [0.12.3.1] — 2026-08-28
 - **Tipo:** `fix` (Patch)
 - fix: agregar logo y pie de ticket al recibo y PDF, fixear tipo ticketFooter en store
