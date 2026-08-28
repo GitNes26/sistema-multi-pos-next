@@ -23,6 +23,8 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card } from "@/components/ui/card"
 import { TapScale } from "@/components/shared/tap-scale"
+import { PermissionSlider, type PermissionType } from "@/components/shared/permission-slider"
+import { usePortalPermissions } from "@/hooks/use-portal-permissions"
 
 const PUB_TYPE_LABELS: Record<string, string> = {
   product_new: "Nuevo",
@@ -48,6 +50,9 @@ const item = {
 export function HomeClient() {
   const [data, setData] = useState<PortalHomeData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { needsPermissions, markRequested } = usePortalPermissions()
+  const [permQueue, setPermQueue] = useState<PermissionType[]>([])
+  const [activePerm, setActivePerm] = useState<PermissionType | null>(null)
 
   useEffect(() => {
     let active = true
@@ -61,6 +66,26 @@ export function HomeClient() {
       active = false
     }
   }, [])
+
+  // Post-login: show permission sliders on first visit
+  useEffect(() => {
+    if (!needsPermissions || permQueue.length > 0 || activePerm) return
+    setPermQueue(["notifications", "geolocation", "camera"])
+  }, [needsPermissions, permQueue.length, activePerm])
+
+  useEffect(() => {
+    if (permQueue.length > 0 && !activePerm) {
+      setActivePerm(permQueue[0])
+    }
+  }, [permQueue, activePerm])
+
+  const handlePermDone = () => {
+    setActivePerm(null)
+    setPermQueue((prev) => prev.slice(1))
+    if (permQueue.length <= 1) {
+      markRequested()
+    }
+  }
 
   if (error) {
     return (
@@ -307,6 +332,17 @@ export function HomeClient() {
             ))}
           </div>
         </motion.section>
+      )}
+
+      {/* Post-login permission sliders */}
+      {activePerm && (
+        <PermissionSlider
+          type={activePerm}
+          open={!!activePerm}
+          onOpenChange={(open) => { if (!open) handlePermDone() }}
+          onGranted={() => handlePermDone()}
+          onDenied={() => handlePermDone()}
+        />
       )}
     </motion.div>
   )

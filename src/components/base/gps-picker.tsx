@@ -24,6 +24,7 @@ export interface GpsValue {
 export interface GpsPickerProps {
   value?: GpsValue | null
   onChange?: (value: GpsValue | null) => void
+  onPermissionError?: () => void
   label?: string
   helper?: React.ReactNode
   required?: boolean
@@ -50,6 +51,7 @@ interface NominatimResult {
 export function GpsPicker({
   value,
   onChange,
+  onPermissionError,
   label,
   helper,
   required,
@@ -148,6 +150,7 @@ export function GpsPicker({
       () => {
         setLocating(false)
         setGeoError("No se pudo obtener tu ubicación.")
+        onPermissionError?.()
       },
       { enableHighAccuracy: true, timeout: 10000 }
     )

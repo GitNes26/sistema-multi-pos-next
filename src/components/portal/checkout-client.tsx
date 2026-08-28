@@ -418,7 +418,7 @@ export function CheckoutClient() {
                   )}
 
                   {/* Mapa / ubicación */}
-                  <GpsPicker value={gps} onChange={handleGpsChange} />
+                  <GpsPicker value={gps} onChange={handleGpsChange} onPermissionError={() => setGeoPermissionOpen(true)} />
 
                   {/* Dirección manual */}
                   <InputGroupField

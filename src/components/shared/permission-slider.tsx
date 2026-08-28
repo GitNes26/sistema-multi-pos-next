@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-type PermissionType = "camera" | "geolocation" | "files" | "microphone" | "notifications"
+export type PermissionType = "camera" | "geolocation" | "files" | "microphone" | "notifications"
 
 interface PermissionSliderProps {
   type: PermissionType

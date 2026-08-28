@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ChevronRight, CreditCard, Heart, LogOut, Mail, MapPin, Phone, Sparkles, User, LayoutGrid } from "lucide-react";
+import { ChevronRight, CreditCard, Heart, LogOut, Mail, MapPin, Phone, Shield, Sparkles, User, LayoutGrid } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import { logout } from "@/lib/auth/logout";
 import type { PortalCustomer } from "@/lib/portal/server";
@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { AddressField } from "@/components/base/address-field";
 import { NavCustomizer } from "@/components/portal/nav-customizer";
+import { PortalPermissionsSection } from "@/components/portal/portal-permissions-section";
 import { TapScale } from "@/components/shared/tap-scale";
 import packageJson from "../../../package.json";
 
@@ -187,6 +188,18 @@ export function ProfileClient() {
           <h2 className="text-sm font-semibold">Personalizar navegación</h2>
         </div>
         <NavCustomizer />
+      </motion.section>
+
+      {/* Permisos */}
+      <motion.section variants={item} className="space-y-3 rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <Shield className="size-4 text-primary" />
+          <h2 className="text-sm font-semibold">Permisos de la aplicación</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Gestiona los permisos que usa la app para funcionalidades como ubicación, cámara y notificaciones.
+        </p>
+        <PortalPermissionsSection />
       </motion.section>
 
       {/* Logout */}

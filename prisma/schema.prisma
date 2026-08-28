@@ -998,9 +998,10 @@ model Promotion {
   organizationId       String
   name                 String
   description          String?
+  descriptionFinal     String?
   imageUrl             String?
   benefit              PromoBenefit
-scope              PromoScope   @default(order)
+  scope              PromoScope   @default(order)
   value                Decimal      @default(0) @db.Decimal(12, 2)
   buyQuantity          Int          @default(0)
   getQuantity          Int          @default(0)
@@ -1328,6 +1329,7 @@ model Publication {
   publishedAt    DateTime?
   startsAt       DateTime?
   endsAt         DateTime?
+  metadata       Json?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 

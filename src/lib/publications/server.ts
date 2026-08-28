@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import type { $Enums } from "@prisma/client";
+import { Prisma, type $Enums } from "@prisma/client";
 
 // FASE 18 — Publicaciones / newsfeed (CRUD).
 
@@ -26,6 +26,7 @@ export interface PublicationInput {
   publishedAt?: string | null;
   startsAt?: string | null;
   endsAt?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface PublicationRow {
@@ -51,6 +52,7 @@ function toRow(p: {
   publishedAt: Date | null;
   startsAt: Date | null;
   endsAt: Date | null;
+  metadata: unknown;
   createdAt: Date;
 }): PublicationRow {
   return {
@@ -80,19 +82,52 @@ export async function createPublication(
   input: PublicationInput
 ): Promise<PublicationRow> {
   if (!input.title?.trim()) throw new Error("El título es obligatorio");
-  const created = await prisma.publication.create({
-    data: {
-      organizationId,
-      title: input.title.trim(),
-      content: input.content ?? null,
-      imageUrl: input.imageUrl ?? null,
-      type: input.type as $Enums.PublicationType,
-      isActive: input.isActive ?? true,
-      publishedAt: input.publishedAt ? new Date(input.publishedAt) : new Date(),
-      startsAt: input.startsAt ? new Date(input.startsAt) : null,
-      endsAt: input.endsAt ? new Date(input.endsAt) : null,
-    },
+
+  const TYPE_NOTIFICATION_KIND: Record<string, string> = {
+    product_new: "publication",
+    promotion: "promotion",
+    notice: "publication",
+  };
+
+  const created = await prisma.$transaction(async (tx) => {
+    const pub = await tx.publication.create({
+      data: {
+        organizationId,
+        title: input.title.trim(),
+        content: input.content ?? null,
+        imageUrl: input.imageUrl ?? null,
+        type: input.type as $Enums.PublicationType,
+        isActive: input.isActive ?? true,
+        publishedAt: input.publishedAt ? new Date(input.publishedAt) : new Date(),
+        startsAt: input.startsAt ? new Date(input.startsAt) : null,
+        endsAt: input.endsAt ? new Date(input.endsAt) : null,
+        metadata: (input.metadata as Prisma.InputJsonValue) ?? undefined,
+      },
+    });
+
+    // Crear notificación para todos los clientes de la organización
+    const customers = await tx.customer.findMany({
+      where: { organizationId },
+      select: { userId: true },
+    });
+
+    if (customers.length > 0) {
+      await tx.notification.createMany({
+        data: customers.map((c) => ({
+          organizationId,
+          userId: c.userId,
+          kind: TYPE_NOTIFICATION_KIND[input.type as string] ?? "publication",
+          title: input.title.trim(),
+          body: input.content?.substring(0, 200) ?? null,
+          severity: "info",
+          metadata: { publicationId: pub.id, type: input.type },
+        })),
+      });
+    }
+
+    return pub;
   });
+
   return toRow(created);
 }
 

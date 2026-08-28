@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Bell, ShoppingCart, Package, Truck, AlertTriangle, CheckCircle2, CheckCheck } from "lucide-react"
@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { playSound } from "@/lib/sounds"
 
 interface PortalNotification {
   id: string
@@ -53,20 +54,39 @@ function getPortalLink(n: PortalNotification): string | null {
 export function NotificationsClient() {
   const router = useRouter()
   const [notifications, setNotifications] = useState<PortalNotification[] | null>(null)
+  const prevIdsRef = useRef<Set<string>>(new Set())
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (playNotifSound = false) => {
     try {
       const res = await fetch("/api/portal/notifications")
       if (!res.ok) return
       const data = await res.json()
-      setNotifications(data.notifications ?? [])
+      const items: PortalNotification[] = data.notifications ?? []
+
+      if (playNotifSound && prevIdsRef.current.size > 0) {
+        const newItems = items.filter((n) => !prevIdsRef.current.has(n.id) && !n.readAt)
+        if (newItems.length > 0) {
+          playSound("notification")
+        }
+      }
+
+      prevIdsRef.current = new Set(items.map((n) => n.id))
+      setNotifications(items)
     } catch {
       // silent
     }
   }, [])
 
   useEffect(() => {
-    load()
+    load(false)
+  }, [load])
+
+  // Polling cada 30 segundos con sonido
+  useEffect(() => {
+    const interval = setInterval(() => {
+      load(true)
+    }, 30_000)
+    return () => clearInterval(interval)
   }, [load])
 
   const markAsRead = async (id: string) => {

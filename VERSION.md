@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.12.2.0] — 2026-08-28
+- **Tipo:** `fix` (Patch)
+- fix: se corrgiieron detalles de la edicion del producto para que actualice productos cartesianos y los usuarios se les asigne todos los roles creados segun su empresa y los globales
+
 ### [0.12.1.0] — 2026-08-27
 - **Tipo:** `fix` (Patch)
 - fix: se corrgiieron detalles de los formularios para que saliera el icono correcto, y botones para la parte de Devoluciones y cambios

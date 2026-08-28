@@ -757,6 +757,14 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         full: true,
       },
       {
+        key: "descriptionFinal",
+        label: "Descripción final (auto-generada)",
+        type: "textarea",
+        icon: "FileText",
+        full: true,
+        help: "Se genera automáticamente al guardar. Describe el resultado de la promoción para clientes.",
+      },
+      {
         key: "benefit",
         label: "Tipo de beneficio",
         type: "select",
