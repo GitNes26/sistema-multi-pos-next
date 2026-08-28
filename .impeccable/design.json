@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-28T18:00:00Z",
+  "title": "Design System: Multi-POS",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Near-Black",
+        "canonical": "oklch(0.205 0 0)",
+        "tonalRamp": ["oklch(0.15 0 0)", "oklch(0.205 0 0)", "oklch(0.30 0 0)", "oklch(0.40 0 0)", "oklch(0.50 0 0)", "oklch(0.60 0 0)", "oklch(0.70 0 0)", "oklch(0.85 0 0)"]
+      },
+      "secondary": {
+        "role": "neutral",
+        "displayName": "Soft Gray",
+        "canonical": "oklch(0.97 0 0)",
+        "tonalRamp": ["oklch(0.90 0 0)", "oklch(0.93 0 0)", "oklch(0.95 0 0)", "oklch(0.97 0 0)", "oklch(0.98 0 0)", "oklch(0.99 0 0)", "oklch(0.995 0 0)", "oklch(1 0 0)"]
+      },
+      "destructive": {
+        "role": "destructive",
+        "displayName": "Alert Red",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "tonalRamp": ["oklch(0.30 0.245 27.325)", "oklch(0.40 0.245 27.325)", "oklch(0.50 0.245 27.325)", "oklch(0.577 0.245 27.325)", "oklch(0.65 0.20 27.325)", "oklch(0.75 0.15 27.325)", "oklch(0.85 0.10 27.325)", "oklch(0.95 0.05 27.325)"]
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "Medium Gray",
+        "canonical": "oklch(0.556 0 0)",
+        "tonalRamp": ["oklch(0.20 0 0)", "oklch(0.30 0 0)", "oklch(0.40 0 0)", "oklch(0.50 0 0)", "oklch(0.556 0 0)", "oklch(0.65 0 0)", "oklch(0.75 0 0)", "oklch(0.85 0 0)"]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Light Gray",
+        "canonical": "oklch(0.922 0 0)",
+        "tonalRamp": ["oklch(0.85 0 0)", "oklch(0.88 0 0)", "oklch(0.90 0 0)", "oklch(0.922 0 0)", "oklch(0.94 0 0)", "oklch(0.96 0 0)", "oklch(0.98 0 0)", "oklch(0.99 0 0)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headlines on landing page and dashboard summary. Maximum once per viewport." },
+      "heading": { "displayName": "Heading", "purpose": "Section titles, dialog headers, card titles. The primary structural type level." },
+      "body": { "displayName": "Body", "purpose": "Default text for paragraphs, descriptions, form labels, and list items." },
+      "label": { "displayName": "Label", "purpose": "Button text, input placeholders, badges, chips, and metadata." },
+      "mono": { "displayName": "Mono", "purpose": "Receipt/ticket rendering, code snippets, and technical identifiers." }
+    },
+    "shadows": [
+      { "name": "subtle-lift", "value": "0 4px 24px rgba(0,0,0,0.12)", "purpose": "Popovers, dialogs, and SweetAlert2 popup elevation." },
+      { "name": "ticket-flash", "value": "0 0 0 2px var(--ring)", "purpose": "Temporary highlight on modified ticket lines (0.9s ease-out animation)." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default easing for state transitions (hover, focus, expand)." },
+      { "name": "ease-out-entrance", "value": "cubic-bezier(0, 0, 0.2, 1)", "purpose": "Sidebar and navigation item entrance animations." },
+      { "name": "ease-spring", "value": "cubic-bezier(0.34, 1.56, 0.64, 1)", "purpose": "Button hover scale micro-interaction." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "0px" },
+      { "name": "tablet", "value": "768px" },
+      { "name": "desktop", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary action button with near-black background and white text. Scale micro-interaction on hover.",
+      "html": "<button class=\"ds-btn-primary\">Guardar cambios</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 44px; padding: 0 12px; background: oklch(0.205 0 0); color: oklch(0.985 0 0); border: none; border-radius: 14px; font-family: Montserrat, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease-in-out; outline: none; } .ds-btn-primary:hover { background: color-mix(in oklch, oklch(0.205 0 0) 80%, black); transform: scale(1.05); } .ds-btn-primary:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, oklch(0.708 0 0) 50%, transparent); } .ds-btn-primary:active { transform: translateY(1px); } @media (min-width: 768px) { .ds-btn-primary { height: 32px; border-radius: 10px; padding: 0 10px; } }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action button with border and transparent background. Fills to muted on hover.",
+      "html": "<button class=\"ds-btn-outline\">Cancelar</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 44px; padding: 0 12px; background: transparent; color: oklch(0.145 0 0); border: 1px solid oklch(0.922 0 0); border-radius: 14px; font-family: Montserrat, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease; } .ds-btn-outline:hover { background: oklch(0.97 0 0); } .ds-btn-outline:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, oklch(0.708 0 0) 50%, transparent); } @media (min-width: 768px) { .ds-btn-outline { height: 32px; border-radius: 10px; padding: 0 10px; } }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Minimal button with no background or border. Used in toolbars and navigation.",
+      "html": "<button class=\"ds-btn-ghost\">Eliminar</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 44px; padding: 0 12px; background: transparent; color: oklch(0.145 0 0); border: none; border-radius: 14px; font-family: Montserrat, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 0.15s ease; } .ds-btn-ghost:hover { background: oklch(0.97 0 0); } @media (min-width: 768px) { .ds-btn-ghost { height: 32px; border-radius: 10px; } }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Danger action button with translucent red background. Never solid red.",
+      "html": "<button class=\"ds-btn-destructive\">Eliminar producto</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 44px; padding: 0 12px; background: color-mix(in oklch, oklch(0.577 0.245 27.325) 10%, transparent); color: oklch(0.577 0.245 27.325); border: none; border-radius: 14px; font-family: Montserrat, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 0.15s ease; } .ds-btn-destructive:hover { background: color-mix(in oklch, oklch(0.577 0.245 27.325) 20%, transparent); } .ds-btn-destructive:focus-visible { box-shadow: 0 0 0 3px color-mix(in oklch, oklch(0.577 0.245 27.325) 20%, transparent); } @media (min-width: 768px) { .ds-btn-destructive { height: 32px; border-radius: 10px; } }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Standard text input with border stroke, transparent background, and focus ring.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Buscar producto...\" />",
+      "css": ".ds-input { display: block; width: 100%; height: 44px; padding: 8px 12px; background: transparent; color: oklch(0.145 0 0); border: 1px solid oklch(0.922 0 0); border-radius: 14px; font-family: Montserrat, sans-serif; font-size: 1rem; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; } .ds-input::placeholder { color: oklch(0.556 0 0); } .ds-input:focus { border-color: oklch(0.708 0 0); box-shadow: 0 0 0 3px color-mix(in oklch, oklch(0.708 0 0) 50%, transparent); } .ds-input:disabled { opacity: 0.5; cursor: not-allowed; background: color-mix(in oklch, oklch(0.922 0 0) 50%, transparent); } @media (min-width: 768px) { .ds-input { height: 32px; border-radius: 10px; padding: 4px 10px; font-size: 0.875rem; } }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Content container with subtle ring border, configurable spacing, and optional footer.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\"><span class=\"ds-card-title\">Nombre del producto</span></div><div class=\"ds-card-content\">Contenido aquí</div><div class=\"ds-card-footer\">Acciones</div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 16px; overflow: hidden; border-radius: 14px; background: oklch(1 0 0); padding: 16px; color: oklch(0.145 0 0); box-shadow: inset 0 0 0 1px color-mix(in oklch, oklch(0.145 0 0) 10%, transparent); } .ds-card-header { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 4px; } .ds-card-title { font-family: Poppins, sans-serif; font-size: 1rem; font-weight: 500; line-height: 1.3; } .ds-card-content { padding: 0 16px; } .ds-card-footer { display: flex; align-items: center; border-top: 1px solid oklch(0.922 0 0); background: color-mix(in oklch, oklch(0.97 0 0) 50%, transparent); padding: 16px; border-radius: 0 0 14px 14px; }"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "sidebar-nav",
+      "description": "Desktop sidebar with grouped sections, collapsible accordions, and active state highlighting.",
+      "html": "<nav class=\"ds-sidebar\"><div class=\"ds-sidebar-logo\">Multi-POS</div><div class=\"ds-sidebar-section\"><span class=\"ds-sidebar-label\">Ventas</span><a class=\"ds-sidebar-item active\" href=\"/pos\">Punto de Venta</a><a class=\"ds-sidebar-item\" href=\"/orders\">Pedidos</a></div></nav>",
+      "css": ".ds-sidebar { display: flex; flex-direction: column; width: 264px; height: 100vh; background: oklch(0.985 0 0); padding: 16px 12px; overflow-y: auto; border-right: 1px solid oklch(0.922 0 0); } .ds-sidebar-logo { font-family: Poppins, sans-serif; font-size: 1.25rem; font-weight: 600; padding: 8px 12px 16px; } .ds-sidebar-label { font-family: Montserrat, sans-serif; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: oklch(0.556 0 0); padding: 12px 12px 4px; display: block; } .ds-sidebar-item { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 10px; font-family: Montserrat, sans-serif; font-size: 0.875rem; font-weight: 500; color: oklch(0.145 0 0); text-decoration: none; transition: background 0.15s ease; } .ds-sidebar-item:hover { background: oklch(0.97 0 0); } .ds-sidebar-item.active { background: oklch(0.97 0 0); color: oklch(0.205 0 0); font-weight: 600; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Adaptive Operator",
+    "overview": "Multi-POS is a working tool, not a showcase. Its visual language prioritizes speed, scanability, and operational clarity over decorative expression. The system feels precise and confident — every element earns its space through function, not flourish. Density is configurable per-organization, and the palette shifts with hue-based theming, but the structural logic remains constant: flat surfaces, clear hierarchy, and zero visual noise between the operator and their task.",
+    "keyCharacteristics": [
+      "Flat-by-default surfaces with tonal layering for depth",
+      "Dynamic hue-based theming (primaryHue + accentHue configurable per tenant)",
+      "Adaptive navigation: sidebar → bottom tab bar → navigation drawer",
+      "Density-configurable spacing (compact / comfortable / spacious)",
+      "Touch-first POS with large targets, virtual keyboard, and barcode scanner",
+      "Monochrome base palette with destructive red as the sole accent color"
+    ],
+    "rules": [
+      { "name": "The Monochrome Foundation Rule", "body": "The default palette is achromatic. Color enters only through dynamic hue theming or the destructive red.", "section": "colors" },
+      { "name": "The Destructive-Only Accent Rule", "body": "The only chromatic color in the base system is destructive red. It appears on ≤5% of any given screen.", "section": "colors" },
+      { "name": "The Configurable Scale Rule", "body": "The base font size is 16px * fontScale. Never hardcode font sizes in px that bypass this system.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Shadows appear only for overlays (dialogs, popovers) or state responses.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use the density system (compact/comfortable/spacious) rather than hardcoding gaps.",
+      "Do keep the destructive color reserved for errors and dangerous actions.",
+      "Do use ring-1 ring-foreground/10 for card borders instead of box-shadow.",
+      "Do scale button and input sizes for mobile using the responsive pattern.",
+      "Do use Poppins for headings and Montserrat for body.",
+      "Do respect the configurable radius system using var(--radius) derivatives."
+    ],
+    "donts": [
+      "Don't add drop shadows to cards or surfaces.",
+      "Don't use color for decorative purposes.",
+      "Don't hardcode font sizes — always use the fontScale-aware rem system.",
+      "Don't place more than 5 items in the mobile bottom tab bar.",
+      "Don't use rounded-full on buttons or inputs.",
+      "Don't mix Poppins and Montserrat in the same text block."
+    ]
+  }
+}

@@ -546,6 +546,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
               initial={editing}
               onSubmit={handleSubmit}
               onSavingChange={setFormSaving}
+              afterFields={config.afterFields}
             />
           ) : null}
           {loading && <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />}

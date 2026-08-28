@@ -164,4 +164,32 @@ export const portalApi = {
     ),
   expiringCards: () =>
     json<{ ok: boolean; cards: ExpiringCardView[] }>("/api/portal/cards-expiring"),
+
+  // Promociones activas (para preview de descuentos en checkout)
+  promotions: () =>
+    json<{ ok: boolean; promotions: PortalPromotionPreview[] }>("/api/portal/promotions"),
 };
+
+export interface PortalPromotionPreview {
+  id: string;
+  name: string;
+  benefit: string;
+  scope: string;
+  value: number;
+  buyQuantity: number;
+  getQuantity: number;
+  minAmount: number;
+  minQuantity: number;
+  couponCode: string | null;
+  requiresCustomer: boolean;
+  priority: number;
+  exclusive: boolean;
+  maxUses: number | null;
+  usesCount: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  weekdays: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  targets: { kind: string; targetId: string }[];
+}

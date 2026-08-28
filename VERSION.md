@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.12.5.0] — 2026-08-28
+- **Tipo:** `fix` (Patch)
+- fix: se resolvieron que no aplica promociones en el POS y en el portal, politicas de envio
+
 ### [0.12.4.0] — 2026-08-28
 - **Tipo:** `fix` (Patch)
 - fix:se agrego pie y logo al ticket y correxion de politicas, ademas guardamos para ver una implementacion de impeccable

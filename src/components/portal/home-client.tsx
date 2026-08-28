@@ -10,6 +10,7 @@ import {
   Package,
   ShoppingBag,
   ArrowRight,
+  Calendar,
 } from "lucide-react"
 import { portalApi } from "@/lib/portal/client"
 import type { PortalHomeData } from "@/lib/portal/server"
@@ -25,6 +26,8 @@ import { Card } from "@/components/ui/card"
 import { TapScale } from "@/components/shared/tap-scale"
 import { PermissionSlider } from "@/components/shared/permission-slider"
 import { usePortalPermissions, type PortalPermissionType } from "@/hooks/use-portal-permissions"
+import { cn } from "@/lib/utils"
+import { DetailSheet, type DetailItem } from "@/components/portal/detail-sheet"
 
 const PUB_TYPE_LABELS: Record<string, string> = {
   product_new: "Nuevo",
@@ -53,6 +56,7 @@ export function HomeClient() {
   const { needsPermissions, pendingTypes, markTypeRequested } = usePortalPermissions()
   const [permQueue, setPermQueue] = useState<PortalPermissionType[]>([])
   const [activePerm, setActivePerm] = useState<PortalPermissionType | null>(null)
+  const [detailItem, setDetailItem] = useState<DetailItem | null>(null)
 
   useEffect(() => {
     let active = true
@@ -101,7 +105,7 @@ export function HomeClient() {
   }
 
   const activeOrders = data.activeOrders.filter((o) => o.status !== "cancelled")
-  const banners = data.publications.filter((p) => p.imageUrl)
+  const banners = data.publications
 
   return (
     <motion.div
@@ -181,31 +185,60 @@ export function HomeClient() {
         </motion.section>
       )}
 
-      {/* Banners promocionales */}
+      {/* Banners / Publicaciones promocionales */}
       {banners.length > 0 && (
         <motion.section variants={item}>
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
             {banners.map((pub) => (
               <div
                 key={pub.id}
-                className="relative h-40 w-72 shrink-0 overflow-hidden rounded-2xl"
+                className="relative shrink-0 overflow-hidden rounded-2xl"
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
+                onKeyDown={(e) => e.key === "Enter" && setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={pub.imageUrl ?? ""}
-                  alt={pub.title}
-                  className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-3.5">
-                  <Badge
-                    className={PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}
-                  >
-                    {PUB_TYPE_LABELS[pub.type] ?? pub.type}
-                  </Badge>
-                  <p className="mt-1.5 line-clamp-2 text-sm font-bold text-white">
-                    {pub.title}
-                  </p>
-                </div>
+                {pub.imageUrl ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={pub.imageUrl}
+                      alt={pub.title}
+                      className="h-40 w-72 object-cover"
+                    />
+                    <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-3.5">
+                      <Badge
+                        className={PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}
+                      >
+                        {PUB_TYPE_LABELS[pub.type] ?? pub.type}
+                      </Badge>
+                      <p className="mt-1.5 line-clamp-2 text-sm font-bold text-white">
+                        {pub.title}
+                      </p>
+                      {pub.content && (
+                        <p className="mt-0.5 line-clamp-1 text-xs text-white/80">
+                          {pub.content}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex h-24 w-72 flex-col justify-center border border-border/60 bg-card p-4 shadow-sm">
+                    <Badge
+                      className={cn("w-fit", PUB_TYPE_COLORS[pub.type] ?? "bg-secondary")}
+                    >
+                      {PUB_TYPE_LABELS[pub.type] ?? pub.type}
+                    </Badge>
+                    <p className="mt-1.5 line-clamp-1 text-sm font-bold">
+                      {pub.title}
+                    </p>
+                    {pub.content && (
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                        {pub.content}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -223,6 +256,10 @@ export function HomeClient() {
               <Card
                 key={p.id}
                 className="w-56 shrink-0 overflow-hidden rounded-2xl border-border/50"
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailItem({ kind: "promotion", id: p.id, name: p.name, description: p.description, descriptionFinal: p.descriptionFinal, imageUrl: p.imageUrl, benefit: p.benefit, value: p.value, startsAt: p.startsAt, endsAt: p.endsAt })}
+                onKeyDown={(e) => e.key === "Enter" && setDetailItem({ kind: "promotion", id: p.id, name: p.name, description: p.description, descriptionFinal: p.descriptionFinal, imageUrl: p.imageUrl, benefit: p.benefit, value: p.value, startsAt: p.startsAt, endsAt: p.endsAt })}
               >
                 {p.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -236,10 +273,22 @@ export function HomeClient() {
                   <p className="text-sm font-semibold leading-tight">
                     {p.name}
                   </p>
-                  {p.description && (
+                  {(p.description || p.descriptionFinal) && (
                     <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                      {p.description}
+                      {p.descriptionFinal ?? p.description}
                     </p>
+                  )}
+                  {(p.startsAt || p.endsAt) && (
+                    <div className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground/70">
+                      <Calendar className="size-3" />
+                      <span>
+                        {p.startsAt && p.endsAt
+                          ? `${new Date(p.startsAt).toLocaleDateString("es-MX", { month: "short", day: "numeric" })} — ${new Date(p.endsAt).toLocaleDateString("es-MX", { month: "short", day: "numeric" })}`
+                          : p.startsAt
+                            ? `Desde ${new Date(p.startsAt).toLocaleDateString("es-MX", { month: "short", day: "numeric" })}`
+                            : `Hasta ${new Date(p.endsAt!).toLocaleDateString("es-MX", { month: "short", day: "numeric" })}`}
+                      </span>
+                    </div>
                   )}
                 </div>
               </Card>
@@ -300,6 +349,10 @@ export function HomeClient() {
               <div
                 key={pub.id}
                 className="flex items-start gap-3 rounded-xl border border-border/60 bg-card p-3.5 shadow-sm"
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
+                onKeyDown={(e) => e.key === "Enter" && setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
               >
                 {pub.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -331,6 +384,13 @@ export function HomeClient() {
           </div>
         </motion.section>
       )}
+
+      {/* Detail sheet */}
+      <DetailSheet
+        open={!!detailItem}
+        onOpenChange={(o) => !o && setDetailItem(null)}
+        item={detailItem}
+      />
 
       {/* Post-login permission sliders */}
       {activePerm && (

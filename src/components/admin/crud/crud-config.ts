@@ -1,3 +1,6 @@
+import type React from "react";
+import { PromotionDescriptionPreview } from "@/components/admin/promotions/description-preview";
+
 // FASE 7 — Metadatos de UI para el CRUD genérico del admin (solo lado cliente).
 // No importa nada del servidor para poder usarse en componentes "use client".
 
@@ -102,6 +105,9 @@ export interface CrudUiConfig {
   searchPlaceholder?: string
   columns: CrudColumn[]
   fields: CrudField[]
+  /** Componente renderizado después de los campos del formulario, recibe los valores actuales. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  afterFields?: (props: { values: Record<string, any> }) => React.JSX.Element | null
 }
 
 const UNIT_TYPES: SelectOption[] = [
@@ -756,14 +762,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         icon: "FileText",
         full: true,
       },
-      {
-        key: "descriptionFinal",
-        label: "Descripción final (auto-generada)",
-        type: "textarea",
-        icon: "FileText",
-        full: true,
-        help: "Se genera automáticamente al guardar. Describe el resultado de la promoción para clientes.",
-      },
+      // descriptionFinal se genera automáticamente y se muestra como preview (afterFields).
       {
         key: "benefit",
         label: "Tipo de beneficio",
@@ -899,6 +898,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       { key: "imageUrl", label: "Imagen", type: "image" },
       { key: "isActive", label: "Activa", type: "boolean" },
     ],
+    afterFields: PromotionDescriptionPreview,
   },
 }
 

@@ -3,6 +3,7 @@ import type { $Enums, Prisma } from "@prisma/client";
 import { notifyOrderEvent } from "@/lib/notifications/events";
 import { round2, round3 } from "@/lib/pos/money";
 import { parseSchedule, formatSchedule } from "@/lib/schedule";
+import { evaluatePortalPromotions } from "./promo-engine";
 
 // FASE 13 — Servidor del portal de clientes: catálogo, pedidos, lealtad,
 // favoritos, listas de compra, perfil y métodos de pago.
@@ -261,9 +262,11 @@ export interface PortalHomeData {
     id: string;
     name: string;
     description: string | null;
+    descriptionFinal: string | null;
     imageUrl: string | null;
     benefit: string;
     value: number;
+    startsAt: string | null;
     endsAt: string | null;
   }[];
   activeOrders: PortalOrderBanner[];
@@ -307,9 +310,11 @@ export async function getPortalHome(
         id: true,
         name: true,
         description: true,
+        descriptionFinal: true,
         imageUrl: true,
         benefit: true,
         value: true,
+        startsAt: true,
         endsAt: true,
       },
     }),
@@ -354,9 +359,11 @@ export async function getPortalHome(
       id: p.id,
       name: p.name,
       description: p.description,
+      descriptionFinal: p.descriptionFinal,
       imageUrl: p.imageUrl,
       benefit: p.benefit,
       value: toNum(p.value),
+      startsAt: p.startsAt?.toISOString() ?? null,
       endsAt: p.endsAt?.toISOString() ?? null,
     })),
     activeOrders: activeOrders.map((o) => ({
@@ -441,6 +448,7 @@ export interface PortalOrderInput {
     unitId: string | null;
     unitPrice: number;
     lineTotal: number;
+    categoryId?: string | null;
     bulkQuantityDisplay?: string | null;
     comment?: string | null;
   }[];
@@ -644,6 +652,47 @@ export async function createPortalOrder(
     throw new PortalError("No tienes suficientes puntos");
   }
 
+  // ── Evaluar promociones activas ──────────────────────────────────────────
+  const activePromos = await prisma.promotion.findMany({
+    where: { organizationId, isActive: true },
+    include: { targets: { select: { kind: true, targetId: true } } },
+  });
+  const promoResult = evaluatePortalPromotions(
+    activePromos.map((p) => ({
+      id: p.id,
+      name: p.name,
+      benefit: p.benefit,
+      scope: p.scope,
+      value: Number(p.value),
+      buyQuantity: p.buyQuantity,
+      getQuantity: p.getQuantity,
+      minAmount: Number(p.minAmount),
+      minQuantity: Number(p.minQuantity),
+      couponCode: p.couponCode,
+      requiresCustomer: p.requiresCustomer,
+      priority: p.priority,
+      exclusive: p.exclusive,
+      maxUses: p.maxUses,
+      usesCount: p.usesCount,
+      startsAt: p.startsAt?.toISOString() ?? null,
+      endsAt: p.endsAt?.toISOString() ?? null,
+      weekdays: p.weekdays,
+      startTime: p.startTime,
+      endTime: p.endTime,
+      targets: p.targets.map((t) => ({ kind: t.kind, targetId: t.targetId })),
+    })),
+    input.items,
+  );
+
+  // Descuento total: manual + promoción
+  const subtotal = round2(input.subtotal);
+  const manualDiscount = round2(input.discount);
+  const promoDiscount = round2(promoResult.discount);
+  const totalDiscount = round2(Math.min(subtotal, manualDiscount + promoDiscount));
+  // El total del cliente ya incluye tax + envío - puntos;
+  // restamos el descuento adicional de promoción
+  const adjustedTotal = round2(input.total - promoDiscount);
+
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
       data: {
@@ -653,9 +702,9 @@ export async function createPortalOrder(
         status: "pending",
         deliveryMethod: input.deliveryMethod,
         subtotal: round2(input.subtotal),
-        discount: round2(input.discount),
+        discount: round2(totalDiscount),
         deliveryFee: round2(input.deliveryFee ?? 0),
-        total: round2(input.total),
+        total: adjustedTotal,
         pointsRedeemed,
         pointsValue,
         notes: input.notes ?? null,

@@ -23,6 +23,8 @@ interface CrudFormProps {
   onSubmit: (values: Record<string, unknown>) => Promise<void>
   onSavingChange?: (selling: boolean) => void
   formId?: string
+  /** Componente renderizado después de los campos, recibe los valores actuales del formulario. */
+  afterFields?: React.ComponentType<{ values: Record<string, unknown> }>
 }
 
 function defaultValue(
@@ -178,6 +180,7 @@ export function CrudForm({
   onSubmit,
   onSavingChange,
   formId = "crud-form",
+  afterFields: AfterFields,
 }: CrudFormProps) {
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const v: Record<string, unknown> = {}
@@ -482,6 +485,11 @@ export function CrudForm({
           </FieldWrapper>
         )
       })}
+      {AfterFields && (
+        <div className="sm:col-span-2">
+          <AfterFields values={values} />
+        </div>
+      )}
     </form>
   )
 }

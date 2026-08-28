@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Banknote, CreditCard, Globe, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, CircleCheck, Home, Plus, Trash2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePortalStore, cartSubtotal, cartTax } from "@/stores/portal-store";
-import { portalApi, type LoyaltyData } from "@/lib/portal/client";
+import { portalApi, type LoyaltyData, type PortalPromotionPreview } from "@/lib/portal/client";
+import { evaluatePortalPromotions } from "@/lib/portal/promo-engine";
 import { paymentsApi } from "@/lib/payments/client";
 import type { PortalLocation, PaymentMethodView, CustomerAddressView } from "@/lib/portal/server";
 import type { DeliveryPolicyData } from "@/lib/orders/server";
@@ -58,9 +59,27 @@ export function CheckoutClient() {
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
   const [geoPermissionOpen, setGeoPermissionOpen] = useState(false);
+  const [promotions, setPromotions] = useState<PortalPromotionPreview[]>([]);
 
   const subtotal = cartSubtotal(items);
   const tax = cartTax(items);
+
+  // Evaluar promociones en tiempo real sobre los items del carrito
+  const promoPreview = useMemo(() => {
+    if (!promotions.length) return { discount: 0, label: "" };
+    return evaluatePortalPromotions(promotions, items.map((i) => ({
+      productId: i.productId,
+      variantId: i.variantId,
+      productType: i.kind,
+      productName: i.name,
+      variantName: i.variantName,
+      quantity: i.qty,
+      unitId: i.unitId,
+      unitPrice: i.unitPrice,
+      lineTotal: i.unitPrice * i.qty,
+      categoryId: i.categoryId,
+    })));
+  }, [promotions, items]);
 
   const deliveryFee = useMemo(() => {
     if (!policy) return 0;
@@ -72,7 +91,7 @@ export function CheckoutClient() {
     return policy.deliveryFee;
   }, [policy, deliveryMethod]);
 
-  const total = subtotal + tax + deliveryFee;
+  const total = subtotal + tax + deliveryFee - promoPreview.discount;
 
   const pointsValue = loyalty ? Math.min(pointsToRedeem * loyalty.pointValue, total) : 0;
   const payableTotal = Math.max(0, total - pointsValue);
@@ -102,8 +121,8 @@ export function CheckoutClient() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([portalApi.locations(), portalApi.paymentMethods(), portalApi.deliveryPolicy(), portalApi.addresses(), portalApi.loyalty()])
-      .then(([l, m, p, a, ly]) => {
+    Promise.all([portalApi.locations(), portalApi.paymentMethods(), portalApi.deliveryPolicy(), portalApi.addresses(), portalApi.loyalty(), portalApi.promotions()])
+      .then(([l, m, p, a, ly, pr]) => {
         if (!active) return;
         setLocations(l.locations);
         setMethods(m.methods);
@@ -111,6 +130,7 @@ export function CheckoutClient() {
         setOnlinePaymentEnabled(p.onlinePaymentEnabled);
         setAddresses(a.addresses);
         setLoyalty(ly);
+        setPromotions(pr.promotions);
         const pickupLoc = l.locations.find((x) => x.allowsPickup);
         setLocationId(pickupLoc?.id ?? "");
         if (l.locations.every((x) => !x.allowsPickup)) setDeliveryMethod("delivery");
@@ -219,6 +239,10 @@ export function CheckoutClient() {
       swalError(radiusError);
       return;
     }
+    if (scheduleInfo && !scheduleInfo.open) {
+      swalError(scheduleInfo.message);
+      return;
+    }
 
     swalLoading("Creando pedido…");
     setSubmitting(true);
@@ -234,6 +258,7 @@ export function CheckoutClient() {
           unitId: i.unitId,
           unitPrice: i.unitPrice,
           lineTotal: i.unitPrice * i.qty,
+          categoryId: i.categoryId,
           bulkQuantityDisplay: i.bulkQuantityDisplay ?? null,
           comment: i.comment ?? null,
         })),
@@ -482,7 +507,9 @@ export function CheckoutClient() {
               >
                 <RadioGroupItem value="cash" id="pay-cash" />
                 <Banknote className="size-5 text-muted-foreground" />
-                <span className="flex-1 text-sm font-medium">Pagar en sucursal</span>
+                <span className="flex-1 text-sm font-medium">
+                  {deliveryMethod === "delivery" ? "Pagar al repartidor" : "Pagar en sucursal"}
+                </span>
               </Label>
 
               <Label
@@ -578,6 +605,14 @@ export function CheckoutClient() {
                 <span>IVA</span>
                 <span>{money(tax)}</span>
               </div>
+              {promoPreview.discount > 0 && (
+                <div className="flex justify-between text-emerald-600">
+                  <span className="flex items-center gap-1">
+                    <Sparkles className="size-3.5" /> {promoPreview.label || "Promoción"}
+                  </span>
+                  <span>-{money(promoPreview.discount)}</span>
+                </div>
+              )}
               {deliveryFee > 0 && (
                 <div className="flex justify-between text-muted-foreground">
                   <span className="flex items-center gap-1">
@@ -629,7 +664,7 @@ export function CheckoutClient() {
             <Button
               className="h-14 w-full rounded-2xl text-base font-bold shadow-lg"
               onClick={submit}
-              disabled={submitting || !!minAmountError || !!radiusError}
+              disabled={submitting || !!minAmountError || !!radiusError || (scheduleInfo != null && !scheduleInfo.open)}
             >
               <CircleCheck className="mr-2 size-5" />
               {submitting ? "Procesando…" : `Confirmar pedido · ${money(payableTotal)}`}

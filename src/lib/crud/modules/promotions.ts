@@ -154,66 +154,24 @@ const SCOPE_LABELS: Record<string, string> = {
   variant: "variante",
 };
 
-const WEEKDAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+import { generateDescriptionFinal as genDesc } from "@/lib/promotions/description";
 
+/** Wrapper server-side: adapta Record<string, unknown> al tipo compartido. */
 function generateDescriptionFinal(data: Record<string, unknown>): string {
-  const benefit = data.benefit as string;
-  const scope = (data.scope as string) ?? "order";
-  const value = Number(data.value ?? 0);
-  const buyQ = Number(data.buyQuantity ?? 0);
-  const getQ = Number(data.getQuantity ?? 0);
-  const minAmount = Number(data.minAmount ?? 0);
-  const minQty = Number(data.minQuantity ?? 0);
-  const weekdays = Array.isArray(data.weekdays) ? data.weekdays.map(Number) : [];
-  const startTime = (data.startTime as string) || null;
-  const endTime = (data.endTime as string) || null;
-  const startsAt = (data.startsAt as string) || null;
-  const endsAt = (data.endsAt as string) || null;
-
-  const parts: string[] = [];
-
-  // 1. What
-  switch (benefit) {
-    case "percent_off":
-      parts.push(`${value}% de descuento en ${SCOPE_LABELS[scope] ?? scope}`);
-      break;
-    case "amount_off":
-      parts.push(`$${value} de descuento en ${SCOPE_LABELS[scope] ?? scope}`);
-      break;
-    case "fixed_price":
-      parts.push(`Precio fijo de $${value} en ${SCOPE_LABELS[scope] ?? scope}`);
-      break;
-    case "buy_x_get_y":
-      parts.push(`Lleva ${buyQ} y llévate ${getQ} gratis en ${SCOPE_LABELS[scope] ?? scope}`);
-      break;
-    case "free_item":
-      parts.push(`Producto gratis en ${SCOPE_LABELS[scope] ?? scope}`);
-      break;
-    case "next_purchase_coupon":
-      parts.push(`Cupón de $${value || "10%"} para tu próxima compra`);
-      break;
-  }
-
-  // 2. When
-  const dateRange: string[] = [];
-  if (startsAt) dateRange.push(`desde ${new Date(startsAt).toLocaleDateString("es-MX")}`);
-  if (endsAt) dateRange.push(`hasta ${new Date(endsAt).toLocaleDateString("es-MX")}`);
-  if (dateRange.length) parts.push(dateRange.join(" "));
-
-  if (weekdays.length > 0) {
-    parts.push(`los ${weekdays.map((d) => WEEKDAY_NAMES[d] ?? d).join(", ")}`);
-  }
-
-  const timeRange: string[] = [];
-  if (startTime) timeRange.push(`de ${startTime}`);
-  if (endTime) timeRange.push(`hasta ${endTime}`);
-  if (timeRange.length) parts.push(timeRange.join(" "));
-
-  // 3. Conditions
-  if (minAmount > 0) parts.push(`compra mínima de $${minAmount}`);
-  if (minQty > 0) parts.push(`mínimo ${minQty} pieza(s)`);
-
-  return parts.join(". ") + ".";
+  return genDesc({
+    benefit: data.benefit as string,
+    scope: data.scope as string,
+    value: Number(data.value ?? 0),
+    buyQuantity: Number(data.buyQuantity ?? 0),
+    getQuantity: Number(data.getQuantity ?? 0),
+    minAmount: Number(data.minAmount ?? 0),
+    minQuantity: Number(data.minQuantity ?? 0),
+    weekdays: Array.isArray(data.weekdays) ? data.weekdays : null,
+    startTime: (data.startTime as string) || null,
+    endTime: (data.endTime as string) || null,
+    startsAt: (data.startsAt as string) || null,
+    endsAt: (data.endsAt as string) || null,
+  });
 }
 
 type RawTargets = {

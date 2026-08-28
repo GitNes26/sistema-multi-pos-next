@@ -17,6 +17,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN npx prisma generate
 RUN npm run build
 
@@ -28,6 +29,9 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
     SEED_DEMO=false
+
+# OpenSSL necesario para Prisma
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # node_modules completo (incluye la CLI de prisma + tsx) + build + assets
 COPY --from=build /app/node_modules ./node_modules

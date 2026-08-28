@@ -26,6 +26,7 @@ export interface PortalCartItem {
   unitId: string | null;
   qty: number;
   taxRate: number;
+  categoryId: string | null;
   trackInventory: boolean;
   stock: number;
   step: number;
@@ -119,6 +120,7 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
         unitId: null,
         qty: addQty,
         taxRate: product.taxRate,
+        categoryId: product.categoryId,
         trackInventory: track,
         stock: variant.stock,
         step: 1,
@@ -152,6 +154,7 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
         unitId: opts.unitId,
         qty: addQty,
         taxRate: product.taxRate,
+        categoryId: product.categoryId,
         trackInventory: track,
         stock: track ? product.stock : 0,
         step: product.bulk?.step ?? 0.01,

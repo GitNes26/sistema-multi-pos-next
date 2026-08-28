@@ -58,6 +58,7 @@ export function CrudCreateDialog({
           onCreated(res.row ?? {});
         }}
         onSavingChange={setSaving}
+        afterFields={config.afterFields}
       />
     </DialogComponent>
   );
