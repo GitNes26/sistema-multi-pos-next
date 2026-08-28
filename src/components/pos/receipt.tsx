@@ -11,9 +11,11 @@ interface ReceiptProps {
   registerName?: string
   company?: {
     name: string | null
+    logoUrl: string | null
     address: string | null
     city: string | null
     phone: string | null
+    ticketFooter: string | null
   }
   customer?: PosCustomer | null
 }
@@ -46,6 +48,13 @@ export function Receipt({
       style={{ width: RECEIPT_WIDTH }}
     >
       <div className="text-center">
+        {company?.logoUrl && (
+          <img
+            src={company.logoUrl}
+            alt="Logo"
+            className="mx-auto mb-1 h-10 w-auto object-contain"
+          />
+        )}
         <p className="text-sm font-bold uppercase leading-tight">
           {company?.name ?? "Empresa"} - {sale.locationName}
         </p>
@@ -156,6 +165,11 @@ export function Receipt({
       )}
 
       <div className="mt-3 text-center">
+        {company?.ticketFooter && (
+          <p className="mb-1 whitespace-pre-line text-[9px] text-black/70">
+            {company.ticketFooter}
+          </p>
+        )}
         <p>¡Gracias por su compra!</p>
       </div>
     </div>

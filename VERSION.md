@@ -30,6 +30,13 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.12.3.1] — 2026-08-28
+- **Tipo:** `fix` (Patch)
+- fix: agregar logo y pie de ticket al recibo y PDF, fixear tipo ticketFooter en store
+
+### [0.12.3.0] — 2026-08-28
+- **Tipo:** `fix` (Patch)
+- fix:se mejoror el diseño del dialog de devolución y que ligue correctamente las politicas de envio
 ### [0.12.2.1] — 2026-08-28
 - **Tipo:** `ux` (Revision)
 - ux: se mejoro los permisos y las promos con notificaciones

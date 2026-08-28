@@ -1,1 +1,8 @@
-node scripts/version-bump.mjs "$1"
+# Hook commit-msg: solo muestra la próxima versión (el amend lo hace gcv.mjs)
+# Si usas `git commit` directo, la versión se bump en el próximo commit.
+node -e "
+  const fs = require('fs');
+  const msg = fs.readFileSync(process.argv[1], 'utf8').trim().split('\n')[0];
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  console.log('[version] Próxima versión para este commit: ' + pkg.version + ' (usa npm run gcv para incluirla)');
+" "$1"

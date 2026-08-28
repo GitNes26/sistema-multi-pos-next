@@ -73,7 +73,7 @@ export function bulkDisplay(qty: number, abbrev: string, price: number): string 
 
 export const usePosStore = create<PosState>()((set, get) => ({
   location: { id: "", name: "", code: null, address: null, phone: null },
-  company: { name: null, logoUrl: null, address: null, city: null, phone: null },
+  company: { name: null, logoUrl: null, address: null, city: null, phone: null, ticketFooter: null },
   products: [],
   categories: [],
   customers: [],

@@ -30,7 +30,10 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
   });
   if (!sale) throw new Error("Venta no encontrada");
 
-  const company = await prisma.companyProfile.findUnique({ where: { organizationId } });
+  const company = await prisma.companyProfile.findUnique({
+    where: { organizationId },
+    select: { tradeName: true, legalName: true, logoUrl: true, address: true, city: true, phone: true, ticketFooter: true },
+  });
 
   const doc = new PDFDocument({
     size: [226.77, 840],
@@ -127,6 +130,10 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
   }
 
   doc.moveDown(1);
+  if (company?.ticketFooter) {
+    doc.font("Courier").fontSize(7).text(company.ticketFooter, { align: "center", width: 200 });
+    doc.moveDown(0.5);
+  }
   doc.font("Courier-Bold").fontSize(8).text("¡Gracias por su compra!", { align: "center", width: 200 });
 
   doc.end();
