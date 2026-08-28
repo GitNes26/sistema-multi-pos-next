@@ -8,6 +8,7 @@ import { money } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/logo";
+import packageJson from "../../../package.json";
 
 interface PosHeaderProps {
   onOpenCatalogs: () => void;
@@ -34,6 +35,7 @@ export function PosHeader({ onOpenCatalogs, onOpenCash }: PosHeaderProps) {
           {location.name} · {cashier.name || "Cajero"}
         </p>
       </div>
+      <span className="hidden rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline">v{packageJson.version}</span>
 
       <div className="ml-auto flex items-center gap-1.5">
         <button

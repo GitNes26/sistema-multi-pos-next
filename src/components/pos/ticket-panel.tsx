@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, RotateCcw, TicketPercent, UserRound, Wallet, Sparkles } from "lucide-react";
+import { CheckCircle2, RotateCcw, TicketPercent, UserRound, Wallet, Sparkles, Target } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePosStore, selectCustomer } from "@/stores/pos-store";
 import { usePosTotals } from "@/hooks/use-pos-totals";
@@ -28,6 +28,7 @@ export function TicketPanel({
 }: TicketPanelProps) {
   const items = usePosStore((s) => s.items);
   const customerId = usePosStore((s) => s.customerId);
+  const promotions = usePosStore((s) => s.promotions);
   const clearTicket = usePosStore((s) => s.clearTicket);
   const setQty = usePosStore((s) => s.setQty);
   const removeItem = usePosStore((s) => s.removeItem);
@@ -35,6 +36,15 @@ export function TicketPanel({
   const t = usePosTotals();
   const customer = selectCustomer(customerId);
   const loyalty = usePosStore((s) => s.loyalty);
+
+  // Promociones casi logradas (75-99%)
+  const nearPromos = promotions.filter((p) => {
+    if (p.minAmount <= 0 || p.couponCode) return false;
+    if (p.startsAt && new Date(p.startsAt) > new Date()) return false;
+    if (p.endsAt && new Date(p.endsAt) < new Date()) return false;
+    const pct = t.subtotal > 0 ? (t.subtotal / p.minAmount) * 100 : 0;
+    return pct >= 75 && pct < 100;
+  });
 
   const listRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -98,6 +108,42 @@ export function TicketPanel({
           Limpiar
         </Button>
       </div>
+
+      {/* Banner: promoción casi lograda */}
+      <AnimatePresence>
+        {nearPromos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="border-b border-amber-500/30 bg-amber-500/5 px-4 py-2.5"
+          >
+            {nearPromos.map((p) => {
+              const pct = Math.round((t.subtotal / p.minAmount) * 100);
+              const remaining = Math.max(0, p.minAmount - t.subtotal);
+              return (
+                <div key={p.id} className="flex items-center gap-2">
+                  <Target className="size-4 shrink-0 text-amber-500" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                      ¡Casi! Te faltan <span className="font-bold">{money(remaining)}</span> para "{p.name}"
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-amber-200/50 dark:bg-amber-800/30">
+                        <div
+                          className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-600">{pct}%</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Items list */}
       <div ref={listRef} className="scrollbar-none flex-1 space-y-2 overflow-y-auto p-3">

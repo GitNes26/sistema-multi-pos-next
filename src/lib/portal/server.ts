@@ -293,6 +293,8 @@ export async function getPortalHome(
 ): Promise<PortalHomeData> {
   const now = new Date();
 
+  console.log("[portal/home] org=" + organizationId + " customer=" + customerId);
+
   const [customer, promotions, activeOrders, newProducts, publications] = await Promise.all([
     prisma.customer.findUnique({
       where: { id: customerId },
@@ -345,13 +347,19 @@ export async function getPortalHome(
       where: {
         organizationId,
         isActive: true,
-        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
-        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+        OR: [
+          { startsAt: null, endsAt: null },
+          { startsAt: null, endsAt: { gte: now } },
+          { startsAt: { lte: now }, endsAt: null },
+          { startsAt: { lte: now }, endsAt: { gte: now } },
+        ],
       },
       orderBy: { publishedAt: "desc" },
       take: 10,
     }),
   ]);
+
+  console.log(`[portal/home] org=${organizationId} promos=${promotions.length} orders=${activeOrders.length} products=${newProducts.length} pubs=${publications.length}`);
 
   return {
     points: toNum(customer?.points ?? null),

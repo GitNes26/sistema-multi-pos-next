@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.13.0.0] — 2026-08-28
+- **Tipo:** `feat` (Minor)
+- feat: buscadores en catalagos POS, progressBar de progresos de promos, banner notificacion de promociones en ticket, version en header POS, fix query publications portal home
+
 ### [0.12.6.0] — 2026-08-28
 - **Tipo:** `fix` (Patch)
 - fix: se resolvio los PDF ya se visualizan, hay que mejorar el diseño del formato y crear más reportes
