@@ -53,17 +53,17 @@ export async function GET(req: NextRequest) {
 
       if (type === "cash") {
         const { rows } = await getCashReport(guard.organizationId, filters);
-        console.log(`[reports] cash: org=${guard.organizationId} rows=${rows.length}`);
+        console.log(`[reports/pdf] cash: org=${guard.organizationId} rows=${rows.length} sample=${JSON.stringify(rows[0] ?? null)}`);
         buffer = await buildCashReportPdf(org, rows);
         filename = `corte-caja-${date}.pdf`;
       } else if (type === "orders") {
         const { rows } = await getOrdersReport(guard.organizationId, filters);
-        console.log(`[reports] orders: org=${guard.organizationId} rows=${rows.length}`);
+        console.log(`[reports/pdf] orders: org=${guard.organizationId} rows=${rows.length} sample=${JSON.stringify(rows[0] ?? null)}`);
         buffer = await buildOrdersReportPdf(org, rows);
         filename = `pedidos-${date}.pdf`;
       } else if (type === "customers") {
         const { rows } = await getCustomersReport(guard.organizationId, filters);
-        console.log(`[reports] customers: org=${guard.organizationId} rows=${rows.length}`);
+        console.log(`[reports/pdf] customers: org=${guard.organizationId} rows=${rows.length} sample=${JSON.stringify(rows[0] ?? null)}`);
         buffer = await buildCustomersReportPdf(org, rows);
         filename = `clientes-${date}.pdf`;
       } else {
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
           _sum: { total: true },
         });
         const returnsTotal = Number(returnsAgg._sum.total ?? 0);
-        console.log(`[reports] sales: org=${guard.organizationId} rows=${rows.length} returns=${returnsTotal}`);
+        console.log(`[reports/pdf] sales: org=${guard.organizationId} rows=${rows.length} returns=${returnsTotal} sample=${JSON.stringify(rows[0] ?? null)}`);
         buffer = await buildSalesReportPdf(org, rows, returnsTotal);
         filename = `ventas-${date}.pdf`;
       }

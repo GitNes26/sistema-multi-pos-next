@@ -271,6 +271,11 @@ export function CrudForm({
       onSubmit={handleSubmit}
       className="grid gap-4 sm:grid-cols-2"
     >
+      {AfterFields && (
+        <div className="sm:col-span-2 -mb-2">
+          <AfterFields values={values} />
+        </div>
+      )}
       {visibleFields.map((field) => {
         if (field.showIf && !field.showIf(values)) return null
         const value = values[field.key]
@@ -485,11 +490,6 @@ export function CrudForm({
           </FieldWrapper>
         )
       })}
-      {AfterFields && (
-        <div className="sm:col-span-2">
-          <AfterFields values={values} />
-        </div>
-      )}
     </form>
   )
 }

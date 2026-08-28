@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.12.6.0] — 2026-08-28
+- **Tipo:** `fix` (Patch)
+- fix: se resolvio los PDF ya se visualizan, hay que mejorar el diseño del formato y crear más reportes
+
 ### [0.12.5.0] — 2026-08-28
 - **Tipo:** `fix` (Patch)
 - fix: se resolvieron que no aplica promociones en el POS y en el portal, politicas de envio

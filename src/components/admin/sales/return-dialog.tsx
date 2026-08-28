@@ -255,11 +255,11 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
                       <span className="text-sm font-medium tabular-nums">
                         {money(Number(item.unitPrice))}
                       </span>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Vendidos: {Number(item.quantity)} · Ya devueltos:{" "}
-                        {returned} · Disponible: {maxReturnable}
-                      </p>
                     </Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Vendidos: {Number(item.quantity)} · Ya devueltos:{" "}
+                      {returned} · Disponible: {maxReturnable}
+                    </p>
 
                     {isSelected && (
                       <div className="mt-3 space-y-2">

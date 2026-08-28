@@ -802,6 +802,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       { key: "minQuantity", label: "Mínimo de piezas", type: "number" },
       {
         key: "couponCode",
+        icon: "Ticket",
         label: "Código de cupón",
         type: "text",
         full: true,
