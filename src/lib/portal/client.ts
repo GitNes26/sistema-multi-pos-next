@@ -22,6 +22,7 @@ import type { DeliveryPolicyData } from "@/lib/orders/server";
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
   const data = (await res.json().catch(() => null)) as T & { error?: string };

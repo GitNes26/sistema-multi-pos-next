@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.13.1.0] — 2026-08-29
+- **Tipo:** `fix` (Patch)
+- fix: correccion de error de promociones
+
 ### [0.13.0.0] — 2026-08-28
 - **Tipo:** `feat` (Minor)
 - feat: buscadores en catalagos POS, progressBar de progresos de promos, banner notificacion de promociones en ticket, version en header POS, fix query publications portal home

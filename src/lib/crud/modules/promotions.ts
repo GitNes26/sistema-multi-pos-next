@@ -156,6 +156,31 @@ const SCOPE_LABELS: Record<string, string> = {
 
 import { generateDescriptionFinal as genDesc } from "@/lib/promotions/description";
 
+/** Parsea un string de fecha de forma segura. Devuelve Date válido o null. */
+function safeDate(value: unknown): Date | null {
+  if (!value || typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "null" || trimmed === "undefined") return null;
+  // Si ya viene en ISO, usar directo
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    const d = new Date(trimmed.includes("T") ? trimmed : trimmed + "T00:00:00");
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+/** Busca una publicación vinculada a una promoción via metadata JSON. */
+async function findLinkedPublication(organizationId: string, promotionId: string) {
+  const pubs = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM publications
+    WHERE organizationId = ${organizationId}
+      AND type = 'promotion'
+      AND JSON_EXTRACT(metadata, '$.promotionId') = ${promotionId}
+    LIMIT 1
+  `;
+  return pubs?.[0]?.id ?? null;
+}
+
 /** Wrapper server-side: adapta Record<string, unknown> al tipo compartido. */
 function generateDescriptionFinal(data: Record<string, unknown>): string {
   return genDesc({
@@ -245,8 +270,8 @@ function buildCreateData(organizationId: string, data: Record<string, unknown>) 
       getQuantity: Number(data.getQuantity ?? 0),
       minAmount: Number(data.minAmount ?? 0),
       minQuantity: Number(data.minQuantity ?? 0),
-      startsAt: (data.startsAt as string | null) ? new Date((data.startsAt as string) + "T00:00:00") : null,
-      endsAt: (data.endsAt as string | null) ? new Date((data.endsAt as string) + "T00:00:00") : null,
+      startsAt: safeDate(data.startsAt),
+      endsAt: safeDate(data.endsAt),
       weekdays: validWeekdays.length ? JSON.stringify(validWeekdays) : null,
       startTime: (data.startTime as string | null) || null,
       endTime: (data.endTime as string | null) || null,
@@ -354,8 +379,8 @@ export const promotionsModule: CrudModule<PromotionDto> = {
       ...(data.getQuantity !== undefined ? { getQuantity: Number(data.getQuantity ?? 0) } : {}),
       ...(data.minAmount !== undefined ? { minAmount: Number(data.minAmount ?? 0) } : {}),
       ...(data.minQuantity !== undefined ? { minQuantity: Number(data.minQuantity ?? 0) } : {}),
-      ...(data.startsAt !== undefined ? { startsAt: data.startsAt ? new Date((data.startsAt as string) + "T00:00:00") : null } : {}),
-      ...(data.endsAt !== undefined ? { endsAt: data.endsAt ? new Date((data.endsAt as string) + "T00:00:00") : null } : {}),
+      ...(data.startsAt !== undefined ? { startsAt: safeDate(data.startsAt) } : {}),
+      ...(data.endsAt !== undefined ? { endsAt: safeDate(data.endsAt) } : {}),
       ...(data.startTime !== undefined ? { startTime: (data.startTime as string | null) || null } : {}),
       ...(data.endTime !== undefined ? { endTime: (data.endTime as string | null) || null } : {}),
       ...(data.couponCode !== undefined ? { couponCode: (data.couponCode as string | null)?.trim() || null } : {}),
@@ -394,18 +419,12 @@ export const promotionsModule: CrudModule<PromotionDto> = {
     // Sync publicación vinculada
     try {
       const promoName = p.name;
-      const existingPub = await prisma.publication.findFirst({
-        where: {
-          organizationId,
-          type: "promotion",
-          metadata: { path: "promotionId", equals: id },
-        },
-      });
+      const existingPubId = await findLinkedPublication(organizationId, id);
 
-      if (existingPub) {
+      if (existingPubId) {
         // Actualizar publicación existente
         await prisma.publication.update({
-          where: { id: existingPub.id },
+          where: { id: existingPubId },
           data: {
             title: `Promoción: ${promoName}`,
             content: descriptionFinal,
@@ -443,10 +462,8 @@ export const promotionsModule: CrudModule<PromotionDto> = {
 
     // Eliminar publicación vinculada si existe
     try {
-      const linkedPub = await prisma.publication.findFirst({
-        where: { organizationId, type: "promotion", metadata: { path: "promotionId", equals: id } },
-      });
-      if (linkedPub) await prisma.publication.delete({ where: { id: linkedPub.id } });
+      const linkedPubId = await findLinkedPublication(organizationId, id);
+      if (linkedPubId) await prisma.publication.delete({ where: { id: linkedPubId } });
     } catch {
       // best-effort
     }
