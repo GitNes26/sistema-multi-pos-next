@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.13.2.0] — 2026-08-29
+- **Tipo:** `fix` (Patch)
+- fix: correccion de error de promociones 2
+
 ### [0.13.1.0] — 2026-08-29
 - **Tipo:** `fix` (Patch)
 - fix: correccion de error de promociones

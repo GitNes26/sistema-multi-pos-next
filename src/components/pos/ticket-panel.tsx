@@ -126,7 +126,7 @@ export function TicketPanel({
                   <Target className="size-4 shrink-0 text-amber-500" />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                      ¡Casi! Te faltan <span className="font-bold">{money(remaining)}</span> para "{p.name}"
+                      ¡Casi! Te faltan <span className="font-bold">{money(remaining)}</span> para &ldquo;{p.name}&rdquo;
                     </p>
                     <div className="mt-1 flex items-center gap-2">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-amber-200/50 dark:bg-amber-800/30">
