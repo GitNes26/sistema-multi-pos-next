@@ -242,7 +242,7 @@ export async function updateOrderStatus(
   }
 
   const order = await prisma.$transaction(async (tx) => {
-    const current = await tx.order.findFirst({ where: { id, organizationId } });
+    const current = await tx.order.findFirst({ where: { id, organizationId }, include: { customer: { select: { userId: true } } } });
     if (!current) throw new Error("Pedido no encontrado");
     if (current.status === "cancelled" || current.status === "delivered") {
       throw new Error("El pedido ya no puede cambiar de estado");
@@ -279,9 +279,10 @@ export async function updateOrderStatus(
   });
 
   // Notificación SSE (12.5) + tracking del portal (13.7).
+  // Enviar notificación al cliente (userId del customer), no al admin
   const detail = await getOrderDetail(organizationId, id);
   if (detail) {
-    await notifyOrderEvent(organizationId, order.locationId, ctx, {
+    await notifyOrderEvent(organizationId, order.locationId, { userId: order.customer?.userId ?? ctx.userId ?? null }, {
       id,
       orderNumber: detail.orderNumber,
       status: detail.status,
@@ -405,6 +406,7 @@ export async function confirmDelivery(
 ): Promise<ConfirmDeliveryResult> {
   const order = await prisma.order.findFirst({
     where: { id: orderId, organizationId },
+    include: { customer: { select: { userId: true } } },
   });
   if (!order) return { ok: false, error: "Pedido no encontrado" };
 
@@ -451,7 +453,7 @@ export async function confirmDelivery(
 
   const detail = await getOrderDetail(organizationId, orderId);
   if (detail) {
-    await notifyOrderEvent(organizationId, order.locationId, {}, {
+    await notifyOrderEvent(organizationId, order.locationId, { userId: order.customer?.userId ?? null }, {
       id: orderId,
       orderNumber: detail.orderNumber,
       status: "delivered",

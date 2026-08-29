@@ -112,7 +112,12 @@ export function OrderDetailDialog({
         const data = await res.json();
         if (!data.ok) throw new Error(data.error);
       } else if (order.status === "at_destination" || (order.status === "ready" && !isDelivery)) {
-        // Confirmación con PIN/QR (domicilio en destino o recogida en sucursal)
+        // Confirmación con PIN/QR: requiere pago previo
+        if (!order.isPaid) {
+          swalError("No se puede confirmar", "El pedido debe estar pagado antes de confirmar la entrega con PIN/QR");
+          setSaving(false);
+          return;
+        }
         setConfirmOpen(true);
         setSaving(false);
         return;
@@ -235,8 +240,11 @@ export function OrderDetailDialog({
             </div>
           </div>
 
-          {/* Cobro pendiente */}
+          {/* Cobro pendiente — solo en el paso correcto según método de entrega */}
           {canManage && !order.isPaid && order.status !== "cancelled" && order.status !== "delivered" && (
+            (isDelivery && order.status === "at_destination") ||
+            (!isDelivery && order.status === "ready")
+          ) && (
             <Button
               className="w-full bg-emerald-600 hover:bg-emerald-700"
               onClick={() => setPayOpen(true)}
