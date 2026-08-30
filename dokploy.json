@@ -7,7 +7,10 @@
       "app": {
         "build": {
           "context": ".",
-          "dockerfile": "Dockerfile"
+          "dockerfile": "Dockerfile",
+          "args": {
+            "NEXT_PUBLIC_APP_URL": "${NEXT_PUBLIC_APP_URL}"
+          }
         },
         "ports": ["3000:3000"],
         "volumes": [
@@ -15,7 +18,7 @@
         ],
         "environment": {
           "NODE_ENV": "production",
-          "SEED_DEMO": "false"
+          "SEED_DEMO": "${SEED_DEMO:-true}"
         }
       }
     },
