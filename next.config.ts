@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
   // pdfkit lee sus fuentes (.afm) con rutas relativas a __dirname; si Turbopack
   // lo empaqueta, ese __dirname apunta a una ruta virtual y falla (ENOENT).
   // Se mantiene externo para que use la ruta real de node_modules.
