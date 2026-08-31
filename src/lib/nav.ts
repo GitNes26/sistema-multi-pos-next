@@ -8,6 +8,7 @@ import {
   Building2,
   ClipboardList,
   CreditCard,
+  Landmark,
   LayoutDashboard,
   MapPin,
   Megaphone,
@@ -157,6 +158,12 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: "orders.view",
       },
       {
+        href: "/admin/credits",
+        label: "Crédito",
+        icon: Landmark,
+        permission: "orders.view",
+      },
+      {
         href: "/admin/cedis",
         label: "CEDIS",
         icon: Warehouse,
@@ -201,6 +208,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/admin/settings/delivery-policy",
         label: "Entrega",
         icon: Truck,
+        permission: "settings.manage",
+      },
+      {
+        href: "/admin/settings/credit-policy",
+        label: "Crédito",
+        icon: Landmark,
         permission: "settings.manage",
       },
       {

@@ -380,6 +380,7 @@ export const SUPERVISOR_ACTIONS = [
   { key: "discount", label: "Descuento manual (mayor al límite)" },
   { key: "void", label: "Cancelar venta" },
   { key: "refund", label: "Devolución" },
+  { key: "credit", label: "Venta a crédito" },
 ] as const;
 
 export interface SupervisorSettings {

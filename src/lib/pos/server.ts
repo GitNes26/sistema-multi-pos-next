@@ -284,6 +284,7 @@ company: {
       id: p.id,
       name: p.name,
       description: p.description,
+      descriptionFinal: p.descriptionFinal,
       benefit: p.benefit,
       scope: p.scope,
       value: toNum(p.value),

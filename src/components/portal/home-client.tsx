@@ -273,9 +273,14 @@ export function HomeClient() {
                   <p className="text-sm font-semibold leading-tight">
                     {p.name}
                   </p>
-                  {(p.description || p.descriptionFinal) && (
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                      {p.descriptionFinal ?? p.description}
+                  {p.descriptionFinal && (
+                    <p className="mt-1 text-xs leading-snug text-foreground/80">
+                      {p.descriptionFinal}
+                    </p>
+                  )}
+                  {p.description && p.description !== p.descriptionFinal && (
+                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                      {p.description}
                     </p>
                   )}
                   {(p.startsAt || p.endsAt) && (

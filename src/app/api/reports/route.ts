@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { reportsGuard, reportsErrorResponse } from "./guard";
 import {
   getCashReport,
+  getCreditReport,
   getCustomersReport,
   getDashboardData,
   getOrdersReport,
@@ -40,6 +41,8 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, ...(await getOrdersReport(guard.organizationId, filters)) });
       case "customers":
         return NextResponse.json({ ok: true, ...(await getCustomersReport(guard.organizationId, filters)) });
+      case "credit":
+        return NextResponse.json({ ok: true, ...(await getCreditReport(guard.organizationId, filters)) });
       case "sales":
       default:
         return NextResponse.json({ ok: true, ...(await getSalesReport(guard.organizationId, filters)) });

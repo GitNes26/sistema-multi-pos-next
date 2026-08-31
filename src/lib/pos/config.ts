@@ -19,6 +19,7 @@ export const PAYMENT_METHOD_LABELS: Record<$Enums.PaymentMethod, string> = {
   wallet: "Monedero",
   other: "Otro",
   points: "Puntos",
+  credit: "Crédito",
 };
 
 // 6.20 – Semáforo de pedidos.

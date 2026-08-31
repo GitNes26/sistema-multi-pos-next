@@ -535,7 +535,24 @@ export interface CustomersReportRow {
   lastPurchaseAt: string | null;
 }
 
-export type ReportType = "dashboard" | "sales" | "cash" | "orders" | "customers";
+export interface CreditReportRow {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerCode: string | null;
+  customerPhone: string | null;
+  creditLimit: number | null;
+  currentBalance: number;
+  status: string;
+  totalCharges: number;
+  totalPayments: number;
+  oldestDueDate: string | null;
+  latestDueDate: string | null;
+  isOverdue: boolean;
+  daysOverdue: number;
+}
+
+export type ReportType = "dashboard" | "sales" | "cash" | "orders" | "customers" | "credit";
 export type ReportFilters = Record<string, string | undefined>;
 
 function reportParams(type: string, filters?: ReportFilters): string {
@@ -567,6 +584,21 @@ export const reportsApi = {
     request<{ ok: boolean; rows: CustomersReportRow[]; count: number }>(
       `/api/reports?${reportParams("customers", filters)}`
     ),
+  credit: (filters?: ReportFilters) =>
+    request<{
+      ok: boolean;
+      rows: CreditReportRow[];
+      count: number;
+      totals: {
+        totalDebt: number;
+        totalCharges: number;
+        totalPayments: number;
+        totalOverdue: number;
+        totalCreditLimit: number;
+        overdueCount: number;
+        activeCount: number;
+      };
+    }>(`/api/reports?${reportParams("credit", filters)}`),
   export: (type: ReportType, format: "xlsx" | "pdf", filters?: ReportFilters) => {
     const params: Record<string, string> = { type, format };
     if (filters) {

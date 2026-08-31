@@ -410,3 +410,93 @@ function mapValues<T extends Record<string, number>>(obj: T, fn: (n: number) => 
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
+
+// ── Reporte de cartera de crédito ───────────────────────────────────────────
+
+export interface CreditReportRow {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerCode: string | null;
+  customerPhone: string | null;
+  creditLimit: number | null;
+  currentBalance: number;
+  status: string;
+  totalCharges: number;
+  totalPayments: number;
+  oldestDueDate: string | null;
+  latestDueDate: string | null;
+  isOverdue: boolean;
+  daysOverdue: number;
+}
+
+export async function getCreditReport(organizationId: string, filters?: ReportFilters) {
+  const now = new Date();
+
+  const credits = await prisma.customerCredit.findMany({
+    where: {
+      organizationId,
+      currentBalance: { gt: 0 },
+    },
+    include: {
+      customer: {
+        select: { id: true, fullName: true, customerCode: true, phone: true },
+      },
+      transactions: {
+        select: { type: true, amount: true, dueDate: true, paidAt: true },
+      },
+    },
+    orderBy: { currentBalance: "desc" },
+  });
+
+  const rows: CreditReportRow[] = credits.map((c) => {
+    const charges = c.transactions.filter((t) => t.type === "charge");
+    const payments = c.transactions.filter((t) => t.type === "payment");
+    const dueDates = charges
+      .filter((t) => t.dueDate && !t.paidAt)
+      .map((t) => t.dueDate!)
+      .sort((a, b) => a.getTime() - b.getTime());
+
+    const oldestDue = dueDates[0] ?? null;
+    const isOverdue = oldestDue ? oldestDue < now : false;
+    const daysOverdue = isOverdue ? Math.ceil((now.getTime() - oldestDue!.getTime()) / 86400000) : 0;
+
+    return {
+      id: c.id,
+      customerId: c.customerId,
+      customerName: c.customer.fullName,
+      customerCode: c.customer.customerCode,
+      customerPhone: c.customer.phone,
+      creditLimit: c.creditLimit != null ? toNum(c.creditLimit) : null,
+      currentBalance: toNum(c.currentBalance),
+      status: c.status,
+      totalCharges: round2(charges.reduce((a, t) => a + toNum(t.amount), 0)),
+      totalPayments: round2(payments.reduce((a, t) => a + toNum(t.amount), 0)),
+      oldestDueDate: oldestDue?.toISOString() ?? null,
+      latestDueDate: dueDates.length > 0 ? dueDates[dueDates.length - 1].toISOString() : null,
+      isOverdue,
+      daysOverdue,
+    };
+  });
+
+  // Resumen
+  const totalDebt = round2(rows.reduce((a, r) => a + r.currentBalance, 0));
+  const totalCharges = round2(rows.reduce((a, r) => a + r.totalCharges, 0));
+  const totalPayments = round2(rows.reduce((a, r) => a + r.totalPayments, 0));
+  const totalOverdue = round2(rows.filter((r) => r.isOverdue).reduce((a, r) => a + r.currentBalance, 0));
+  const totalCreditLimit = round2(rows.reduce((a, r) => a + (r.creditLimit ?? 0), 0));
+
+  return {
+    rows,
+    count: rows.length,
+    totals: {
+      totalDebt,
+      totalCharges,
+      totalPayments,
+      totalOverdue,
+      totalCreditLimit,
+      overdueCount: rows.filter((r) => r.isOverdue).length,
+      activeCount: rows.filter((r) => r.status === "active").length,
+    },
+  };
+}

@@ -45,6 +45,22 @@ export function TicketPanel({
   const customer = selectCustomer(customerId)
   const loyalty = usePosStore((s) => s.loyalty)
 
+  // Customer credit balance
+  const [customerDebt, setCustomerDebt] = useState<number | null>(null)
+  useEffect(() => {
+    if (customerId) {
+      fetch(`/api/customer-credit?customerId=${customerId}`, { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.ok && d.credit) setCustomerDebt(Number(d.credit.currentBalance))
+          else setCustomerDebt(null)
+        })
+        .catch(() => setCustomerDebt(null))
+    } else {
+      setCustomerDebt(null)
+    }
+  }, [customerId])
+
   // Promociones casi logradas (50%-99%)
   const nearPromos = promotions.filter((p) => {
     if (p.minAmount <= 0 || p.couponCode) return false
@@ -245,6 +261,19 @@ export function TicketPanel({
             </motion.button>
           )}
         </AnimatePresence>
+
+        {/* Credit debt alert */}
+        {customerDebt != null && customerDebt > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="rounded-xl border border-red-500/40 bg-red-500/5 px-3 py-2">
+            <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+              ⚠ Deuda pendiente: {money(customerDebt)}
+            </p>
+          </motion.div>
+        )}
 
         {/* Discounts */}
         <AnimatePresence>

@@ -9,6 +9,7 @@ import {
   Users,
   ClipboardList,
   Boxes,
+  Landmark,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
   type CashReportRow,
   type OrdersReportRow,
   type CustomersReportRow,
+  type CreditReportRow,
   type ReportFilters,
   type ReportType,
 } from "@/lib/api";
@@ -48,13 +50,14 @@ interface ReportsPageProps {
   icon?: React.ReactNode;
 }
 
-type ReportTab = "sales" | "cash" | "orders" | "customers" | "inventory";
+type ReportTab = "sales" | "cash" | "orders" | "customers" | "credit" | "inventory";
 
 const TABS: { value: ReportTab; label: string; icon: React.ReactNode }[] = [
   { value: "sales", label: "Ventas", icon: <ReceiptText className="size-4" /> },
   { value: "cash", label: "Corte de caja", icon: <Boxes className="size-4" /> },
   { value: "orders", label: "Pedidos", icon: <ClipboardList className="size-4" /> },
   { value: "customers", label: "Clientes", icon: <Users className="size-4" /> },
+  { value: "credit", label: "Crédito", icon: <Landmark className="size-4" /> },
   { value: "inventory", label: "Inventario", icon: <Boxes className="size-4" /> },
 ];
 
@@ -103,6 +106,8 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
   const [ordersTotals, setOrdersTotals] = useState({ total: 0, delivery: 0, pickup: 0 });
   const [ordersByStatus, setOrdersByStatus] = useState<{ status: string; count: number }[]>([]);
   const [customers, setCustomers] = useState<CustomersReportRow[]>([]);
+  const [credit, setCredit] = useState<CreditReportRow[]>([]);
+  const [creditTotals, setCreditTotals] = useState({ totalDebt: 0, totalCharges: 0, totalPayments: 0, totalOverdue: 0, totalCreditLimit: 0, overdueCount: 0, activeCount: 0 });
   const [loading, setLoading] = useState(false);
 
   const filterParams = useCallback((): ReportFilters => {
@@ -137,6 +142,10 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
       } else if (tab === "customers") {
         const r = await reportsApi.customers(params);
         setCustomers(r.rows);
+      } else if (tab === "credit") {
+        const r = await reportsApi.credit(params);
+        setCredit(r.rows);
+        setCreditTotals(r.totals);
       }
     } catch (err) {
       swalError("No se pudo cargar el reporte", err instanceof Error ? err.message : undefined);
@@ -419,6 +428,45 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
               />
             </TabsContent>
 
+            <TabsContent value="credit" className="mt-4 space-y-4">
+              <SummaryCards
+                items={[
+                  { label: "Cartera total", value: money(creditTotals.totalDebt), accent: true },
+                  { label: "Clientes con deuda", value: String(credit.length) },
+                  { label: "Vencidos", value: String(creditTotals.overdueCount), },
+                  { label: "Total cobrado", value: money(creditTotals.totalPayments) },
+                ]}
+              />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Cartera de crédito</CardTitle>
+                  <CardDescription>Clientes con saldo pendiente y estado de vencimiento</CardDescription>
+                </CardHeader>
+                <CardContent className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={creditChartData(credit)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
+                      <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
+                      <Bar dataKey="balance" name="Deuda" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              <DataTable
+                columns={creditColumns}
+                data={credit}
+                searchable={false}
+                showColumnVisibility={false}
+                showPagination={true}
+                pageSize={20}
+                loading={loading}
+                emptyMessage="Sin clientes con deuda"
+                rowKey={(r) => r.id}
+              />
+            </TabsContent>
+
             <TabsContent value="customers" className="mt-4 space-y-4">
               <Card>
                 <CardHeader>
@@ -597,4 +645,46 @@ const customersColumns = [
   { id: "puntos", header: "Puntos", cell: ({ row }: { row: { original: CustomersReportRow } }) => Math.floor(row.original.points) },
   { id: "total", header: "Total", cell: ({ row }: { row: { original: CustomersReportRow } }) => <span className="font-bold tabular-nums">{money(row.original.totalSpent)}</span> },
   { id: "ultima", header: "Última compra", cell: ({ row }: { row: { original: CustomersReportRow } }) => (row.original.lastPurchaseAt ? new Date(row.original.lastPurchaseAt).toLocaleString("es-MX") : "—") },
+];
+
+function creditChartData(rows: CreditReportRow[]) {
+  return rows.slice(0, 15).map((r) => ({
+    name: r.customerName.length > 12 ? r.customerName.slice(0, 12) + "…" : r.customerName,
+    balance: r.currentBalance,
+  }));
+}
+
+const creditColumns = [
+  { id: "cliente", header: "Cliente", cell: ({ row }: { row: { original: CreditReportRow } }) => (
+    <div>
+      <div className="font-medium">{row.original.customerName}</div>
+      {row.original.customerPhone && <div className="text-xs text-muted-foreground">{row.original.customerPhone}</div>}
+    </div>
+  )},
+  { id: "codigo", header: "Código", cell: ({ row }: { row: { original: CreditReportRow } }) => (
+    <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{row.original.customerCode ?? "—"}</code>
+  )},
+  { id: "limite", header: "Límite", cell: ({ row }: { row: { original: CreditReportRow } }) => (
+    <span className="tabular-nums">{row.original.creditLimit != null ? money(row.original.creditLimit) : <span className="text-muted-foreground">Sin límite</span>}</span>
+  )},
+  { id: "deuda", header: "Deuda", cell: ({ row }: { row: { original: CreditReportRow } }) => (
+    <span className="font-bold tabular-nums text-red-600">{money(row.original.currentBalance)}</span>
+  )},
+  { id: "cobrado", header: "Cobrado", cell: ({ row }: { row: { original: CreditReportRow } }) => (
+    <span className="tabular-nums text-emerald-600">{money(row.original.totalPayments)}</span>
+  )},
+  { id: "vencimiento", header: "Vence", cell: ({ row }: { row: { original: CreditReportRow } }) => {
+    if (row.original.isOverdue) {
+      return <Badge variant="destructive">Vencido {row.original.daysOverdue}d</Badge>;
+    }
+    if (row.original.oldestDueDate) {
+      return <Badge variant="outline">{new Date(row.original.oldestDueDate).toLocaleDateString("es-MX")}</Badge>;
+    }
+    return <span className="text-muted-foreground">—</span>;
+  }},
+  { id: "estado", header: "Estado", cell: ({ row }: { row: { original: CreditReportRow } }) => (
+    <Badge variant={row.original.status === "active" ? "default" : row.original.status === "suspended" ? "destructive" : "secondary"}>
+      {row.original.status === "active" ? "Activa" : row.original.status === "suspended" ? "Suspendida" : "Liquidada"}
+    </Badge>
+  )},
 ];

@@ -8,6 +8,7 @@ import {
   BadgeCheck,
   Check,
   CreditCard,
+  Landmark,
   MoreHorizontal,
   PiggyBank,
   ReceiptText,
@@ -40,12 +41,13 @@ interface PaymentDialogProps {
   ) => void
 }
 
-const METHODS: $Enums.PaymentMethod[] = ["cash", "card", "wallet", "other"]
+const METHODS: $Enums.PaymentMethod[] = ["cash", "card", "wallet", "credit", "other"]
 
 const METHOD_ICONS: Partial<Record<$Enums.PaymentMethod, React.ReactNode>> = {
   cash: <Banknote className="size-5" />,
   card: <CreditCard className="size-5" />,
   wallet: <Wallet className="size-5" />,
+  credit: <Landmark className="size-5" />,
   other: <MoreHorizontal className="size-5" />,
 }
 
@@ -61,6 +63,10 @@ const METHOD_COLORS: Record<string, { unselected: string; selected: string }> = 
   wallet: {
     unselected: "border-violet-500/50 text-violet-600 hover:bg-violet-500/10 hover:border-violet-500/70",
     selected: "border-violet-500 bg-gradient-to-br from-violet-500 to-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.35)]",
+  },
+  credit: {
+    unselected: "border-amber-500/50 text-amber-600 hover:bg-amber-500/10 hover:border-amber-500/70",
+    selected: "border-amber-500 bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-[0_0_20px_rgba(245,158,11,0.35)]",
   },
   other: {
     unselected: "border-muted-foreground/30 text-muted-foreground hover:bg-muted/50 hover:border-muted-foreground/50",
@@ -85,6 +91,7 @@ export function PaymentDialog({
   const [reference, setReference] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [creditInfo, setCreditInfo] = useState<{ allowed: boolean; reason?: string; balance: number; limit: number | null } | null>(null)
 
   const maxPoints = t.customer
     ? Math.max(
@@ -143,9 +150,34 @@ export function PaymentDialog({
     setReference("")
   }
 
-  const addCurrentPayment = () => addPayment(method, currentAmount)
-  const addRemaining = (m: $Enums.PaymentMethod = method) =>
+  // Check credit eligibility when method changes to 'credit'
+  useEffect(() => {
+    if (method === "credit" && t.customer) {
+      fetch(`/api/customer-credit?customerId=${t.customer.id}`, { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.ok) setCreditInfo({ allowed: d.canUse?.allowed ?? false, reason: d.canUse?.reason, balance: d.credit?.currentBalance ?? 0, limit: d.credit?.creditLimit })
+        })
+        .catch(() => setCreditInfo(null))
+    } else {
+      setCreditInfo(null)
+    }
+  }, [method, t.customer])
+
+  const addCurrentPayment = () => {
+    if (method === "credit" && creditInfo && !creditInfo.allowed) {
+      setError(creditInfo.reason ?? "No se puede usar crédito")
+      return
+    }
+    addPayment(method, currentAmount)
+  }
+  const addRemaining = (m: $Enums.PaymentMethod = method) => {
+    if (m === "credit" && creditInfo && !creditInfo.allowed) {
+      setError(creditInfo.reason ?? "No se puede usar crédito")
+      return
+    }
     addPayment(m, remaining)
+  }
   const removeEntry = (i: number) =>
     setEntries((prev) => prev.filter((_, idx) => idx !== i))
 
@@ -405,6 +437,30 @@ export function PaymentDialog({
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Info de crédito */}
+          {method === "credit" && creditInfo && (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                <Landmark className="size-4" /> Crédito del cliente
+              </p>
+              <div className="mt-1.5 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Saldo actual:</span>
+                  <span className="ml-1 font-bold">{money(creditInfo.balance)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Límite:</span>
+                  <span className="ml-1 font-bold">{creditInfo.limit != null ? money(creditInfo.limit) : "Sin límite"}</span>
+                </div>
+              </div>
+              {!creditInfo.allowed && (
+                <p className="mt-1.5 text-xs text-destructive">
+                  ⚠ {creditInfo.reason}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Puntos del cliente */}
           {t.customer && t.customer.points > 0 && (

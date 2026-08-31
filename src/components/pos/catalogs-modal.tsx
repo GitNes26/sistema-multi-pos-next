@@ -1,188 +1,232 @@
-"use client";
+"use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardList, Eye, Star, Search, Sparkles, Target } from "lucide-react";
-import { DialogComponent } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { usePosStore } from "@/stores/pos-store";
-import type { PosOrder, PosProduct, PosPromotion } from "@/types/pos";
-import { money } from "@/lib/pos/money";
-import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "@/lib/pos/config";
-import { promotionScheduleLabel, pointsToMoney } from "@/lib/pos/pricing";
-import { cn } from "@/lib/utils";
-import { ProductCard } from "./product-card";
-import { PosOrderDetail } from "./pos-order-detail";
-import { usePosTotals } from "@/hooks/use-pos-totals";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  ClipboardList,
+  Eye,
+  Star,
+  Search,
+  Sparkles,
+  Target,
+} from "lucide-react"
+import { DialogComponent } from "@/components/ui/dialog"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { usePosStore } from "@/stores/pos-store"
+import type { PosOrder, PosProduct, PosPromotion } from "@/types/pos"
+import { money } from "@/lib/pos/money"
+import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "@/lib/pos/config"
+import { promotionScheduleLabel, pointsToMoney } from "@/lib/pos/pricing"
+import { cn } from "@/lib/utils"
+import { ProductCard } from "./product-card"
+import { PosOrderDetail } from "./pos-order-detail"
+import { usePosTotals } from "@/hooks/use-pos-totals"
+import { InputGroupField } from "../base"
 
 interface CatalogsModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSelectProduct: (product: PosProduct) => void;
+  open: boolean
+  onClose: () => void
+  onSelectProduct: (product: PosProduct) => void
 }
 
 /** Calcula el progreso de una promoción respecto al ticket actual. */
-function promoProgress(p: PosPromotion, subtotal: number, categoryTotals: Map<string, number>, productTotals: Map<string, number>): { pct: number; current: number; needed: number; label: string } {
-  const minAmt = p.minAmount;
-  const minQty = p.minQuantity;
+function promoProgress(
+  p: PosPromotion,
+  subtotal: number,
+  categoryTotals: Map<string, number>,
+  productTotals: Map<string, number>
+): { pct: number; current: number; needed: number; label: string } {
+  const minAmt = p.minAmount
+  const minQty = p.minQuantity
 
   // Si no tiene requisitos mínimos → 100%
-  if (minAmt <= 0 && minQty <= 0) return { pct: 100, current: 0, needed: 0, label: "" };
+  if (minAmt <= 0 && minQty <= 0)
+    return { pct: 100, current: 0, needed: 0, label: "" }
 
-  let current = 0;
-  let needed = 0;
+  let current = 0
+  let needed = 0
 
   if (p.scope === "order") {
-    current = subtotal;
-    needed = minAmt;
+    current = subtotal
+    needed = minAmt
   } else if (p.scope === "category") {
     // Sumar totales de las categorías objetivo
-    const targetCats = p.targets.filter((t) => t.kind === "category").map((t) => t.targetId);
+    const targetCats = p.targets
+      .filter((t) => t.kind === "category")
+      .map((t) => t.targetId)
     if (targetCats.length > 0) {
-      for (const catId of targetCats) current += categoryTotals.get(catId) ?? 0;
+      for (const catId of targetCats) current += categoryTotals.get(catId) ?? 0
     } else {
-      current = subtotal; // Sin targets específicos = todas
+      current = subtotal // Sin targets específicos = todas
     }
-    needed = minAmt;
+    needed = minAmt
   } else if (p.scope === "product") {
-    const targetProds = p.targets.filter((t) => t.kind === "product").map((t) => t.targetId);
+    const targetProds = p.targets
+      .filter((t) => t.kind === "product")
+      .map((t) => t.targetId)
     if (targetProds.length > 0) {
-      for (const prodId of targetProds) current += productTotals.get(prodId) ?? 0;
+      for (const prodId of targetProds)
+        current += productTotals.get(prodId) ?? 0
     }
-    needed = minAmt;
+    needed = minAmt
   } else if (p.scope === "variant") {
-    const targetVars = p.targets.filter((t) => t.kind === "variant").map((t) => t.targetId);
+    const targetVars = p.targets
+      .filter((t) => t.kind === "variant")
+      .map((t) => t.targetId)
     if (targetVars.length > 0) {
-      for (const varId of targetVars) current += productTotals.get(varId) ?? 0;
+      for (const varId of targetVars) current += productTotals.get(varId) ?? 0
     }
-    needed = minAmt;
+    needed = minAmt
   }
 
-  if (needed <= 0) return { pct: 100, current, needed: 0, label: "" };
+  if (needed <= 0) return { pct: 100, current, needed: 0, label: "" }
 
-  const pct = Math.min(100, Math.round((current / needed) * 100));
-  const remaining = Math.max(0, needed - current);
-  const label = remaining > 0 ? `Te faltan ${money(remaining)}` : "¡Meta alcanzada!";
-  return { pct, current, needed, label };
+  const pct = Math.min(100, Math.round((current / needed) * 100))
+  const remaining = Math.max(0, needed - current)
+  const label =
+    remaining > 0 ? `Te faltan ${money(remaining)}` : "¡Meta alcanzada!"
+  return { pct, current, needed, label }
 }
 
-export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalProps) {
-  const products = usePosStore((s) => s.products);
-  const customers = usePosStore((s) => s.customers);
-  const promotions = usePosStore((s) => s.promotions);
-  const loyalty = usePosStore((s) => s.loyalty);
-  const items = usePosStore((s) => s.items);
-  const t = usePosTotals();
+export function CatalogsModal({
+  open,
+  onClose,
+  onSelectProduct,
+}: CatalogsModalProps) {
+  const products = usePosStore((s) => s.products)
+  const customers = usePosStore((s) => s.customers)
+  const promotions = usePosStore((s) => s.promotions)
+  const loyalty = usePosStore((s) => s.loyalty)
+  const items = usePosStore((s) => s.items)
+  const t = usePosTotals()
 
-  const [orders, setOrders] = useState<PosOrder[]>([]);
-  const [today, setToday] = useState<{ total: number; count: number }>({ total: 0, count: 0 });
-  const [activeTab, setActiveTab] = useState("pedidos");
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const aliveRef = useRef(true);
+  const [orders, setOrders] = useState<PosOrder[]>([])
+  const [today, setToday] = useState<{ total: number; count: number }>({
+    total: 0,
+    count: 0,
+  })
+  const [activeTab, setActiveTab] = useState("pedidos")
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  const aliveRef = useRef(true)
 
   // Search states
-  const [searchOrders, setSearchOrders] = useState("");
-  const [searchProducts, setSearchProducts] = useState("");
-  const [searchCustomers, setSearchCustomers] = useState("");
-  const [searchPromos, setSearchPromos] = useState("");
+  const [searchOrders, setSearchOrders] = useState("")
+  const [searchProducts, setSearchProducts] = useState("")
+  const [searchCustomers, setSearchCustomers] = useState("")
+  const [searchPromos, setSearchPromos] = useState("")
 
   // Calcular totales por categoría y producto para el progreso
   const categoryTotals = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, number>()
     for (const i of items) {
-      if (i.categoryId) map.set(i.categoryId, (map.get(i.categoryId) ?? 0) + i.unitPrice * i.qty);
+      if (i.categoryId)
+        map.set(
+          i.categoryId,
+          (map.get(i.categoryId) ?? 0) + i.unitPrice * i.qty
+        )
     }
-    return map;
-  }, [items]);
+    return map
+  }, [items])
 
   const productTotals = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, number>()
     for (const i of items) {
-      const key = i.variantId ?? i.productId;
-      map.set(key, (map.get(key) ?? 0) + i.unitPrice * i.qty);
+      const key = i.variantId ?? i.productId
+      map.set(key, (map.get(key) ?? 0) + i.unitPrice * i.qty)
     }
-    return map;
-  }, [items]);
+    return map
+  }, [items])
 
   // Filtrados
   const filteredOrders = useMemo(() => {
-    if (!searchOrders.trim()) return orders;
-    const q = searchOrders.toLowerCase();
-    return orders.filter((o) =>
-      String(o.orderNumber).includes(q) ||
-      (o.customerName ?? "").toLowerCase().includes(q) ||
-      o.status.includes(q)
-    );
-  }, [orders, searchOrders]);
+    if (!searchOrders.trim()) return orders
+    const q = searchOrders.toLowerCase()
+    return orders.filter(
+      (o) =>
+        String(o.orderNumber).includes(q) ||
+        (o.customerName ?? "").toLowerCase().includes(q) ||
+        o.status.includes(q)
+    )
+  }, [orders, searchOrders])
 
   const filteredProducts = useMemo(() => {
-    if (!searchProducts.trim()) return products;
-    const q = searchProducts.toLowerCase();
-    return products.filter((p) =>
-      p.name.toLowerCase().includes(q) ||
-      (p.sku ?? "").toLowerCase().includes(q) ||
-      (p.categoryName ?? "").toLowerCase().includes(q)
-    );
-  }, [products, searchProducts]);
+    if (!searchProducts.trim()) return products
+    const q = searchProducts.toLowerCase()
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.sku ?? "").toLowerCase().includes(q) ||
+        (p.categoryName ?? "").toLowerCase().includes(q)
+    )
+  }, [products, searchProducts])
 
   const filteredCustomers = useMemo(() => {
-    if (!searchCustomers.trim()) return customers;
-    const q = searchCustomers.toLowerCase();
-    return customers.filter((c) =>
-      c.fullName.toLowerCase().includes(q) ||
-      (c.phone ?? "").includes(q) ||
-      (c.email ?? "").toLowerCase().includes(q) ||
-      (c.customerCode ?? "").toLowerCase().includes(q)
-    );
-  }, [customers, searchCustomers]);
+    if (!searchCustomers.trim()) return customers
+    const q = searchCustomers.toLowerCase()
+    return customers.filter(
+      (c) =>
+        c.fullName.toLowerCase().includes(q) ||
+        (c.phone ?? "").includes(q) ||
+        (c.email ?? "").toLowerCase().includes(q) ||
+        (c.customerCode ?? "").toLowerCase().includes(q)
+    )
+  }, [customers, searchCustomers])
 
   const filteredPromos = useMemo(() => {
-    if (!searchPromos.trim()) return promotions;
-    const q = searchPromos.toLowerCase();
-    return promotions.filter((p) =>
-      p.name.toLowerCase().includes(q) ||
-      p.scope.includes(q) ||
-      p.benefit.includes(q)
-    );
-  }, [promotions, searchPromos]);
+    if (!searchPromos.trim()) return promotions
+    const q = searchPromos.toLowerCase()
+    return promotions.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.scope.includes(q) ||
+        p.benefit.includes(q)
+    )
+  }, [promotions, searchPromos])
 
   const loadOrders = useCallback(async () => {
     try {
-      const res = await fetch("/api/pos/orders", { cache: "no-store" });
-      const data = await res.json();
-      if (!data.ok) return;
+      const res = await fetch("/api/pos/orders", { cache: "no-store" })
+      const data = await res.json()
+      if (!data.ok) return
       if (aliveRef.current) {
-        setOrders(data.orders ?? []);
-        setToday({ total: data.stats?.todaySales ?? 0, count: data.stats?.todayCount ?? 0 });
+        setOrders(data.orders ?? [])
+        setToday({
+          total: data.stats?.todaySales ?? 0,
+          count: data.stats?.todayCount ?? 0,
+        })
       }
     } catch {
       /* noop */
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    aliveRef.current = true;
-    void loadOrders();
-    const timer = setInterval(loadOrders, 15000);
+    aliveRef.current = true
+    void loadOrders()
+    const timer = setInterval(loadOrders, 15000)
     return () => {
-      aliveRef.current = false;
-      clearInterval(timer);
-    };
-  }, [open, loadOrders]);
+      aliveRef.current = false
+      clearInterval(timer)
+    }
+  }, [open, loadOrders])
 
   // Buscador genérico por tab
-  const searchInput = (value: string, onChange: (v: string) => void, placeholder: string) => (
+  const searchInput = (
+    value: string,
+    onChange: (v: string) => void,
+    placeholder: string
+  ) => (
     <div className="relative mb-2">
-      <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-      <Input
+      <InputGroupField
+        placeholder={placeholder}
+        leftIcon={<Search className="size-4" />}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-8 pl-8 text-xs"
+        className="h-8 w-56"
       />
     </div>
-  );
+  )
 
   return (
     <DialogComponent
@@ -203,13 +247,24 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
         {/* ── PEDIDOS ── */}
         <TabsContent value="pedidos" className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            Ventas de hoy: <span className="font-semibold text-foreground">{today.count}</span> ·{" "}
-            <span className="font-semibold text-foreground">{money(today.total)}</span>. Actualiza cada 15s.
+            Ventas de hoy:{" "}
+            <span className="font-semibold text-foreground">{today.count}</span>{" "}
+            ·{" "}
+            <span className="font-semibold text-foreground">
+              {money(today.total)}
+            </span>
+            . Actualiza cada 15s.
           </p>
-          {searchInput(searchOrders, setSearchOrders, "Buscar por #, cliente o estado…")}
+          {searchInput(
+            searchOrders,
+            setSearchOrders,
+            "Buscar por #, cliente o estado…"
+          )}
           {filteredOrders.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              {orders.length === 0 ? "Sin pedidos recientes en esta sucursal." : "Sin resultados."}
+              {orders.length === 0
+                ? "Sin pedidos recientes en esta sucursal."
+                : "Sin resultados."}
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -221,7 +276,10 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
                   className="flex w-full items-center gap-3 rounded-xl border bg-card px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 active:bg-muted"
                 >
                   <span
-                    className={cn("size-2.5 shrink-0 rounded-full", ORDER_STATUS_COLORS[o.status])}
+                    className={cn(
+                      "size-2.5 shrink-0 rounded-full",
+                      ORDER_STATUS_COLORS[o.status]
+                    )}
                     title={ORDER_STATUS_LABELS[o.status]}
                   />
                   <span className="font-semibold">{o.orderNumber}</span>
@@ -229,12 +287,16 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
                     {o.customerName ?? "Cliente desconocido"}
                   </span>
                   <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
-                    {o.deliveryMethod === "delivery" ? "A domicilio" : "Recoger"}
+                    {o.deliveryMethod === "delivery"
+                      ? "A domicilio"
+                      : "Recoger"}
                   </span>
                   <Badge variant="outline" className="shrink-0">
                     {ORDER_STATUS_LABELS[o.status]}
                   </Badge>
-                  <span className="shrink-0 font-semibold tabular-nums">{money(o.total)}</span>
+                  <span className="shrink-0 font-semibold tabular-nums">
+                    {money(o.total)}
+                  </span>
                   <Eye className="size-3.5 shrink-0 text-muted-foreground" />
                 </button>
               ))}
@@ -244,49 +306,78 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
 
         {/* ── PRODUCTOS ── */}
         <TabsContent value="productos">
-          {searchInput(searchProducts, setSearchProducts, "Buscar por nombre, SKU o categoría…")}
+          {searchInput(
+            searchProducts,
+            setSearchProducts,
+            "Buscar por nombre, SKU o categoría…"
+          )}
           <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2">
             {filteredProducts.map((p) => (
               <ProductCard key={p.id} product={p} onSelect={onSelectProduct} />
             ))}
           </div>
           {filteredProducts.length === 0 && products.length > 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">Sin resultados.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Sin resultados.
+            </p>
           )}
         </TabsContent>
 
         {/* ── CLIENTES ── */}
         <TabsContent value="clientes">
-          {searchInput(searchCustomers, setSearchCustomers, "Buscar por nombre, teléfono o código…")}
+          {searchInput(
+            searchCustomers,
+            setSearchCustomers,
+            "Buscar por nombre, teléfono o código…"
+          )}
           <div className="space-y-1.5">
             {filteredCustomers.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2">
+              <div
+                key={c.id}
+                className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2"
+              >
                 <span className="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-bold">
-                  {c.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
+                  {c.fullName
+                    .split(" ")
+                    .map((w) => w[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase()}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{c.fullName}</span>
+                  <span className="block truncate text-sm font-medium">
+                    {c.fullName}
+                  </span>
                   <span className="block truncate text-xs text-muted-foreground">
                     {c.phone ?? c.email ?? c.customerCode ?? "—"}
                   </span>
                 </span>
                 <span className="ml-auto flex flex-col items-end gap-0.5">
                   <span className="flex items-center gap-1 text-xs font-semibold text-amber-600">
-                    <Star className="size-3.5" /> {money(pointsToMoney(c.points, loyalty.pointValue))}
+                    <Star className="size-3.5" />{" "}
+                    {money(pointsToMoney(c.points, loyalty.pointValue))}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">{Math.floor(c.points)} pts</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {Math.floor(c.points)} pts
+                  </span>
                 </span>
               </div>
             ))}
           </div>
           {filteredCustomers.length === 0 && customers.length > 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">Sin resultados.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Sin resultados.
+            </p>
           )}
         </TabsContent>
 
         {/* ── PROMOS ── */}
         <TabsContent value="promos">
-          {searchInput(searchPromos, setSearchPromos, "Buscar por nombre, alcance o beneficio…")}
+          {searchInput(
+            searchPromos,
+            setSearchPromos,
+            "Buscar por nombre, alcance o beneficio…"
+          )}
           <div className="space-y-2">
             {filteredPromos.map((p) => {
               const scope =
@@ -296,7 +387,7 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
                     ? "Categoría"
                     : p.scope === "product"
                       ? "Producto"
-                      : "Variante";
+                      : "Variante"
               const benefit =
                 p.benefit === "percent_off"
                   ? `${p.value}% de descuento`
@@ -308,10 +399,15 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
                         ? `${p.buyQuantity} × ${p.getQuantity}`
                         : p.benefit === "free_item"
                           ? "Artículo gratis"
-                          : "Cupón próxima compra";
+                          : "Cupón próxima compra"
 
-              const prog = promoProgress(p, t.subtotal, categoryTotals, productTotals);
-              const nearReady = prog.pct >= 75 && prog.pct < 100;
+              const prog = promoProgress(
+                p,
+                t.subtotal,
+                categoryTotals,
+                productTotals
+              )
+              const nearReady = prog.pct >= 50 && prog.pct < 100
 
               return (
                 <div
@@ -324,19 +420,37 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      {prog.pct >= 100 && <Sparkles className="size-3.5 shrink-0 text-emerald-500" />}
-                      {nearReady && <Target className="size-3.5 shrink-0 text-amber-500" />}
+                      {prog.pct >= 100 && (
+                        <Sparkles className="size-3.5 shrink-0 text-emerald-500" />
+                      )}
+                      {nearReady && (
+                        <Target className="size-3.5 shrink-0 text-amber-500" />
+                      )}
                       <p className="truncate text-sm font-medium">{p.name}</p>
                     </div>
-                    <Badge variant={prog.pct >= 100 ? "default" : "secondary"}>{scope}</Badge>
+                    <Badge variant={prog.pct >= 100 ? "default" : "secondary"}>
+                      {scope}
+                    </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {benefit}
                     {p.minAmount > 0 && ` · desde ${money(p.minAmount)}`}
                     {p.couponCode && ` · código ${p.couponCode}`}
                   </p>
+                  {p.descriptionFinal && (
+                    <p className="mt-1 text-xs leading-snug text-foreground/80">
+                      {p.descriptionFinal}
+                    </p>
+                  )}
+                  {p.description && p.description !== p.descriptionFinal && (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {p.description}
+                    </p>
+                  )}
                   {promotionScheduleLabel(p) && (
-                    <p className="text-[11px] text-muted-foreground">{promotionScheduleLabel(p)}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {promotionScheduleLabel(p)}
+                    </p>
                   )}
 
                   {/* Progress bar */}
@@ -346,10 +460,16 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
                         <span className="text-muted-foreground">
                           {money(prog.current)} de {money(prog.needed)}
                         </span>
-                        <span className={cn(
-                          "font-semibold",
-                          prog.pct >= 100 ? "text-emerald-600" : prog.pct >= 75 ? "text-amber-600" : "text-muted-foreground"
-                        )}>
+                        <span
+                          className={cn(
+                            "font-semibold",
+                            prog.pct >= 100
+                              ? "text-emerald-600"
+                              : prog.pct >= 50
+                                ? "text-amber-600"
+                                : "text-muted-foreground"
+                          )}
+                        >
                           {prog.pct}%
                         </span>
                       </div>
@@ -357,26 +477,36 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
                         <div
                           className={cn(
                             "h-full rounded-full transition-all duration-500",
-                            prog.pct >= 100 ? "bg-emerald-500" : prog.pct >= 75 ? "bg-amber-500" : "bg-primary"
+                            prog.pct >= 100
+                              ? "bg-emerald-500"
+                              : prog.pct >= 50
+                                ? "bg-amber-500"
+                                : "bg-primary"
                           )}
                           style={{ width: `${prog.pct}%` }}
                         />
                       </div>
                       {prog.label && (
-                        <p className={cn(
-                          "mt-0.5 text-[10px]",
-                          prog.pct >= 100 ? "text-emerald-600 font-medium" : "text-muted-foreground"
-                        )}>
+                        <p
+                          className={cn(
+                            "mt-0.5 text-[10px]",
+                            prog.pct >= 100
+                              ? "text-emerald-600 font-medium"
+                              : "text-muted-foreground"
+                          )}
+                        >
                           {prog.label}
                         </p>
                       )}
                     </div>
                   )}
                 </div>
-              );
+              )
             })}
             {filteredPromos.length === 0 && promotions.length > 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">Sin resultados.</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Sin resultados.
+              </p>
             )}
           </div>
         </TabsContent>
@@ -387,11 +517,11 @@ export function CatalogsModal({ open, onClose, onSelectProduct }: CatalogsModalP
           orderId={selectedOrderId}
           onClose={() => setSelectedOrderId(null)}
           onChanged={() => {
-            setSelectedOrderId(null);
-            void loadOrders();
+            setSelectedOrderId(null)
+            void loadOrders()
           }}
         />
       )}
     </DialogComponent>
-  );
+  )
 }

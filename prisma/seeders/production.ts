@@ -112,6 +112,7 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   { id: "menu-pedidos", parentId: "menu-operacion", type: "item", label: "Pedidos", icon: "ClipboardList", href: "/admin/orders", permissionKey: "orders.view", sortOrder: 4 },
   { id: "menu-pedidos-monitoreo", parentId: "menu-pedidos", type: "item", label: "Monitoreo", icon: "Activity", href: "/admin/orders/monitoring", permissionKey: "orders.view", sortOrder: 1 },
   { id: "menu-cedis", parentId: "menu-operacion", type: "item", label: "CEDIS", icon: "Warehouse", href: "/admin/cedis", permissionKey: "cedis.manage", sortOrder: 5 },
+  { id: "menu-creditos", parentId: "menu-operacion", type: "item", label: "Crédito", icon: "Landmark", href: "/admin/credits", permissionKey: "orders.view", sortOrder: 6 },
 
   { id: "menu-ajustes", parentId: null, type: "section", label: "Ajustes", icon: "Settings", sortOrder: 4 },
   { id: "menu-apariencia", parentId: "menu-ajustes", type: "item", label: "Apariencia", icon: "Palette", href: "/admin/settings/appearance", permissionKey: "settings.manage", sortOrder: 1 },
@@ -119,6 +120,8 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   { id: "menu-lealtad", parentId: "menu-ajustes", type: "item", label: "Lealtad", icon: "Sparkles", href: "/admin/settings/loyalty", permissionKey: "settings.manage", sortOrder: 3 },
   { id: "menu-supervisor", parentId: "menu-ajustes", type: "item", label: "Supervisor", icon: "ShieldCheck", href: "/admin/settings/supervisor", permissionKey: "settings.manage", sortOrder: 4 },
   { id: "menu-pagos", parentId: "menu-ajustes", type: "item", label: "Pagos", icon: "CreditCard", href: "/admin/settings/payments", permissionKey: "settings.manage", sortOrder: 5 },
+  { id: "menu-entrega", parentId: "menu-ajustes", type: "item", label: "Entrega", icon: "Truck", href: "/admin/settings/delivery-policy", permissionKey: "settings.manage", sortOrder: 5.5 },
+  { id: "menu-credito", parentId: "menu-ajustes", type: "item", label: "Crédito", icon: "Landmark", href: "/admin/settings/credit-policy", permissionKey: "settings.manage", sortOrder: 5.6 },
   // { id: "menu-ajustes-general", parentId: "menu-ajustes", type: "item", label: "Ajustes", icon: "Settings", href: "/admin/settings", permissionKey: "settings.manage", sortOrder: 6 },
   { id: "menu-usuarios", parentId: "menu-ajustes", type: "item", label: "Usuarios y permisos", icon: "ShieldCheck", href: "/admin/settings/users", permissionKey: "users.manage", sortOrder: 6 },
   { id: "menu-menus", parentId: "menu-ajustes", type: "item", label: "Menú", icon: "Menu", href: "/admin/settings/menus", permissionKey: "users.manage", sortOrder: 7 },

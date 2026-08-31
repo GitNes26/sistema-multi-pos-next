@@ -13,6 +13,7 @@ const PAYMENT_LABELS: Record<$Enums.PaymentMethod, string> = {
   wallet: "Wallet",
   other: "Otro",
   points: "Puntos",
+  credit: "Crédito",
 };
 
 export async function generateTicketPdf(organizationId: string, saleId: string): Promise<Buffer> {

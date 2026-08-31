@@ -2,34 +2,36 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TooltipButton } from "@/components/shared/tooltip-button";
 
 /**
- * Componente que gestiona la suscripción Web Push del cliente.
- * Muestra un botón flotante para activar/desactivar notificaciones push.
- * Se auto-suscribe en el primer load si el permiso ya fue otorgado.
+ * Componente que gestiona la suscripción Web Push del cliente/admin.
+ * Muestra un botón para activar/desactivar notificaciones push.
+ * Se auto-suscribe silenciosamente si el permiso ya fue otorgado.
  */
 export function PushSubscriber() {
   const { subscribe, unsubscribe, isSubscribed } = usePushSubscription();
   const [subscribed, setSubscribed] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(true);
+  const [toggling, setToggling] = useState(false);
   const [supported, setSupported] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      setLoading(false);
+      setChecking(false);
       return;
     }
     setSupported(true);
 
-    // Verificar estado actual y auto-suscribir si el permiso ya es "granted"
     (async () => {
       try {
         const alreadySubscribed = await isSubscribed();
         setSubscribed(alreadySubscribed);
 
-        // Auto-suscribir si el permiso ya fue dado y no hay suscripción activa
+        // Auto-suscribir silenciosamente si el permiso ya fue dado
         if (!alreadySubscribed && Notification.permission === "granted") {
           const ok = await subscribe();
           setSubscribed(ok);
@@ -37,49 +39,91 @@ export function PushSubscriber() {
       } catch {
         // noop
       } finally {
-        setLoading(false);
+        setChecking(false);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggle = useCallback(async () => {
-    setLoading(true);
+    if (toggling) return;
+    setToggling(true);
+    setError(null);
     try {
       if (subscribed) {
         await unsubscribe();
         setSubscribed(false);
       } else {
+        // Si el permiso fue denegado, informar al usuario
+        if ("Notification" in window && Notification.permission === "denied") {
+          setError("Permiso denegado. Activa notificaciones en la configuración del navegador.");
+          return;
+        }
         const ok = await subscribe();
-        setSubscribed(ok);
+        if (ok) {
+          setSubscribed(true);
+        } else {
+          setError("No se pudo activar. Verifica que el navegador permita notificaciones.");
+        }
       }
+    } catch {
+      setError("Error al cambiar configuración de notificaciones.");
     } finally {
-      setLoading(false);
+      setToggling(false);
     }
-  }, [subscribed, subscribe, unsubscribe]);
+  }, [subscribed, subscribe, unsubscribe, toggling]);
 
-  // No mostrar nada si no soporta push
-  if (!supported || loading) return null;
+  // No mostrar si no soporta push
+  if (!supported) return null;
+
+  // Durante verificación inicial, mostrar spinner sutil
+  if (checking) {
+    return (
+      <Button variant="ghost" size="icon" className="size-8" disabled>
+        <Loader2 className="size-4 animate-spin text-muted-foreground" />
+      </Button>
+    );
+  }
 
   return (
-    <Button
-      variant={subscribed ? "default" : "outline"}
-      size="sm"
-      onClick={toggle}
-      className="gap-1.5"
-      title={subscribed ? "Notificaciones push activadas" : "Activar notificaciones push"}
-    >
-      {subscribed ? (
-        <>
-          <Bell className="h-4 w-4" />
-          <span className="hidden sm:inline">Push activo</span>
-        </>
-      ) : (
-        <>
-          <BellOff className="h-4 w-4" />
-          <span className="hidden sm:inline">Activar push</span>
-        </>
+    <div className="relative">
+      <TooltipButton
+        label={
+          error
+            ? error
+            : subscribed
+            ? "Notificaciones push activadas — click para desactivar"
+            : "Activar notificaciones push"
+        }
+        side="bottom"
+        variant={subscribed ? "default" : "outline"}
+        size="icon"
+        className="size-8"
+        onClick={toggle}
+        disabled={toggling}
+      >
+        {toggling ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : subscribed ? (
+          <Bell className="size-4" />
+        ) : (
+          <BellOff className="size-4" />
+        )}
+      </TooltipButton>
+
+      {/* Error tooltip */}
+      {error && (
+        <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border bg-popover p-2 text-xs text-popover-foreground shadow-md">
+          <p className="text-destructive">{error}</p>
+          <button
+            type="button"
+            className="mt-1 text-muted-foreground underline"
+            onClick={() => setError(null)}
+          >
+            Cerrar
+          </button>
+        </div>
       )}
-    </Button>
+    </div>
   );
 }

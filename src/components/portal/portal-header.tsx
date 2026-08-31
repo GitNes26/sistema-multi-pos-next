@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ShoppingCart,
   Bell,
+  BellRing,
 } from "lucide-react"
 import { usePortalStore } from "@/stores/portal-store"
 import { Button } from "@/components/ui/button"
@@ -139,10 +140,18 @@ export function PortalHeader({
             <Link
               href="/portal/notifications"
               className="relative flex size-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted"
-              aria-label="Notificaciones"
+              aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ""}`}
             >
-              <Bell className="size-[18px]" />
-              {unreadCount > 0 && <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />}
+              {unreadCount > 0 ? (
+                <BellRing className="size-[18px] text-primary" />
+              ) : (
+                <Bell className="size-[18px]" />
+              )}
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[8px] font-bold text-destructive-foreground animate-in zoom-in">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </Link>
           </TapScale>
 

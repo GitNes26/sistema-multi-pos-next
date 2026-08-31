@@ -11,6 +11,7 @@ import {
   Heart,
   Star,
   CreditCard,
+  Landmark,
 } from "lucide-react";
 import { usePortalStore } from "@/stores/portal-store";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ export const ALL_NAV_ITEMS = [
   { id: "favorites", href: "/portal/favorites", label: "Favoritos", icon: Heart, match: /^\/portal\/favorites/ },
   { id: "loyalty", href: "/portal/loyalty", label: "Puntos", icon: Star, match: /^\/portal\/loyalty/ },
   { id: "payment", href: "/portal/payment-methods", label: "Pagos", icon: CreditCard, match: /^\/portal\/payment/ },
+  { id: "credit", href: "/portal/credit", label: "Crédito", icon: Landmark, match: /^\/portal\/credit/ },
   { id: "profile", href: "/portal/profile", label: "Perfil", icon: User, match: /^\/portal\/profile/ },
 ] as const;
 

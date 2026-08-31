@@ -69,6 +69,7 @@ export interface PosPromotion {
   id: string;
   name: string;
   description: string | null;
+  descriptionFinal: string | null;
   benefit: $Enums.PromoBenefit;
   scope: $Enums.PromoScope;
   value: number;

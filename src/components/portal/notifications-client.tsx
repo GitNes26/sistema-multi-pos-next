@@ -194,16 +194,24 @@ function NotificationItem({ n, idx, onClick, onDelete }: { n: PortalNotification
       <SwipeableRow onDelete={() => onDelete(n.id)}>
         <button onClick={() => onClick(n)} className={cn(
           "w-full rounded-2xl border-2 p-3.5 text-left transition-all active:scale-[0.98]",
-          isUnread ? "border-primary/20 bg-primary/5 shadow-sm" : "border-transparent bg-card"
+          isUnread ? "border-primary/30 bg-primary/5 shadow-md ring-1 ring-primary/10" : "border-transparent bg-card hover:bg-muted/30"
         )}>
           <div className="flex items-start gap-3">
-            <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", SEVERITY_COLORS[n.severity] ?? SEVERITY_COLORS.info)}>
-              <Icon className="size-4" />
+            <div className={cn(
+              "flex size-10 shrink-0 items-center justify-center rounded-xl",
+              isUnread ? (SEVERITY_COLORS[n.severity] ?? SEVERITY_COLORS.info) : "bg-muted text-muted-foreground"
+            )}>
+              <Icon className="size-5" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className={cn("truncate text-sm", isUnread ? "font-bold" : "font-medium")}>{n.title}</p>
-                {isUnread && <span className="size-2 shrink-0 rounded-full bg-primary" />}
+                {isUnread && (
+                  <span className="relative flex size-2.5 shrink-0">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
+                  </span>
+                )}
               </div>
               {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>}
               <p className="mt-1 text-[11px] text-muted-foreground/60">

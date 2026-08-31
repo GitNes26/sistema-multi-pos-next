@@ -7,6 +7,7 @@ import {
   Banknote,
   BadgeCheck,
   CreditCard,
+  Landmark,
   MoreHorizontal,
   ReceiptText,
   Wallet,
@@ -33,12 +34,13 @@ interface OrderPaymentDialogProps {
   onPaid: () => void;
 }
 
-const METHODS: $Enums.PaymentMethod[] = ["cash", "card", "wallet", "other"];
+const METHODS: $Enums.PaymentMethod[] = ["cash", "card", "wallet", "credit", "other"];
 
 const METHOD_ICONS: Partial<Record<$Enums.PaymentMethod, React.ReactNode>> = {
   cash: <Banknote className="size-4" />,
   card: <CreditCard className="size-4" />,
   wallet: <Wallet className="size-4" />,
+  credit: <Landmark className="size-4" />,
   other: <MoreHorizontal className="size-4" />,
 };
 

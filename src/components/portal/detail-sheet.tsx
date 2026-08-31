@@ -79,15 +79,16 @@ function PromosDetail({ item }: { item: DetailPromotion }) {
         </Badge>
       </div>
 
-      {item.descriptionFinal ? (
-        <p className="text-sm text-muted-foreground leading-relaxed">
+      {item.descriptionFinal && (
+        <p className="text-sm text-foreground/80 leading-relaxed">
           {item.descriptionFinal}
         </p>
-      ) : item.description ? (
-        <p className="text-sm text-muted-foreground leading-relaxed">
+      )}
+      {item.description && item.description !== item.descriptionFinal && (
+        <p className="text-xs text-muted-foreground leading-relaxed">
           {item.description}
         </p>
-      ) : null}
+      )}
 
       {/* Detalles */}
       <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
