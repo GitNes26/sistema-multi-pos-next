@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.13.3.0] — 2026-08-31
+- **Tipo:** `fix` (Patch)
+- fix: pickers agregados al crud config
+
 ### [0.13.2.0] — 2026-08-29
 - **Tipo:** `fix` (Patch)
 - fix: correccion de error de promociones 2

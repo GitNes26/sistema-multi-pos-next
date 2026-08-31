@@ -70,9 +70,7 @@ export function DatePicker({
     <div className={cn("space-y-2", className)}>
       {label && (
         <div className="flex items-center gap-1.5">
-          <Label className="leading-none">
-            {label}
-          </Label>
+          <Label className="leading-none">{label}</Label>
           {helper && <InfoTooltip text={helper} />}
         </div>
       )}
@@ -127,7 +125,9 @@ export function DatePicker({
         </PopoverContent>
       </Popover>
 
-      {error && <p className="text-xs leading-relaxed text-destructive">{error}</p>}
+      {error && (
+        <p className="text-xs leading-relaxed text-destructive">{error}</p>
+      )}
     </div>
   )
 }

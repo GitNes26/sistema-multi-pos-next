@@ -70,9 +70,7 @@ export function DateTimePicker({
           {...timeProps}
         />
       </div>
-      {helper && (
-        <p className="text-xs text-muted-foreground">{helper}</p>
-      )}
+      {helper && <p className="text-xs text-muted-foreground">{helper}</p>}
     </div>
   )
 }
