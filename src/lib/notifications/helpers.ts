@@ -1,6 +1,7 @@
 import type { Notification } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { broadcastToOrg, type LiveNotificationPayload } from "@/lib/notifications/live";
+import { sendPushToUser } from "@/lib/notifications/push";
 
 // FASE 8.9 — Persistencia + broadcast de notificaciones (stocks bajos y futuras).
 
@@ -76,5 +77,19 @@ export async function persistNotification(input: PersistNotificationInput) {
   });
 
   broadcastToOrg(input.organizationId, notificationToPayload(created));
+
+  // Enviar Web Push si la notificación tiene un userId (cliente portal)
+  if (input.userId) {
+    const url = input.link || "/";
+    const meta = (input.metadata ?? {}) as Record<string, unknown>;
+    sendPushToUser(input.userId, {
+      title: input.title,
+      body: input.body ?? "",
+      url,
+      tag: `${input.kind}-${created.id}`,
+      sound: typeof meta.sound === "string" ? meta.sound : "order-received",
+    }).catch(() => {}); // fire-and-forget, no bloquear la respuesta
+  }
+
   return created;
 }

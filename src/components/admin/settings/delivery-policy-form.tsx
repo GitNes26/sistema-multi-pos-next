@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { Save, Truck, Store, DollarSign, Coins, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { Skeleton } from "@/components/ui/skeleton"
 import { swalToast, swalError } from "@/lib/swal"

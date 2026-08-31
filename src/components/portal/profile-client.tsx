@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ChevronRight, CreditCard, Heart, LogOut, Mail, MapPin, Phone, Shield, Sparkles, User, LayoutGrid } from "lucide-react";
+import { ChevronRight, CreditCard, Heart, LogOut, Mail, Phone, Shield, Sparkles, User, LayoutGrid } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import { logout } from "@/lib/auth/logout";
 import type { PortalCustomer } from "@/lib/portal/server";

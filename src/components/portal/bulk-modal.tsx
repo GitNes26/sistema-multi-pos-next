@@ -88,8 +88,9 @@ export function BulkModal() {
   if (!product || !product.bulk) return null;
 
   const minQty = selected ? (product.bulk.allowSplit && selected.unitId === product.bulk.split?.unitId ? 1 : product.bulk.minQty) : 0;
-  const effectiveQty = mode === "amount" && selected ? round3(Number(amount) / selected.price) : qty;
-  const total = selected ? round2(effectiveQty * selected.price) : 0;
+  const parsedAmount = mode === "amount" ? Math.max(0, parseFloat(amount) || 0) : 0;
+  const effectiveQty = mode === "amount" && selected ? round3(parsedAmount / selected.price) : qty;
+  const total = mode === "amount" ? parsedAmount : (selected ? round2(effectiveQty * selected.price) : 0);
   const available = product.trackInventory ? Math.floor(product.stock) : null;
 
   const changeQty = (delta: number) => {

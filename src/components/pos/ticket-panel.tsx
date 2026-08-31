@@ -1,23 +1,31 @@
-"use client";
+"use client"
 
-import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, RotateCcw, TicketPercent, UserRound, Wallet, Sparkles, Target } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { usePosStore, selectCustomer } from "@/stores/pos-store";
-import { usePosTotals } from "@/hooks/use-pos-totals";
-import type { PosLineItem } from "@/types/pos";
-import { money } from "@/lib/pos/money";
-import { pointsToMoney } from "@/lib/pos/pricing";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { AnimatedNumber } from "@/components/base/animated-number";
-import { TicketItemRow } from "./ticket-item-row";
+import { useEffect, useRef, useState } from "react"
+import {
+  CheckCircle2,
+  RotateCcw,
+  TicketPercent,
+  UserRound,
+  Wallet,
+  Sparkles,
+  Target,
+} from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { usePosStore, selectCustomer } from "@/stores/pos-store"
+import { usePosTotals } from "@/hooks/use-pos-totals"
+import type { PosLineItem } from "@/types/pos"
+import { money } from "@/lib/pos/money"
+import { pointsToMoney } from "@/lib/pos/pricing"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { AnimatedNumber } from "@/components/base/animated-number"
+import { TicketItemRow } from "./ticket-item-row"
 
 interface TicketPanelProps {
-  onEditBulk: (item: PosLineItem) => void;
-  onOpenCustomer: () => void;
-  onOpenDiscount: () => void;
-  onCheckout: () => void;
+  onEditBulk: (item: PosLineItem) => void
+  onOpenCustomer: () => void
+  onOpenDiscount: () => void
+  onCheckout: () => void
 }
 
 export function TicketPanel({
@@ -26,64 +34,76 @@ export function TicketPanel({
   onOpenDiscount,
   onCheckout,
 }: TicketPanelProps) {
-  const items = usePosStore((s) => s.items);
-  const customerId = usePosStore((s) => s.customerId);
-  const promotions = usePosStore((s) => s.promotions);
-  const clearTicket = usePosStore((s) => s.clearTicket);
-  const setQty = usePosStore((s) => s.setQty);
-  const removeItem = usePosStore((s) => s.removeItem);
+  const items = usePosStore((s) => s.items)
+  const customerId = usePosStore((s) => s.customerId)
+  const promotions = usePosStore((s) => s.promotions)
+  const clearTicket = usePosStore((s) => s.clearTicket)
+  const setQty = usePosStore((s) => s.setQty)
+  const removeItem = usePosStore((s) => s.removeItem)
 
-  const t = usePosTotals();
-  const customer = selectCustomer(customerId);
-  const loyalty = usePosStore((s) => s.loyalty);
+  const t = usePosTotals()
+  const customer = selectCustomer(customerId)
+  const loyalty = usePosStore((s) => s.loyalty)
 
-  // Promociones casi logradas (75-99%)
+  // Promociones casi logradas (50%-99%)
   const nearPromos = promotions.filter((p) => {
-    if (p.minAmount <= 0 || p.couponCode) return false;
-    if (p.startsAt && new Date(p.startsAt) > new Date()) return false;
-    if (p.endsAt && new Date(p.endsAt) < new Date()) return false;
-    const pct = t.subtotal > 0 ? (t.subtotal / p.minAmount) * 100 : 0;
-    return pct >= 75 && pct < 100;
-  });
+    if (p.minAmount <= 0 || p.couponCode) return false
+    if (p.startsAt && new Date(p.startsAt) > new Date()) return false
+    if (p.endsAt && new Date(p.endsAt) < new Date()) return false
+    const pct = t.subtotal > 0 ? (t.subtotal / p.minAmount) * 100 : 0
+    return pct >= 50 && pct < 100
+  })
 
-  const listRef = useRef<HTMLDivElement>(null);
-  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const prevCountRef = useRef(0);
-  const [flash, setFlash] = useState<{ key: string; nonce: number }>({ key: "", nonce: 0 });
-  const [justAdded, setJustAdded] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null)
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const prevCountRef = useRef(0)
+  const [flash, setFlash] = useState<{ key: string; nonce: number }>({
+    key: "",
+    nonce: 0,
+  })
+  const [justAdded, setJustAdded] = useState(false)
 
   // Auto-scroll al fondo solo cuando se AGREGA un producto nuevo
   useEffect(() => {
-    const el = listRef.current;
+    const el = listRef.current
     if (el && items.length > prevCountRef.current) {
-      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-      setJustAdded(true);
-      setTimeout(() => setJustAdded(false), 600);
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+      setJustAdded(true)
+      setTimeout(() => setJustAdded(false), 600)
     }
-    prevCountRef.current = items.length;
-  }, [items]);
+    prevCountRef.current = items.length
+  }, [items])
 
   const notifyChange = (key: string) => {
-    setFlash((prev) => ({ key, nonce: prev.nonce + 1 }));
-    rowRefs.current[key]?.scrollIntoView({ block: "center", behavior: "smooth" });
-  };
+    setFlash((prev) => ({ key, nonce: prev.nonce + 1 }))
+    rowRefs.current[key]?.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    })
+  }
 
   const increment = (key: string) => {
-    const item = items.find((i) => i.key === key);
-    if (!item) return;
-    if (item.kind === "bulk") { onEditBulk(item); return; }
-    if (item.trackInventory && item.qty + 1 > Math.floor(item.stock)) return;
-    setQty(key, item.qty + 1);
-    notifyChange(key);
-  };
+    const item = items.find((i) => i.key === key)
+    if (!item) return
+    if (item.kind === "bulk") {
+      onEditBulk(item)
+      return
+    }
+    if (item.trackInventory && item.qty + 1 > Math.floor(item.stock)) return
+    setQty(key, item.qty + 1)
+    notifyChange(key)
+  }
 
   const decrement = (key: string) => {
-    const item = items.find((i) => i.key === key);
-    if (!item) return;
-    if (item.qty <= 1) { removeItem(key); return; }
-    setQty(key, item.qty - 1);
-    notifyChange(key);
-  };
+    const item = items.find((i) => i.key === key)
+    if (!item) return
+    if (item.qty <= 1) {
+      removeItem(key)
+      return
+    }
+    setQty(key, item.qty - 1)
+    notifyChange(key)
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -119,14 +139,16 @@ export function TicketPanel({
             className="border-b border-amber-500/30 bg-amber-500/5 px-4 py-2.5"
           >
             {nearPromos.map((p) => {
-              const pct = Math.round((t.subtotal / p.minAmount) * 100);
-              const remaining = Math.max(0, p.minAmount - t.subtotal);
+              const pct = Math.round((t.subtotal / p.minAmount) * 100)
+              const remaining = Math.max(0, p.minAmount - t.subtotal)
               return (
                 <div key={p.id} className="flex items-center gap-2">
                   <Target className="size-4 shrink-0 text-amber-500" />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                      ¡Casi! Te faltan <span className="font-bold">{money(remaining)}</span> para &ldquo;{p.name}&rdquo;
+                      ¡Casi! Te faltan{" "}
+                      <span className="font-bold">{money(remaining)}</span> para
+                      &ldquo;{p.name}&rdquo;
                     </p>
                     <div className="mt-1 flex items-center gap-2">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-amber-200/50 dark:bg-amber-800/30">
@@ -135,18 +157,23 @@ export function TicketPanel({
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-amber-600">{pct}%</span>
+                      <span className="text-[10px] font-bold text-amber-600">
+                        {pct}%
+                      </span>
                     </div>
                   </div>
                 </div>
-              );
+              )
             })}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Items list */}
-      <div ref={listRef} className="scrollbar-none flex-1 space-y-2 overflow-y-auto p-3">
+      <div
+        ref={listRef}
+        className="scrollbar-none flex-1 space-y-2 overflow-y-auto p-3"
+      >
         <AnimatePresence mode="popLayout">
           {items.length === 0 ? (
             <motion.div
@@ -161,7 +188,9 @@ export function TicketPanel({
               </div>
               <div>
                 <p className="text-sm font-medium">Selecciona productos</p>
-                <p className="text-xs text-muted-foreground">para comenzar un nuevo ticket</p>
+                <p className="text-xs text-muted-foreground">
+                  para comenzar un nuevo ticket
+                </p>
               </div>
             </motion.div>
           ) : (
@@ -176,7 +205,9 @@ export function TicketPanel({
               >
                 <TicketItemRow
                   item={item}
-                  itemRef={(el) => { rowRefs.current[item.key] = el; }}
+                  itemRef={(el) => {
+                    rowRefs.current[item.key] = el
+                  }}
                   flashNonce={flash.key === item.key ? flash.nonce : 0}
                   onIncrement={increment}
                   onDecrement={decrement}
@@ -203,10 +234,13 @@ export function TicketPanel({
               className="flex w-full items-center gap-2.5 rounded-xl border border-accent/50 bg-accent/10 px-3 py-2.5 text-left transition hover:bg-accent/15 active:scale-[0.98]"
             >
               <UserRound className="size-4 shrink-0 text-accent-foreground" />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{customer.fullName}</span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                {customer.fullName}
+              </span>
               <CheckCircle2 className="size-4 shrink-0 text-accent-foreground" />
               <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-600">
-                {money(pointsToMoney(customer.points, loyalty.pointValue))} · {Math.floor(customer.points)} pts
+                {money(pointsToMoney(customer.points, loyalty.pointValue))} ·{" "}
+                {Math.floor(customer.points)} pts
               </span>
             </motion.button>
           )}
@@ -221,8 +255,12 @@ export function TicketPanel({
               exit={{ opacity: 0, height: 0 }}
               className="space-y-1"
             >
+              cuantos descuentos llevo: {t.discounts.length}
               {t.discounts.map((d, i) => (
-                <div key={i} className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400">
+                <div
+                  key={i}
+                  className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400"
+                >
                   <span className="truncate">{d.label}</span>
                   <span className="font-medium">-{money(d.amount)}</span>
                 </div>
@@ -237,7 +275,9 @@ export function TicketPanel({
               className="flex items-center justify-between text-xs text-primary"
             >
               <span>Puntos canjeados ({Math.floor(t.pointsRedeemed)})</span>
-              <span className="font-medium">-{money(t.pointsRedeemedValue)}</span>
+              <span className="font-medium">
+                -{money(t.pointsRedeemedValue)}
+              </span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -270,11 +310,22 @@ export function TicketPanel({
 
         {/* Action buttons */}
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" size="sm" onClick={onOpenCustomer} className="h-10">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenCustomer}
+            className="h-10"
+          >
             <UserRound className="size-4" />
             Cliente
           </Button>
-          <Button variant="outline" size="sm" onClick={onOpenDiscount} disabled={!items.length} className="h-10">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onOpenDiscount}
+            disabled={!items.length}
+            className="h-10"
+          >
             <TicketPercent className="size-4" />
             Descuento
           </Button>
@@ -309,12 +360,17 @@ export function TicketPanel({
                 exit={{ opacity: 0, y: -10 }}
                 className="flex items-center gap-2"
               >
-                Cobrar · <AnimatedNumber value={t.payable} format={money} className="tabular-nums" />
+                Cobrar ·{" "}
+                <AnimatedNumber
+                  value={t.payable}
+                  format={money}
+                  className="tabular-nums"
+                />
               </motion.span>
             )}
           </AnimatePresence>
         </Button>
       </div>
     </div>
-  );
+  )
 }

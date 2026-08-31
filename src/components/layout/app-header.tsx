@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/logo";
 import { SearchDialog, SearchTrigger } from "@/components/layout/search-dialog";
 import { NotificationsBell } from "@/components/layout/notifications-bell";
+import { PushSubscriber } from "@/components/portal/push-subscriber";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu, type UserMenuUser } from "@/components/layout/user-menu";
 import { OrgSwitcher } from "@/components/layout/org-switcher";
 import { useUiStore } from "@/stores/ui-store";
+import { usePushSound } from "@/hooks/use-push-sound";
 
 export interface AppHeaderProps {
   sections: NavSection[];
@@ -26,6 +28,7 @@ export function AppHeader({ sections, user, logoUrl }: AppHeaderProps) {
   const pathname = usePathname();
   const toggleNav = useUiStore((s) => s.toggleNav);
   const navOpen = useUiStore((s) => s.navOpen);
+  usePushSound();
 
   const activeLabel = React.useMemo(() => {
     for (const section of sections) {
@@ -76,6 +79,7 @@ export function AppHeader({ sections, user, logoUrl }: AppHeaderProps) {
           ) : null}
           <ThemeToggle />
           <NotificationsBell />
+          <PushSubscriber />
           <UserMenu user={user} />
         </div>
       </div>

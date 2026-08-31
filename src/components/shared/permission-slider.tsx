@@ -6,7 +6,6 @@ import {
   MapPin,
   FolderOpen,
   Mic,
-  Wifi,
   Bell,
   CheckCircle2,
   XCircle,

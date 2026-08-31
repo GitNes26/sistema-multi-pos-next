@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle,
-  Download,
   Eye,
   Loader2,
   Search,
@@ -24,7 +23,6 @@ import type { ComboboxOption } from "@/components/base/form-combobox";
 import { swalError, swalConfirm } from "@/lib/swal";
 import { toast } from "sonner";
 import { money, qty } from "@/lib/pos/money";
-import { PAYMENT_METHOD_LABELS } from "@/lib/pos/config";
 
 const RETURN_TYPE_LABELS: Record<string, string> = {
   refund: "Reembolso",

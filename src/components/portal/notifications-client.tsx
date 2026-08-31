@@ -3,13 +3,15 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bell, ShoppingCart, Package, Truck, AlertTriangle, CheckCircle2, CheckCheck } from "lucide-react"
+import { Bell, BellRing, ShoppingCart, Package, Truck, AlertTriangle, CheckCircle2, CheckCheck, Inbox } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 import { EmptyState } from "@/components/shared/empty-state"
 import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import { playSound } from "@/lib/sounds"
 
 interface PortalNotification {
@@ -53,12 +55,15 @@ function getPortalLink(n: PortalNotification): string | null {
 
 export function NotificationsClient() {
   const router = useRouter()
+  const [tab, setTab] = useState<"unread" | "history">("unread")
   const [notifications, setNotifications] = useState<PortalNotification[] | null>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
   const prevIdsRef = useRef<Set<string>>(new Set())
 
-  const load = useCallback(async (playNotifSound = false) => {
+  const load = useCallback(async (filter?: string, playNotifSound = false) => {
     try {
-      const res = await fetch("/api/portal/notifications", { credentials: "include" })
+      const url = filter ? "/api/portal/notifications?filter=" + filter : "/api/portal/notifications"
+      const res = await fetch(url, { credentials: "include" })
       if (!res.ok) return
       const data = await res.json()
       const items: PortalNotification[] = data.notifications ?? []
@@ -78,13 +83,13 @@ export function NotificationsClient() {
   }, [])
 
   useEffect(() => {
-    load(false)
+    load(tab === "unread" ? "unread" : undefined, false)
   }, [load])
 
   // Polling cada 30 segundos con sonido
   useEffect(() => {
     const interval = setInterval(() => {
-      load(true)
+      load(tab === "unread" ? "unread" : undefined, true)
     }, 30_000)
     return () => clearInterval(interval)
   }, [load])
@@ -114,103 +119,100 @@ export function NotificationsClient() {
     }
   }
 
-  const unreadCount = notifications?.filter((n) => !n.readAt).length ?? 0
-
-  if (!notifications) {
-    return (
-      <div className="space-y-3 p-4">
-        <Skeleton className="h-8 w-48 rounded-xl" />
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 w-full rounded-2xl" />
-        ))}
-      </div>
-    )
-  }
+  if (!notifications) return null
+  const unreadList = notifications.filter((n) => !n.readAt)
+  const readList = notifications.filter((n) => !!n.readAt)
 
   return (
-    <PullToRefresh onRefresh={load}>
+    <PullToRefresh onRefresh={() => load(tab === "unread" ? "unread" : undefined, false)}>
       <div className="space-y-4 p-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="size-5 text-primary" />
             <h1 className="text-lg font-bold">Notificaciones</h1>
-            {unreadCount > 0 && (
-              <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                {unreadCount}
-              </span>
+            {unreadList.length > 0 && (
+              <Badge className="h-5 px-1.5 text-[10px] font-bold">{unreadList.length}</Badge>
             )}
           </div>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 text-xs text-muted-foreground"
-              onClick={markAllAsRead}
-            >
-              <CheckCheck className="size-3.5" /> Marcar todo leído
+          {unreadList.length > 0 && (
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground" onClick={markAllAsRead}>
+              <CheckCheck className="size-3.5" /> Marcar todo leido
             </Button>
           )}
         </div>
 
-        {notifications.length === 0 ? (
-          <EmptyState
-            icon={Bell}
-            title="Sin notificaciones"
-            description="Aquí verás tus pedidos, promociones y avisos."
-          />
-        ) : (
-          <div className="space-y-2">
-            <AnimatePresence>
-              {notifications.map((n, idx) => {
-                const Icon = KIND_ICONS[n.kind] ?? Bell
-                const unread = !n.readAt
-                return (
-                  <motion.div
-                    key={n.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.03 }}
-                  >
-                    <SwipeableRow onDelete={() => markAsRead(n.id)}>
-                      <button
-                        onClick={() => handleClick(n)}
-                        className={cn(
-                          "w-full rounded-2xl border-2 p-3.5 text-left transition-all active:scale-[0.98]",
-                          unread
-                            ? "border-primary/20 bg-primary/5 shadow-sm"
-                            : "border-transparent bg-card"
-                        )}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", SEVERITY_COLORS[n.severity] ?? SEVERITY_COLORS.info)}>
-                            <Icon className="size-4" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className={cn("truncate text-sm", unread ? "font-bold" : "font-medium")}>{n.title}</p>
-                              {unread && <span className="size-2 shrink-0 rounded-full bg-primary" />}
-                            </div>
-                            {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>}
-                            <p className="mt-1 text-[11px] text-muted-foreground/60">
-                              {new Date(n.createdAt).toLocaleDateString("es-MX", {
-                                day: "numeric",
-                                month: "short",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    </SwipeableRow>
-                  </motion.div>
-                )
-              })}
-            </AnimatePresence>
-          </div>
-        )}
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "unread" | "history")}>
+          <TabsList className="w-full">
+            <TabsTrigger value="unread" className="flex-1 gap-1.5">
+              <BellRing className="size-4" /> Nuevas
+              {unreadList.length > 0 && (
+                <span className="ml-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                  {unreadList.length > 99 ? "99+" : unreadList.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex-1 gap-1.5">
+              <Inbox className="size-4" /> Historial
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="unread" className="mt-3">
+            {unreadList.length === 0 ? (
+              <EmptyState icon={BellRing} title="Todo al dia!" description="No tienes notificaciones nuevas." />
+            ) : (
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {unreadList.map((n, idx) => <NotificationItem key={n.id} n={n} idx={idx} onClick={handleClick} onDelete={markAsRead} />)}
+                </AnimatePresence>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-3">
+            {readList.length === 0 ? (
+              <EmptyState icon={Inbox} title="Sin historial" description="Las notificaciones leidas apareceran aqui." />
+            ) : (
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {readList.map((n, idx) => <NotificationItem key={n.id} n={n} idx={idx} onClick={handleClick} onDelete={markAsRead} />)}
+                </AnimatePresence>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </PullToRefresh>
+  )
+}
+
+function NotificationItem({ n, idx, onClick, onDelete }: { n: PortalNotification; idx: number; onClick: (n: PortalNotification) => void; onDelete: (id: string) => void }) {
+  const Icon = KIND_ICONS[n.kind] ?? Bell
+  const isUnread = !n.readAt
+  return (
+    <motion.div key={n.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
+      <SwipeableRow onDelete={() => onDelete(n.id)}>
+        <button onClick={() => onClick(n)} className={cn(
+          "w-full rounded-2xl border-2 p-3.5 text-left transition-all active:scale-[0.98]",
+          isUnread ? "border-primary/20 bg-primary/5 shadow-sm" : "border-transparent bg-card"
+        )}>
+          <div className="flex items-start gap-3">
+            <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", SEVERITY_COLORS[n.severity] ?? SEVERITY_COLORS.info)}>
+              <Icon className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className={cn("truncate text-sm", isUnread ? "font-bold" : "font-medium")}>{n.title}</p>
+                {isUnread && <span className="size-2 shrink-0 rounded-full bg-primary" />}
+              </div>
+              {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>}
+              <p className="mt-1 text-[11px] text-muted-foreground/60">
+                {new Date(n.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+              </p>
+            </div>
+          </div>
+        </button>
+      </SwipeableRow>
+    </motion.div>
   )
 }

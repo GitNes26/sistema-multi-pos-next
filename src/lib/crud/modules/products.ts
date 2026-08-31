@@ -570,7 +570,7 @@ export async function updateVariant(organizationId: string, variantId: string, i
     if (dup) throw new CrudError("Ya existe un producto con ese código de barras", 400, "barcode");
   }
 
-  const updated = await prisma.productVariant.update({
+  await prisma.productVariant.update({
     where: { id: variantId },
     data: {
       ...(input.name !== undefined ? { name: String(input.name).trim() } : {}),

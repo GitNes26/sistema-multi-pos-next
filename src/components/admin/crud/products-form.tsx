@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { cn } from "@/lib/utils"
 import { optionsApi, type ProductOption } from "@/lib/api"
@@ -213,7 +212,7 @@ export function ProductsForm({
   const [optionsBusy, setOptionsBusy] = useState(false)
 
   // Default variants del producto (para el botón "Variantes" en la tabla)
-  const defaultVariant = useMemo(() => {
+  const _defaultVariant = useMemo(() => {
     if (!isEdit) return null
     const variants =
       (initial?.variants as {

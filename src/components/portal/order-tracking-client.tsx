@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState, useRef } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
@@ -52,9 +52,6 @@ const FLOW_ICONS: Record<string, React.ReactNode> = {
   delivered: <CircleCheck className="size-3.5" />,
 }
 
-function statusIndex(status: string): number {
-  return FLOW.indexOf(status as OrderStatusKey)
-}
 
 const stagger = {
   hidden: {},
@@ -165,7 +162,6 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
     )
   }
 
-  const currentIdx = statusIndex(order.status)
   const isCancelled = order.status === "cancelled"
   const isDelivery = order.deliveryMethod === "delivery"
   const isTransit =

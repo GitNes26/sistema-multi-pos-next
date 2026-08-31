@@ -173,6 +173,7 @@ model User {
   orderStatusHistory             OrderStatusHistory[]
   notifications                  Notification[]
   invitationsSent                UserInvitation[]             @relation("UserInvitationInvitedBy")
+  pushSubscriptions              PushSubscription[]
 
   @@map("users")
 }
@@ -225,6 +226,7 @@ model Organization {
   publications          Publication[]
   deliveryPolicy        DeliveryPolicy?
   customerAddresses     CustomerAddress[]
+  pushSubscriptions     PushSubscription[]
 
   @@map("organizations")
 }
@@ -1391,4 +1393,27 @@ model SaleReturnItem {
 
   @@index([returnId])
   @@map("sale_return_items")
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEB PUSH NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PushSubscription {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  endpoint       String   @db.VarChar(512)
+  p256dh         String   @db.VarChar(255)
+  auth           String   @db.VarChar(255)
+  userAgent      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([userId, endpoint])
+  @@map("push_subscriptions")
 }

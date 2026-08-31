@@ -5,7 +5,6 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { TimePicker } from "@/components/base/time-picker"
 import {
-  emptySchedule,
   DAYS_LABELS,
   type DaySchedule,
   type DayScheduleSlot,

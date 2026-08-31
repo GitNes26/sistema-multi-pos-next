@@ -29,7 +29,6 @@ function parseFilters(sp: URLSearchParams): ReportFilters {
   };
 }
 
-const MONEY = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
 async function orgName(organizationId: string): Promise<string> {
   const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } });

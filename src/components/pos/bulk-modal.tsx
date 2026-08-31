@@ -89,7 +89,6 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
 
   const parsedAmount = Math.max(0, parseFloat(amountStr.replace(",", ".")) || 0);
   const qtyFromAmount = pricePerUnit > 0 ? snapToStep(parsedAmount / pricePerUnit, step) : 0;
-  const amountFromQty = round2(qtyFromAmount * pricePerUnit);
   const liveQty = mode === "cantidad" ? qtyClamped : qtyFromAmount;
   const liveAmount = mode === "cantidad" ? round2(parsedQty * pricePerUnit) : parsedAmount;
 
@@ -190,7 +189,10 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
             <Badge variant="secondary">{liveQty > 0 ? `${qty(liveQty)} ${abbrev}` : "—"}</Badge>
           </div>
           <p className="mt-1 text-center text-3xl font-bold tabular-nums">
-            {money(liveAmount)}
+            {mode === "cantidad"
+              ? <>{qty(parsedQty)} <span className="text-lg font-medium text-muted-foreground">{abbrev}</span></>
+              : money(liveAmount)
+            }
           </p>
           {mode === "cantidad" && (
             <p className="text-center text-xs text-muted-foreground">
@@ -199,7 +201,7 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
           )}
           {mode === "monto" && (
             <p className="text-center text-xs text-muted-foreground">
-              ≈ {qty(qtyFromAmount)} {abbrev} ({money(amountFromQty)})
+              ≈ {qty(qtyFromAmount)} {abbrev}
             </p>
           )}
         </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { Calendar, Clock, Tag, Sparkles, Info } from "lucide-react"
+import { Calendar, Sparkles, Info } from "lucide-react"
 import { BottomSheet } from "./bottom-sheet"
 import { Badge } from "@/components/ui/badge"
 import { money } from "@/lib/pos/money"

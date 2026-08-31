@@ -15,6 +15,8 @@ import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { TapScale } from "@/components/shared/tap-scale"
 import { Logo } from "@/components/layout/logo"
 import { playSound } from "@/lib/sounds"
+import { usePushSound } from "@/hooks/use-push-sound"
+import { PushSubscriber } from "@/components/portal/push-subscriber"
 
 const PAGE_TITLES: Record<string, string> = {
   "/portal": "",
@@ -54,6 +56,7 @@ export function PortalHeader({
   const router = useRouter()
   const itemCount = usePortalStore((s) => s.items.reduce((a, i) => a + i.qty, 0))
   const setCartOpen = usePortalStore((s) => s.setCartOpen)
+  usePushSound()
 
   const [unreadCount, setUnreadCount] = useState(0)
   const prevIdsRef = useRef<Set<string>>(new Set())
@@ -143,6 +146,7 @@ export function PortalHeader({
             </Link>
           </TapScale>
 
+          <PushSubscriber />
           <ThemeToggle />
 
           <TapScale>

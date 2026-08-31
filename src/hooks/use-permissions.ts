@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { PERMISSIONS, type PermissionKey } from "@/lib/auth/permission-keys"
+import { PERMISSIONS } from "@/lib/auth/permission-keys"
 
 const STORAGE_KEY = "custom-permissions"
 

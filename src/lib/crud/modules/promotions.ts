@@ -138,21 +138,7 @@ const BENEFITS: $Enums.PromoBenefit[] = [
 ];
 const SCOPES: $Enums.PromoScope[] = ["order", "category", "product", "variant"];
 
-const BENEFIT_LABELS: Record<string, string> = {
-  percent_off: "% de descuento",
-  amount_off: "Descuento en $",
-  fixed_price: "Precio fijo",
-  buy_x_get_y: "Lleva X y paga Y",
-  free_item: "Producto gratis",
-  next_purchase_coupon: "Cupón para próxima compra",
-};
 
-const SCOPE_LABELS: Record<string, string> = {
-  order: "todo el pedido",
-  category: "categoría",
-  product: "producto",
-  variant: "variante",
-};
 
 import { generateDescriptionFinal as genDesc } from "@/lib/promotions/description";
 

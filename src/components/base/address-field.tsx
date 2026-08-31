@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { InfoTooltip } from "@/components/base/info-tooltip"
 
 export interface AddressGpsValue {
   lat: number

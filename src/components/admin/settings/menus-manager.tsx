@@ -24,7 +24,6 @@ import { MENU_ICON_NAMES, resolveMenuIcon } from "@/lib/menu-icons";
 import { usePermissions } from "@/hooks/use-permissions";
 import { swalConfirm, swalError, swalToast, swalPrompt } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -464,7 +463,6 @@ export function MenusManager() {
                   value={form.icon ?? "Circle"}
                   onChange={(v) => setForm({ ...form, icon: v })}
                   options={MENU_ICON_NAMES.map((name) => {
-                    const Ico = resolveMenuIcon(name);
                     return {
                       value: name,
                       label: name,

@@ -17,7 +17,7 @@ export function useLongPress({
   const isLongPress = React.useRef(false)
 
   const start = React.useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
+    () => {
       isLongPress.current = false
       timerRef.current = setTimeout(() => {
         isLongPress.current = true
@@ -28,7 +28,7 @@ export function useLongPress({
   )
 
   const stop = React.useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
+    () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
         timerRef.current = null
