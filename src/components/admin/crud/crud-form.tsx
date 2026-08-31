@@ -12,6 +12,9 @@ import { AddressField } from "@/components/base/address-field"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { SwitchField } from "@/components/base/switch-field"
 import { ScheduleEditor } from "@/components/base/schedule-editor"
+import { DatePicker } from "@/components/base/date-picker"
+import { TimePicker } from "@/components/base/time-picker"
+import { DateTimePicker } from "@/components/base/datetime-picker"
 import { parseSchedule, emptySchedule } from "@/lib/schedule"
 import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads"
 import type { CrudField, CrudUiConfig } from "./crud-config"
@@ -137,6 +140,7 @@ function fieldIcon(type: string, iconKey?: string): React.ReactNode {
     percent: "Percent",
     date: "CalendarDays",
     time: "Clock",
+    datetime: "CalendarClock",
     textarea: "FileText",
     password: "Key",
   }
@@ -450,7 +454,55 @@ export function CrudForm({
           )
         }
 
-        // ── text/number/money/percent/date/time → InputGroupField ──
+        // ── date → DatePicker ──
+        if (field.type === "date") {
+          const dateVal = value instanceof Date ? value : typeof value === "string" && value ? new Date(value + "T00:00:00") : null
+          return (
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
+              <DatePicker
+                value={dateVal}
+                onChange={(d) => set(field.key, d ? d.toISOString().slice(0, 10) : "")}
+                onClear={() => set(field.key, "")}
+                label={field.label}
+                error={error}
+                placeholder={field.placeholder}
+              />
+            </FieldWrapper>
+          )
+        }
+
+        // ── time → TimePicker ──
+        if (field.type === "time") {
+          return (
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
+              <TimePicker
+                value={String(value ?? "")}
+                onChange={(t) => set(field.key, t ?? "")}
+                label={field.label}
+                error={error}
+              />
+            </FieldWrapper>
+          )
+        }
+
+        // ── datetime → DateTimePicker ──
+        if (field.type === "datetime") {
+          const dtVal = value instanceof Date ? value : typeof value === "string" && value ? new Date(value) : null
+          return (
+            <FieldWrapper key={field.key} field={field} id={id} error={error}>
+              <DateTimePicker
+                value={dtVal}
+                onChange={(d) => set(field.key, d ? d.toISOString() : "")}
+                onClear={() => set(field.key, "")}
+                label={field.label}
+                error={error}
+                placeholder={field.placeholder}
+              />
+            </FieldWrapper>
+          )
+        }
+
+        // ── text/number/money/percent → InputGroupField ──
         return (
           <FieldWrapper key={field.key} field={field} id={id} error={error}>
             <InputGroupField
@@ -464,15 +516,11 @@ export function CrudForm({
               type={
                 field.type === "password"
                   ? "password"
-                  : field.type === "date"
-                    ? "date"
-                    : field.type === "time"
-                      ? "time"
-                      : field.type === "number" ||
-                          field.type === "money" ||
-                          field.type === "percent"
-                        ? "number"
-                        : "text"
+                  : field.type === "number" ||
+                      field.type === "money" ||
+                      field.type === "percent"
+                    ? "number"
+                    : "text"
               }
               step={
                 field.type === "percent" || field.type === "number"

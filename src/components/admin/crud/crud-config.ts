@@ -18,6 +18,7 @@ export type FieldType =
   | "code"
   | "date"
   | "time"
+  | "datetime"
   | "multiselect"
   | "image"
   | "gps"
@@ -92,7 +93,7 @@ export interface CrudField {
 export interface CrudColumn {
   key: string
   label: string
-  type?: "text" | "money" | "percent" | "boolean" | "badge" | "count" | "code"
+  type?: "text" | "money" | "percent" | "boolean" | "badge" | "count" | "code" | "datetime"
   /** Convierte el valor crudo a una etiqueta para los tipos badge/text. */
   displayMap?: Record<string, string>
 }
@@ -833,8 +834,8 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         label: "Uso máximo por cliente",
         type: "number",
       },
-      { key: "startsAt", label: "Inicio", type: "date", full: false },
-      { key: "endsAt", label: "Fin", type: "date", full: false },
+      { key: "startsAt", label: "Inicio", type: "datetime", full: false },
+      { key: "endsAt", label: "Fin", type: "datetime", full: false },
       {
         key: "weekdays",
         label: "Días de la semana",
