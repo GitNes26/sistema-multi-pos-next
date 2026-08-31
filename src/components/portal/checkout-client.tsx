@@ -272,7 +272,7 @@ export function CheckoutClient() {
           payMethod === "card" ? selectedCard?.last4 ?? null : payMethod === "online" ? "gateway" : null,
         pointsRedeemed: pointsToRedeem,
         subtotal,
-        discount: 0,
+        discount: promoPreview.discount,
         deliveryFee,
         total: payableTotal,
         notes: notes.trim() || null,

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useState, useRef } from "react"
 import {
   ChevronLeft,
   ShoppingCart,
@@ -13,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { TapScale } from "@/components/shared/tap-scale"
 import { Logo } from "@/components/layout/logo"
+import { playSound } from "@/lib/sounds"
 
 const PAGE_TITLES: Record<string, string> = {
   "/portal": "",
@@ -52,6 +54,35 @@ export function PortalHeader({
   const router = useRouter()
   const itemCount = usePortalStore((s) => s.items.reduce((a, i) => a + i.qty, 0))
   const setCartOpen = usePortalStore((s) => s.setCartOpen)
+
+  const [unreadCount, setUnreadCount] = useState(0)
+  const prevIdsRef = useRef<Set<string>>(new Set())
+  const initialLoadDone = useRef(false)
+
+  useEffect(() => {
+    let active = true
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch("/api/portal/notifications", { credentials: "include" })
+        if (!res.ok) return
+        const data = await res.json()
+        const items = data.notifications ?? []
+        const unread = items.filter((n: { readAt: string | null }) => !n.readAt)
+
+        if (initialLoadDone.current && prevIdsRef.current.size > 0) {
+          const newItems = items.filter((n: { id: string; readAt: string | null }) => !prevIdsRef.current.has(n.id) && !n.readAt)
+          if (newItems.length > 0) playSound("notification")
+        }
+
+        prevIdsRef.current = new Set(items.map((n: { id: string }) => n.id))
+        initialLoadDone.current = true
+        if (active) setUnreadCount(unread.length)
+      } catch {}
+    }
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30_000)
+    return () => { active = false; clearInterval(interval) }
+  }, [])
 
   const showBack = isSubPage(pathname)
   const pageTitle = getPageTitle(pathname)
@@ -108,7 +139,7 @@ export function PortalHeader({
               aria-label="Notificaciones"
             >
               <Bell className="size-[18px]" />
-              <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />
+              {unreadCount > 0 && <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />}
             </Link>
           </TapScale>
 
