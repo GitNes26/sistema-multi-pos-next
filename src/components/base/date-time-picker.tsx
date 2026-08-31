@@ -67,6 +67,7 @@ export function DateTimePicker({
             base.setHours(h, m, 0, 0)
             onChange?.(base)
           }}
+          size="sm"
           {...timeProps}
         />
       </div>

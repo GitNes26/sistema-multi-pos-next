@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.13.4.0] — 2026-08-31
+- **Tipo:** `fix` (Patch)
+- fix: modificacion del .dockerignore
+
 ### [0.13.3.0] — 2026-08-31
 - **Tipo:** `fix` (Patch)
 - fix: pickers agregados al crud config

@@ -9,6 +9,6 @@ node_modules
 *.log
 README.md
 docs
-Dockerfile
-docker-compose.yml
-.dockerignore
+#Dockerfile
+#docker-compose.yml
+#.dockerignore

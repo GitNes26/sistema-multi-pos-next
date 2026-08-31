@@ -834,8 +834,8 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         label: "Uso máximo por cliente",
         type: "number",
       },
-      { key: "startsAt", label: "Inicio", type: "datetime", full: false },
-      { key: "endsAt", label: "Fin", type: "datetime", full: false },
+      { key: "startsAt", label: "Inicio", type: "datetime", full: true },
+      { key: "endsAt", label: "Fin", type: "datetime", full: true },
       {
         key: "weekdays",
         label: "Días de la semana",

@@ -14,7 +14,7 @@ import { SwitchField } from "@/components/base/switch-field"
 import { ScheduleEditor } from "@/components/base/schedule-editor"
 import { DatePicker } from "@/components/base/date-picker"
 import { TimePicker } from "@/components/base/time-picker"
-import { DateTimePicker } from "@/components/base/datetime-picker"
+import { DateTimePicker } from "@/components/base/date-time-picker"
 import { parseSchedule, emptySchedule } from "@/lib/schedule"
 import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads"
 import type { CrudField, CrudUiConfig } from "./crud-config"
@@ -493,10 +493,7 @@ export function CrudForm({
               <DateTimePicker
                 value={dtVal}
                 onChange={(d) => set(field.key, d ? d.toISOString() : "")}
-                onClear={() => set(field.key, "")}
                 label={field.label}
-                error={error}
-                placeholder={field.placeholder}
               />
             </FieldWrapper>
           )

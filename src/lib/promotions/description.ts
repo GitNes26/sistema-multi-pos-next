@@ -84,14 +84,14 @@ export function generateDescriptionFinal(data: DescriptionInput): string {
 
   // 2. When
   const dateRange: string[] = [];
-  if (startsAt)
-    dateRange.push(
-      `desde ${new Date(startsAt + "T00:00:00").toLocaleDateString("es-MX")}`,
-    );
-  if (endsAt)
-    dateRange.push(
-      `hasta ${new Date(endsAt + "T00:00:00").toLocaleDateString("es-MX")}`,
-    );
+  if (startsAt) {
+    const d = new Date(startsAt);
+    if (!isNaN(d.getTime())) dateRange.push(`desde ${d.toLocaleDateString("es-MX")}`);
+  }
+  if (endsAt) {
+    const d = new Date(endsAt);
+    if (!isNaN(d.getTime())) dateRange.push(`hasta ${d.toLocaleDateString("es-MX")}`);
+  }
   if (dateRange.length) parts.push(dateRange.join(" "));
 
   if (weekdays.length > 0) {
