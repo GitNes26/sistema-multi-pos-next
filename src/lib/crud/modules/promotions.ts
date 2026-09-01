@@ -37,6 +37,7 @@ export interface PromotionDto {
   maxUsesPerCustomer: number | null;
   usesCount: number;
   isActive: boolean;
+  businessMode: string | null;
   targets: PromotionTargetDto[];
   targetLocations: string[];
   targetCategories: string[];
@@ -74,6 +75,7 @@ type PromotionRow = {
   maxUsesPerCustomer: number | null;
   usesCount: number;
   isActive: boolean;
+  businessMode: string | null;
   targets: { kind: $Enums.PromotionTargetKind; targetId: string }[];
 };
 
@@ -115,6 +117,7 @@ function serialize(p: PromotionRow): PromotionDto {
     maxUsesPerCustomer: p.maxUsesPerCustomer,
     usesCount: p.usesCount,
     isActive: p.isActive,
+    businessMode: p.businessMode,
     targets,
     targetLocations: targets.filter((t) => t.kind === "location").map((t) => t.targetId),
     targetCategories: targets.filter((t) => t.kind === "category").map((t) => t.targetId),
@@ -268,6 +271,7 @@ function buildCreateData(organizationId: string, data: Record<string, unknown>) 
       maxUses: data.maxUses ? Number(data.maxUses) : null,
       maxUsesPerCustomer: data.maxUsesPerCustomer ? Number(data.maxUsesPerCustomer) : null,
       isActive: Boolean(data.isActive ?? true),
+      businessMode: (data.businessMode as string | null) ?? null,
       targets: { create: uniqueTargets },
     },
     uniqueTargets,
@@ -378,6 +382,7 @@ export const promotionsModule: CrudModule<PromotionDto> = {
         ? { maxUsesPerCustomer: data.maxUsesPerCustomer ? Number(data.maxUsesPerCustomer) : null }
         : {}),
       ...(data.isActive !== undefined ? { isActive: Boolean(data.isActive) } : {}),
+      ...(data.businessMode !== undefined ? { businessMode: (data.businessMode as string | null) ?? null } : {}),
     };
 
     if (data.weekdays !== undefined) {

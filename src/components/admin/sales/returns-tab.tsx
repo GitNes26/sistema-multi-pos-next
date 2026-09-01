@@ -476,12 +476,18 @@ function ReturnDetailContent({
       {/* Info de resolución */}
       {detail.status === "completed" && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-800 dark:bg-emerald-950">
-          <p className="font-medium text-emerald-700 dark:text-emerald-400">Procesada</p>
-          {detail.couponCode && (
-            <p>Cupón generado: <code className="font-bold">{detail.couponCode}</code> — {money(Number(detail.couponAmount ?? 0))}</p>
+          <p className="font-medium text-emerald-700 dark:text-emerald-400">Devolución procesada</p>
+          {detail.returnType === "refund" && (
+            <p className="mt-1 text-emerald-700 dark:text-emerald-400">Se devolvió {money(Number(detail.total))} al método de pago original.</p>
           )}
-          {detail.pointsAwarded && Number(detail.pointsAwarded) > 0 && (
-            <p>Puntos bonificados: <span className="font-bold">{qty(detail.pointsAwarded)}</span></p>
+          {detail.returnType === "coupon" && detail.couponCode && (
+            <p className="mt-1 text-emerald-700 dark:text-emerald-400">Cupón: <code className="font-bold">{detail.couponCode}</code> por {money(Number(detail.couponAmount ?? 0))}{detail.couponExpiresAt ? ` · Vence: ${new Date(detail.couponExpiresAt).toLocaleDateString("es-MX")}` : ""}</p>
+          )}
+          {detail.returnType === "points" && detail.pointsAwarded && Number(detail.pointsAwarded) > 0 && (
+            <p className="mt-1 text-emerald-700 dark:text-emerald-400">Se bonificaron <span className="font-bold">{qty(detail.pointsAwarded)}</span> puntos al cliente.</p>
+          )}
+          {detail.returnType === "exchange" && (
+            <p className="mt-1 text-emerald-700 dark:text-emerald-400">Producto devuelto al stock. Crea una nueva venta con el producto de reemplazo.</p>
           )}
         </div>
       )}

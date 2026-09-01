@@ -7,6 +7,7 @@ import type { SessionRole } from "@/lib/auth/permissions";
 // - /pos          → cualquier sesión de app (no cliente)
 // - /admin        → solo owner/manager/superadmin
 // - /portal       → solo clientes (el área /portal/auth/* es público)
+// - /onboarding   → cualquier sesión de app (primera configuración)
 // El callbackUrl viaja en la query para volver a la pantalla original.
 
 const ADMIN_ONLY: SessionRole[] = ["superadmin", "owner", "manager", "admin"];
@@ -24,6 +25,14 @@ export async function middleware(req: NextRequest) {
 
   // Sesión inválida (usuario desactivado/eliminado) → tratar como sin sesión.
   const authenticated = Boolean(token && !token.invalid);
+
+  // Onboarding: solo accesible con sesión de app
+  if (pathname.startsWith("/onboarding")) {
+    if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    if (token!.scope === "portal")
+      return NextResponse.redirect(loginUrl("/portal/auth/login", pathname + search));
+    return NextResponse.next();
+  }
 
   // Panel POS
   if (pathname.startsWith("/pos")) {
@@ -63,5 +72,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/pos/:path*", "/admin/:path*", "/portal/:path*"],
+  matcher: ["/pos/:path*", "/admin/:path*", "/portal/:path*", "/onboarding"],
 };

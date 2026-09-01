@@ -36,6 +36,7 @@ interface PosState extends PosCatalog {
   keyboardOpen: boolean;
   items: PosLineItem[];
   customerId: string | null;
+  selectedTable: { id: string; number: number; name?: string | null } | null;
   manualDiscount: { kind: "percent" | "amount"; value: number } | null;
   coupon: { status: CouponStatus; code: string; result: CouponApplied | null; error?: string };
   pointsRedeemed: number;
@@ -49,12 +50,22 @@ interface PosState extends PosCatalog {
 
   addProduct: (product: PosProduct, opts?: { qty?: number; variant?: PosVariant }) => void;
   addBulk: (product: PosProduct, opts: BulkEditOptions) => void;
+  addConfiguredItem: (
+    product: PosProduct,
+    config: {
+      selectedOptions: { optionId: string; optionName: string; values: { id: string; value: string; extraPrice: number }[] }[];
+      totalExtraPrice: number;
+      notes: string;
+      quantity: number;
+    }
+  ) => void;
   editItem: (key: string, patch: Partial<PosLineItem>) => void;
   setQty: (key: string, qty: number) => void;
   removeItem: (key: string) => void;
   clearTicket: () => void;
 
   setCustomer: (customerId: string | null) => void;
+  setTable: (table: { id: string; number: number; name?: string | null } | null) => void;
   setManualDiscount: (d: { kind: "percent" | "amount"; value: number } | null) => void;
   applyCoupon: (result: CouponApplied) => void;
   couponError: (message: string) => void;
@@ -78,8 +89,10 @@ export const usePosStore = create<PosState>()((set, get) => ({
   categories: [],
   customers: [],
   promotions: [],
+  combos: [],
   registers: [],
   session: null,
+  features: { combos: true, productBuilder: true, itemNotes: true, tables: true, kds: true, bulkProducts: true, credit: true, tips: true, splitBill: true },
   cashier: { userId: "", employeeId: null, name: "" },
   loyalty: { pointValue: 0.01, pointsPerCurrency: 1, enabled: true },
   registerId: "",
@@ -89,6 +102,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
   keyboardOpen: false,
   items: [],
   customerId: null,
+  selectedTable: null,
   manualDiscount: null,
   coupon: { status: "none", code: "", result: null },
   pointsRedeemed: 0,
@@ -172,6 +186,41 @@ export const usePosStore = create<PosState>()((set, get) => ({
     playSound("scan");
   },
 
+  addConfiguredItem: (product, config) => {
+    set((s) => {
+      const key = `${product.id}-${Date.now()}`;
+      const optionLabel = config.selectedOptions
+        .flatMap((o) => o.values.map((v) => v.value))
+        .join(", ");
+      const displayName = optionLabel ? `${product.name} (${optionLabel})` : product.name;
+      const line: PosLineItem = {
+        key,
+        productId: product.productId,
+        variantId: product.variantId,
+        kind: product.kind,
+        name: displayName,
+        imageUrl: product.imageUrl,
+        categoryId: product.categoryId,
+        unitPrice: product.price + config.totalExtraPrice,
+        unitAbbrev: "pza",
+        qty: config.quantity,
+        taxRate: product.taxRate,
+        unitId: null,
+        trackInventory: product.trackInventory,
+        stock: product.stock,
+        notes: config.notes || undefined,
+        selectedOptions: config.selectedOptions.map((o) => ({
+          optionName: o.optionName,
+          value: o.values.map((v) => v.value).join(", "),
+          extraPrice: o.values.reduce((s, v) => s + v.extraPrice, 0),
+        })),
+        extraPrice: config.totalExtraPrice,
+      };
+      return { items: [...s.items, line] };
+    });
+    playSound("scan");
+  },
+
   editItem: (key, patch) =>
     set((s) => ({
       items: s.items.map((i) => (i.key === key ? { ...i, ...patch } : i)),
@@ -193,12 +242,14 @@ export const usePosStore = create<PosState>()((set, get) => ({
     set({
       items: [],
       customerId: null,
+      selectedTable: null,
       manualDiscount: null,
       coupon: { status: "none", code: "", result: null },
       pointsRedeemed: 0,
     }),
 
   setCustomer: (customerId) => set({ customerId }),
+  setTable: (table) => set({ selectedTable: table }),
   setManualDiscount: (manualDiscount) => set({ manualDiscount }),
   applyCoupon: (result) =>
     set({ coupon: { status: "applied", code: result.code, result } }),

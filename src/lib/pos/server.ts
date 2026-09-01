@@ -4,11 +4,14 @@ import type {
   PosCashRegister,
   PosCashSession,
   PosCatalog,
+  PosFeatures,
   PosOrder,
   PosProduct,
   PosSalePayload,
 } from "@/types/pos";
 import { round2 } from "./money";
+import { isFeatureEnabled, type FeatureKey } from "@/lib/features";
+import type { BusinessMode } from "@/lib/auth/options"
 import { maybeNotifyLowStock } from "@/lib/inventory/server";
 import { notifySaleCompleted } from "@/lib/notifications/events";
 
@@ -28,6 +31,21 @@ function firstActiveLocation<T extends { isActive: boolean }>(locations: T[]): T
   return locations.find((l) => l.isActive) ?? locations[0];
 }
 
+/** Compute POS features based on business mode */
+function computeFeatures(mode: BusinessMode): PosFeatures {
+  return {
+    combos: isFeatureEnabled("combos", mode),
+    productBuilder: isFeatureEnabled("product_builder", mode),
+    itemNotes: isFeatureEnabled("item_notes", mode),
+    tables: isFeatureEnabled("tables", mode),
+    kds: isFeatureEnabled("kds", mode),
+    bulkProducts: isFeatureEnabled("bulk_products", mode),
+    credit: isFeatureEnabled("credit", mode),
+    tips: isFeatureEnabled("tips", mode),
+    splitBill: isFeatureEnabled("split_bill", mode),
+  };
+}
+
 /**
  * Catálogo completo del POS para una organización/sucursal. Se serializan los
  * Decimal a number para poder pasar los datos a componentes client sin romper
@@ -37,7 +55,7 @@ export async function getPosCatalog(
   organizationId: string,
   userId: string
 ): Promise<PosCatalog> {
-  const [locations, productsRaw, bulkRaw, categories, customers, promotions, registers, employee, userData, cashSession, companyProfile, orgLoyalty] =
+  const [locations, productsRaw, bulkRaw, categories, customers, promotions, registers, employee, userData, cashSession, companyProfile, orgLoyalty, combosRaw] =
     await Promise.all([
       prisma.location.findMany({
         where: { organizationId },
@@ -46,7 +64,19 @@ export async function getPosCatalog(
       }),
       prisma.productVariant.findMany({
         where: { organizationId, isActive: true, product: { isActive: true } },
-        include: { product: { include: { category: true } } },
+        include: {
+          product: {
+            include: {
+              category: true,
+              options: {
+                orderBy: { position: "asc" },
+                include: {
+                  values: { where: { isActive: true }, orderBy: { position: "asc" } },
+                },
+              },
+            },
+          },
+        },
       }),
       prisma.product.findMany({
         where: { organizationId, isActive: true, productType: "bulk" },
@@ -100,7 +130,17 @@ export async function getPosCatalog(
       }),
       prisma.organization.findUnique({
         where: { id: organizationId },
-        select: { pointsPerCurrency: true, pointValue: true, loyaltyEnabled: true },
+        select: { pointsPerCurrency: true, pointValue: true, loyaltyEnabled: true, businessMode: true },
+      }),
+      prisma.productCombo.findMany({
+        where: { organizationId, isActive: true },
+        include: {
+          items: {
+            orderBy: { position: "asc" },
+            include: { product: { select: { name: true } }, variant: { select: { name: true } } },
+          },
+        },
+        orderBy: { createdAt: "asc" },
       }),
     ]);
 
@@ -108,6 +148,10 @@ export async function getPosCatalog(
   if (!location) {
     throw new PosError("No se encontró una sucursal activa para la organización", 400);
   }
+
+  // Compute features early so we can filter options and combos
+  const businessMode = (orgLoyalty as { businessMode?: BusinessMode } | null)?.businessMode ?? "retail" as BusinessMode;
+  const features = computeFeatures(businessMode);
 
   const inventoryRows = await prisma.inventory.findMany({
     where: {
@@ -151,6 +195,8 @@ export async function getPosCatalog(
         bulk: null,
         variantCount: 0,
         variants: [],
+        options: [],
+        hasOptions: false,
       };
       stdByProduct.set(p.id, entry);
     }
@@ -217,6 +263,8 @@ export async function getPosCatalog(
             }
           : null,
       },
+      options: [],
+      hasOptions: false,
     });
   }
 
@@ -251,6 +299,53 @@ export async function getPosCatalog(
         registerName: cashSession.cashRegister.name,
       }
     : null;
+
+  // Add options to each product (only if productBuilder feature is enabled)
+  for (const p of products) {
+    const raw = productsRaw.find((v) => v.productId === p.productId);
+    if (features.productBuilder && raw?.product?.options) {
+      p.options = raw.product.options.map((o) => ({
+        id: o.id,
+        name: o.name,
+        required: o.required,
+        minSelect: o.minSelect,
+        maxSelect: o.maxSelect,
+        position: o.position,
+        values: o.values.map((v) => ({
+          id: v.id,
+          value: v.value,
+          extraPrice: toNum(v.extraPrice),
+          imageUrl: v.imageUrl ?? null,
+          isActive: v.isActive,
+        })),
+      }));
+      p.hasOptions = p.options.length > 0;
+    } else {
+      p.options = [];
+      p.hasOptions = false;
+    }
+  }
+
+  // Map combos (filtered by feature)
+  const combos: PosCatalog["combos"] = features.combos
+    ? combosRaw.map((c) => ({
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        imageUrl: c.imageUrl,
+        comboPrice: toNum(c.comboPrice),
+        items: c.items.map((ci) => ({
+          id: ci.id,
+          productId: ci.productId,
+          productName: ci.product.name,
+          variantId: ci.variantId,
+          variantName: ci.variant?.name ?? null,
+          quantity: toNum(ci.quantity),
+          extraPrice: toNum(ci.extraPrice),
+          position: ci.position,
+        })),
+      }))
+    : [];
 
   return {
     location: {
@@ -313,11 +408,13 @@ registers: registersMapped,
       employeeId: employee?.id ?? null,
       name: userData?.fullName ?? "",
     },
+    combos,
     loyalty: {
       pointValue: toNum(orgLoyalty?.pointValue ?? null),
       pointsPerCurrency: toNum(orgLoyalty?.pointsPerCurrency ?? null),
       enabled: orgLoyalty?.loyaltyEnabled ?? true,
     },
+    features,
   };
 }
 
@@ -511,6 +608,7 @@ export async function createSale(
         discount: payload.discount,
         tax: payload.tax,
         total: payload.total,
+        tip: payload.tip ?? 0,
         pointsEarned: payload.pointsEarned,
         pointsRedeemed: payload.pointsRedeemed,
         changeGiven: payload.changeGiven,
@@ -537,6 +635,9 @@ export async function createSale(
           taxRate: i.taxRate,
           lineTotal: i.lineTotal,
           bulkQuantityDisplay: i.bulkQuantityDisplay,
+          notes: i.notes ?? undefined,
+          selectedOptions: i.selectedOptions ? JSON.parse(JSON.stringify(i.selectedOptions)) : undefined,
+          extraPrice: i.extraPrice ?? 0,
         })),
       });
     }

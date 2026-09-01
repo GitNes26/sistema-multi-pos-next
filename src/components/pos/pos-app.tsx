@@ -5,7 +5,7 @@ import { CheckCircle2, Printer } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { usePosStore, selectCustomer } from "@/stores/pos-store";
-import type { PosCatalog, PosLineItem, PosProduct, PosSalePayload } from "@/types/pos";
+import type { PosCatalog, PosCombo, PosLineItem, PosProduct, PosSalePayload } from "@/types/pos";
 import { swalToast, swalError } from "@/lib/swal";
 import { bulkDisplay } from "@/stores/pos-store";
 import { usePosRefresh } from "@/hooks/use-pos-refresh";
@@ -18,6 +18,7 @@ import { VariantDialog } from "./variant-dialog";
 import { CustomerModal } from "./customer-modal";
 import { DiscountDialog } from "./discount-dialog";
 import { PaymentDialog } from "./payment-dialog";
+import { ProductBuilder } from "./product-builder";
 import { CashRegisterPanel } from "./cash-register-panel";
 import { CatalogsModal } from "./catalogs-modal";
 import { Receipt } from "./receipt";
@@ -41,6 +42,7 @@ export function PosApp({ catalog }: PosAppProps) {
   const products = usePosStore((s) => s.products);
   const addProduct = usePosStore((s) => s.addProduct);
   const addBulk = usePosStore((s) => s.addBulk);
+  const addConfiguredItem = usePosStore((s) => s.addConfiguredItem);
   const editItem = usePosStore((s) => s.editItem);
   const clearTicket = usePosStore((s) => s.clearTicket);
   const refresh = usePosRefresh();
@@ -53,10 +55,12 @@ export function PosApp({ catalog }: PosAppProps) {
   const [cashOpen, setCashOpen] = useState(false);
   const [catalogsOpen, setCatalogsOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [builderTarget, setBuilderTarget] = useState<PosProduct | null>(null);
   const [lastSale, setLastSale] = useState<{
     sale: { id: string; saleNumber: string; locationName: string };
     payload: PosSalePayload;
   } | null>(null);
+  const [splitParts, setSplitParts] = useState<number | null>(null);
 
   useEffect(() => {
     setCatalog(catalog);
@@ -74,6 +78,10 @@ export function PosApp({ catalog }: PosAppProps) {
     }
     if (product.variantCount > 1) {
       setVariantTarget(product);
+      return;
+    }
+    if (product.hasOptions && product.options.length > 0) {
+      setBuilderTarget(product);
       return;
     }
     addProduct(product);
@@ -112,6 +120,24 @@ export function PosApp({ catalog }: PosAppProps) {
     setBulkTarget(null);
   };
 
+  const selectCombo = (combo: PosCombo) => {
+    // Add each combo item as a configured line item
+    for (const item of combo.items) {
+      const product = products.find((p) => p.productId === item.productId);
+      if (!product) continue;
+
+      // Find the variant if specified
+      const variant = item.variantId
+        ? product.variants.find((v) => v.id === item.variantId)
+        : product.variants[0];
+
+      addProduct(product, {
+        qty: item.quantity,
+        variant: variant ?? product.variants[0],
+      });
+    }
+  };
+
   const onSaleSuccess = async (
     sale: { id: string; saleNumber: string; locationName: string },
     payload: PosSalePayload
@@ -139,6 +165,7 @@ export function PosApp({ catalog }: PosAppProps) {
             <ResizablePanel defaultSize="65" minSize="35" className="min-w-0">
               <CatalogPanel
                 onSelect={selectProduct}
+                onSelectCombo={selectCombo}
                 collapsed={catalogCollapsed}
                 onToggleCollapsed={() => setCatalogCollapsed((v) => !v)}
               />
@@ -151,6 +178,10 @@ export function PosApp({ catalog }: PosAppProps) {
                   onOpenCustomer={() => setCustomerOpen(true)}
                   onOpenDiscount={() => setDiscountOpen(true)}
                   onCheckout={() => setPaymentOpen(true)}
+                  onSplitBill={(parts) => {
+                    setSplitParts(parts)
+                    setPaymentOpen(true)
+                  }}
                 />
               </section>
             </ResizablePanel>
@@ -176,7 +207,20 @@ export function PosApp({ catalog }: PosAppProps) {
 
       <CustomerModal open={customerOpen} onClose={() => setCustomerOpen(false)} />
       <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} />
-      <PaymentDialog open={paymentOpen} onClose={() => setPaymentOpen(false)} onSuccess={onSaleSuccess} />
+      <PaymentDialog open={paymentOpen} onClose={() => { setPaymentOpen(false); setSplitParts(null) }} onSuccess={onSaleSuccess} splitParts={splitParts} />
+      <ProductBuilder
+        product={builderTarget}
+        open={Boolean(builderTarget)}
+        onClose={() => setBuilderTarget(null)}
+        onAdd={(config) => {
+          usePosStore.getState().addConfiguredItem(config.product as PosProduct, {
+            selectedOptions: config.selectedOptions,
+            totalExtraPrice: config.totalExtraPrice,
+            notes: config.notes,
+            quantity: config.quantity,
+          });
+        }}
+      />
       <CashRegisterPanel open={cashOpen} onClose={() => setCashOpen(false)} />
       <CatalogsModal open={catalogsOpen} onClose={() => setCatalogsOpen(false)} onSelectProduct={selectProduct} />
 

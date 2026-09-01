@@ -9,6 +9,9 @@ import {
   Wallet,
   Sparkles,
   Target,
+  Users,
+  Split,
+  Armchair,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePosStore, selectCustomer } from "@/stores/pos-store"
@@ -26,6 +29,7 @@ interface TicketPanelProps {
   onOpenCustomer: () => void
   onOpenDiscount: () => void
   onCheckout: () => void
+  onSplitBill?: (parts: number) => void
 }
 
 export function TicketPanel({
@@ -33,6 +37,7 @@ export function TicketPanel({
   onOpenCustomer,
   onOpenDiscount,
   onCheckout,
+  onSplitBill,
 }: TicketPanelProps) {
   const items = usePosStore((s) => s.items)
   const customerId = usePosStore((s) => s.customerId)
@@ -40,6 +45,9 @@ export function TicketPanel({
   const clearTicket = usePosStore((s) => s.clearTicket)
   const setQty = usePosStore((s) => s.setQty)
   const removeItem = usePosStore((s) => s.removeItem)
+  const features = usePosStore((s) => s.features)
+  const selectedTable = usePosStore((s) => s.selectedTable)
+  const setTable = usePosStore((s) => s.setTable)
 
   const t = usePosTotals()
   const customer = selectCustomer(customerId)
@@ -337,6 +345,31 @@ export function TicketPanel({
           </div>
         </div>
 
+        {/* Table selector (food_service) */}
+        {features.tables && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant={selectedTable ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                const num = prompt("Número de mesa:")
+                if (num && num.trim()) {
+                  setTable({ id: `manual-${num.trim()}`, number: parseInt(num.trim()) || 0, name: `Mesa ${num.trim()}` })
+                }
+              }}
+              className="h-9 flex-1"
+            >
+              <Armchair className="size-4" />
+              {selectedTable ? `Mesa ${selectedTable.number}` : "Mesa"}
+            </Button>
+            {selectedTable && (
+              <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => setTable(null)}>
+                ✕
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="grid grid-cols-2 gap-2">
           <Button
@@ -359,6 +392,29 @@ export function TicketPanel({
             Descuento
           </Button>
         </div>
+
+        {/* Split bill (food_service) */}
+        {features.splitBill && items.length > 0 && t.payable > 0 && onSplitBill && (
+          <div className="flex items-center gap-2 rounded-xl border border-dashed border-violet-500/40 bg-violet-500/5 px-3 py-2">
+            <Split className="size-4 shrink-0 text-violet-600 dark:text-violet-400" />
+            <span className="text-xs font-medium text-violet-700 dark:text-violet-400">
+              Dividir cuenta
+            </span>
+            <div className="ml-auto flex gap-1">
+              {[2, 3, 4, 5, 6].map((n) => (
+                <Button
+                  key={n}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-xs"
+                  onClick={() => onSplitBill(n)}
+                >
+                  {n}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Checkout button */}
         <Button

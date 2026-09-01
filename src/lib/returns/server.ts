@@ -297,8 +297,7 @@ export async function completeReturn(
       break;
     }
     case "exchange": {
-      // Para exchange, el empleado crea una nueva venta aparte con el producto de reemplazo
-      // La devolución solo registra el movimiento y marca como completada
+      // Producto devuelto al stock (ya se hizo arriba). El empleado crea una nueva venta aparte.
       break;
     }
   }

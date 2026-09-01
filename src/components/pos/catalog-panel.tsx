@@ -1,27 +1,33 @@
 "use client"
 
 import { useEffect, useMemo, useRef } from "react"
-import { Keyboard, Package, ScanBarcode, Search } from "lucide-react"
+import { Keyboard, Package, Puzzle, ScanBarcode, Search } from "lucide-react"
 import { usePosStore } from "@/stores/pos-store"
-import type { PosProduct } from "@/types/pos"
+import type { PosCombo, PosProduct } from "@/types/pos"
 import { ProductCard } from "./product-card"
+import { ComboCard } from "./combo-card"
 import { VirtualKeyboard } from "./virtual-keyboard"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+const COMBOS_CATEGORY_ID = "__combos__"
+
 interface CatalogPanelProps {
   onSelect: (product: PosProduct) => void
+  onSelectCombo: (combo: PosCombo) => void
   collapsed: boolean
   onToggleCollapsed: () => void
 }
 
 export function CatalogPanel({
   onSelect,
+  onSelectCombo,
   collapsed,
   onToggleCollapsed,
 }: CatalogPanelProps) {
   const products = usePosStore((s) => s.products)
+  const combos = usePosStore((s) => s.combos)
   const categories = usePosStore((s) => s.categories)
   const activeCategory = usePosStore((s) => s.activeCategory)
   const setActiveCategory = usePosStore((s) => s.setActiveCategory)
@@ -99,6 +105,7 @@ export function CatalogPanel({
   const withCount = [
     { id: "", name: "Todos", imageUrl: null, productCount: products.length },
     ...categories,
+    ...(combos.length > 0 ? [{ id: COMBOS_CATEGORY_ID, name: "Combos", imageUrl: null, productCount: combos.length }] : []),
   ]
 
   return (
@@ -178,7 +185,20 @@ export function CatalogPanel({
       </div>
 
       <div className="scrollbar-none flex-1 overflow-y-auto pb-4">
-        {filtered.length === 0 ? (
+        {activeCategory === COMBOS_CATEGORY_ID ? (
+          combos.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+              <Puzzle className="size-6" />
+              <p className="text-sm">No hay combos disponibles.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5">
+              {combos.map((c) => (
+                <ComboCard key={c.id} combo={c} onSelect={onSelectCombo} />
+              ))}
+            </div>
+          )
+        ) : filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
             <Search className="size-6" />
             <p className="text-sm">Sin resultados para “{search}”.</p>

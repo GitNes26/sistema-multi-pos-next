@@ -13,6 +13,8 @@ import type { PermissionKey } from "@/lib/auth/permission-keys";
 
 export type AuthScope = "superadmin" | "app" | "portal";
 
+export type BusinessMode = "retail" | "food_service" | "services" | "rental" | "hybrid";
+
 export type SessionUser = {
   id: string;
   name: string;
@@ -22,6 +24,8 @@ export type SessionUser = {
   organizationId: string | null;
   /** Organización en la que el usuario está operando (superAdmin / admin multi-org). */
   activeOrganizationId: string | null;
+  /** Modo de negocio de la organización activa. */
+  businessMode: BusinessMode;
   permissions: PermissionKey[];
   scope: AuthScope;
 };
@@ -34,6 +38,7 @@ declare module "next-auth" {
     role?: AppRole | "superadmin";
     organizationId?: string | null;
     activeOrganizationId?: string | null;
+    businessMode?: BusinessMode;
     permissions?: PermissionKey[];
     scope?: AuthScope;
   }
@@ -45,6 +50,7 @@ declare module "next-auth/jwt" {
     role?: AppRole | "superadmin";
     organizationId?: string | null;
     activeOrganizationId?: string | null;
+    businessMode?: BusinessMode;
     permissions?: PermissionKey[];
     scope?: AuthScope;
     /** Sesión invalidada por re-validación en BD (usuario desactivado/eliminado). */
@@ -219,6 +225,16 @@ export const authOptions: NextAuthOptions = {
               ? await permissionsForRole(kind.role, kind.roleId, kind.organizationId)
               : [];
 
+        // Fetch businessMode from the organization
+        let businessMode: BusinessMode = "retail";
+        if (kind.organizationId) {
+          const org = await prisma.organization.findUnique({
+            where: { id: kind.organizationId },
+            select: { businessMode: true },
+          });
+          if (org?.businessMode) businessMode = org.businessMode;
+        }
+
         return {
           id: user.id,
           name: user.fullName,
@@ -227,6 +243,7 @@ export const authOptions: NextAuthOptions = {
           role: kind.role,
           organizationId: kind.organizationId,
           activeOrganizationId: kind.organizationId,
+          businessMode,
           permissions,
           scope: kind.scope,
         };
@@ -248,6 +265,7 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.organizationId = user.organizationId ?? null;
         token.activeOrganizationId = user.activeOrganizationId ?? user.organizationId ?? null;
+        token.businessMode = user.businessMode ?? "retail";
         token.permissions = user.permissions ?? [];
         token.scope = user.scope ?? "app";
         token.name = user.name;
@@ -262,6 +280,14 @@ export const authOptions: NextAuthOptions = {
       if (trigger === "update" && updatePayload && "activeOrganizationId" in updatePayload) {
         const next = (updatePayload as { activeOrganizationId?: string | null }).activeOrganizationId;
         token.activeOrganizationId = next ?? null;
+        // Also refresh businessMode when org changes
+        if (next) {
+          const org = await prisma.organization.findUnique({
+            where: { id: next },
+            select: { businessMode: true },
+          });
+          if (org?.businessMode) token.businessMode = org.businessMode;
+        }
       }
 
       // Re-validación contra BD (throttle 60s): si el usuario fue desactivado o
@@ -292,6 +318,7 @@ export const authOptions: NextAuthOptions = {
         role: token.role ?? "customer",
         organizationId: token.organizationId ?? null,
         activeOrganizationId: token.activeOrganizationId ?? token.organizationId ?? null,
+        businessMode: token.businessMode ?? "retail",
         permissions: token.permissions ?? [],
         scope: token.scope ?? "app",
       };

@@ -1,0 +1,13 @@
+
+> sistema-multi-pos-react-node-chadcnui@0.14.0.0 dev
+> next dev --turbopack
+
+[32m✔[0m [33mConsole Ninja[0m extension is connected to [33mNext.js[0m, see [36mhttps://tinyurl.com/2vt8jxzw[0m
+   ▲ Next.js 15.5.23 (Turbopack)
+   - Local:        http://localhost:60924
+   - Network:      http://192.168.252.12:60924
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Compiled middleware in 163ms
+ ✓ Ready in 1457ms

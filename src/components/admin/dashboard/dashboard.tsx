@@ -9,6 +9,7 @@ import {
   Package,
   Trophy,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { reportsApi, type DashboardData } from "@/lib/api";
@@ -112,6 +113,31 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-4">
+      {/* Onboarding prompt */}
+      {data.orgName === "Mi Empresa" && (
+        <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                <Package className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="font-medium text-emerald-800 dark:text-emerald-200">
+                  ¡Configura tu negocio!
+                </p>
+                <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                  Elige el tipo de negocio y completa los datos de tu empresa.
+                </p>
+              </div>
+            </div>
+            <a href="/onboarding">
+              <Button size="sm" className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white">
+                Configurar
+              </Button>
+            </a>
+          </CardContent>
+        </Card>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Ventas de hoy"

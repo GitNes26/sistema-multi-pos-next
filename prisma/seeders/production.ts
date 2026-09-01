@@ -93,6 +93,7 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   { id: "menu-pos", parentId: "menu-principal", type: "item", label: "POS", icon: "Store", href: "/pos", permissionKey: "pos.use", sortOrder: 2 },
   { id: "menu-ventas", parentId: "menu-principal", type: "item", label: "Ventas", icon: "ShoppingCart", href: "/admin/sales", permissionKey: "sales.view", sortOrder: 3 },
   { id: "menu-reportes", parentId: "menu-principal", type: "item", label: "Reportes", icon: "BarChart3", href: "/admin/reports", permissionKey: "reports.view", sortOrder: 4 },
+  { id: "menu-bi", parentId: "menu-principal", type: "item", label: "BI", icon: "Sparkles", href: "/admin/reports/bi", permissionKey: "reports.view", sortOrder: 4.5 },
   { id: "menu-notificaciones", parentId: "menu-principal", type: "item", label: "Notificaciones", icon: "BellRing", href: "/admin/notifications", sortOrder: 5 },
 
   { id: "menu-catalogos", parentId: null, type: "section", label: "Catálogos", icon: "Package", sortOrder: 2 },
@@ -102,8 +103,9 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   { id: "menu-clientes", parentId: "menu-catalogos", type: "item", label: "Clientes", icon: "Users", href: "/admin/customers", permissionKey: "customers.view", sortOrder: 4 },
   { id: "menu-empleados", parentId: "menu-catalogos", type: "item", label: "Empleados", icon: "UserCog", href: "/admin/employees", permissionKey: "employees.view", sortOrder: 5 },
   { id: "menu-puestos", parentId: "menu-catalogos", type: "item", label: "Puestos", icon: "Briefcase", href: "/admin/positions", permissionKey: "employees.view", sortOrder: 6 },
-  { id: "menu-promociones", parentId: "menu-catalogos", type: "item", label: "Promociones", icon: "Percent", href: "/admin/promotions", permissionKey: "promotions.view", sortOrder: 7 },
-  { id: "menu-publicaciones", parentId: "menu-catalogos", type: "item", label: "Publicaciones", icon: "Megaphone", href: "/admin/publications", permissionKey: "publications.manage", sortOrder: 8 },
+  { id: "menu-combos", parentId: "menu-catalogos", type: "item", label: "Combos", icon: "Puzzle", href: "/admin/combos", permissionKey: "products.manage", sortOrder: 7 },
+  { id: "menu-promociones", parentId: "menu-catalogos", type: "item", label: "Promociones", icon: "Percent", href: "/admin/promotions", permissionKey: "promotions.view", sortOrder: 8 },
+  { id: "menu-publicaciones", parentId: "menu-catalogos", type: "item", label: "Publicaciones", icon: "Megaphone", href: "/admin/publications", permissionKey: "publications.manage", sortOrder: 9 },
 
   { id: "menu-operacion", parentId: null, type: "section", label: "Operación", icon: "Boxes", sortOrder: 3 },
   { id: "menu-inventario", parentId: "menu-operacion", type: "item", label: "Inventario", icon: "Boxes", href: "/admin/inventory", permissionKey: "inventory.view", sortOrder: 1 },
@@ -113,6 +115,8 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   { id: "menu-pedidos-monitoreo", parentId: "menu-pedidos", type: "item", label: "Monitoreo", icon: "Activity", href: "/admin/orders/monitoring", permissionKey: "orders.view", sortOrder: 1 },
   { id: "menu-cedis", parentId: "menu-operacion", type: "item", label: "CEDIS", icon: "Warehouse", href: "/admin/cedis", permissionKey: "cedis.manage", sortOrder: 5 },
   { id: "menu-creditos", parentId: "menu-operacion", type: "item", label: "Crédito", icon: "Landmark", href: "/admin/credits", permissionKey: "orders.view", sortOrder: 6 },
+  { id: "menu-mesas", parentId: "menu-operacion", type: "item", label: "Mesas", icon: "Armchair", href: "/admin/tables", permissionKey: "locations.view", sortOrder: 7 },
+  { id: "menu-kds", parentId: "menu-operacion", type: "item", label: "Cocina (KDS)", icon: "ChefHat", href: "/kds", permissionKey: "orders.view", sortOrder: 8 },
 
   { id: "menu-ajustes", parentId: null, type: "section", label: "Ajustes", icon: "Settings", sortOrder: 4 },
   { id: "menu-apariencia", parentId: "menu-ajustes", type: "item", label: "Apariencia", icon: "Palette", href: "/admin/settings/appearance", permissionKey: "settings.manage", sortOrder: 1 },

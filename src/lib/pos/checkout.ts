@@ -18,7 +18,8 @@ export interface PaymentEntry {
 export function buildSalePayload(
   totals: ReturnType<typeof usePosTotals>,
   entries: PaymentEntry[],
-  changeGiven: number
+  changeGiven: number,
+  tip: number = 0
 ): PosSalePayload {
   const state = usePosStore.getState();
   const customer = selectCustomer(state.customerId);
@@ -42,6 +43,9 @@ export function buildSalePayload(
       lineTotal: round2(lineSubtotal - allocated),
       bulkQuantityDisplay: i.bulkQuantityDisplay,
       trackInventory: i.trackInventory,
+      notes: i.notes,
+      selectedOptions: i.selectedOptions,
+      extraPrice: i.extraPrice,
     };
   });
 
@@ -66,5 +70,6 @@ export function buildSalePayload(
     cashRegisterId: state.registerId || undefined,
     couponCode: state.coupon.status === "applied" ? state.coupon.result?.code : undefined,
     nextPurchaseCoupon: totals.nextPurchaseCoupon ?? undefined,
+    tip: tip > 0 ? tip : undefined,
   };
 }

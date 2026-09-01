@@ -22,6 +22,44 @@ export interface PosVariant {
   isActive: boolean;
 }
 
+export interface PosProductOptionValue {
+  id: string;
+  value: string;
+  extraPrice: number;
+  imageUrl: string | null;
+  isActive: boolean;
+}
+
+export interface PosProductOption {
+  id: string;
+  name: string;
+  required: boolean;
+  minSelect: number;
+  maxSelect: number;
+  position: number;
+  values: PosProductOptionValue[];
+}
+
+export interface PosComboItem {
+  id: string;
+  productId: string;
+  productName: string;
+  variantId: string | null;
+  variantName: string | null;
+  quantity: number;
+  extraPrice: number;
+  position: number;
+}
+
+export interface PosCombo {
+  id: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  comboPrice: number;
+  items: PosComboItem[];
+}
+
 export interface PosProduct {
   id: string;
   productId: string;
@@ -40,6 +78,8 @@ export interface PosProduct {
   bulk: PosBulkInfo | null;
   variantCount: number;
   variants: PosVariant[];
+  options: PosProductOption[];
+  hasOptions: boolean;
 }
 
 export interface PosCategory {
@@ -134,6 +174,18 @@ export interface PosLoyaltyConfig {
   enabled: boolean;
 }
 
+export interface PosFeatures {
+  combos: boolean
+  productBuilder: boolean
+  itemNotes: boolean
+  tables: boolean
+  kds: boolean
+  bulkProducts: boolean
+  credit: boolean
+  tips: boolean
+  splitBill: boolean
+}
+
 export interface PosCatalog {
   location: PosLocation;
   company: { name: string | null; logoUrl: string | null; address: string | null; city: string | null; phone: string | null; ticketFooter: string | null };
@@ -141,10 +193,12 @@ export interface PosCatalog {
   categories: PosCategory[];
   customers: PosCustomer[];
   promotions: PosPromotion[];
+  combos: PosCombo[];
   registers: PosCashRegister[];
   session: PosCashSession | null;
   cashier: { userId: string; employeeId: string | null; name: string };
   loyalty: PosLoyaltyConfig;
+  features: PosFeatures;
 }
 
 export interface PosLineItem {
@@ -163,6 +217,9 @@ export interface PosLineItem {
   trackInventory: boolean;
   stock: number;
   bulkQuantityDisplay?: string;
+  notes?: string;
+  selectedOptions?: { optionName: string; value: string; extraPrice: number }[];
+  extraPrice?: number;
 }
 
 export interface PosSalePayload {
@@ -181,6 +238,9 @@ export interface PosSalePayload {
     lineTotal: number;
     bulkQuantityDisplay?: string;
     trackInventory: boolean;
+    notes?: string;
+    selectedOptions?: { optionName: string; value: string; extraPrice: number }[];
+    extraPrice?: number;
   }[];
   customerId?: string;
   subtotal: number;
@@ -198,4 +258,6 @@ export interface PosSalePayload {
   couponCode?: string;
   nextPurchaseCoupon?: { promotionId: string; amount: number };
   notes?: string;
+  tableId?: string;
+  tip?: number;
 }

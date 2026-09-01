@@ -23,6 +23,7 @@ export interface PublicationInput {
   imageUrl?: string | null;
   type: PublicationKind;
   isActive?: boolean;
+  businessMode?: string | null;
   publishedAt?: string | null;
   startsAt?: string | null;
   endsAt?: string | null;
@@ -36,6 +37,7 @@ export interface PublicationRow {
   imageUrl: string | null;
   type: string;
   isActive: boolean;
+  businessMode: string | null;
   publishedAt: string | null;
   startsAt: string | null;
   endsAt: string | null;
@@ -62,6 +64,7 @@ function toRow(p: {
     imageUrl: p.imageUrl,
     type: p.type,
     isActive: p.isActive,
+    businessMode: (p as unknown as { businessMode: string | null }).businessMode ?? null,
     publishedAt: p.publishedAt?.toISOString() ?? null,
     startsAt: p.startsAt?.toISOString() ?? null,
     endsAt: p.endsAt?.toISOString() ?? null,
@@ -98,6 +101,7 @@ export async function createPublication(
         imageUrl: input.imageUrl ?? null,
         type: input.type as $Enums.PublicationType,
         isActive: input.isActive ?? true,
+        businessMode: input.businessMode ?? null,
         publishedAt: input.publishedAt ? new Date(input.publishedAt) : new Date(),
         startsAt: input.startsAt ? new Date(input.startsAt.includes("T") ? input.startsAt : input.startsAt + "T00:00:00") : null,
         endsAt: input.endsAt ? new Date(input.endsAt.includes("T") ? input.endsAt : input.endsAt + "T00:00:00") : null,
@@ -147,6 +151,7 @@ export async function updatePublication(
       ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl ?? null } : {}),
       ...(input.type !== undefined ? { type: input.type as $Enums.PublicationType } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.businessMode !== undefined ? { businessMode: input.businessMode ?? null } : {}),
       ...(input.publishedAt !== undefined
         ? { publishedAt: input.publishedAt ? new Date(input.publishedAt) : null }
         : {}),

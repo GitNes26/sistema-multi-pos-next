@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { SwipeableRow } from "@/components/shared/swipeable-row";
 import { GpsPicker, type GpsValue } from "@/components/base/gps-picker";
@@ -60,6 +61,9 @@ export function CheckoutClient() {
   const [pointsToRedeem, setPointsToRedeem] = useState(0);
   const [geoPermissionOpen, setGeoPermissionOpen] = useState(false);
   const [promotions, setPromotions] = useState<PortalPromotionPreview[]>([]);
+  const [tipMode, setTipMode] = useState<"none" | "percent" | "custom">("none");
+  const [tipPercent, setTipPercent] = useState(15);
+  const [tipCustom, setTipCustom] = useState("");
 
   const subtotal = cartSubtotal(items);
   const tax = cartTax(items);
@@ -91,7 +95,8 @@ export function CheckoutClient() {
     return policy.deliveryFee;
   }, [policy, deliveryMethod]);
 
-  const total = subtotal + tax + deliveryFee - promoPreview.discount;
+  const tipAmount = tipMode === "percent" ? Math.round(subtotal * (tipPercent / 100) * 100) / 100 : tipMode === "custom" ? parseFloat(tipCustom.replace(",", ".")) || 0 : 0;
+  const total = subtotal + tax + deliveryFee - promoPreview.discount + tipAmount;
 
   const pointsValue = loyalty ? Math.min(pointsToRedeem * loyalty.pointValue, total) : 0;
   const payableTotal = Math.max(0, total - pointsValue);
@@ -274,6 +279,7 @@ export function CheckoutClient() {
         subtotal,
         discount: promoPreview.discount,
         deliveryFee,
+        tip: tipAmount > 0 ? tipAmount : undefined,
         total: payableTotal,
         notes: notes.trim() || null,
       });
@@ -577,6 +583,70 @@ export function CheckoutClient() {
             </section>
           )}
 
+          {/* Propina */}
+          <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-sm">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              💰 Propina (opcional)
+            </h2>
+            <div className="grid grid-cols-5 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setTipMode("none")}
+                className={cn(
+                  "rounded-xl border px-2 py-2.5 text-xs font-semibold transition",
+                  tipMode === "none"
+                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                    : "border-muted-foreground/20 text-muted-foreground hover:border-emerald-500/50"
+                )}
+              >
+                Sin propina
+              </button>
+              {[10, 15, 20, 25].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => {
+                    setTipMode("percent")
+                    setTipPercent(pct)
+                  }}
+                  className={cn(
+                    "rounded-xl border px-2 py-2.5 text-xs font-semibold transition",
+                    tipMode === "percent" && tipPercent === pct
+                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                      : "border-muted-foreground/20 text-muted-foreground hover:border-emerald-500/50"
+                  )}
+                >
+                  {pct}%
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 flex-1"
+                onClick={() => setTipMode(tipMode === "custom" ? "none" : "custom")}
+              >
+                {tipMode === "custom" ? "Cancelar" : "Otro monto"}
+              </Button>
+              {tipMode === "custom" && (
+                <Input
+                  value={tipCustom}
+                  onChange={(e) => setTipCustom(e.target.value.replace(/[^\d.,]/g, ""))}
+                  placeholder="$0.00"
+                  inputMode="decimal"
+                  className="h-9 w-24"
+                />
+              )}
+            </div>
+            {tipAmount > 0 && (
+              <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                Propina: {money(tipAmount)}
+              </p>
+            )}
+          </section>
+
           {/* Resumen */}
           <section className="rounded-2xl border bg-card p-4 shadow-sm">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
@@ -628,6 +698,12 @@ export function CheckoutClient() {
                     <Sparkles className="size-3.5" /> Puntos ({pointsToRedeem} pts)
                   </span>
                   <span>-{money(pointsValue)}</span>
+                </div>
+              )}
+              {tipAmount > 0 && (
+                <div className="flex justify-between text-emerald-600">
+                  <span>💰 Propina</span>
+                  <span>+{money(tipAmount)}</span>
                 </div>
               )}
               {scheduleInfo && (

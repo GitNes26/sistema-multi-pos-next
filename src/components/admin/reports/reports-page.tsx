@@ -10,8 +10,10 @@ import {
   ClipboardList,
   Boxes,
   Landmark,
+  Bell,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -429,14 +431,28 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
             </TabsContent>
 
             <TabsContent value="credit" className="mt-4 space-y-4">
-              <SummaryCards
-                items={[
-                  { label: "Cartera total", value: money(creditTotals.totalDebt), accent: true },
-                  { label: "Clientes con deuda", value: String(credit.length) },
-                  { label: "Vencidos", value: String(creditTotals.overdueCount), },
-                  { label: "Total cobrado", value: money(creditTotals.totalPayments) },
-                ]}
-              />
+              <div className="flex items-center justify-between">
+                <SummaryCards
+                  items={[
+                    { label: "Cartera total", value: money(creditTotals.totalDebt), accent: true },
+                    { label: "Clientes con deuda", value: String(credit.length) },
+                    { label: "Vencidos", value: String(creditTotals.overdueCount), },
+                    { label: "Total cobrado", value: money(creditTotals.totalPayments) },
+                  ]}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const res = await fetch("/api/credit/reminder", { method: "POST", credentials: "include" });
+                    const data = await res.json();
+                    if (data.ok) toast.success(data.message);
+                    else toast.error(data.error);
+                  }}
+                >
+                  <Bell className="size-4" /> Enviar recordatorios
+                </Button>
+              </div>
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Cartera de crédito</CardTitle>

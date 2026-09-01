@@ -26,6 +26,7 @@ export interface DashboardData {
     topProducts: { name: string; quantity: number; total: number; sharePct: number }[];
   };
   customers: number;
+  orgName: string;
 }
 
 export interface CashReportRow {
@@ -178,6 +179,13 @@ export async function getDashboardData(organizationId: string): Promise<Dashboar
   ]);
 
   const todaySales = toNum(_sum?.total ?? 0);
+
+  // Get org name for onboarding prompt
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { name: true },
+  });
+
   return {
     today: {
       sales: round2(todaySales),
@@ -186,6 +194,7 @@ export async function getDashboardData(organizationId: string): Promise<Dashboar
     },
     period,
     customers,
+    orgName: org?.name ?? "",
   };
 }
 
@@ -430,7 +439,7 @@ export interface CreditReportRow {
   daysOverdue: number;
 }
 
-export async function getCreditReport(organizationId: string, filters?: ReportFilters) {
+export async function getCreditReport(organizationId: string, _filters?: ReportFilters) {
   const now = new Date();
 
   const credits = await prisma.customerCredit.findMany({

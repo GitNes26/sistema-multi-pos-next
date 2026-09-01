@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   PiggyBank,
   ReceiptText,
+  Split,
   Trash2,
   Wallet,
   Zap,
@@ -39,6 +40,7 @@ interface PaymentDialogProps {
     sale: { id: string; saleNumber: string; locationName: string },
     payload: ReturnType<typeof buildSalePayload>
   ) => void
+  splitParts?: number | null
 }
 
 const METHODS: $Enums.PaymentMethod[] = ["cash", "card", "wallet", "credit", "other"]
@@ -78,6 +80,7 @@ export function PaymentDialog({
   open,
   onClose,
   onSuccess,
+  splitParts,
 }: PaymentDialogProps) {
   const t = usePosTotals()
   const setPointsRedeemed = usePosStore((s) => s.setPointsRedeemed)
@@ -92,6 +95,10 @@ export function PaymentDialog({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [creditInfo, setCreditInfo] = useState<{ allowed: boolean; reason?: string; balance: number; limit: number | null } | null>(null)
+  const [tipMode, setTipMode] = useState<"none" | "percent" | "custom">("none")
+  const [tipPercent, setTipPercent] = useState(15)
+  const [tipCustom, setTipCustom] = useState("")
+  const features = usePosStore((s) => s.features)
 
   const maxPoints = t.customer
     ? Math.max(
@@ -103,10 +110,12 @@ export function PaymentDialog({
       )
     : 0
 
+  const tipAmount = tipMode === "percent" ? round2(t.subtotal * (tipPercent / 100)) : tipMode === "custom" ? round2(parseFloat(tipCustom.replace(",", ".")) || 0) : 0
+  const totalWithTip = round2(t.payable + tipAmount)
   const paid = round2(entries.reduce((s, e) => s + e.amount, 0))
-  const remaining = round2(Math.max(0, t.payable - paid))
-  const change = round2(Math.max(0, paid - t.payable))
-  const progress = t.payable > 0 ? Math.min(100, (paid / t.payable) * 100) : 0
+  const remaining = round2(Math.max(0, totalWithTip - paid))
+  const change = round2(Math.max(0, paid - totalWithTip))
+  const progress = totalWithTip > 0 ? Math.min(100, (paid / totalWithTip) * 100) : 0
   const currentAmount = parseFloat(cashStr.replace(",", ".")) || 0
 
   useEffect(() => {
@@ -117,6 +126,9 @@ export function PaymentDialog({
       setReference("")
       setError("")
       setTab("quick")
+      setTipMode("none")
+      setTipPercent(15)
+      setTipCustom("")
     }
   }, [open])
 
@@ -159,6 +171,9 @@ export function PaymentDialog({
           if (d.ok) setCreditInfo({ allowed: d.canUse?.allowed ?? false, reason: d.canUse?.reason, balance: d.credit?.currentBalance ?? 0, limit: d.credit?.creditLimit })
         })
         .catch(() => setCreditInfo(null))
+    } else if (method === "credit" && !t.customer) {
+      setMethod("cash")
+      setCreditInfo(null)
     } else {
       setCreditInfo(null)
     }
@@ -182,14 +197,14 @@ export function PaymentDialog({
     setEntries((prev) => prev.filter((_, idx) => idx !== i))
 
   const complete = async () => {
-    if (paid - t.payable < -0.01) {
+    if (paid - totalWithTip < -0.01) {
       setError("Falta por cubrir el total")
       return
     }
     setLoading(true)
     setError("")
     try {
-      const payload = buildSalePayload(t, entries, change)
+      const payload = buildSalePayload(t, entries, change, tipAmount)
       const res = await fetch("/api/pos/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -217,6 +232,73 @@ export function PaymentDialog({
       setLoading(false)
     }
   }
+
+  const TIP_PRESETS = [10, 15, 20, 25]
+
+  // Tip selector block
+  const tipBlock = features.tips && (
+    <div className="space-y-2 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 p-3">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+        💰 Propina (opcional)
+      </p>
+      <div className="grid grid-cols-5 gap-1.5">
+        <button
+          type="button"
+          onClick={() => setTipMode("none")}
+          className={cn(
+            "rounded-lg border px-2 py-2 text-xs font-semibold transition",
+            tipMode === "none"
+              ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              : "border-muted-foreground/20 text-muted-foreground hover:border-emerald-500/50"
+          )}
+        >
+          Sin propina
+        </button>
+        {TIP_PRESETS.map((pct) => (
+          <button
+            key={pct}
+            type="button"
+            onClick={() => {
+              setTipMode("percent")
+              setTipPercent(pct)
+            }}
+            className={cn(
+              "rounded-lg border px-2 py-2 text-xs font-semibold transition",
+              tipMode === "percent" && tipPercent === pct
+                ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                : "border-muted-foreground/20 text-muted-foreground hover:border-emerald-500/50"
+            )}
+          >
+            {pct}%
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 flex-1"
+          onClick={() => setTipMode(tipMode === "custom" ? "none" : "custom")}
+        >
+          {tipMode === "custom" ? "Cancelar" : "Otro monto"}
+        </Button>
+        {tipMode === "custom" && (
+          <Input
+            value={tipCustom}
+            onChange={(e) => setTipCustom(e.target.value.replace(/[^\d.,]/g, ""))}
+            placeholder="$0.00"
+            inputMode="decimal"
+            className="h-8 w-24"
+          />
+        )}
+      </div>
+      {tipAmount > 0 && (
+        <p className="text-xs text-emerald-700 dark:text-emerald-400">
+          Propina: {money(tipAmount)} · Total con propina: <span className="font-bold">{money(totalWithTip)}</span>
+        </p>
+      )}
+    </div>
+  )
 
   // Bloque compartido de denominaciones (visible en ambas pestañas)
   const denominationsBlock = remaining > 0 && (
@@ -262,23 +344,42 @@ export function PaymentDialog({
               en puntos ·{" "}
             </>
           )}
-          Restante: {money(t.payable)}
+          {tipAmount > 0 ? (
+            <>Restante: {money(totalWithTip)} (incluye {money(tipAmount)} propina)</>
+          ) : (
+            <>Restante: {money(t.payable)}</>
+          )}
         </>
       }
-      size="3xl"
+      size="4xl"
       bodyClassName="space-y-3"
       footer={
         <Button
           size="lg"
           className="h-14 w-full text-base font-bold"
-          disabled={loading || paid - t.payable < -0.01}
+          disabled={loading || paid - totalWithTip < -0.01}
           onClick={complete}
         >
           <BadgeCheck className="size-5" />
-          {loading ? "Registrando…" : `Completar venta · ${money(t.payable)}`}
+          {loading ? "Registrando…" : `Completar venta · ${money(totalWithTip)}`}
         </Button>
       }
     >
+      {/* Split bill info */}
+      {splitParts && splitParts > 1 && (
+        <div className="rounded-xl border border-dashed border-violet-500/40 bg-violet-500/5 p-3">
+          <div className="flex items-center gap-2">
+            <Split className="size-4 shrink-0 text-violet-600 dark:text-violet-400" />
+            <span className="text-xs font-semibold text-violet-700 dark:text-violet-400">
+              Cuenta dividida en {splitParts} partes
+            </span>
+          </div>
+          <p className="mt-1.5 text-xs text-violet-600 dark:text-violet-400">
+            Cada persona paga: <span className="font-bold">{money(totalWithTip / splitParts)}</span>
+            {' · '}Total a cobrar: <span className="font-bold">{money(totalWithTip)}</span>
+          </p>
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-3">
         {/* ── Columna izquierda: acción de pago ───────────────────── */}
         <div className="space-y-3 md:col-span-2">
@@ -286,14 +387,19 @@ export function PaymentDialog({
           <div className="rounded-2xl border bg-muted/30 p-4">
             <div className="flex items-end justify-between">
               <span className="text-sm text-muted-foreground">
-                Total a cobrar
+                Total a cobrar{tipAmount > 0 ? " + propina" : ""}
               </span>
               <AnimatedNumber
-                value={t.payable}
+                value={totalWithTip}
                 format={money}
                 className="text-3xl font-black tabular-nums"
               />
             </div>
+            {tipAmount > 0 && (
+              <p className="mt-1 text-right text-xs text-emerald-600 dark:text-emerald-400">
+                Subtotal: {money(t.payable)} + Propina: {money(tipAmount)}
+              </p>
+            )}
             <Progress value={progress} className="mt-3 h-2.5 rounded-full" />
             <div className="mt-2 flex justify-between text-sm">
               <span className="text-muted-foreground">
@@ -377,6 +483,7 @@ export function PaymentDialog({
                   </div>
                 )}
 
+                {tipBlock}
                 {denominationsBlock}
               </motion.div>
             ) : (
@@ -389,8 +496,8 @@ export function PaymentDialog({
                 className="space-y-3"
               >
                 {/* Selector de método */}
-                <div className="grid grid-cols-4 gap-1.5">
-                  {METHODS.map((m) => (
+                <div className={cn("grid gap-1.5", t.customer ? "grid-cols-4" : "grid-cols-3")}>
+                  {METHODS.filter((m) => m !== "credit" || t.customer).map((m) => (
                     <button
                       key={m}
                       type="button"
@@ -433,6 +540,7 @@ export function PaymentDialog({
                   </div>
                 </div>
 
+                {tipBlock}
                 {denominationsBlock}
               </motion.div>
             )}

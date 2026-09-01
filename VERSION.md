@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.15.0.0] — 2026-09-01
+- **Tipo:** `feat` (Minor)
+- feat: se agregaron funciones y todo para restaurante, venta de prodcuto construido, mesas y reportes, pero falta más implementeacion
+
 ### [0.14.0.0] — 2026-08-31
 - **Tipo:** `feat` (Minor)
 - feat: se agrego sistema de credito a clientes. Ademas servira como checkpoint porque se expandira el sistema a MAS NEGOCIOS COMO NEVERIAS y RESTAURANTES con wizards

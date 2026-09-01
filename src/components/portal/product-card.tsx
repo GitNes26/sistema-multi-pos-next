@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Bell, Heart, Plus, Check, Package, Scale, Layers } from "lucide-react"
 import type { PortalProduct, PortalVariantOption } from "@/lib/portal/server"
@@ -10,6 +10,7 @@ import { portalApi } from "@/lib/portal/client"
 import { swalError, swalToast } from "@/lib/swal"
 import { Button } from "@/components/ui/button"
 import { BottomSheet } from "@/components/portal/bottom-sheet"
+import { ProductBuilder } from "@/components/pos/product-builder"
 import { cn } from "@/lib/utils"
 
 function PlaceholderImage() {
@@ -42,12 +43,14 @@ export function ProductCard({ product }: { product: PortalProduct }) {
   const toggleFavorite = usePortalStore((s) => s.toggleFavorite)
 
   const [variantSheet, setVariantSheet] = useState(false)
+  const [builderOpen, setBuilderOpen] = useState(false)
   const [favBusy, setFavBusy] = useState(false)
   const [justAdded, setJustAdded] = useState(false)
 
   const isBulk = product.kind === "bulk"
   const defaultVariant = product.variants[0] ?? null
   const hasVariants = product.variants.length > 1
+  const hasOptions = product.options && product.options.length > 0
   const outOfStock = isBulk
     ? product.trackInventory && product.stock <= 0
     : product.trackInventory && (defaultVariant?.stock ?? 0) <= 0
@@ -100,6 +103,10 @@ export function ProductCard({ product }: { product: PortalProduct }) {
   const handleAdd = () => {
     if (isBulk) {
       setBulkProduct(product)
+      return
+    }
+    if (hasOptions) {
+      setBuilderOpen(true)
       return
     }
     if (hasVariants) {
@@ -257,6 +264,28 @@ export function ProductCard({ product }: { product: PortalProduct }) {
           })}
         </div>
       </BottomSheet>
+
+      {/* ProductBuilder for configurable products */}
+      {hasOptions && (
+        <ProductBuilder
+          portalProduct={product}
+          open={builderOpen}
+          onClose={() => setBuilderOpen(false)}
+          onAdd={(config) => {
+            const variant = product.variants[0]
+            if (!variant) return
+            // For portal, we add with default variant and extra price as modifier
+            const res = addStandard(product, variant, config.quantity)
+            if (res.added <= 0) {
+              swalToast("Sin stock disponible", "info")
+              return
+            }
+            setBuilderOpen(false)
+            setJustAdded(true)
+            setTimeout(() => setJustAdded(false), 1200)
+          }}
+        />
+      )}
     </>
   )
 }

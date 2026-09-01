@@ -8,6 +8,7 @@ import {
   Megaphone,
   Sparkles,
   Package,
+  Puzzle,
   ShoppingBag,
   ArrowRight,
   Calendar,
@@ -28,6 +29,7 @@ import { PermissionSlider } from "@/components/shared/permission-slider"
 import { usePortalPermissions, type PortalPermissionType } from "@/hooks/use-portal-permissions"
 import { cn } from "@/lib/utils"
 import { DetailSheet, type DetailItem } from "@/components/portal/detail-sheet"
+import { PortalComboCard } from "@/components/portal/combo-card"
 
 const PUB_TYPE_LABELS: Record<string, string> = {
   product_new: "Nuevo",
@@ -297,6 +299,28 @@ export function HomeClient() {
                   )}
                 </div>
               </Card>
+            ))}
+          </div>
+        </motion.section>
+      )}
+
+      {/* Combos */}
+      {data.combos && data.combos.length > 0 && (
+        <motion.section variants={item}>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+              <Puzzle className="size-4 text-emerald-500" /> Combos especiales
+            </h2>
+            <Link
+              href="/portal/store"
+              className="flex items-center gap-0.5 text-xs text-primary font-medium"
+            >
+              Ver tienda <ArrowRight className="size-3" />
+            </Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+            {data.combos.map((c) => (
+              <PortalComboCard key={c.id} combo={c} />
             ))}
           </div>
         </motion.section>

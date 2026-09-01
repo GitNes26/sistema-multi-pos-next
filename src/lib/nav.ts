@@ -1,11 +1,13 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Armchair,
   BarChart3,
   Banknote,
   BellRing,
   Boxes,
   Briefcase,
   Building2,
+  ChefHat,
   ClipboardList,
   CreditCard,
   Landmark,
@@ -14,6 +16,7 @@ import {
   Megaphone,
   Menu,
   Package,
+  Puzzle,
   Palette,
   Percent,
   Ruler,
@@ -32,6 +35,9 @@ import { hasPermission, isSuperadminOnlyPermission } from "@/lib/auth/permission
 import type { PermissionKey } from "@/lib/auth/permission-keys";
 import type { MenuNode } from "@/lib/menus/server";
 import { resolveMenuIcon } from "@/lib/menu-icons";
+import type { FeatureKey } from "@/lib/features";
+import { NAV_HREF_TO_FEATURE, isFeatureEnabled } from "@/lib/features";
+import type { BusinessMode } from "@/lib/auth/options";
 
 // FASE 5.11 + FASE 14 — Rutas + íconos + permisos definidos UNA sola vez.
 // Sidebar, BottomBar y Drawer consumen esta especificación (fallback hardcoded)
@@ -42,6 +48,8 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   permission?: PermissionKey;
+  /** Feature flag key: si se define, el item solo se muestra si el feature está habilitado */
+  feature?: FeatureKey;
   match?: RegExp;
   badge?: string;
   badgeVariant?: string;
@@ -117,6 +125,13 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: "employees.view",
       },
       {
+        href: "/admin/combos",
+        label: "Combos",
+        icon: Puzzle,
+        permission: "products.manage",
+        feature: "combos",
+      },
+      {
         href: "/admin/promotions",
         label: "Promociones",
         icon: Percent,
@@ -138,6 +153,7 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Inventario",
         icon: Boxes,
         permission: "inventory.view",
+        feature: "inventory",
       },
       {
         href: "/admin/locations",
@@ -162,12 +178,28 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Crédito",
         icon: Landmark,
         permission: "orders.view",
+        feature: "credit",
       },
       {
         href: "/admin/cedis",
         label: "CEDIS",
         icon: Warehouse,
         permission: "cedis.manage",
+        feature: "cedis",
+      },
+      {
+        href: "/admin/tables",
+        label: "Mesas",
+        icon: Armchair,
+        permission: "locations.view",
+        feature: "tables",
+      },
+      {
+        href: "/kds",
+        label: "Cocina (KDS)",
+        icon: ChefHat,
+        permission: "orders.view",
+        feature: "kds",
       },
     ],
   },
@@ -316,6 +348,53 @@ export function filterNavSectionsByUser(
       ),
     }))
     .filter((section) => section.items.length > 0);
+}
+
+// ── BusinessMode Filtering ────────────────────────────────────────
+
+/** Filtra items de nav por businessMode usando los feature flags. */
+function navItemHasFeature(item: NavItem, mode: BusinessMode): boolean {
+  // If no feature key is set, the item is always visible
+  if (!item.feature) return true;
+  return isFeatureEnabled(item.feature, mode);
+}
+
+/** Filtra secciones de nav por permisos Y businessMode (server-side). */
+export function filterNavSectionsByFeature(
+  mode: BusinessMode,
+  sections: NavSection[] = NAV_SECTIONS
+): NavSection[] {
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => navItemHasFeature(item, mode)),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
+/** Filtra por permisos + businessMode (cliente-side, iconos vivos). */
+export function filterNavSectionsByUserAndFeature(
+  navUser: NavUser | null,
+  mode: BusinessMode,
+  sections: NavSection[] = NAV_SECTIONS
+): NavSection[] {
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) =>
+          navUserHasPermission(navUser, item.permission) &&
+          navItemHasFeature(item, mode)
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
+/** Check if a nav href is available for the given businessMode. */
+export function isNavHrefEnabled(href: string, mode: BusinessMode): boolean {
+  const feature = NAV_HREF_TO_FEATURE[href];
+  if (!feature) return true; // No feature mapping = always visible
+  return isFeatureEnabled(feature, mode);
 }
 
 export function filterNavItems(

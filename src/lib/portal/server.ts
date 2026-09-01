@@ -86,6 +86,24 @@ export interface PortalVariantOption {
   isFavorite: boolean;
 }
 
+export interface PortalProductOptionValue {
+  id: string;
+  value: string;
+  extraPrice: number;
+  imageUrl: string | null;
+  isActive: boolean;
+}
+
+export interface PortalProductOption {
+  id: string;
+  name: string;
+  position: number;
+  required: boolean;
+  minSelect: number;
+  maxSelect: number;
+  values: PortalProductOptionValue[];
+}
+
 export interface PortalProduct {
   id: string;
   productId: string;
@@ -102,6 +120,8 @@ export interface PortalProduct {
   variants: PortalVariantOption[];
   /** Granel: precio por unidad + badge + split. */
   bulk: PortalBulkInfo | null;
+  /** Opciones configurables del producto (sabores, toppings, etc.). */
+  options: PortalProductOption[];
 }
 
 export interface PortalCategory {
@@ -118,7 +138,19 @@ export async function getStorefront(
   const [variantsRaw, bulkRaw, categories, favorites] = await Promise.all([
     prisma.productVariant.findMany({
       where: { organizationId, isActive: true, product: { isActive: true } },
-      include: { product: { include: { category: true } } },
+      include: {
+        product: {
+          include: {
+            category: true,
+            options: {
+              orderBy: { position: "asc" },
+              include: {
+                values: { where: { isActive: true }, orderBy: { position: "asc" } },
+              },
+            },
+          },
+        },
+      },
     }),
     prisma.product.findMany({
       where: { organizationId, isActive: true, productType: "bulk" },
@@ -178,6 +210,21 @@ export async function getStorefront(
         stock: 0,
         variants: [],
         bulk: null,
+        options: (p.options ?? []).map((o) => ({
+          id: o.id,
+          name: o.name,
+          position: o.position,
+          required: o.required,
+          minSelect: o.minSelect,
+          maxSelect: o.maxSelect,
+          values: o.values.map((val) => ({
+            id: val.id,
+            value: val.value,
+            extraPrice: toNum(val.extraPrice),
+            imageUrl: val.imageUrl ?? null,
+            isActive: val.isActive,
+          })),
+        })),
       };
       stdByProduct.set(p.id, entry);
     }
@@ -225,6 +272,7 @@ export async function getStorefront(
               }
             : null,
       },
+      options: [],
     });
   }
 
@@ -256,6 +304,25 @@ export interface PortalOrderBanner {
   createdAt: string;
 }
 
+export interface PortalComboItem {
+  id: string
+  productName: string
+  variantName: string | null
+  quantity: number
+  extraPrice: number
+}
+
+export interface PortalCombo {
+  id: string
+  name: string
+  description: string | null
+  imageUrl: string | null
+  comboPrice: number
+  originalPrice: number
+  savings: number
+  items: PortalComboItem[]
+}
+
 export interface PortalHomeData {
   points: number;
   promotions: {
@@ -285,6 +352,7 @@ export interface PortalHomeData {
     type: string;
     publishedAt: string | null;
   }[];
+  combos: PortalCombo[];
 }
 
 export async function getPortalHome(
@@ -293,9 +361,14 @@ export async function getPortalHome(
 ): Promise<PortalHomeData> {
   const now = new Date();
 
-  console.log("[portal/home] org=" + organizationId + " customer=" + customerId);
+  // Fetch org businessMode for filtering
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { businessMode: true },
+  });
+  const bm = org?.businessMode ?? null;
 
-  const [customer, promotions, activeOrders, newProducts, publications] = await Promise.all([
+  const [customer, promotions, activeOrders, newProducts, publications, combosRaw] = await Promise.all([
     prisma.customer.findUnique({
       where: { id: customerId },
       select: { points: true },
@@ -304,7 +377,11 @@ export async function getPortalHome(
       where: {
         organizationId,
         isActive: true,
-        OR: [{ endsAt: null }, { endsAt: { gte: now } }],
+        AND: [
+          { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
+          // Filter by businessMode: null=todos, specific=only that mode
+          ...(bm ? [{ OR: [{ businessMode: null }, { businessMode: bm }] }] : []),
+        ],
       },
       orderBy: { priority: "asc" },
       take: 12,
@@ -347,19 +424,37 @@ export async function getPortalHome(
       where: {
         organizationId,
         isActive: true,
-        OR: [
-          { startsAt: null, endsAt: null },
-          { startsAt: null, endsAt: { gte: now } },
-          { startsAt: { lte: now }, endsAt: null },
-          { startsAt: { lte: now }, endsAt: { gte: now } },
+        AND: [
+          { OR: [
+            { startsAt: null, endsAt: null },
+            { startsAt: null, endsAt: { gte: now } },
+            { startsAt: { lte: now }, endsAt: null },
+            { startsAt: { lte: now }, endsAt: { gte: now } },
+          ] },
+          // Filter by businessMode: null=todos, specific=only that mode
+          ...(bm ? [{ OR: [{ businessMode: null }, { businessMode: bm }] }] : []),
         ],
       },
       orderBy: { publishedAt: "desc" },
       take: 10,
     }),
+    prisma.productCombo.findMany({
+      where: { organizationId, isActive: true },
+      include: {
+        items: {
+          orderBy: { position: "asc" },
+          include: {
+            product: { select: { name: true } },
+            variant: { select: { name: true, price: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+      take: 12,
+    }),
   ]);
 
-  console.log(`[portal/home] org=${organizationId} promos=${promotions.length} orders=${activeOrders.length} products=${newProducts.length} pubs=${publications.length}`);
+  console.log(`[portal/home] org=${organizationId} promos=${promotions.length} orders=${activeOrders.length} products=${newProducts.length} pubs=${publications.length} combos=${combosRaw.length}`);
 
   return {
     points: toNum(customer?.points ?? null),
@@ -406,6 +501,29 @@ export async function getPortalHome(
       type: p.type,
       publishedAt: p.publishedAt?.toISOString() ?? null,
     })),
+    combos: combosRaw.map((c) => {
+      const originalPrice = c.items.reduce((sum, ci) => {
+        const itemPrice = ci.variant?.price ?? ci.product?.name ? 0 : 0
+        return sum + (Number(ci.extraPrice) || 0)
+      }, 0)
+      const comboPrice = Number(c.comboPrice)
+      return {
+        id: c.id,
+        name: c.name,
+        description: c.description,
+        imageUrl: c.imageUrl,
+        comboPrice,
+        originalPrice,
+        savings: Math.max(0, originalPrice - comboPrice),
+        items: c.items.map((ci) => ({
+          id: ci.id,
+          productName: ci.product.name,
+          variantName: ci.variant?.name ?? null,
+          quantity: Number(ci.quantity),
+          extraPrice: Number(ci.extraPrice),
+        })),
+      }
+    }),
   };
 }
 
@@ -472,7 +590,9 @@ export interface PortalOrderInput {
   discount: number;
   deliveryFee?: number;
   total: number;
+  tip?: number;
   notes?: string | null;
+  tableId?: string | null;
 }
 
 const VALID_PAYMENT_METHODS = ["cash", "card", "wallet", "other", "points"];
@@ -707,6 +827,7 @@ export async function createPortalOrder(
         organizationId,
         customerId,
         locationId: input.locationId ?? null,
+        tableId: input.tableId ?? null,
         status: "pending",
         deliveryMethod: input.deliveryMethod,
         subtotal: round2(input.subtotal),
@@ -721,6 +842,7 @@ export async function createPortalOrder(
         longitude: input.longitude != null ? input.longitude : null,
         paymentMethod: input.paymentMethod as $Enums.PaymentMethod,
         paymentReference: input.paymentReference ?? null,
+        tip: input.tip ?? 0,
       },
     });
 

@@ -75,6 +75,23 @@ export const TicketItemRow = memo(function TicketItemRow({
           )}
           <div className="min-w-0 flex-1">
             <p className="line-clamp-1 text-sm font-medium leading-tight">{item.name}</p>
+            {/* Selected options */}
+            {item.selectedOptions && item.selectedOptions.length > 0 && (
+              <div className="mt-0.5 flex flex-wrap gap-1">
+                {item.selectedOptions.map((opt, i) => (
+                  <span key={i} className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                    {opt.optionName}: {opt.value}
+                    {opt.extraPrice > 0 && <span className="font-medium">+{money(opt.extraPrice)}</span>}
+                  </span>
+                ))}
+              </div>
+            )}
+            {/* Item notes */}
+            {item.notes && (
+              <p className="mt-0.5 text-[10px] italic text-amber-600 dark:text-amber-400">
+                📝 {item.notes}
+              </p>
+            )}
             {item.bulkQuantityDisplay ? (
               <p className="mt-0.5 text-[11px] leading-tight text-violet-600">
                 {item.bulkQuantityDisplay}

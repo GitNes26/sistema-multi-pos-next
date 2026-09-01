@@ -1,5 +1,6 @@
 import type {
   PortalCategory,
+  PortalCombo,
   PortalCustomer,
   PortalHomeData,
   PortalLocation,
@@ -169,6 +170,10 @@ export const portalApi = {
   // Promociones activas (para preview de descuentos en checkout)
   promotions: () =>
     json<{ ok: boolean; promotions: PortalPromotionPreview[] }>("/api/portal/promotions"),
+
+  // Combos activos
+  combos: () =>
+    json<{ ok: boolean; combos: PortalCombo[] }>("/api/portal/combos"),
 };
 
 export interface PortalPromotionPreview {

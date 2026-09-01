@@ -136,6 +136,28 @@ enum PublicationType {
   notice
 }
 
+enum BusinessMode {
+  retail        // Tienda, abarrotes, ferretería, snacks
+  food_service  // Neverías, restaurante, café, cafeteria
+  services      // Barbería, autolavado, veterinaria
+  rental        // Brincolines, fotografía, maquinaria
+  hybrid        // Combinación de los anteriores
+}
+
+enum TableStatus {
+  free
+  occupied
+  reserved
+  cleaning
+}
+
+enum OrderItemStatus {
+  pending
+  preparing
+  ready
+  served
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ORGANIZACIÓN Y USUARIOS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -183,6 +205,7 @@ model Organization {
   id                 String   @id @default(cuid())
   name               String
   ownerId            String
+  businessMode       BusinessMode @default(retail)
   currency           String   @default("MXN")
   pointsPerCurrency  Decimal  @default(1) @db.Decimal(12, 4)
   pointValue         Decimal  @default(1) @db.Decimal(12, 4)
@@ -220,6 +243,7 @@ model Organization {
   coupons               Coupon[]
   loyaltyTransactions   LoyaltyTransaction[]
   orders                Order[]
+  tables                Table[]
   roles                 Role[]
   rolePermissions       RolePermission[]
   userInvitations       UserInvitation[]
@@ -229,8 +253,16 @@ model Organization {
   creditPolicy          CreditPolicy?
   customerCredits       CustomerCredit[]
   creditTransactions    CreditTransaction[]
+  productCombos         ProductCombo[]
   customerAddresses     CustomerAddress[]
   pushSubscriptions     PushSubscription[]
+  dailySalesSummaries   DailySalesSummary[]
+  hourlySnapshots       HourlySalesSnapshot[]
+  productPairs          ProductPair[]
+  inventorySnapshots    InventorySnapshot[]
+  transfers             Transfer[]
+  employeeCommissions   EmployeeCommission[]
+  customerSegments      CustomerSegment[]
 
   @@map("organizations")
 }
@@ -468,6 +500,7 @@ model Employee {
   orderStatusHistory  OrderStatusHistory[]
   orderPreparation    OrderPreparation[]
   notifications       Notification[]
+  commissions         EmployeeCommission[]
 
   @@unique([organizationId, employeeCode])
   @@unique([organizationId, userId])
@@ -503,6 +536,7 @@ model Customer {
   addresses             CustomerAddress[]
   creditAccount         CustomerCredit?
   creditTransactions    CreditTransaction[]
+  segments              CustomerSegment[]
 
   @@unique([organizationId, customerCode])
   @@unique([organizationId, userId])
@@ -626,7 +660,13 @@ model Location {
   orders          Order[]
   employees       Employee[]
   notifications   Notification[]
+  tables          Table[]
   branchDeliveryPolicy BranchDeliveryPolicy?
+  dailySalesSummaries   DailySalesSummary[]
+  hourlySnapshots       HourlySalesSnapshot[]
+  inventorySnapshots    InventorySnapshot[]
+  transfersFrom         Transfer[] @relation("TransferFrom")
+  transfersTo           Transfer[] @relation("TransferTo")
 
   @@map("locations")
 }
@@ -776,6 +816,11 @@ model Product {
   inventoryRevisionItems InventoryRevisionItem[]
   saleItems         SaleItem[]
   orderItems        OrderItem[]
+  comboItems        ComboItem[]
+  pairsA            ProductPair[] @relation("PairA")
+  pairsB            ProductPair[] @relation("PairB")
+  inventorySnapshots InventorySnapshot[]
+  transferItems     TransferItem[]
 
   @@map("products")
 }
@@ -785,6 +830,9 @@ model ProductOption {
   productId String
   name      String
   position  Int     @default(0)
+  required  Boolean @default(true)
+  minSelect Int     @default(1)
+  maxSelect Int     @default(1)
 
   product Product               @relation(fields: [productId], references: [id])
   values  ProductOptionValue[]
@@ -793,10 +841,13 @@ model ProductOption {
 }
 
 model ProductOptionValue {
-  id       String @id @default(cuid())
-  optionId String
-  value    String
-  position Int    @default(0)
+  id         String   @id @default(cuid())
+  optionId   String
+  value      String
+  extraPrice Decimal  @default(0) @db.Decimal(12, 2)
+  imageUrl   String?
+  isActive   Boolean  @default(true)
+  position   Int      @default(0)
 
   option    ProductOption           @relation(fields: [optionId], references: [id])
   variants  VariantOptionValue[]
@@ -828,6 +879,7 @@ model ProductVariant {
   customerFavorites        CustomerFavorite[]
   shoppingListItems        ShoppingListItem[]
   inventoryRevisionItems   InventoryRevisionItem[]
+  comboItems               ComboItem[]
 
   @@index([barcode])
   @@map("product_variants")
@@ -842,6 +894,43 @@ model VariantOptionValue {
 
   @@id([variantId, optionValueId])
   @@map("variant_option_values")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMBOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ProductCombo {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  imageUrl       String?
+  comboPrice     Decimal  @db.Decimal(12, 2)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  items        ComboItem[]
+
+  @@map("product_combos")
+}
+
+model ComboItem {
+  id        String  @id @default(cuid())
+  comboId   String
+  productId String
+  variantId String?
+  quantity  Decimal @default(1) @db.Decimal(12, 3)
+  extraPrice Decimal @default(0) @db.Decimal(12, 2)
+  position  Int     @default(0)
+
+  combo   ProductCombo    @relation(fields: [comboId], references: [id])
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@map("combo_items")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -981,6 +1070,7 @@ model Sale {
   pointsEarned       Decimal    @default(0) @db.Decimal(12, 2)
   pointsRedeemed     Decimal    @default(0) @db.Decimal(12, 2)
   changeGiven        Decimal    @default(0) @db.Decimal(12, 2)
+  tip                Decimal    @default(0) @db.Decimal(12, 2)
   status             SaleStatus @default(completed)
   notes              String?
   createdAt          DateTime   @default(now())
@@ -999,6 +1089,7 @@ model Sale {
   loyaltyTransactions LoyaltyTransaction[]
   orders       Order[]
   returns      SaleReturn[]
+  commissions  EmployeeCommission[]
 
   @@map("sales")
 }
@@ -1020,6 +1111,9 @@ model SaleItem {
   taxRate              Decimal     @default(0) @db.Decimal(5, 4)
   lineTotal            Decimal?    @db.Decimal(12, 2)
   bulkQuantityDisplay  String?
+  notes                String?
+  selectedOptions      Json?
+  extraPrice           Decimal  @default(0) @db.Decimal(12, 2)
 
   sale     Sale           @relation(fields: [saleId], references: [id])
   product  Product?       @relation(fields: [productId], references: [id])
@@ -1069,6 +1163,7 @@ model Promotion {
   imageUrl             String?
   benefit              PromoBenefit
   scope              PromoScope   @default(order)
+  businessMode        String?      // null=todos, "retail", "food_service", etc.
   value                Decimal      @default(0) @db.Decimal(12, 2)
   buyQuantity          Int          @default(0)
   getQuantity          Int          @default(0)
@@ -1165,6 +1260,7 @@ model Order {
   organizationId String
   locationId     String?
   customerId     String?
+  tableId        String?        // Mesa asociada (food_service)
   orderNumber    BigInt         @unique @default(autoincrement())
   status         OrderStatus    @default(pending)
   deliveryMethod DeliveryMethod
@@ -1180,6 +1276,7 @@ model Order {
   paymentMethod   PaymentMethod?
   paymentReference String?
   deliveryFee     Decimal?       @default(0) @db.Decimal(12, 2)
+  tip             Decimal?       @default(0) @db.Decimal(12, 2)
   // FASE — confirmación de entrega domicilio (PIN + QR)
   deliveryPin     String?        @db.VarChar(6)
   deliveryQrToken String?        @unique
@@ -1194,29 +1291,34 @@ model Order {
   organization Organization      @relation(fields: [organizationId], references: [id])
   location     Location?         @relation(fields: [locationId], references: [id])
   customer     Customer?         @relation(fields: [customerId], references: [id])
+  table        Table?            @relation(fields: [tableId], references: [id])
   sale         Sale?             @relation(fields: [saleId], references: [id])
   items        OrderItem[]
   statusHistory OrderStatusHistory[]
   preparation  OrderPreparation?
+  tableSessions TableSession[]
 
   @@map("orders")
 }
 
 model OrderItem {
-  id                  String      @id @default(cuid())
+  id                  String          @id @default(cuid())
   orderId             String
   productId           String?
   variantId           String?
   productName         String
   variantName         String?
   productType         ProductType
-  quantity            Decimal     @db.Decimal(12, 3)
+  quantity            Decimal         @db.Decimal(12, 3)
   unitId              String?
-  unitPrice           Decimal     @db.Decimal(12, 2)
-  lineTotal           Decimal?    @db.Decimal(12, 2)
+  unitPrice           Decimal         @db.Decimal(12, 2)
+  lineTotal           Decimal?        @db.Decimal(12, 2)
   bulkQuantityDisplay String?
   comment             String?
-  createdAt           DateTime    @default(now())
+  selectedOptions     Json?
+  extraPrice          Decimal         @default(0) @db.Decimal(12, 2)
+  itemStatus          OrderItemStatus @default(pending)
+  createdAt           DateTime        @default(now())
 
   order            Order                  @relation(fields: [orderId], references: [id])
   product          Product?               @relation(fields: [productId], references: [id])
@@ -1273,6 +1375,48 @@ model OrderPreparationItem {
   orderItem   OrderItem        @relation(fields: [orderItemId], references: [id])
 
   @@map("order_preparation_items")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MESAS Y KDS (food_service / hybrid)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Table {
+  id             String      @id @default(cuid())
+  organizationId String
+  locationId     String?
+  number         Int
+  name           String?
+  capacity       Int         @default(4)
+  status         TableStatus @default(free)
+  qrToken        String?     @unique
+  posX           Int?        // Posición en el mapa (grid)
+  posY           Int?        // Posición en el mapa (grid)
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  location     Location?           @relation(fields: [locationId], references: [id])
+  sessions     TableSession[]
+  orders       Order[]
+
+  @@unique([organizationId, number])
+  @@map("tables")
+}
+
+model TableSession {
+  id         String    @id @default(cuid())
+  tableId    String
+  orderId    String?
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  notes      String?
+
+  table  Table   @relation(fields: [tableId], references: [id])
+  order  Order?  @relation(fields: [orderId], references: [id])
+
+  @@map("table_sessions")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1393,6 +1537,7 @@ model Publication {
   imageUrl       String?
   type           PublicationType
   isActive       Boolean         @default(true)
+  businessMode   String?         // null=todos, "retail", "food_service", etc.
   publishedAt    DateTime?
   startsAt       DateTime?
   endsAt         DateTime?
@@ -1481,4 +1626,202 @@ model PushSubscription {
 
   @@unique([userId, endpoint])
   @@map("push_subscriptions")
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// BUSINESS INTELLIGENCE — Agregados y analítica
+// ══════════════════════════════════════════════════════════════════════════
+
+model DailySalesSummary {
+  id             String   @id @default(cuid())
+  organizationId String
+  locationId     String
+  date           DateTime @db.Date
+
+  salesCount       Int     @default(0)
+  grossSales       Decimal @default(0) @db.Decimal(14, 2)
+  returnsTotal     Decimal @default(0) @db.Decimal(14, 2)
+  netSales         Decimal @default(0) @db.Decimal(14, 2)
+  discountTotal    Decimal @default(0) @db.Decimal(14, 2)
+  taxTotal         Decimal @default(0) @db.Decimal(14, 2)
+  tipTotal         Decimal @default(0) @db.Decimal(14, 2)
+
+  posSales         Decimal @default(0) @db.Decimal(14, 2)
+  portalSales      Decimal @default(0) @db.Decimal(14, 2)
+  pickupSales      Decimal @default(0) @db.Decimal(14, 2)
+  deliverySales    Decimal @default(0) @db.Decimal(14, 2)
+
+  cashPayments     Decimal @default(0) @db.Decimal(14, 2)
+  cardPayments     Decimal @default(0) @db.Decimal(14, 2)
+  creditPayments   Decimal @default(0) @db.Decimal(14, 2)
+  onlinePayments   Decimal @default(0) @db.Decimal(14, 2)
+
+  ticketAverage    Decimal @default(0) @db.Decimal(14, 2)
+  totalItems       Int     @default(0)
+  upt              Decimal @default(0) @db.Decimal(8, 2)
+
+  pointsEarned     Int     @default(0)
+  pointsRedeemed   Int     @default(0)
+  pointsRedemptionValue Decimal @default(0) @db.Decimal(14, 2)
+
+  uniqueCustomers  Int     @default(0)
+  newCustomers     Int     @default(0)
+
+  createdAt        DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  location     Location     @relation(fields: [locationId], references: [id])
+
+  @@unique([organizationId, locationId, date])
+  @@index([organizationId, date])
+  @@map("daily_sales_summaries")
+}
+
+model HourlySalesSnapshot {
+  id             String   @id @default(cuid())
+  organizationId String
+  locationId     String
+  date           DateTime @db.Date
+  hour           Int
+
+  salesCount Int     @default(0)
+  netSales   Decimal @default(0) @db.Decimal(14, 2)
+  totalItems Int     @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  location     Location     @relation(fields: [locationId], references: [id])
+
+  @@unique([organizationId, locationId, date, hour])
+  @@map("hourly_sales_snapshots")
+}
+
+model ProductPair {
+  id             String   @id @default(cuid())
+  organizationId String
+  productIdA     String
+  productIdB     String
+  coOccurrences  Int      @default(0)
+  lastSeenAt     DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  productA     Product      @relation("PairA", fields: [productIdA], references: [id])
+  productB     Product      @relation("PairB", fields: [productIdB], references: [id])
+
+  @@unique([organizationId, productIdA, productIdB])
+  @@index([organizationId, coOccurrences(sort: Desc)])
+  @@map("product_pairs")
+}
+
+model InventorySnapshot {
+  id             String   @id @default(cuid())
+  organizationId String
+  locationId     String
+  productId      String
+  variantId      String?
+  date           DateTime @db.Date
+
+  quantityAtCost Decimal @default(0) @db.Decimal(14, 4)
+  valueAtCost    Decimal @default(0) @db.Decimal(14, 2)
+  valueAtRetail  Decimal @default(0) @db.Decimal(14, 2)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  location     Location     @relation(fields: [locationId], references: [id])
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@unique([organizationId, locationId, productId, variantId, date])
+  @@index([organizationId, date])
+  @@map("inventory_snapshots")
+}
+
+enum TransferStatus {
+  pending
+  in_transit
+  received
+  cancelled
+}
+
+model Transfer {
+  id             String         @id @default(cuid())
+  organizationId String
+  fromLocationId String
+  toLocationId   String
+  status         TransferStatus @default(pending)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  completedAt    DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  fromLocation Location     @relation("TransferFrom", fields: [fromLocationId], references: [id])
+  toLocation   Location     @relation("TransferTo", fields: [toLocationId], references: [id])
+  items        TransferItem[]
+
+  @@index([organizationId, status])
+  @@map("transfers")
+}
+
+model TransferItem {
+  id          String  @id @default(cuid())
+  transferId  String
+  productId   String
+  variantId   String?
+  quantity    Decimal @db.Decimal(14, 4)
+  receivedQty Decimal? @db.Decimal(14, 4)
+
+  transfer Transfer @relation(fields: [transferId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@map("transfer_items")
+}
+
+enum CommissionStatus {
+  pending
+  approved
+  paid
+}
+
+model EmployeeCommission {
+  id             String           @id @default(cuid())
+  organizationId String
+  employeeId     String
+  saleId         String?
+  period         DateTime         @db.Date
+  baseSalary     Decimal          @default(0) @db.Decimal(14, 2)
+  commissionRate Decimal          @default(0) @db.Decimal(5, 2)
+  commissionAmt  Decimal          @default(0) @db.Decimal(14, 2)
+  salesTotal     Decimal          @default(0) @db.Decimal(14, 2)
+  status         CommissionStatus @default(pending)
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  employee     Employee     @relation(fields: [employeeId], references: [id])
+  sale         Sale?        @relation(fields: [saleId], references: [id])
+
+  @@unique([organizationId, employeeId, saleId])
+  @@index([organizationId, period])
+  @@map("employee_commissions")
+}
+
+enum CustomerSegmentType {
+  vip
+  regular
+  at_risk
+  dormant
+  new
+  coupon_hunter
+}
+
+model CustomerSegment {
+  id             String              @id @default(cuid())
+  organizationId String
+  customerId     String
+  segment        CustomerSegmentType
+  score          Int                 @default(0)
+  assignedAt     DateTime            @default(now())
+  expiresAt      DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+
+  @@unique([organizationId, customerId, segment])
+  @@map("customer_segments")
 }

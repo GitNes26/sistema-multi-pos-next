@@ -128,6 +128,7 @@ export interface SaleReturn {
   notes: string | null;
   couponCode: string | null;
   couponAmount: number | null;
+  couponExpiresAt: string | null;
   pointsAwarded: number | null;
   createdAt: string;
   items: SaleReturnItem[];
@@ -474,6 +475,7 @@ export interface DashboardData {
     topProducts: { name: string; quantity: number; total: number; sharePct: number }[];
   };
   customers: number;
+  orgName: string;
 }
 
 export interface SalesReportRow {

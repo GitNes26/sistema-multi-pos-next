@@ -12,6 +12,7 @@ import {
   Star,
   CreditCard,
   Landmark,
+  Puzzle,
 } from "lucide-react";
 import { usePortalStore } from "@/stores/portal-store";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ import { TapScale } from "@/components/shared/tap-scale";
 
 export const ALL_NAV_ITEMS = [
   { id: "home", href: "/portal", label: "Inicio", icon: Home, match: /^\/portal$/ },
+  { id: "combos", href: "/portal/combos", label: "Combos", icon: Puzzle, match: /^\/portal\/combos/ },
   { id: "store", href: "/portal/store", label: "Tienda", icon: Store, match: /^\/portal\/store/ },
   { id: "orders", href: "/portal/orders", label: "Pedidos", icon: ClipboardList, match: /^\/portal\/orders/ },
   { id: "lists", href: "/portal/lists", label: "Listas", icon: ListChecks, match: /^\/portal\/lists/ },
@@ -34,7 +36,7 @@ export const ALL_NAV_ITEMS = [
 
 export type NavItemId = (typeof ALL_NAV_ITEMS)[number]["id"];
 
-const DEFAULT_NAV_ORDER: NavItemId[] = ["home", "store", "orders", "lists", "profile"];
+const DEFAULT_NAV_ORDER: NavItemId[] = ["home", "combos", "store", "orders", "lists", "profile"];
 
 export function PortalShell({
   storeName,
