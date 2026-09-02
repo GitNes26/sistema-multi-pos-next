@@ -189,9 +189,11 @@ export async function GET() {
       where: { id: organizationId },
       select: { businessMode: true, name: true },
     });
+    // Needs onboarding if businessMode is not set or org still has default values.
+    const needsOnboarding = !org?.businessMode || (org.businessMode === "retail" && org.name === "Mi Empresa");
     return NextResponse.json({
       ok: true,
-      needsOnboarding: org?.businessMode === "retail" && org?.name === "Mi Empresa",
+      needsOnboarding,
       businessMode: org?.businessMode,
       companyName: org?.name,
     });

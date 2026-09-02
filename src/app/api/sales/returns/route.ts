@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { salesGuard, salesErrorResponse } from "../guard";
 import { listReturns } from "@/lib/returns/server";
+import { jsonResponse } from "@/lib/api-helpers";
 
 // GET /api/sales/returns — Listado global de devoluciones
 export async function GET(req: NextRequest) {
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
       page: sp.has("page") ? Number(sp.get("page")) : undefined,
       pageSize: sp.has("pageSize") ? Number(sp.get("pageSize")) : undefined,
     });
-    return NextResponse.json({ ok: true, ...result });
+    return jsonResponse({ ok: true, ...result });
   } catch (err) {
     return salesErrorResponse(err);
   }

@@ -448,13 +448,12 @@ export const promotionsModule: CrudModule<PromotionDto> = {
   async remove(organizationId, id) {
     const p = await prisma.promotion.findFirst({ where: { id, organizationId } });
     if (!p) throw new CrudError("Promoción no encontrada", 404);
-    await prisma.promotionTarget.deleteMany({ where: { promotionId: id } });
-    await prisma.promotion.delete({ where: { id } });
-
-    // Eliminar publicación vinculada si existe
+    // Soft-delete: deactivate promotion to preserve history.
+    await prisma.promotion.update({ where: { id }, data: { isActive: false } });
+    // Also deactivate linked publication if exists
     try {
       const linkedPubId = await findLinkedPublication(organizationId, id);
-      if (linkedPubId) await prisma.publication.delete({ where: { id: linkedPubId } });
+      if (linkedPubId) await prisma.publication.update({ where: { id: linkedPubId }, data: { isActive: false } });
     } catch {
       // best-effort
     }

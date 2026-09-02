@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { BarChart3, Globe, Clock, Package, Trophy, Users, Download, FileText, UserCheck, Star, AlertTriangle, Tag, Truck, ShoppingCart, PieChart, TrendingUp, CreditCard } from "lucide-react"
+import { BarChart3, Globe, Clock, Package, Trophy, Users, Download, FileText, UserCheck, Star, AlertTriangle, Tag, Truck, ShoppingCart, PieChart, TrendingUp, CreditCard, ArrowRightLeft, Layers, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { OmnichannelReport } from "./omnichannel-report"
@@ -19,12 +19,18 @@ import { SegmentationReport } from "./segmentation-report"
 import { MarginReport } from "./margin-report"
 import { DailyTrendReport } from "./daily-trend-report"
 import { PaymentMixReport } from "./payment-mix-report"
+import { ProductPairsReport } from "./product-pairs-report"
+import { TransfersReport } from "./transfers-report"
+import { FillRateReport } from "./fill-rate-report"
+import { EmployeeMarginReport } from "./employee-margin-report"
+import { ForecastReport } from "./forecast-report"
 
 type Tab =
   | "omnichannel" | "heatmap" | "inventory" | "ranking" | "cohorts"
   | "employee_ranking" | "loyalty" | "credit_aging" | "promos_roi"
   | "delivery" | "low_stock" | "segmentation" | "margin"
-  | "daily_trend" | "payment_mix"
+  | "daily_trend" | "payment_mix" | "product_pairs" | "transfers"
+  | "fill_rate" | "employee_margin" | "forecast"
 
 const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
   { value: "omnichannel", label: "Omnicanal", icon: <Globe className="size-4" /> },
@@ -42,6 +48,11 @@ const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
   { value: "margin", label: "Margen", icon: <TrendingUp className="size-4" /> },
   { value: "daily_trend", label: "Tendencia", icon: <BarChart3 className="size-4" /> },
   { value: "payment_mix", label: "Pagos", icon: <CreditCard className="size-4" /> },
+  { value: "product_pairs", label: "Canasta", icon: <Layers className="size-4" /> },
+  { value: "transfers", label: "Transferencias", icon: <ArrowRightLeft className="size-4" /> },
+  { value: "fill_rate", label: "Fill Rate", icon: <Target className="size-4" /> },
+  { value: "employee_margin", label: "Margen Emp.", icon: <UserCheck className="size-4" /> },
+  { value: "forecast", label: "Pronóstico", icon: <TrendingUp className="size-4" /> },
 ]
 
 interface Props { canView: boolean }
@@ -115,6 +126,11 @@ export function BiReportsPage({ canView }: Props) {
       {tab === "margin" && <MarginReport from={from} to={to} />}
       {tab === "daily_trend" && <DailyTrendReport from={from} to={to} />}
       {tab === "payment_mix" && <PaymentMixReport from={from} to={to} />}
+      {tab === "product_pairs" && <ProductPairsReport from={from} to={to} />}
+      {tab === "transfers" && <TransfersReport from={from} to={to} />}
+      {tab === "fill_rate" && <FillRateReport from={from} to={to} />}
+      {tab === "employee_margin" && <EmployeeMarginReport from={from} to={to} />}
+      {tab === "forecast" && <ForecastReport from={from} to={to} />}
     </div>
   )
 }

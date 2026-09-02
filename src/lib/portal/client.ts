@@ -88,6 +88,26 @@ export const portalApi = {
     json<{ ok: boolean; order: PortalOrderDetail }>(`/api/portal/orders/${id}/cancel`, {
       method: "POST",
     }),
+  reorder: (orderId: string) =>
+    json<{
+      ok: boolean;
+      items: {
+        variantId: string | null;
+        productId: string;
+        name: string;
+        quantity: number;
+        unitPrice: number;
+        comment?: string;
+        selectedOptions?: Record<string, unknown>[];
+        bulkQuantityDisplay?: string;
+        extraPrice: number;
+      }[];
+      locationId: string | null;
+      deliveryMethod: string;
+    }>("/api/portal/orders/reorder", {
+      method: "POST",
+      body: JSON.stringify({ orderId }),
+    }),
 
   // Lealtad
   loyalty: () => json<{ ok: boolean } & LoyaltyData>("/api/portal/loyalty"),
@@ -106,6 +126,10 @@ export const portalApi = {
     json<{ ok: boolean; customer: PortalCustomer }>("/api/portal/profile", {
       method: "PATCH",
       body: JSON.stringify(input),
+    }),
+  deleteProfile: () =>
+    json<{ ok: boolean }>("/api/portal/profile", {
+      method: "DELETE",
     }),
 
   // Favoritos

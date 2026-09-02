@@ -101,7 +101,9 @@ export function NotificationsCenter({ icon }: { icon?: React.ReactNode }) {
   const markAll = async () => {
     storeMarkAll();
     setRows((prev) => prev.map((x) => ({ ...x, read: true })));
-    await fetch("/api/notifications/read-all", { method: "POST" }).catch(() => {});
+    await fetch("/api/notifications/read-all", { method: "POST" }).catch((err) => {
+      console.error("[notifications] mark all read failed:", err);
+    });
   };
 
   const unreadCount = rows.filter((r) => !r.read).length;

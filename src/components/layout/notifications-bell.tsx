@@ -28,6 +28,7 @@ import {
   type AppNotification,
 } from "@/stores/notifications-store"
 import { useNotificationSse } from "@/hooks/use-notifications"
+import { SPRING_BOUNCE } from "@/lib/animation-tokens"
 
 const ICONS: Record<string, React.ReactNode> = {
   "sale-complete": <ShoppingCart className="size-3.5" />,
@@ -84,7 +85,7 @@ export function NotificationsBell() {
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                transition={SPRING_BOUNCE}
                 className="absolute -right-0.5 -top-0.5"
               >
                 <Badge className="size-4 min-w-4 rounded-full p-0 text-[0.6rem] tabular-nums">

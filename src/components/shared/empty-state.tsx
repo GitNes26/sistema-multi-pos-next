@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SPRING_GENTLE, TRANSITION_FADE } from "@/lib/animation-tokens";
 
 // FASE 20.2 — Empty state animado reutilizable.
 
@@ -23,7 +24,7 @@ export function EmptyState({
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.25 }}
+      transition={TRANSITION_FADE}
       className={cn(
         "flex flex-col items-center justify-center gap-3 py-12 text-center",
         className
@@ -32,7 +33,7 @@ export function EmptyState({
       <motion.span
         initial={{ y: -8, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        transition={SPRING_GENTLE}
       >
         <Icon className="size-12 text-muted-foreground/40" />
       </motion.span>

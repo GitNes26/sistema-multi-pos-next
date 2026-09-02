@@ -70,6 +70,7 @@ export function buildSalePayload(
     cashRegisterId: state.registerId || undefined,
     couponCode: state.coupon.status === "applied" ? state.coupon.result?.code : undefined,
     nextPurchaseCoupon: totals.nextPurchaseCoupon ?? undefined,
+    tableId: state.selectedTable?.id,
     tip: tip > 0 ? tip : undefined,
   };
 }

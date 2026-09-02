@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ChevronRight, CreditCard, Heart, LogOut, Mail, Phone, Shield, Sparkles, User, LayoutGrid } from "lucide-react";
+import { ChevronRight, CreditCard, Heart, LogOut, Mail, Phone, Shield, Sparkles, User, LayoutGrid, Trash2 } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import { logout } from "@/lib/auth/logout";
 import type { PortalCustomer } from "@/lib/portal/server";
-import { swalError, swalToast } from "@/lib/swal";
+import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InputGroupField } from "@/components/base/input-group-field";
@@ -16,6 +16,7 @@ import { NavCustomizer } from "@/components/portal/nav-customizer";
 import { PortalPermissionsSection } from "@/components/portal/portal-permissions-section";
 import { TapScale } from "@/components/shared/tap-scale";
 import packageJson from "../../../package.json";
+import { STAGGER_FADE_UP } from "@/lib/animation-tokens";
 
 const LINKS = [
   { href: "/portal/loyalty", label: "Puntos y lealtad", icon: Sparkles, color: "text-amber-500 bg-amber-500/10" },
@@ -23,14 +24,7 @@ const LINKS = [
   { href: "/portal/payment-methods", label: "Métodos de pago", icon: CreditCard, color: "text-blue-500 bg-blue-500/10" },
 ];
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
-};
-const item = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0 },
-};
+const { container, item } = STAGGER_FADE_UP;
 
 export function ProfileClient() {
   const [customer, setCustomer] = useState<PortalCustomer | null>(null);
@@ -213,10 +207,71 @@ export function ProfileClient() {
         </Button>
       </motion.div>
 
+      {/* Delete account */}
+      <motion.div variants={item}>
+        <DeleteAccountButton />
+      </motion.div>
+
       {/* Version */}
       <motion.p variants={item} className="text-center text-[0.65rem] text-muted-foreground/50">
         Sistema Multi-POS v{packageJson.version}
       </motion.p>
     </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Delete Account Button                                              */
+/* ------------------------------------------------------------------ */
+
+function DeleteAccountButton() {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    const ok = await swalConfirm(
+      "Eliminar mi cuenta",
+      "Esta acción es permanente. Se eliminarán tus datos, pedidos serán anonimizados y tu acceso será revocado."
+    );
+    if (!ok) return;
+
+    setDeleting(true);
+    try {
+      const res = await portalApi.deleteProfile();
+      if (res.ok) {
+        swalToast("Cuenta eliminada. Redirigiendo…");
+        setTimeout(() => {
+          window.location.href = "/portal/auth/login";
+        }, 1500);
+      }
+    } catch (err) {
+      swalError(
+        "No se pudo eliminar la cuenta",
+        err instanceof Error ? err.message : undefined
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4">
+      <div className="flex items-start gap-3">
+        <Trash2 className="mt-0.5 size-4 text-destructive" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-destructive">Eliminar cuenta</p>
+          <p className="text-xs text-muted-foreground">
+            No puedes eliminar tu cuenta si tienes deuda pendiente, pedidos activos o devoluciones en proceso.
+          </p>
+        </div>
+      </div>
+      <Button
+        variant="destructive"
+        className="mt-3 w-full h-10 rounded-xl text-sm"
+        onClick={handleDelete}
+        disabled={deleting}
+      >
+        {deleting ? "Eliminando…" : "Eliminar mi cuenta permanentemente"}
+      </Button>
+    </div>
   );
 }

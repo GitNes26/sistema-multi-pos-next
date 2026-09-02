@@ -24,7 +24,7 @@ export function CohortReport({ from, to }: Props) {
     fetch(`/api/reports/bi?${params}`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => { if (d.ok) setData(d) })
-      .catch(() => {})
+      .catch((err) => console.error("[bi-cohort] Error cargando reporte:", err))
       .finally(() => setLoading(false))
   }, [from, to])
 

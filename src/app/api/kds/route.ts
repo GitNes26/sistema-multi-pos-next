@@ -4,6 +4,8 @@ import { $Enums } from "@prisma/client";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
+import { broadcastKdsUpdate } from "@/lib/kds/live";
+import { jsonResponse } from "@/lib/api-helpers";
 
 // GET /api/kds — Get orders pending preparation for KDS
 // GET /api/kds?locationId=xxx — Filter by location
@@ -79,7 +81,7 @@ export async function GET(req: Request) {
       ),
     };
 
-    return NextResponse.json({ ok: true, orders: ordersWithTime, stats });
+    return jsonResponse({ ok: true, orders: ordersWithTime, stats });
   } catch (error) {
     console.error("[kds] GET Error:", error);
     return NextResponse.json({ ok: false, error: "Error al obtener órdenes KDS" }, { status: 500 });
@@ -128,7 +130,33 @@ export async function PUT(req: Request) {
         });
       }
 
-      return NextResponse.json({ ok: true, item });
+      // Broadcast item update to all KDS screens
+      const updatedOrder = await prisma.order.findUnique({
+        where: { id: item.orderId },
+        include: { table: { select: { id: true, number: true, name: true } } },
+      });
+      if (updatedOrder) {
+        const now = Date.now();
+        const allItemsNow = await prisma.orderItem.findMany({ where: { orderId: item.orderId } });
+        broadcastKdsUpdate(organizationId, {
+          type: "order_updated",
+          orderId: updatedOrder.id,
+          orderNumber: Number(updatedOrder.orderNumber),
+          status: updatedOrder.status,
+          locationId: updatedOrder.locationId,
+          table: updatedOrder.table,
+          elapsedSeconds: Math.floor((now - updatedOrder.createdAt.getTime()) / 1000),
+          items: allItemsNow.map((i) => ({
+            id: i.id,
+            productName: i.productName,
+            variantName: i.variantName,
+            quantity: Number(i.quantity),
+            itemStatus: i.itemStatus,
+          })),
+        });
+      }
+
+      return jsonResponse({ ok: true, item });
     }
 
     // Order-level actions
@@ -177,9 +205,10 @@ export async function PUT(req: Request) {
           break;
       }
 
-      await prisma.order.update({
+      const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: { status: newStatus },
+        include: { table: { select: { id: true, number: true, name: true } } },
       });
 
       // Log status change
@@ -192,7 +221,27 @@ export async function PUT(req: Request) {
         },
       });
 
-      return NextResponse.json({ ok: true, orderId, status: newStatus });
+      // Broadcast order-level update to all KDS screens
+      const now = Date.now();
+      const allItems = await prisma.orderItem.findMany({ where: { orderId } });
+      broadcastKdsUpdate(organizationId, {
+        type: newStatus === "delivered" ? "order_removed" : "order_updated",
+        orderId: updatedOrder.id,
+        orderNumber: Number(updatedOrder.orderNumber),
+        status: newStatus,
+        locationId: updatedOrder.locationId,
+        table: updatedOrder.table,
+        elapsedSeconds: Math.floor((now - updatedOrder.createdAt.getTime()) / 1000),
+        items: allItems.map((i) => ({
+          id: i.id,
+          productName: i.productName,
+          variantName: i.variantName,
+          quantity: Number(i.quantity),
+          itemStatus: i.itemStatus,
+        })),
+      });
+
+      return jsonResponse({ ok: true, orderId, status: newStatus });
     }
 
     return NextResponse.json({ ok: false, error: "Parámetros inválidos" }, { status: 400 });

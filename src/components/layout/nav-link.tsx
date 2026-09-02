@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { isNavActive, type NavItem } from "@/lib/nav";
 import { useUiStore } from "@/stores/ui-store";
+import { SPRING_SNAPPY } from "@/lib/animation-tokens";
 
 export interface NavLinkProps {
   item: NavItem;
@@ -33,7 +34,7 @@ export function NavLink({
       {showActiveBar && active && (
         <motion.span
           layoutId="nav-active-bar"
-          transition={{ type: "spring", stiffness: 500, damping: 40 }}
+          transition={SPRING_SNAPPY}
           className="absolute left-0 h-5 w-1 rounded-r bg-sidebar-primary"
         />
       )}

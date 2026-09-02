@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
 import { randomBytes } from "crypto";
+import { broadcastTableUpdate } from "@/lib/tables/live";
 
 // GET /api/tables — List tables for the organization
 // GET /api/tables?locationId=xxx — Filter by location
@@ -153,7 +154,21 @@ export async function PUT(req: Request) {
         posX: posX !== undefined ? (posX != null ? Number(posX) : null) : undefined,
         posY: posY !== undefined ? (posY != null ? Number(posY) : null) : undefined,
       },
+      include: { location: { select: { name: true } } },
     });
+
+    // Broadcast the update so POS/TableSelector subscribers see it instantly.
+    if (status) {
+      broadcastTableUpdate(organizationId, {
+        id: table.id,
+        number: table.number,
+        name: table.name,
+        capacity: table.capacity,
+        status: table.status,
+        location: table.location,
+        updatedAt: table.updatedAt.toISOString(),
+      });
+    }
 
     return NextResponse.json({ ok: true, table });
   } catch (error) {

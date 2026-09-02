@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Store, UtensilsCrossed, Wrench, Car, Layers } from "lucide-react"
 import { WizardShell, type WizardStep } from "./wizard-shell"
 import { Button } from "@/components/ui/button"
@@ -28,6 +29,7 @@ const steps: WizardStep[] = [
 
 export function OnboardingWizard() {
   const router = useRouter()
+  const { update: updateSession } = useSession()
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<Mode | null>(null)
   const [company, setCompany] = useState("")
@@ -57,6 +59,8 @@ export function OnboardingWizard() {
       const data = await res.json()
       if (!data.ok) throw new Error(data.error)
       swalClose()
+      // Refresh the session JWT so businessMode is up-to-date.
+      await updateSession()
       router.refresh()
       router.push("/admin")
     } catch (err) {

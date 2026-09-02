@@ -120,10 +120,7 @@ export const categoriesModule: CrudModule<CategoryDto> = {
   async remove(organizationId, id) {
     const c = await prisma.category.findFirst({ where: { id, organizationId } });
     if (!c) throw new CrudError("Categoría no encontrada", 404);
-    const children = await prisma.category.count({ where: { parentId: id } });
-    if (children > 0) throw new CrudError("No se puede eliminar: tiene subcategorías", 409);
-    const products = await prisma.product.count({ where: { categoryId: id } });
-    if (products > 0) throw new CrudError("No se puede eliminar: tiene productos asignados", 409);
-    await prisma.category.delete({ where: { id } });
+    // Soft-delete: deactivate category to preserve history.
+    await prisma.category.update({ where: { id }, data: { isActive: false } });
   },
 };

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
+import { broadcastTableUpdate } from "@/lib/tables/live";
 
 // POST /api/tables/session — Start a session on a table
 // Body: { tableId: string, orderId?: string }
@@ -48,9 +49,20 @@ export async function POST(req: Request) {
     });
 
     // Update table status to occupied
-    await prisma.table.update({
+    const updatedTable = await prisma.table.update({
       where: { id: tableId },
       data: { status: "occupied" },
+      include: { location: { select: { name: true } } },
+    });
+
+    broadcastTableUpdate(organizationId, {
+      id: updatedTable.id,
+      number: updatedTable.number,
+      name: updatedTable.name,
+      capacity: updatedTable.capacity,
+      status: updatedTable.status,
+      location: updatedTable.location,
+      updatedAt: updatedTable.updatedAt.toISOString(),
     });
 
     return NextResponse.json({ ok: true, session: tableSession });
@@ -92,9 +104,19 @@ export async function PUT(req: Request) {
       });
 
       if (activeSessions === 0) {
-        await prisma.table.update({
+        const freedTable = await prisma.table.update({
           where: { id: updated.tableId },
           data: { status: "free" },
+          include: { location: { select: { name: true } } },
+        });
+        broadcastTableUpdate(organizationId, {
+          id: freedTable.id,
+          number: freedTable.number,
+          name: freedTable.name,
+          capacity: freedTable.capacity,
+          status: freedTable.status,
+          location: freedTable.location,
+          updatedAt: freedTable.updatedAt.toISOString(),
         });
       }
 
@@ -108,9 +130,20 @@ export async function PUT(req: Request) {
         data: { endedAt: new Date() },
       });
 
-      await prisma.table.update({
+      const freedTable = await prisma.table.update({
         where: { id: tableId },
         data: { status: "free" },
+        include: { location: { select: { name: true } } },
+      });
+
+      broadcastTableUpdate(organizationId, {
+        id: freedTable.id,
+        number: freedTable.number,
+        name: freedTable.name,
+        capacity: freedTable.capacity,
+        status: freedTable.status,
+        location: freedTable.location,
+        updatedAt: freedTable.updatedAt.toISOString(),
       });
 
       return NextResponse.json({ ok: true });

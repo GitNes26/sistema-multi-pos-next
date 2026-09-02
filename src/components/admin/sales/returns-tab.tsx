@@ -114,7 +114,7 @@ export function ReturnsTab({ canView, canManage }: Props) {
   useEffect(() => {
     crudApi.list("locations", { pageSize: 250 })
       .then((r) => setLocations(r.rows.map((x) => ({ value: String(x.id), label: String(x.name) }))))
-      .catch(() => {});
+      .catch((err) => console.error("[returns-tab] Error cargando sucursales:", err));
   }, []);
 
   const openDetail = async (row: SaleReturnWithSale) => {

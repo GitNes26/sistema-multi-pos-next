@@ -102,8 +102,7 @@ export const positionsModule: CrudModule<PositionDto> = {
   async remove(organizationId, id) {
     const p = await prisma.employeePosition.findFirst({ where: { id, organizationId } });
     if (!p) throw new CrudError("Puesto no encontrado", 404);
-    const used = await prisma.employee.count({ where: { positionId: id } });
-    if (used > 0) throw new CrudError("No se puede eliminar: tiene empleados asignados", 409);
-    await prisma.employeePosition.delete({ where: { id } });
+    // Soft-delete: deactivate position to preserve history.
+    await prisma.employeePosition.update({ where: { id }, data: { isActive: false } });
   },
 };

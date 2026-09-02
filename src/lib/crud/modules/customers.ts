@@ -168,8 +168,9 @@ export const customersModule: CrudModule<CustomerDto> = {
       });
       return serialize(customer);
     } catch (err) {
-      await prisma.membership.deleteMany({ where: { userId: user.id, organizationId } }).catch(() => {});
-      await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+      // Cleanup orphaned user/membership on create failure
+      await prisma.membership.deleteMany({ where: { userId: user.id, organizationId } }).catch((cleanupErr) => console.error("[customers] cleanup membership failed:", cleanupErr));
+      await prisma.user.delete({ where: { id: user.id } }).catch((cleanupErr) => console.error("[customers] cleanup user failed:", cleanupErr));
       throw err;
     }
   },
@@ -258,20 +259,10 @@ export const customersModule: CrudModule<CustomerDto> = {
   async remove(organizationId, id) {
     const c = await prisma.customer.findFirst({ where: { id, organizationId } });
     if (!c) throw new CrudError("Cliente no encontrado", 404);
-    const sales = await prisma.sale.count({ where: { customerId: id } });
-    const orders = await prisma.order.count({ where: { customerId: id } });
-    if (sales + orders > 0) {
-      throw new CrudError("No se puede eliminar: el cliente tiene ventas o pedidos", 409);
-    }
+    // Soft-delete: deactivate customer and user instead of hard delete to preserve history.
     await prisma.$transaction([
-      prisma.customerPaymentMethod.deleteMany({ where: { customerId: id } }),
-      prisma.customerFavorite.deleteMany({ where: { customerId: id } }),
-      prisma.shoppingListItem.deleteMany({ where: { list: { customerId: id } } }),
-      prisma.shoppingList.deleteMany({ where: { customerId: id } }),
-      prisma.coupon.deleteMany({ where: { customerId: id } }),
-      prisma.customer.delete({ where: { id } }),
-      prisma.membership.deleteMany({ where: { userId: c.userId, organizationId } }),
-      prisma.user.delete({ where: { id: c.userId } }),
+      prisma.customer.update({ where: { id }, data: { isActive: false } }),
+      prisma.user.update({ where: { id: c.userId }, data: { isActive: false } }),
     ]);
   },
 };

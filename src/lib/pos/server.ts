@@ -14,6 +14,7 @@ import { isFeatureEnabled, type FeatureKey } from "@/lib/features";
 import type { BusinessMode } from "@/lib/auth/options"
 import { maybeNotifyLowStock } from "@/lib/inventory/server";
 import { notifySaleCompleted } from "@/lib/notifications/events";
+import { broadcastTableUpdate } from "@/lib/tables/live";
 
 export class PosError extends Error {
   status: number;
@@ -785,6 +786,34 @@ export async function createSale(
     )
   );
 
+  // Asociar mesa si se seleccionó (food_service): ocupar → cobrar → liberar.
+  if (payload.tableId && !payload.tableId.startsWith("manual-")) {
+    const freedTable = await prisma.table.update({
+      where: { id: payload.tableId },
+      data: { status: "free" },
+      include: { location: { select: { name: true } } },
+    });
+    broadcastTableUpdate(organizationId, {
+      id: freedTable.id,
+      number: freedTable.number,
+      name: freedTable.name,
+      capacity: freedTable.capacity,
+      status: freedTable.status,
+      location: freedTable.location,
+      updatedAt: freedTable.updatedAt.toISOString(),
+    });
+    // Cerrar sesión de mesa activa si existe (el cobro la finaliza).
+    const activeSession = await prisma.tableSession.findFirst({
+      where: { tableId: payload.tableId, endedAt: null },
+    });
+    if (activeSession) {
+      await prisma.tableSession.update({
+        where: { id: activeSession.id },
+        data: { endedAt: new Date() },
+      });
+    }
+  }
+
   // Notificar venta completada por SSE (11.6) — fuera de la transacción.
   await notifySaleCompleted(organizationId, result.sale.locationId, ctx, {
     locationSaleNumber: result.sale.locationSaleNumber == null ? null : Number(result.sale.locationSaleNumber),
@@ -923,7 +952,7 @@ export async function closeCashSession(
 
     const updated = await tx.cashSession.update({
       where: { id: session.id },
-      data: { closingCash: round2(closingCash), notes, closedAt: new Date(), status: "closed" },
+      data: { closingCash: round2(closingCash), systemCash: round2(expectedCash), notes, closedAt: new Date(), status: "closed" },
     });
 
     return {
@@ -933,7 +962,7 @@ export async function closeCashSession(
       cashPayments,
       changeGiven,
       openingCash: toNum(session.openingCash),
-      expectedCash,
+      systemCash: round2(expectedCash),
       closingCash: round2(closingCash),
       difference: round2(closingCash - expectedCash),
       closedAt: updated.closedAt?.toISOString() ?? null,

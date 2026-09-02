@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { listOrders, type OrderListFilters } from "@/lib/orders/server";
 import { ordersGuard, ordersErrorResponse } from "./guard";
+import { jsonResponse } from "@/lib/api-helpers";
 
 // FASE 12.1 — Listado de pedidos con filtros (estado, método, sucursal, rango, búsqueda).
 
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
 
   try {
     const data = await listOrders(guard.organizationId, filters);
-    return NextResponse.json({ ok: true, ...data });
+    return jsonResponse({ ok: true, ...data });
   } catch (err) {
     return ordersErrorResponse(err);
   }

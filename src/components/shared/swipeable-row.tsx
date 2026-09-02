@@ -2,6 +2,7 @@
 
 import { motion, useMotionValue, useTransform } from "framer-motion"
 import { Trash2 } from "lucide-react"
+import { haptic } from "@/lib/haptics"
 
 export function SwipeableRow({
   children,
@@ -33,7 +34,10 @@ export function SwipeableRow({
         dragConstraints={{ left: -100, right: 0 }}
         dragElastic={0.1}
         onDragEnd={(_, info) => {
-          if (info.offset.x < -80) onDelete()
+          if (info.offset.x < -80) {
+            haptic.heavy()
+            onDelete()
+          }
         }}
         className="relative bg-background"
       >

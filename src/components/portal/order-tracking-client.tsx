@@ -14,6 +14,7 @@ import {
   CircleCheck,
   Truck,
   Navigation,
+  RefreshCw,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { portalApi } from "@/lib/portal/client"
@@ -27,10 +28,12 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { swalConfirm, swalError, swalToast } from "@/lib/swal"
+import { usePortalStore } from "@/stores/portal-store"
 import { cn } from "@/lib/utils"
 import { StepIllustration } from "@/components/shared/step-illustration"
 import { DeliveryConfirmPanel } from "@/components/portal/delivery-confirm-panel"
+import { swalConfirm, swalError, swalToast } from "@/lib/swal"
+import { STAGGER_SLOW } from "@/lib/animation-tokens"
 
 const FLOW: OrderStatusKey[] = [
   "pending",
@@ -53,14 +56,7 @@ const FLOW_ICONS: Record<string, React.ReactNode> = {
 }
 
 
-const stagger = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
-}
-const fadeUp = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-}
+const { container: stagger, item: fadeUp } = STAGGER_SLOW;
 
 export function OrderTrackingClient({ orderId }: { orderId: string }) {
   const router = useRouter()
@@ -96,7 +92,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
         portalApi
           .order(orderId)
           .then((d) => setOrder(d.order))
-          .catch(() => {})
+          .catch((err) => console.error("[order-tracking] SSE reload failed:", err))
       } catch {
         /* ignore */
       }
@@ -120,6 +116,10 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
     return () => es.close()
   }, [orderId, order?.status, order?.deliveryMethod])
 
+  const reorderItems = usePortalStore((s) => s.reorderItems)
+  const setCartOpen = usePortalStore((s) => s.setCartOpen)
+  const [reordering, setReordering] = useState(false)
+
   const cancel = async () => {
     const ok = await swalConfirm(
       "Cancelar pedido",
@@ -138,6 +138,32 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
       )
     } finally {
       setCancelling(false)
+    }
+  }
+
+  const handleReorder = async () => {
+    const ok = await swalConfirm(
+      "Volver a pedir",
+      "Se agregarán los productos de este pedido a tu carrito."
+    )
+    if (!ok) return
+    setReordering(true)
+    try {
+      const res = await portalApi.reorder(orderId)
+      if (!res.ok || !res.items?.length) {
+        swalError("No se pudieron obtener los productos")
+        return
+      }
+      const count = reorderItems(res.items)
+      setCartOpen(true)
+      swalToast(`${count} producto(s) agregado(s) al carrito`)
+    } catch (err) {
+      swalError(
+        "No se pudo reordenar",
+        err instanceof Error ? err.message : undefined
+      )
+    } finally {
+      setReordering(false)
     }
   }
 
@@ -617,6 +643,21 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
             ))}
           </div>
         </motion.section>
+      )}
+
+      {/* Reorder — visible for delivered or cancelled orders */}
+      {(order.status === "delivered" || order.status === "cancelled") && (
+        <motion.div variants={fadeUp}>
+          <Button
+            variant="outline"
+            className="h-12 w-full rounded-2xl font-bold border-primary/30 text-primary hover:bg-primary/5"
+            onClick={handleReorder}
+            disabled={reordering}
+          >
+            <RefreshCw className="mr-2 size-4" />
+            {reordering ? "Agregando…" : "Volver a pedir"}
+          </Button>
+        </motion.div>
       )}
 
       {/* Cancelar */}

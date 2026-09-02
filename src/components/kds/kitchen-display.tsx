@@ -8,7 +8,6 @@ import {
   Clock,
   Loader2,
   MapPin,
-  RefreshCcw,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -276,17 +275,17 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
   const [stats, setStats] = useState<KDSStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [sseConnected, setSseConnected] = useState(false);
   const prevOrderCount = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Initial load (one-time fetch)
   const load = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (locationId) params.set("locationId", locationId);
       const res = await fetch(`/api/kds?${params}`).then((r) => r.json());
       if (res.ok) {
-        // Play sound for new orders
         if (soundEnabled && res.orders.length > prevOrderCount.current && prevOrderCount.current > 0) {
           playNotificationSound();
         }
@@ -303,12 +302,121 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
 
   useEffect(() => { load(); }, [load]);
 
-  // Auto-refresh
+  // SSE subscription for real-time updates
   useEffect(() => {
-    if (!autoRefresh) return;
-    const interval = setInterval(load, refreshInterval);
-    return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval, load]);
+    if (typeof window === "undefined") return;
+
+    let es: EventSource | null = null;
+    let retries = 0;
+    let closed = false;
+
+    const connect = () => {
+      const params = new URLSearchParams();
+      if (locationId) params.set("locationId", locationId);
+      es = new EventSource(`/api/kds/stream?${params}`);
+
+      es.onopen = () => {
+        retries = 0;
+        setSseConnected(true);
+      };
+
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data) as {
+            orders?: KDSOrder[];
+            type?: string;
+            orderId?: string;
+            orderNumber?: string | number;
+            status?: string;
+            items?: KDSOrder["items"];
+            table?: KDSOrder["table"];
+            elapsedSeconds?: number;
+          };
+
+          // Initial snapshot with full order list
+          if (Array.isArray(data.orders)) {
+            if (soundEnabled && data.orders.length > prevOrderCount.current && prevOrderCount.current > 0) {
+              playNotificationSound();
+            }
+            prevOrderCount.current = data.orders.length;
+            setOrders(data.orders);
+            // Recalculate stats from orders
+            setStats({
+              pending: data.orders.filter((o: KDSOrder) => o.status === "pending").length,
+              confirmed: data.orders.filter((o: KDSOrder) => o.status === "confirmed").length,
+              preparing: data.orders.filter((o: KDSOrder) => o.status === "preparing").length,
+              totalItems: data.orders.reduce((sum: number, o: KDSOrder) => sum + o.items.length, 0),
+              readyItems: data.orders.reduce((sum: number, o: KDSOrder) => sum + o.items.filter((i) => i.itemStatus === "ready").length, 0),
+            });
+            return;
+          }
+
+          // Individual order update
+          if (data.type && data.orderId) {
+            setOrders((prev) => {
+              let next: KDSOrder[];
+              if (data.type === "order_removed") {
+                next = prev.filter((o) => o.id !== data.orderId);
+              } else {
+                const exists = prev.some((o) => o.id === data.orderId);
+                const updated: KDSOrder = {
+                  id: data.orderId!,
+                  orderNumber: data.orderNumber ?? "",
+                  status: data.status ?? "pending",
+                  createdAt: new Date().toISOString(),
+                  elapsedSeconds: data.elapsedSeconds ?? 0,
+                  table: data.table ?? null,
+                  location: null,
+                  items: (data.items ?? []).map((i) => ({
+                    ...i,
+                    selectedOptions: null,
+                    comment: null,
+                  })),
+                  preparation: null,
+                };
+                if (exists) {
+                  next = prev.map((o) => (o.id === data.orderId ? updated : o));
+                } else {
+                  next = [...prev, updated];
+                  // Play sound for new orders
+                  if (soundEnabled) playNotificationSound();
+                }
+              }
+              prevOrderCount.current = next.length;
+              // Recalculate stats
+              setStats({
+                pending: next.filter((o) => o.status === "pending").length,
+                confirmed: next.filter((o) => o.status === "confirmed").length,
+                preparing: next.filter((o) => o.status === "preparing").length,
+                totalItems: next.reduce((sum, o) => sum + o.items.length, 0),
+                readyItems: next.reduce((sum, o) => sum + o.items.filter((i) => i.itemStatus === "ready").length, 0),
+              });
+              return next;
+            });
+          }
+        } catch {
+          // Ignorar mensajes no JSON
+        }
+      };
+
+      es.onerror = () => {
+        es?.close();
+        setSseConnected(false);
+        if (!closed && retries < 6) {
+          retries += 1;
+          const delay = Math.min(1000 * 2 ** retries, 15_000);
+          setTimeout(connect, delay);
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      closed = true;
+      es?.close();
+    };
+  }, [locationId, soundEnabled]);
 
   const playNotificationSound = () => {
     try {
@@ -352,19 +460,21 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
           )}
         </div>
         <div className="flex gap-2">
+          <div className={cn(
+            "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
+            sseConnected
+              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+          )}>
+            <div className={cn("w-2 h-2 rounded-full", sseConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
+            {sseConnected ? "En vivo" : "Sin conexión"}
+          </div>
           <Button
             variant={soundEnabled ? "default" : "outline"}
             size="sm"
             onClick={() => setSoundEnabled(!soundEnabled)}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </Button>
-          <Button
-            variant={autoRefresh ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAutoRefresh(!autoRefresh)}
-          >
-            <RefreshCcw className={cn("w-4 h-4", autoRefresh && "animate-spin")} />
           </Button>
           <Button variant="outline" size="sm" onClick={load}>
             Actualizar

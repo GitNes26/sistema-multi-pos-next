@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { salesGuard, salesErrorResponse } from "./guard";
 import { listSales, type SalesListQuery } from "@/lib/sales/server";
+import { jsonResponse } from "@/lib/api-helpers";
 
 // FASE 9.1 — Historial de ventas (lista con filtros y paginación).
 
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await listSales(guard.organizationId, query);
-    return NextResponse.json({ ok: true, ...result });
+    return jsonResponse({ ok: true, ...result });
   } catch (err) {
     return salesErrorResponse(err);
   }

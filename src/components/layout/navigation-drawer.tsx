@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 import { NavSection } from "@/lib/nav";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { useUiStore } from "@/stores/ui-store";
+import { DURATION, SPRING_SOFT, TRANSITION_FADE_FAST } from "@/lib/animation-tokens";
 
 // FASE 5.7 — NavigationDrawer: slide-in con overlay (tablet y móvil < 1024px).
 export function NavigationDrawer({ sections }: { sections: NavSection[] }) {
@@ -36,7 +37,7 @@ export function NavigationDrawer({ sections }: { sections: NavSection[] }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={TRANSITION_FADE_FAST}
             onClick={() => setNavOpen(false)}
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
           />
@@ -45,7 +46,7 @@ export function NavigationDrawer({ sections }: { sections: NavSection[] }) {
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
-            transition={{ type: "spring", stiffness: 380, damping: 38 }}
+            transition={SPRING_SOFT}
             className="fixed inset-y-0 left-0 z-50 w-[min(88vw,320px)] border-r bg-sidebar pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
           >
             <button

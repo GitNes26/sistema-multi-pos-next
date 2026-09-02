@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { playSound } from "@/lib/sounds"
+import { STAGGER } from "@/lib/animation-tokens"
 
 interface PortalNotification {
   id: string
@@ -190,7 +191,7 @@ function NotificationItem({ n, idx, onClick, onDelete }: { n: PortalNotification
   const Icon = KIND_ICONS[n.kind] ?? Bell
   const isUnread = !n.readAt
   return (
-    <motion.div key={n.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
+    <motion.div key={n.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * STAGGER.COMPACT }}>
       <SwipeableRow onDelete={() => onDelete(n.id)}>
         <button onClick={() => onClick(n)} className={cn(
           "w-full rounded-2xl border-2 p-3.5 text-left transition-all active:scale-[0.98]",

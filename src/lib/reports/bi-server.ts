@@ -759,3 +759,208 @@ export async function getPaymentMix(orgId: string, f: Period) {
   rows.sort((a, b) => b.total - a.total);
   return { rows };
 }
+
+// ── 21. Product Pairs (Market Basket) ──────────────────────────────────
+
+export interface ProductPairRow {
+  productA: string;
+  productB: string;
+  timesTogether: number;
+  avgRevenue: number;
+}
+
+export async function getProductPairs(orgId: string, f: Period) {
+  const { from, to } = dateRange(f);
+  const pairs = await prisma.productPair.findMany({
+    where: { organizationId: orgId, lastSeenAt: { gte: from, lte: to } },
+    include: {
+      productA: { select: { name: true } },
+      productB: { select: { name: true } },
+    },
+    orderBy: { coOccurrences: "desc" },
+    take: 20,
+  });
+
+  const rows: ProductPairRow[] = pairs.map((p) => ({
+    productA: p.productA.name,
+    productB: p.productB.name,
+    timesTogether: p.coOccurrences,
+    avgRevenue: 0,
+  }));
+
+  return { rows };
+}
+
+// ── 22. Transfer Efficiency ────────────────────────────────────────────
+
+export interface TransferRow {
+  id: string;
+  fromLocation: string;
+  toLocation: string;
+  status: string;
+  itemCount: number;
+  totalQty: number;
+  createdAt: string;
+}
+
+export async function getTransferEfficiency(orgId: string, f: Period) {
+  const { from, to } = dateRange(f);
+  const transfers = await prisma.transfer.findMany({
+    where: { organizationId: orgId, createdAt: { gte: from, lte: to } },
+    include: {
+      items: { select: { quantity: true } },
+      fromLocation: { select: { name: true } },
+      toLocation: { select: { name: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const rows: TransferRow[] = transfers.map((t) => ({
+    id: t.id,
+    fromLocation: t.fromLocation.name,
+    toLocation: t.toLocation.name,
+    status: t.status,
+    itemCount: t.items.length,
+    totalQty: t.items.reduce((a, i) => a + Number(i.quantity), 0),
+    createdAt: t.createdAt.toISOString().slice(0, 10),
+  }));
+
+  return { rows };
+}
+
+// ── 23. Inventory Fill Rate ────────────────────────────────────────────
+
+export interface FillRateRow {
+  locationName: string;
+  totalProducts: number;
+  inStock: number;
+  outOfStock: number;
+  fillRate: number;
+}
+
+export async function getInventoryFillRate(orgId: string) {
+  const inventories = await prisma.inventory.findMany({
+    where: { organizationId: orgId },
+    select: { locationId: true, quantity: true },
+  });
+
+  const locs = await prisma.location.findMany({
+    where: { organizationId: orgId },
+    select: { id: true, name: true },
+  });
+  const locMap = new Map(locs.map((l) => [l.id, l.name]));
+
+  const map = new Map<string, { total: number; inStock: number }>();
+  for (const inv of inventories) {
+    const loc = locMap.get(inv.locationId) ?? "N/A";
+    const existing = map.get(loc) ?? { total: 0, inStock: 0 };
+    existing.total += 1;
+    if (Number(inv.quantity) > 0) existing.inStock += 1;
+    map.set(loc, existing);
+  }
+
+  const rows: FillRateRow[] = [...map.entries()].map(([name, d]) => ({
+    locationName: name,
+    totalProducts: d.total,
+    inStock: d.inStock,
+    outOfStock: d.total - d.inStock,
+    fillRate: d.total > 0 ? round2((d.inStock / d.total) * 100) : 0,
+  }));
+
+  return { rows };
+}
+
+// ── 24. Employee Margin Analysis ───────────────────────────────────────
+
+export interface EmployeeMarginRow {
+  employeeName: string;
+  totalRevenue: number;
+  totalCost: number;
+  margin: number;
+  marginPct: number;
+  saleCount: number;
+}
+
+export async function getEmployeeMargin(orgId: string, f: Period) {
+  const { from, to } = dateRange(f);
+  const sales = await prisma.sale.findMany({
+    where: { organizationId: orgId, createdAt: { gte: from, lte: to }, status: "completed" },
+    include: {
+      employee: { select: { fullName: true } },
+      items: { select: { unitPrice: true, quantity: true, variant: { select: { cost: true } } } },
+    },
+  });
+
+  const map = new Map<string, { revenue: number; cost: number; count: number }>();
+  for (const s of sales) {
+    const name = s.employee?.fullName ?? "Sin empleado";
+    const existing = map.get(name) ?? { revenue: 0, cost: 0, count: 0 };
+    existing.count += 1;
+    for (const item of s.items) {
+      existing.revenue += num(item.unitPrice) * Number(item.quantity);
+      existing.cost += num(item.variant?.cost ?? 0) * Number(item.quantity);
+    }
+    map.set(name, existing);
+  }
+
+  const rows: EmployeeMarginRow[] = [...map.entries()].map(([name, d]) => ({
+    employeeName: name,
+    totalRevenue: round2(d.revenue),
+    totalCost: round2(d.cost),
+    margin: round2(d.revenue - d.cost),
+    marginPct: d.revenue > 0 ? round2(((d.revenue - d.cost) / d.revenue) * 100) : 0,
+    saleCount: d.count,
+  }));
+
+  rows.sort((a, b) => b.margin - a.margin);
+  return { rows };
+}
+
+// ── 25. Sales Forecast ─────────────────────────────────────────────────
+
+export interface ForecastRow {
+  date: string;
+  predictedSales: number;
+  confidence: number;
+}
+
+export async function getSalesForecast(orgId: string, days: number = 7) {
+  // Simple moving average forecast based on last 30 days
+  const from = new Date(Date.now() - 60 * 86400000);
+  const to = new Date();
+
+  const sales = await prisma.sale.findMany({
+    where: { organizationId: orgId, createdAt: { gte: from, lte: to }, status: "completed" },
+    select: { total: true, createdAt: true },
+  });
+
+  // Group by day of week
+  const dowTotals = new Map<number, { total: number; count: number }>();
+  for (const s of sales) {
+    const dow = s.createdAt.getDay();
+    const existing = dowTotals.get(dow) ?? { total: 0, count: 0 };
+    existing.total += num(s.total);
+    existing.count += 1;
+    dowTotals.set(dow, existing);
+  }
+
+  const dowAvg = new Map<number, number>();
+  for (const [dow, d] of dowTotals) {
+    dowAvg.set(dow, d.count > 0 ? d.total / d.count : 0);
+  }
+
+  // Forecast for next N days
+  const rows: ForecastRow[] = [];
+  for (let i = 1; i <= days; i++) {
+    const forecastDate = new Date(Date.now() + i * 86400000);
+    const dow = forecastDate.getDay();
+    const predicted = dowAvg.get(dow) ?? 0;
+    rows.push({
+      date: forecastDate.toISOString().slice(0, 10),
+      predictedSales: round2(predicted),
+      confidence: Math.min(95, 60 + (dowTotals.get(dow)?.count ?? 0) * 2),
+    });
+  }
+
+  return { rows };
+}

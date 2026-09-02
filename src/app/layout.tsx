@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/providers";
 import { HttpErrorToast } from "@/components/api/http-error-toast";
+import { SplashScreen } from "@/components/shared/splash-screen"
 
 const montserrat = localFont({
   variable: "--font-montserrat",
@@ -58,6 +59,7 @@ export default function RootLayout({
     >
       <body className="font-sans antialiased" suppressHydrationWarning>
         <Providers>
+          <SplashScreen />
           <HttpErrorToast />
           {children}
         </Providers>

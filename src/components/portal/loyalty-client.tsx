@@ -10,6 +10,7 @@ import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 import { EmptyState } from "@/components/shared/empty-state"
 import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { cn } from "@/lib/utils"
+import { STAGGER } from "@/lib/animation-tokens"
 
 const KIND_CONFIG: Record<string, { label: string; icon: typeof Star; color: string }> = {
   earn: { label: "Ganados", icon: TrendingUp, color: "text-emerald-500 bg-emerald-500/10" },
@@ -97,7 +98,7 @@ export function LoyaltyClient() {
                     key={t.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.03 }}
+                    transition={{ delay: idx * STAGGER.COMPACT }}
                   >
                     <SwipeableRow onDelete={() => {}}>
                       <div className="flex items-center gap-3 rounded-2xl border bg-card p-3.5 shadow-sm">

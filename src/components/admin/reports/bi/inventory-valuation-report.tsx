@@ -28,7 +28,7 @@ export function InventoryValuationReport({ from, to, locationId }: Props) {
     fetch(`/api/reports/bi?${params}`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => { if (d.ok) setData(d) })
-      .catch(() => {})
+      .catch((err) => console.error("[bi-inventory-valuation] Error cargando reporte:", err))
       .finally(() => setLoading(false))
   }, [from, to, locationId])
 

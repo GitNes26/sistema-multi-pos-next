@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { AnimatedNumber } from "@/components/base/animated-number"
 import { TicketItemRow } from "./ticket-item-row"
+import { SPRING_LAYOUT } from "@/lib/animation-tokens"
+import { TableSelector } from "./table-selector"
 
 interface TicketPanelProps {
   onEditBulk: (item: PosLineItem) => void
@@ -86,6 +88,8 @@ export function TicketPanel({
     nonce: 0,
   })
   const [justAdded, setJustAdded] = useState(false)
+  const [tableDialogOpen, setTableDialogOpen] = useState(false)
+  const [releasingTable, setReleasingTable] = useState(false)
 
   // Auto-scroll al fondo solo cuando se AGREGA un producto nuevo
   useEffect(() => {
@@ -225,7 +229,7 @@ export function TicketPanel({
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -100, scale: 0.9 }}
-                transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                transition={SPRING_LAYOUT}
               >
                 <TicketItemRow
                   item={item}
@@ -292,7 +296,6 @@ export function TicketPanel({
               exit={{ opacity: 0, height: 0 }}
               className="space-y-1"
             >
-              cuantos descuentos llevo: {t.discounts.length}
               {t.discounts.map((d, i) => (
                 <div
                   key={i}
@@ -347,27 +350,59 @@ export function TicketPanel({
 
         {/* Table selector (food_service) */}
         {features.tables && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant={selectedTable ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                const num = prompt("Número de mesa:")
-                if (num && num.trim()) {
-                  setTable({ id: `manual-${num.trim()}`, number: parseInt(num.trim()) || 0, name: `Mesa ${num.trim()}` })
-                }
-              }}
-              className="h-9 flex-1"
-            >
-              <Armchair className="size-4" />
-              {selectedTable ? `Mesa ${selectedTable.number}` : "Mesa"}
-            </Button>
-            {selectedTable && (
-              <Button variant="ghost" size="sm" className="h-9 px-2" onClick={() => setTable(null)}>
-                ✕
+          <>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={selectedTable ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTableDialogOpen(true)}
+                className="h-9 flex-1"
+              >
+                <Armchair className="size-4" />
+                {selectedTable ? `Mesa ${selectedTable.number}` : "Mesa"}
               </Button>
-            )}
-          </div>
+              {selectedTable && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-2 text-destructive"
+                  disabled={releasingTable}
+                  onClick={() => {
+                    const tableId = selectedTable.id
+                    if (!tableId.startsWith("manual-")) {
+                      setReleasingTable(true)
+                      fetch("/api/tables", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: tableId, status: "free" }),
+                      })
+                        .then((res) => {
+                          if (!res.ok) throw new Error("No se pudo liberar la mesa");
+                          // Cerrar sesión activa si existe
+                          return fetch("/api/tables/session", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ tableId }),
+                          });
+                        })
+                        .catch((err) => {
+                          console.error("[ticket-panel] Error liberando mesa:", err);
+                        })
+                        .finally(() => setReleasingTable(false))
+                    }
+                    setTable(null)
+                  }}
+                >
+                  ✕
+                </Button>
+              )}
+            </div>
+            <TableSelector
+              open={tableDialogOpen}
+              onClose={() => setTableDialogOpen(false)}
+              onSelect={(t) => setTable(t)}
+            />
+          </>
         )}
 
         {/* Action buttons */}

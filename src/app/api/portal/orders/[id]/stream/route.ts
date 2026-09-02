@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth/options";
 import { prisma } from "@/lib/db";
 import { openOrderChannel } from "@/lib/portal/live";
 import { getPortalCustomer } from "@/lib/portal/server";
+import { safeJson } from "@/lib/api-helpers";
 
 // FASE 13.7 — Tracking del pedido en tiempo real (SSE). El cliente se suscribe
 // al canal del pedido y recibe cada cambio de estado (broadcast de updateOrderStatus).
@@ -42,12 +43,12 @@ export async function GET(
 
       controller.enqueue(
         encoder.encode(
-          `data: ${JSON.stringify({
+          `data: ${JSON.stringify(safeJson({
             orderId: order.id,
-            orderNumber: Number(order.orderNumber),
+            orderNumber: order.orderNumber,
             status: order.status,
             updatedAt: order.updatedAt.toISOString(),
-          })}\n\n`
+          }))}\n\n`
         )
       );
 

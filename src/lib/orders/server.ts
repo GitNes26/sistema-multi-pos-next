@@ -893,7 +893,10 @@ export async function upsertBranchDeliveryPolicy(
 }
 
 export async function restoreBranchToCompanyPolicy(branchId: string): Promise<void> {
-  await prisma.branchDeliveryPolicy.delete({ where: { branchId } }).catch(() => {});
+  await prisma.branchDeliveryPolicy.delete({ where: { branchId } }).catch((err) => {
+    // Policy may not exist (already reset) — only log unexpected errors
+    if (err?.code !== "P2025") console.error("[orders] restoreBranchToCompanyPolicy:", err);
+  });
 }
 
 export function isScheduleOpen(

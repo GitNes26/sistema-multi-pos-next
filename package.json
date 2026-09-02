@@ -1,6 +1,6 @@
 {
   "name": "sistema-multi-pos-react-node-chadcnui",
-  "version": "0.15.0.0",
+  "version": "0.15.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -14,6 +14,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "bi:cron": "node scripts/bi-daily-cron.mjs",
     "db:reset": "npx prisma db push --force-reset && npm run db:seed",
     "gcv": "node scripts/gcv.mjs",
     "version:bump": "node scripts/version-bump.mjs",

@@ -20,6 +20,11 @@ import {
   getLowStockAlerts,
   getCustomerSegmentation,
   getMarginAnalysis,
+  getProductPairs,
+  getTransferEfficiency,
+  getInventoryFillRate,
+  getEmployeeMargin,
+  getSalesForecast,
   getDailyTrend,
   getPaymentMix,
 } from "@/lib/reports/bi-server";
@@ -62,7 +67,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // ── BI Reports ──
-    const biTypes = ["omnichannel", "ranking", "inventory", "employee_ranking", "loyalty", "credit_aging", "promos_roi", "delivery", "low_stock", "segmentation", "margin", "daily_trend", "payment_mix"];
+    const biTypes = ["omnichannel", "ranking", "inventory", "employee_ranking", "loyalty", "credit_aging", "promos_roi", "delivery", "low_stock", "segmentation", "margin", "daily_trend", "payment_mix", "product_pairs", "transfers", "fill_rate", "employee_margin", "forecast"];
     if (biTypes.includes(type)) {
       const biFilters = { from: filters.from, to: filters.to, locationId: filters.locationId };
 
@@ -148,6 +153,43 @@ export async function GET(req: NextRequest) {
             { header: "Método", width: 20 }, { header: "Pedidos", width: 10 }, { header: "Total", width: 14 }, { header: "%", width: 8 },
           ];
           data.rows.forEach((r) => ws.addRow([r.method, r.count, r.total, r.pct]));
+        } else if (type === "product_pairs") {
+          const data = await getProductPairs(guard.organizationId, biFilters);
+          ws.columns = [
+            { header: "Producto A", width: 25 }, { header: "Producto B", width: 25 },
+            { header: "Veces juntos", width: 12 }, { header: "Ingreso prom.", width: 14 },
+          ];
+          data.rows.forEach((r) => ws.addRow([r.productA, r.productB, r.timesTogether, r.avgRevenue]));
+        } else if (type === "transfers") {
+          const data = await getTransferEfficiency(guard.organizationId, biFilters);
+          ws.columns = [
+            { header: "Origen", width: 20 }, { header: "Destino", width: 20 },
+            { header: "Estado", width: 14 }, { header: "Items", width: 8 },
+            { header: "Cantidad", width: 10 }, { header: "Fecha", width: 14 },
+          ];
+          data.rows.forEach((r) => ws.addRow([r.fromLocation, r.toLocation, r.status, r.itemCount, r.totalQty, r.createdAt]));
+        } else if (type === "fill_rate") {
+          const data = await getInventoryFillRate(guard.organizationId);
+          ws.columns = [
+            { header: "Sucursal", width: 22 }, { header: "Total", width: 10 },
+            { header: "Con stock", width: 10 }, { header: "Sin stock", width: 10 },
+            { header: "Fill Rate %", width: 12 },
+          ];
+          data.rows.forEach((r) => ws.addRow([r.locationName, r.totalProducts, r.inStock, r.outOfStock, r.fillRate]));
+        } else if (type === "employee_margin") {
+          const data = await getEmployeeMargin(guard.organizationId, biFilters);
+          ws.columns = [
+            { header: "Empleado", width: 25 }, { header: "Ingresos", width: 14 },
+            { header: "Costo", width: 14 }, { header: "Margen", width: 14 },
+            { header: "Margen %", width: 10 }, { header: "Ventas", width: 8 },
+          ];
+          data.rows.forEach((r) => ws.addRow([r.employeeName, r.totalRevenue, r.totalCost, r.margin, r.marginPct, r.saleCount]));
+        } else if (type === "forecast") {
+          const data = await getSalesForecast(guard.organizationId);
+          ws.columns = [
+            { header: "Fecha", width: 14 }, { header: "Predicción", width: 14 }, { header: "Confianza %", width: 12 },
+          ];
+          data.rows.forEach((r) => ws.addRow([r.date, r.predictedSales, r.confidence]));
         }
 
         ws.getRow(1).font = { bold: true };

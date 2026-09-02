@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { salesGuard, salesErrorResponse } from "../guard";
 import { getSaleDetail } from "@/lib/sales/server";
+import { jsonResponse } from "@/lib/api-helpers";
 
 // FASE 9.2 — Detalle completo de una venta (ticket/reimpresión).
 
@@ -14,7 +15,7 @@ export async function GET(
 
   try {
     const sale = await getSaleDetail(guard.organizationId, id);
-    return NextResponse.json({ ok: true, sale });
+    return jsonResponse({ ok: true, sale });
   } catch (err) {
     return salesErrorResponse(err);
   }

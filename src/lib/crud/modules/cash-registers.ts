@@ -142,12 +142,9 @@ export const cashRegistersModule: CrudModule<CashRegisterDto> = {
   async remove(organizationId, id) {
     const r = await prisma.cashRegister.findFirst({
       where: { id, organizationId },
-      include: { _count: { select: { cashSessions: true, sales: true } } },
     });
     if (!r) throw new CrudError("Caja no encontrada", 404);
-    if (r._count.cashSessions > 0 || r._count.sales > 0) {
-      throw new CrudError("No se puede eliminar: tiene sesiones o ventas", 409);
-    }
-    await prisma.cashRegister.delete({ where: { id } });
+    // Soft-delete: deactivate cash register to preserve history.
+    await prisma.cashRegister.update({ where: { id }, data: { isActive: false } });
   },
 };

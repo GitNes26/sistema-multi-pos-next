@@ -206,15 +206,9 @@ export const locationsModule: CrudModule<LocationDto> = {
   async remove(organizationId, id) {
     const l = await prisma.location.findFirst({
       where: { id, organizationId },
-      include: { _count: { select: { cashRegisters: true, sales: true, cashSessions: true } } },
     });
     if (!l) throw new CrudError("Sucursal no encontrada", 404);
-    if (l._count.cashRegisters > 0) {
-      throw new CrudError("No se puede eliminar: tiene cajas registradoras", 409);
-    }
-    if (l._count.sales > 0 || l._count.cashSessions > 0) {
-      throw new CrudError("No se puede eliminar: tiene ventas o sesiones de caja", 409);
-    }
-    await prisma.location.delete({ where: { id } });
+    // Soft-delete: deactivate location to preserve history.
+    await prisma.location.update({ where: { id }, data: { isActive: false } });
   },
 };

@@ -28,6 +28,7 @@ import { TapScale } from "@/components/shared/tap-scale"
 import { PermissionSlider } from "@/components/shared/permission-slider"
 import { usePortalPermissions, type PortalPermissionType } from "@/hooks/use-portal-permissions"
 import { cn } from "@/lib/utils"
+import { STAGGER_FADE_UP } from "@/lib/animation-tokens"
 import { DetailSheet, type DetailItem } from "@/components/portal/detail-sheet"
 import { PortalComboCard } from "@/components/portal/combo-card"
 
@@ -43,14 +44,7 @@ const PUB_TYPE_COLORS: Record<string, string> = {
   notice: "bg-sky-500 text-white",
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-}
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0 },
-}
+const { container, item } = STAGGER_FADE_UP;
 
 export function HomeClient() {
   const [data, setData] = useState<PortalHomeData | null>(null)

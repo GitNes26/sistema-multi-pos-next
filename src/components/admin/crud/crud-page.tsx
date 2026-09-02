@@ -13,6 +13,7 @@ import {
   Package,
   Plus,
   Pencil,
+  RotateCcw,
   Search,
   Trash2,
   Upload,
@@ -347,6 +348,25 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
     }
   };
 
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const handleRestore = async (row: Record<string, unknown>) => {
+    const ok = await swalConfirm("Restaurar", "¿Reactivar este registro? Aparecerá de nuevo en la lista.", {
+      confirmText: "Restaurar",
+    });
+    if (!ok) return;
+    setRestoringId(String(row.id));
+    try {
+      await crudApi.restore(moduleKey, String(row.id));
+      swalToast("Registro restaurado");
+      load();
+    } catch (err) {
+      swalError("No se pudo restaurar", err instanceof Error ? err.message : undefined);
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
   const actionColumns = useMemo<ColumnDef<Record<string, unknown>, unknown>[]>(() => {
     if (!canManage) return [];
     return [
@@ -355,43 +375,66 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         header: "",
         enableSorting: false,
         enableHiding: false,
-        cell: ({ row }) => (
-          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-            {moduleKey === "customers" && (
-              <Button variant="ghost" size="icon" className="size-8" onClick={() => openActivity(row.original)}>
-                <Eye className="size-4" />
-              </Button>
-            )}
-            <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(row.original)}>
-              <Pencil className="size-4" />
-            </Button>
-            {isProducts(moduleKey) && row.original.productType === "standard" && (
-              <Button variant="ghost" size="icon" className="size-8" title="Variantes" onClick={() => setVariantsProduct(row.original)}>
-                <Layers className="size-4" />
-              </Button>
-            )}
-            {canDelete && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 text-destructive"
-                disabled={deletingId === String(row.original.id)}
-                onClick={() => handleDelete(row.original)}
-                title={deletingId === String(row.original.id) ? "Eliminando…" : "Eliminar"}
-              >
-                {deletingId === String(row.original.id) ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Trash2 className="size-4" />
-                )}
-              </Button>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const isInactive = row.original.isActive === false;
+          return (
+            <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+              {isInactive ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 text-emerald-600 hover:text-emerald-700"
+                  disabled={restoringId === String(row.original.id)}
+                  onClick={() => handleRestore(row.original)}
+                  title={restoringId === String(row.original.id) ? "Restaurando…" : "Restaurar"}
+                >
+                  {restoringId === String(row.original.id) ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="size-3.5" />
+                  )}
+                  Restaurar
+                </Button>
+              ) : (
+                <>
+                  {moduleKey === "customers" && (
+                    <Button variant="ghost" size="icon" className="size-8" onClick={() => openActivity(row.original)}>
+                      <Eye className="size-4" />
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(row.original)}>
+                    <Pencil className="size-4" />
+                  </Button>
+                  {isProducts(moduleKey) && row.original.productType === "standard" && (
+                    <Button variant="ghost" size="icon" className="size-8" title="Variantes" onClick={() => setVariantsProduct(row.original)}>
+                      <Layers className="size-4" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-destructive"
+                      disabled={deletingId === String(row.original.id)}
+                      onClick={() => handleDelete(row.original)}
+                      title={deletingId === String(row.original.id) ? "Eliminando…" : "Eliminar"}
+                    >
+                      {deletingId === String(row.original.id) ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-4" />
+                      )}
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        },
       },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, canDelete, moduleKey]);
+  }, [canManage, canDelete, moduleKey, restoringId]);
 
   const activeColumns = isProducts(moduleKey) ? productsColumns : columns;
   const tableColumns = canManage ? [...activeColumns, ...actionColumns] : activeColumns;

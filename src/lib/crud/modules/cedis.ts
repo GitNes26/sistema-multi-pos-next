@@ -174,6 +174,7 @@ export const cedisModule: CrudModule<CediDto> = {
   async remove(organizationId, id) {
     const c = await prisma.cedi.findFirst({ where: { id, organizationId } });
     if (!c) throw new CrudError("CEDIS no encontrado", 404);
-    await prisma.cedi.delete({ where: { id } });
+    // Soft-delete: deactivate CEDIS to preserve history.
+    await prisma.cedi.update({ where: { id }, data: { isActive: false } });
   },
 };

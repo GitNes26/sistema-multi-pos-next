@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.15.1.0] — 2026-09-02
+- **Tipo:** `fix` (Patch)
+- fix: se sigue modificando la nueva version con los negocios, se agrego algo de estilo movil
+
 ### [0.15.0.0] — 2026-09-01
 - **Tipo:** `feat` (Minor)
 - feat: se agregaron funciones y todo para restaurante, venta de prodcuto construido, mesas y reportes, pero falta más implementeacion

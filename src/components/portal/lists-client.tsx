@@ -13,6 +13,7 @@ import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 import { EmptyState } from "@/components/shared/empty-state"
 import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { usePortalStore } from "@/stores/portal-store"
+import { STAGGER } from "@/lib/animation-tokens"
 
 export function ListsClient() {
   const router = useRouter()
@@ -173,7 +174,7 @@ export function ListsClient() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -100 }}
-                transition={{ delay: idx * 0.05 }}
+                transition={{ delay: idx * STAGGER.MEDIUM }}
               >
                 <SwipeableRow onDelete={() => remove(l.id)}>
                   <div

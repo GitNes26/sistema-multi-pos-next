@@ -6,6 +6,7 @@ import { Check, Package, Scale } from "lucide-react";
 import type { PosProduct } from "@/types/pos";
 import { money } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
 
 interface ProductCardProps {
   product: PosProduct;
@@ -39,6 +40,7 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
   const [added, setAdded] = useState(false);
 
   const handleClick = () => {
+    haptic.light();
     onSelect(product);
     setAdded(true);
     setTimeout(() => setAdded(false), 500);

@@ -88,7 +88,9 @@ export async function persistNotification(input: PersistNotificationInput) {
       url,
       tag: `${input.kind}-${created.id}`,
       sound: typeof meta.sound === "string" ? meta.sound : "order-received",
-    }).catch(() => {}); // fire-and-forget, no bloquear la respuesta
+    }).catch((err) => {
+      console.error("[notifications] push delivery failed:", err);
+    }); // fire-and-forget, no bloquear la respuesta
   }
 
   return created;

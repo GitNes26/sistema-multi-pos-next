@@ -12,6 +12,7 @@ import { money } from "@/lib/pos/money";
 import { playSound } from "@/lib/sounds";
 import { swalToast, swalError } from "@/lib/swal";
 import { usePosRefresh } from "@/hooks/use-pos-refresh";
+import { CashDiscrepancyDialog, type CashCloseSummary } from "./cash-discrepancy-dialog";
 
 interface CashRegisterPanelProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
   const [closingCash, setClosingCash] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [closeSummary, setCloseSummary] = useState<CashCloseSummary | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -100,12 +102,7 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
       }
       await refresh();
       playSound("cash-close");
-      const s = data.summary;
-      const diff = s.difference;
-      swalToast(
-        `Cierre contabilizado (${s.salesCount} ventas, ${money(s.totalSales)})`,
-        diff === 0 ? "success" : "warning"
-      );
+      setCloseSummary(data.summary as CashCloseSummary);
       onClose();
     } finally {
       setLoading(false);
@@ -119,6 +116,7 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
     : 0;
 
   return (
+    <>
     <DialogComponent
       open={open}
       onOpenChange={(o) => !o && onClose()}
@@ -216,5 +214,12 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
           </div>
           )}
     </DialogComponent>
+
+      <CashDiscrepancyDialog
+        open={closeSummary !== null}
+        onClose={() => setCloseSummary(null)}
+        summary={closeSummary}
+      />
+    </>
   );
 }

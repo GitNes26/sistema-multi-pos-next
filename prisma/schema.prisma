@@ -484,6 +484,10 @@ model Employee {
   fullName       String
   phone          String?
   imageUrl       String?
+  // Nómina / salario
+  salaryType     String   @default("")            // "hourly" | "monthly" | "commission" | ""
+  salaryAmount   Decimal  @default(0) @db.Decimal(12, 2)
+  paymentFrequency String @default("biweekly")   // "weekly" | "biweekly" | "monthly"
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -722,6 +726,7 @@ model CashSession {
   openedBy       String?
   openingCash    Decimal           @default(0) @db.Decimal(12, 2)
   closingCash    Decimal?          @db.Decimal(12, 2)
+  systemCash     Decimal?          @db.Decimal(12, 2) // Efectivo esperado por el sistema
   closedAt       DateTime?
   notes          String?
   status         CashSessionStatus @default(open)

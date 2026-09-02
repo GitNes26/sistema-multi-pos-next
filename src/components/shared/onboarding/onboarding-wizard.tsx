@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 /* ------------------------------------------------------------------ */
 /*  Business Mode Types                                                */
@@ -145,6 +146,7 @@ interface OnboardingWizardProps {
 
 export function OnboardingWizard({ orgId, orgName }: OnboardingWizardProps) {
   const router = useRouter();
+  const { update: updateSession } = useSession();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -217,6 +219,8 @@ export function OnboardingWizard({ orgId, orgName }: OnboardingWizardProps) {
       });
       const data = await res.json();
       if (data.ok) {
+        // Refresh the session JWT so businessMode is up-to-date.
+        await updateSession();
         router.push("/admin");
       } else {
         alert(data.error || "Error al guardar");
@@ -226,7 +230,7 @@ export function OnboardingWizard({ orgId, orgName }: OnboardingWizardProps) {
     } finally {
       setLoading(false);
     }
-  }, [selectedMode, companyName, taxId, address, city, state, postalCode, country, phone, email, locationName, locationAddress, router]);
+  }, [selectedMode, companyName, taxId, address, city, state, postalCode, country, phone, email, locationName, locationAddress, router, updateSession]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">

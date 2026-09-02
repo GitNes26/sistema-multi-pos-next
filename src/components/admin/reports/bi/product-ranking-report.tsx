@@ -33,7 +33,7 @@ export function ProductRankingReport({ from, to, locationId }: Props) {
     fetch(`/api/reports/bi?${params}`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => { if (d.ok) setRows(d.rows) })
-      .catch(() => {})
+      .catch((err) => console.error("[bi-ranking] Error cargando reporte:", err))
       .finally(() => setLoading(false))
   }, [from, to, locationId, sort])
 

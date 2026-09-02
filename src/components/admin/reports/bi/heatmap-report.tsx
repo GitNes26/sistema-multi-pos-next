@@ -25,7 +25,7 @@ export function HeatmapReport({ from, to, locationId }: Props) {
     fetch(`/api/reports/bi?${params}`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => { if (d.ok) setGrid(d.grid) })
-      .catch(() => {})
+      .catch((err) => console.error("[bi-heatmap] Error cargando reporte:", err))
       .finally(() => setLoading(false))
   }, [from, to, locationId])
 

@@ -151,15 +151,7 @@ export const unitsModule: CrudModule<UnitDto> = {
       select: { id: true },
     });
     if (!existing) throw new CrudError("Unidad no encontrada", 404);
-
-    const [bulkUses, splitUses, inventoryUses] = await Promise.all([
-      prisma.product.count({ where: { organizationId, bulkUnitId: id } }),
-      prisma.product.count({ where: { organizationId, splitUnitId: id } }),
-      prisma.inventory.count({ where: { organizationId, unitId: id } }),
-    ]);
-    if (bulkUses + splitUses + inventoryUses > 0) {
-      throw new CrudError("La unidad está en uso por productos o inventario", 409);
-    }
-    await prisma.unitOfMeasure.delete({ where: { id } });
+    // Soft-delete: deactivate unit to preserve history.
+    await prisma.unitOfMeasure.update({ where: { id }, data: { isActive: false } });
   },
 };

@@ -15,6 +15,9 @@ export interface EmployeeDto {
   phone: string | null;
   email: string | null;
   imageUrl: string | null;
+  salaryType: string;
+  salaryAmount: number;
+  paymentFrequency: string;
   isActive: boolean;
   salesCount: number;
 }
@@ -30,6 +33,9 @@ type EmployeeRow = {
   locationId: string | null;
   phone: string | null;
   imageUrl: string | null;
+  salaryType: string;
+  salaryAmount: unknown;
+  paymentFrequency: string;
   isActive: boolean;
   userId: string;
   position: { name: string } | null;
@@ -52,6 +58,9 @@ function serialize(e: EmployeeRow): EmployeeDto {
     phone: e.phone,
     email: e.user?.email ?? null,
     imageUrl: e.imageUrl,
+    salaryType: e.salaryType || "",
+    salaryAmount: Number(e.salaryAmount) || 0,
+    paymentFrequency: e.paymentFrequency || "biweekly",
     isActive: e.isActive,
     salesCount: e._count.sales,
   };
@@ -159,6 +168,10 @@ export const employeesModule: CrudModule<EmployeeDto> = {
       data: { email, passwordHash, fullName, phone, isActive: true },
     });
 
+    const salaryType = data.salaryType ? String(data.salaryType) : "";
+    const salaryAmount = data.salaryAmount != null ? Number(data.salaryAmount) : 0;
+    const paymentFrequency = data.paymentFrequency ? String(data.paymentFrequency) : "biweekly";
+
     try {
       await setMembership(user.id, organizationId, role);
       const employee = await prisma.employee.create({
@@ -171,6 +184,9 @@ export const employeesModule: CrudModule<EmployeeDto> = {
           fullName,
           phone,
           imageUrl: data.imageUrl ? String(data.imageUrl) : null,
+          salaryType,
+          salaryAmount,
+          paymentFrequency,
           isActive: data.isActive !== false,
         },
         include: {
@@ -182,8 +198,9 @@ export const employeesModule: CrudModule<EmployeeDto> = {
       });
       return serialize(employee as EmployeeRow);
     } catch (err) {
-      await prisma.membership.deleteMany({ where: { userId: user.id, organizationId } }).catch(() => {});
-      await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+      // Cleanup orphaned user/membership on create failure
+      await prisma.membership.deleteMany({ where: { userId: user.id, organizationId } }).catch((cleanupErr) => console.error("[employees] cleanup membership failed:", cleanupErr));
+      await prisma.user.delete({ where: { id: user.id } }).catch((cleanupErr) => console.error("[employees] cleanup user failed:", cleanupErr));
       throw err;
     }
   },
@@ -297,6 +314,9 @@ export const employeesModule: CrudModule<EmployeeDto> = {
           : {}),
         ...(data.phone !== undefined ? { phone } : {}),
         ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl ? String(data.imageUrl) : null } : {}),
+        ...(data.salaryType !== undefined ? { salaryType: String(data.salaryType) } : {}),
+        ...(data.salaryAmount !== undefined ? { salaryAmount: Number(data.salaryAmount) } : {}),
+        ...(data.paymentFrequency !== undefined ? { paymentFrequency: String(data.paymentFrequency) } : {}),
         isActive,
       },
       include: {
@@ -312,18 +332,12 @@ export const employeesModule: CrudModule<EmployeeDto> = {
   async remove(organizationId, id) {
     const e = await prisma.employee.findFirst({
       where: { id, organizationId },
-      include: {
-        _count: { select: { cashSessions: true, sales: true, inventoryMovements: true, inventoryRevisions: true } },
-      },
     });
     if (!e) throw new CrudError("Empleado no encontrado", 404);
-    if (e._count.cashSessions > 0 || e._count.sales > 0 || e._count.inventoryMovements > 0 || e._count.inventoryRevisions > 0) {
-      throw new CrudError("No se puede eliminar: tiene ventas, cajas o movimientos", 409);
-    }
+    // Soft-delete: deactivate employee and user instead of hard delete to preserve history.
     await prisma.$transaction([
-      prisma.employee.delete({ where: { id } }),
-      prisma.membership.deleteMany({ where: { userId: e.userId, organizationId } }),
-      prisma.user.delete({ where: { id: e.userId } }),
+      prisma.employee.update({ where: { id }, data: { isActive: false } }),
+      prisma.user.update({ where: { id: e.userId }, data: { isActive: false } }),
     ]);
   },
 };

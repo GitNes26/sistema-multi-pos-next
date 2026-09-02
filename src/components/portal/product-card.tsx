@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button"
 import { BottomSheet } from "@/components/portal/bottom-sheet"
 import { ProductBuilder } from "@/components/pos/product-builder"
 import { cn } from "@/lib/utils"
+import { SPRING_BOUNCE, SPRING_DEFAULT } from "@/lib/animation-tokens"
+import { haptic } from "@/lib/haptics"
 
 function PlaceholderImage() {
   return (
@@ -79,6 +81,7 @@ export function ProductCard({ product }: { product: PortalProduct }) {
         await portalApi.addFavorite(defaultVariant.id)
       }
       toggleFavorite(defaultVariant.id)
+      haptic.light()
     } catch (err) {
       swalError("Error", err instanceof Error ? err.message : undefined)
     } finally {
@@ -97,10 +100,12 @@ export function ProductCard({ product }: { product: PortalProduct }) {
       swalToast(`Solo quedan ${res.added} disponible${res.added !== 1 ? "s" : ""}`, "info")
     }
     setJustAdded(true)
+    haptic.medium()
     setTimeout(() => setJustAdded(false), 1200)
   }
 
   const handleAdd = () => {
+    haptic.light()
     if (isBulk) {
       setBulkProduct(product)
       return
@@ -122,7 +127,7 @@ export function ProductCard({ product }: { product: PortalProduct }) {
       <motion.div
         className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm"
         whileTap={{ scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        transition={SPRING_DEFAULT}
       >
         <div className="relative overflow-hidden">
           {product.imageUrl ? (
@@ -155,7 +160,7 @@ export function ProductCard({ product }: { product: PortalProduct }) {
                   initial={{ scale: 0.5 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0.5 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                  transition={SPRING_BOUNCE}
                 >
                   <Heart
                     className={cn(

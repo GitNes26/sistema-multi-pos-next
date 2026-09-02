@@ -5,6 +5,7 @@ import {
   Armchair,
   Check,
   Clock,
+  History,
   Loader2,
   MapPin,
   Plus,
@@ -22,6 +23,7 @@ import { Spinner } from "@/components/base/spinner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { cn } from "@/lib/utils";
+import { TableHistoryDialog } from "./table-history";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -69,6 +71,7 @@ export function TablesManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<TableData | null>(null);
   const [qrDialogTable, setQrDialogTable] = useState<TableData | null>(null);
+  const [historyTable, setHistoryTable] = useState<TableData | null>(null);
 
   // Form
   const [formNumber, setFormNumber] = useState("");
@@ -284,6 +287,13 @@ export function TablesManager() {
                 {/* Actions on hover */}
                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
+                    onClick={(e) => { e.stopPropagation(); setHistoryTable(t); }}
+                    title="Historial"
+                    className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center hover:bg-white"
+                  >
+                    <History className="w-3 h-3" />
+                  </button>
+                  <button
                     onClick={(e) => { e.stopPropagation(); setQrDialogTable(t); }}
                     className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center hover:bg-white"
                   >
@@ -424,6 +434,13 @@ export function TablesManager() {
           </div>
         )}
       </DialogComponent>
+      {/* History Dialog */}
+      <TableHistoryDialog
+        open={!!historyTable}
+        tableId={historyTable?.id ?? null}
+        tableNumber={historyTable?.number ?? null}
+        onClose={() => setHistoryTable(null)}
+      />
     </div>
   );
 }

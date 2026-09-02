@@ -11,6 +11,7 @@ import { PullToRefresh } from "@/components/shared/pull-to-refresh";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SwipeableRow } from "@/components/shared/swipeable-row";
 import { Skeleton } from "@/components/ui/skeleton";
+import { STAGGER } from "@/lib/animation-tokens";
 
 export function FavoritesClient() {
   const products = usePortalStore((s) => s.products);
@@ -86,7 +87,7 @@ export function FavoritesClient() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ delay: idx * 0.03 }}
+                    transition={{ delay: idx * STAGGER.COMPACT }}
                   >
                     <SwipeableRow
                       onDelete={() => {

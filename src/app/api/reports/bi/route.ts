@@ -16,6 +16,11 @@ import {
   getMarginAnalysis,
   getDailyTrend,
   getPaymentMix,
+  getProductPairs,
+  getTransferEfficiency,
+  getInventoryFillRate,
+  getEmployeeMargin,
+  getSalesForecast,
 } from "@/lib/reports/bi-server";
 
 export async function GET(req: NextRequest) {
@@ -92,6 +97,27 @@ export async function GET(req: NextRequest) {
       }
       case "payment_mix": {
         const data = await getPaymentMix(guard.organizationId, filters);
+        return NextResponse.json({ ok: true, ...data });
+      }
+      case "product_pairs": {
+        const data = await getProductPairs(guard.organizationId, filters);
+        return NextResponse.json({ ok: true, ...data });
+      }
+      case "transfers": {
+        const data = await getTransferEfficiency(guard.organizationId, filters);
+        return NextResponse.json({ ok: true, ...data });
+      }
+      case "fill_rate": {
+        const data = await getInventoryFillRate(guard.organizationId);
+        return NextResponse.json({ ok: true, ...data });
+      }
+      case "employee_margin": {
+        const data = await getEmployeeMargin(guard.organizationId, filters);
+        return NextResponse.json({ ok: true, ...data });
+      }
+      case "forecast": {
+        const days = parseInt(sp.get("days") ?? "7", 10);
+        const data = await getSalesForecast(guard.organizationId, days);
         return NextResponse.json({ ok: true, ...data });
       }
       default:

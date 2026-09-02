@@ -182,6 +182,15 @@ function serialize(p: ProductRow): ProductDto {
   };
 }
 
+async function restoreProduct(organizationId: string, id: string) {
+  const existing = await prisma.product.findFirst({ where: { id, organizationId } });
+  if (!existing) throw new CrudError("Producto no encontrado", 404);
+  await prisma.$transaction([
+    prisma.product.update({ where: { id }, data: { isActive: true } }),
+    prisma.productVariant.updateMany({ where: { productId: id }, data: { isActive: true } }),
+  ]);
+}
+
 export const productsModule: CrudModule<ProductDto> = {
   key: "products",
 
@@ -355,42 +364,17 @@ export const productsModule: CrudModule<ProductDto> = {
   async remove(organizationId, id) {
     const existing = await prisma.product.findFirst({
       where: { id, organizationId },
-      include: { _count: { select: { saleItems: true, orderItems: true } } },
     });
     if (!existing) throw new CrudError("Producto no encontrado", 404);
-    if (existing._count.saleItems > 0 || existing._count.orderItems > 0) {
-      throw new CrudError("No se puede eliminar: el producto tiene ventas o pedidos", 409);
-    }
-
-    // Obtener todos los variant IDs del producto para limpiar tablas hijas
-    const variantIds = (
-      await prisma.productVariant.findMany({ where: { productId: id }, select: { id: true } })
-    ).map((v) => v.id);
-
-    // Obtener option IDs para limpiar VariantOptionValue
-    const optionIds = (
-      await prisma.productOption.findMany({ where: { productId: id }, select: { id: true } })
-    ).map((o) => o.id);
-
+    // Soft-delete: deactivate product and all its variants to preserve history.
     await prisma.$transaction([
-      // Limpiar tablas que referencian variantes
-      ...(variantIds.length > 0 ? [
-        prisma.variantOptionValue.deleteMany({ where: { variantId: { in: variantIds } } }),
-        prisma.variantPriceHistory.deleteMany({ where: { variantId: { in: variantIds } } }),
-        prisma.inventoryRevisionItem.deleteMany({ where: { variantId: { in: variantIds } } }),
-        prisma.customerFavorite.deleteMany({ where: { variantId: { in: variantIds } } }),
-        prisma.shoppingListItem.deleteMany({ where: { variantId: { in: variantIds } } }),
-      ] : []),
-      // Limpiar tablas que referencian opciones
-      ...(optionIds.length > 0 ? [
-        prisma.productOption.deleteMany({ where: { productId: id } }),
-      ] : []),
-      // Limpiar tablas que referencian producto directamente
-      prisma.productVariant.deleteMany({ where: { productId: id } }),
-      prisma.inventory.deleteMany({ where: { productId: id } }),
-      prisma.inventoryMovement.deleteMany({ where: { productId: id } }),
-      prisma.product.delete({ where: { id } }),
+      prisma.product.update({ where: { id }, data: { isActive: false } }),
+      prisma.productVariant.updateMany({ where: { productId: id }, data: { isActive: false } }),
     ]);
+  },
+
+  async restore(organizationId, id) {
+    await restoreProduct(organizationId, id);
   },
 };
 

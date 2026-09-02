@@ -331,6 +331,26 @@
   animation: ticket-flash 0.9s ease-out;
 }
 
+/* === Glow pulse para mesas con cambios en tiempo real (SSE) === */
+@keyframes table-glow {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 60%, transparent);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px color-mix(in oklch, var(--primary) 40%, transparent);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    transform: scale(1);
+  }
+}
+.animate-table-glow {
+  animation: table-glow 1.2s ease-in-out;
+  z-index: 10;
+}
+
 /* === Safe area for mobile devices === */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);

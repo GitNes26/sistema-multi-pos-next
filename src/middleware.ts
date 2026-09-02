@@ -57,6 +57,14 @@ export async function middleware(req: NextRequest) {
     ) {
       return NextResponse.redirect(new URL("/admin/settings/organizations", req.url));
     }
+    // Usuarios sin organización van al onboarding primero
+    if (
+      token!.scope !== "superadmin" &&
+      !token!.activeOrganizationId &&
+      !pathname.startsWith("/admin/onboarding")
+    ) {
+      return NextResponse.redirect(new URL("/onboarding", req.url));
+    }
     return NextResponse.next();
   }
 

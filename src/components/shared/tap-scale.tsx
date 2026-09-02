@@ -2,20 +2,29 @@
 
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
+import { SPRING_DEFAULT } from "@/lib/animation-tokens";
+import { haptic } from "@/lib/haptics";
 
-// FASE 17.7 — Micro-interacción: scale on tap (0.97).
+// FASE 17.7 — Micro-interacción: scale on tap (0.97) + haptic feedback.
 
 export function TapScale({
   children,
   className,
+  onHaptic,
 }: {
   children: ReactNode;
   className?: string;
+  /** Override haptic level. "light" by default. Pass null to disable. */
+  onHaptic?: "light" | "medium" | "heavy" | null;
 }) {
   return (
     <motion.div
       whileTap={{ scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 400, damping: 28 }}
+      transition={SPRING_DEFAULT}
+      onPointerDown={() => {
+        if (onHaptic === null) return;
+        haptic[onHaptic ?? "light"]();
+      }}
       className={className}
     >
       {children}

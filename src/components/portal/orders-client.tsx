@@ -10,6 +10,7 @@ import { money } from "@/lib/pos/money";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, type OrderStatusKey } from "@/lib/orders/client";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { STAGGER, DURATION } from "@/lib/animation-tokens";
 import { PullToRefresh } from "@/components/shared/pull-to-refresh";
 import { EmptyState } from "@/components/shared/empty-state";
 
@@ -56,7 +57,7 @@ export function OrdersClient() {
               key={o.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04, duration: 0.2 }}
+              transition={{ delay: i * STAGGER.NORMAL, duration: DURATION.FAST }}
             >
               <Link
                 href={`/portal/orders/${o.id}`}

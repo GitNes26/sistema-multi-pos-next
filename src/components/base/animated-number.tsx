@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { animate } from "framer-motion"
 
 import { cn } from "@/lib/utils"
+import { EASE_OUT_EXPONENTIAL } from "@/lib/animation-tokens"
 
 export interface AnimatedNumberProps {
   value: number
@@ -32,7 +33,7 @@ export function AnimatedNumber({
     const controls = animate(fromRef.current, value, {
       duration,
       delay,
-      ease: [0.22, 1, 0.36, 1],
+      ease: [...EASE_OUT_EXPONENTIAL] as [number, number, number, number],
       onUpdate(value) {
         fromRef.current = value
         if (ref.current) {

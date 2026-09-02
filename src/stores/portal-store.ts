@@ -13,6 +13,19 @@ export interface BulkInputOptions {
   pricePerUnit: number;
 }
 
+/** Item from a past order used for reorder. */
+export interface ReorderItem {
+  variantId: string | null;
+  productId: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  comment?: string;
+  selectedOptions?: Record<string, unknown>[];
+  bulkQuantityDisplay?: string;
+  extraPrice: number;
+}
+
 export interface PortalCartItem {
   key: string;
   productId: string;
@@ -54,6 +67,7 @@ interface PortalState {
 
   addStandard: (product: PortalProduct, variant: PortalVariantOption, qty?: number) => { added: number; limited: boolean };
   addBulk: (product: PortalProduct, opts: BulkInputOptions) => { added: number; limited: boolean };
+  reorderItems: (items: ReorderItem[]) => number;
   setQty: (key: string, qty: number) => void;
   setComment: (key: string, comment: string) => void;
   removeItem: (key: string) => void;
@@ -165,6 +179,48 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
       };
     });
     return { added: addQty, limited: track && addQty < round3(opts.qty) };
+  },
+
+  reorderItems: (reorderItems) => {
+    let addedCount = 0;
+    set((s) => {
+      const newItems = [...s.items];
+      for (const ri of reorderItems) {
+        const key = ri.variantId
+          ? standardKey(ri.variantId)
+          : `reorder::${ri.productId}::${ri.quantity}`;
+        const existing = newItems.find((i) => i.key === key);
+        if (existing) {
+          // Merge quantity.
+          const idx = newItems.indexOf(existing);
+          newItems[idx] = { ...existing, qty: round3(existing.qty + ri.quantity) };
+        } else {
+          newItems.push({
+            key,
+            productId: ri.productId,
+            variantId: ri.variantId,
+            kind: ri.variantId ? "standard" : "bulk",
+            name: ri.name,
+            variantName: null,
+            imageUrl: null,
+            unitPrice: ri.unitPrice,
+            unitAbbrev: "pza",
+            unitId: null,
+            qty: ri.quantity,
+            taxRate: 0,
+            categoryId: null,
+            trackInventory: false,
+            stock: 0,
+            step: 1,
+            comment: ri.comment,
+            bulkQuantityDisplay: ri.bulkQuantityDisplay,
+          });
+        }
+        addedCount++;
+      }
+      return { items: newItems };
+    });
+    return addedCount;
   },
 
   setQty: (key, qty) =>

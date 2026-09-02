@@ -13,6 +13,7 @@ import {
 } from "@/lib/nav";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
 import { useNotificationStore } from "@/stores/notifications-store";
+import { SPRING_SNAPPY } from "@/lib/animation-tokens";
 
 export interface BottomTabBarProps {
   items: NavItem[];
@@ -56,7 +57,7 @@ export function BottomTabBar({ items, permissions = [], role }: BottomTabBarProp
                   {active && (
                     <motion.span
                       layoutId="bottom-tab-active"
-                      transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                      transition={SPRING_SNAPPY}
                       className="absolute top-0 h-0.5 w-8 rounded-full bg-primary"
                     />
                   )}

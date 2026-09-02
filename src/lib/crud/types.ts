@@ -18,6 +18,8 @@ export interface CrudModule<T> {
   create: (organizationId: string, input: unknown, ctx: CrudContext) => Promise<T>;
   update: (organizationId: string, id: string, input: unknown, ctx: CrudContext) => Promise<T>;
   remove: (organizationId: string, id: string) => Promise<void>;
+  /** Restore a soft-deactivated record. Optional — generic fallback reactivates isActive. */
+  restore?: (organizationId: string, id: string) => Promise<void>;
 }
 
 export class CrudError extends Error {

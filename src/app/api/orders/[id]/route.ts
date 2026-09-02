@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getOrderDetail, updateOrderStatus } from "@/lib/orders/server";
 import { ordersGuard, ordersErrorResponse } from "../guard";
+import { jsonResponse } from "@/lib/api-helpers";
 
 // FASE 12.1/12.2 — Detalle del pedido y cambio de estado (con historial + SSE).
 
@@ -26,7 +27,7 @@ export async function GET(
     if (!detail) {
       return NextResponse.json({ ok: false, error: "Pedido no encontrado" }, { status: 404 });
     }
-    return NextResponse.json({ ok: true, order: detail });
+    return jsonResponse({ ok: true, order: detail });
   } catch (err) {
     return ordersErrorResponse(err);
   }
@@ -54,7 +55,7 @@ export async function PATCH(
     if (!detail) {
       return NextResponse.json({ ok: false, error: "Pedido no encontrado" }, { status: 404 });
     }
-    return NextResponse.json({ ok: true, order: detail, employeeName: employee?.fullName ?? null });
+    return jsonResponse({ ok: true, order: detail, employeeName: employee?.fullName ?? null });
   } catch (err) {
     return ordersErrorResponse(err);
   }
