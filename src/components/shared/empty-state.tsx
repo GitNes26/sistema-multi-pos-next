@@ -9,12 +9,15 @@ import { SPRING_GENTLE, TRANSITION_FADE } from "@/lib/animation-tokens";
 
 export function EmptyState({
   icon: Icon,
+  illustration: Illustration,
   title,
   description,
   action,
   className,
 }: {
   icon: LucideIcon;
+  /** Custom animated SVG illustration. When provided, replaces the icon. */
+  illustration?: React.ComponentType;
   title: string;
   description?: string;
   action?: React.ReactNode;
@@ -30,13 +33,17 @@ export function EmptyState({
         className
       )}
     >
-      <motion.span
-        initial={{ y: -8, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={SPRING_GENTLE}
-      >
-        <Icon className="size-12 text-muted-foreground/40" />
-      </motion.span>
+      {Illustration ? (
+        <Illustration />
+      ) : (
+        <motion.span
+          initial={{ y: -8, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={SPRING_GENTLE}
+        >
+          <Icon className="size-12 text-muted-foreground/40" />
+        </motion.span>
+      )}
       <div className="space-y-1">
         <p className="text-sm font-medium">{title}</p>
         {description && <p className="mx-auto max-w-xs text-xs text-muted-foreground">{description}</p>}

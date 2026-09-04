@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { STAGGER, DURATION } from "@/lib/animation-tokens";
 import { PullToRefresh } from "@/components/shared/pull-to-refresh";
 import { EmptyState } from "@/components/shared/empty-state";
+import { OrdersEmptyIllustration } from "@/components/shared/animated-illustrations";
 
 export function OrdersClient() {
   const [orders, setOrders] = useState<PortalOrderRow[] | null>(null);
@@ -48,6 +49,7 @@ export function OrdersClient() {
         ) : orders.length === 0 ? (
           <EmptyState
             icon={ClipboardList}
+            illustration={OrdersEmptyIllustration}
             title="Aún no has hecho pedidos"
             description="Tus pedidos aparecerán aquí."
           />

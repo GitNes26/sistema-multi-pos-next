@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { motion, useTransform } from "framer-motion"
 import {
   ChevronRight,
   Megaphone,
@@ -31,6 +31,9 @@ import { cn } from "@/lib/utils"
 import { STAGGER_FADE_UP } from "@/lib/animation-tokens"
 import { DetailSheet, type DetailItem } from "@/components/portal/detail-sheet"
 import { PortalComboCard } from "@/components/portal/combo-card"
+import { MaskReveal, MaskRevealImage } from "@/components/shared/mask-reveal"
+import { useParallax, useHorizontalParallax } from "@/hooks/use-parallax"
+import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 
 const PUB_TYPE_LABELS: Record<string, string> = {
   product_new: "Nuevo",
@@ -45,6 +48,96 @@ const PUB_TYPE_COLORS: Record<string, string> = {
 }
 
 const { container, item } = STAGGER_FADE_UP;
+
+/* ─────────────────────────────────────────────────────────────
+ *  HeroParallaxCard — Puntos hero with parallax decorative circles
+ * ───────────────────────────────────────────────────────────── */
+function HeroParallaxCard({ points }: { points: number }) {
+  const { ref, y } = useParallax(0.4, { offset: ["start start", "end start"] })
+
+  return (
+    <motion.div variants={item}>
+      <Link href="/portal/loyalty" className="block">
+        <div ref={ref} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-5 text-primary-foreground shadow-lg shadow-primary/20">
+          {/* Parallax decorative circles */}
+          <motion.div
+            className="absolute -right-8 -top-8 size-32 rounded-full bg-white/10"
+            style={{ y: useTransform(y, (v) => v * 0.6) }}
+          />
+          <motion.div
+            className="absolute -bottom-6 -left-6 size-24 rounded-full bg-white/5"
+            style={{ y: useTransform(y, (v) => v * 1.2) }}
+          />
+          <motion.div
+            className="absolute right-12 bottom-2 size-16 rounded-full bg-white/5"
+            style={{ y: useTransform(y, (v) => v * 0.8) }}
+          />
+          <div className="relative flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium opacity-80">
+                Puntos acumulados
+              </p>
+              <motion.p
+                className="mt-1 text-3xl font-extrabold tracking-tight"
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200 }}
+              >
+                {qty(points)}
+                <small className="text-xs">pts</small>
+              </motion.p>
+            </div>
+            <motion.div
+              className="flex size-10 items-center justify-center rounded-xl bg-white/15"
+              style={{ y: useTransform(y, (v) => v * 0.3) }}
+            >
+              <Sparkles className="size-5" />
+            </motion.div>
+          </div>
+        </div>
+      </Link>
+    </motion.div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────
+ *  BannerParallaxImage — Image with vertical parallax inside
+ *  horizontally scrolling banner container
+ * ───────────────────────────────────────────────────────────── */
+function BannerParallaxImage({ src, alt }: { src: string; alt: string }) {
+  const { ref, y } = useParallax(0.15, { offset: ["start end", "end start"] })
+
+  return (
+    <div ref={ref} className="h-40 w-72 overflow-hidden">
+      <motion.img
+        src={src}
+        alt={alt}
+        className="h-[120%] w-full object-cover -mt-[10%]"
+        style={{ y }}
+      />
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────
+ *  PromoParallaxImage — Promotion card image with subtle parallax
+ * ───────────────────────────────────────────────────────────── */
+function PromoParallaxImage({ src, alt }: { src: string; alt: string }) {
+  const { ref, y } = useParallax(0.1, { offset: ["start end", "end start"] })
+
+  return (
+    <MaskReveal shape="inset" className="h-28 w-full overflow-hidden">
+      <div ref={ref} className="h-28 w-full overflow-hidden">
+        <motion.img
+          src={src}
+          alt={alt}
+          className="h-[115%] w-full object-cover -mt-[7%]"
+          style={{ y }}
+        />
+      </div>
+    </MaskReveal>
+  )
+}
 
 export function HomeClient() {
   const [data, setData] = useState<PortalHomeData | null>(null)
@@ -103,41 +196,23 @@ export function HomeClient() {
   const activeOrders = data.activeOrders.filter((o) => o.status !== "cancelled")
   const banners = data.publications
 
+  const refreshData = async () => {
+    try {
+      const d = await portalApi.home()
+      setData(d)
+    } catch {}
+  }
+
   return (
+    <PullToRefresh onRefresh={refreshData}>
     <motion.div
       className="space-y-5 p-4"
       variants={container}
       initial="hidden"
       animate="show"
     >
-      {/* Puntos hero */}
-      <motion.div variants={item}>
-        <Link href="/portal/loyalty" className="block">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-5 text-primary-foreground shadow-lg shadow-primary/20">
-            <div className="absolute -right-8 -top-8 size-32 rounded-full bg-white/10" />
-            <div className="absolute -bottom-6 -left-6 size-24 rounded-full bg-white/5" />
-            <div className="relative flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium opacity-80">
-                  Puntos acumulados
-                </p>
-                <motion.p
-                  className="mt-1 text-3xl font-extrabold tracking-tight"
-                  initial={{ scale: 0.8 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200 }}
-                >
-                  {qty(data.points)}
-                  <small className="text-xs">pts</small>
-                </motion.p>
-              </div>
-              <div className="flex size-10 items-center justify-center rounded-xl bg-white/15">
-                <Sparkles className="size-5" />
-              </div>
-            </div>
-          </div>
-        </Link>
-      </motion.div>
+      {/* Puntos hero — parallax decorative circles */}
+      <HeroParallaxCard points={data.points} />
 
       {/* Pedidos activos */}
       {activeOrders.length > 0 && (
@@ -196,12 +271,7 @@ export function HomeClient() {
               >
                 {pub.imageUrl ? (
                   <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={pub.imageUrl}
-                      alt={pub.title}
-                      className="h-40 w-72 object-cover"
-                    />
+                    <BannerParallaxImage src={pub.imageUrl} alt={pub.title} />
                     <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-3.5">
                       <Badge
                         className={PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}
@@ -258,12 +328,7 @@ export function HomeClient() {
                 onKeyDown={(e) => e.key === "Enter" && setDetailItem({ kind: "promotion", id: p.id, name: p.name, description: p.description, descriptionFinal: p.descriptionFinal, imageUrl: p.imageUrl, benefit: p.benefit, value: p.value, startsAt: p.startsAt, endsAt: p.endsAt })}
               >
                 {p.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={p.imageUrl}
-                    alt={p.name}
-                    className="h-28 w-full object-cover"
-                  />
+                  <PromoParallaxImage src={p.imageUrl} alt={p.name} />
                 )}
                 <div className="p-3">
                   <p className="text-sm font-semibold leading-tight">
@@ -341,11 +406,12 @@ export function HomeClient() {
                 >
                   <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border bg-muted">
                     {p.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <MaskRevealImage
                         src={p.imageUrl}
                         alt={p.name}
-                        className="h-full w-full object-cover"
+                        shape="circle"
+                        className="aspect-square w-full"
+                        imgClassName="h-full w-full object-cover"
                       />
                     ) : (
                       <ShoppingBag className="size-5 text-muted-foreground/30" />
@@ -426,5 +492,6 @@ export function HomeClient() {
         />
       )}
     </motion.div>
+    </PullToRefresh>
   )
 }

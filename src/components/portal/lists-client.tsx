@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 import { EmptyState } from "@/components/shared/empty-state"
+import { ListsEmptyIllustration } from "@/components/shared/animated-illustrations"
 import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { usePortalStore } from "@/stores/portal-store"
 import { STAGGER } from "@/lib/animation-tokens"
@@ -163,6 +164,7 @@ export function ListsClient() {
         ) : lists.length === 0 ? (
           <EmptyState
             icon={ListChecks}
+            illustration={ListsEmptyIllustration}
             title="No tienes listas"
             description="Crea una lista para organizar tu compra."
           />

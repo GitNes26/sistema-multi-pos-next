@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { SwipeableRow } from "@/components/shared/swipeable-row";
 import { Skeleton } from "@/components/ui/skeleton";
 import { STAGGER } from "@/lib/animation-tokens";
+import { FavoritesEmptyIllustration } from "@/components/shared/animated-illustrations";
 
 export function FavoritesClient() {
   const products = usePortalStore((s) => s.products);
@@ -72,6 +73,7 @@ export function FavoritesClient() {
         ) : favProducts.length === 0 ? (
           <EmptyState
             icon={HeartOff}
+            illustration={FavoritesEmptyIllustration}
             title="No tienes productos favoritos"
             description="Toca el corazón en un producto para guardarlo."
           />

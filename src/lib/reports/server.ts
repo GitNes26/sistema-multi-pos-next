@@ -27,6 +27,10 @@ export interface DashboardData {
   };
   customers: number;
   orgName: string;
+  /** Productos activos del catálogo (para detectar negocios nuevos). */
+  productCount: number;
+  /** Ventas completadas de todo el tiempo (no solo el período). */
+  totalSales: number;
 }
 
 export interface CashReportRow {
@@ -105,7 +109,7 @@ export async function getDashboardData(organizationId: string): Promise<Dashboar
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  const [{ _sum, _count: todayCount }, period, customers] = await Promise.all([
+  const [{ _sum, _count: todayCount }, period, customers, productCount, totalSales] = await Promise.all([
     prisma.sale.aggregate({
       where: { organizationId, status: "completed", createdAt: { gte: todayStart, lte: todayEnd } },
       _sum: { total: true },
@@ -176,6 +180,8 @@ export async function getDashboardData(organizationId: string): Promise<Dashboar
       };
     })(),
     prisma.customer.count({ where: { organizationId } }),
+    prisma.product.count({ where: { organizationId, isActive: true } }),
+    prisma.sale.count({ where: { organizationId, status: "completed" } }),
   ]);
 
   const todaySales = toNum(_sum?.total ?? 0);
@@ -195,6 +201,8 @@ export async function getDashboardData(organizationId: string): Promise<Dashboar
     period,
     customers,
     orgName: org?.name ?? "",
+    productCount,
+    totalSales,
   };
 }
 

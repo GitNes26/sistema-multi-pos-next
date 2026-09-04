@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { reportsApi, type DashboardData } from "@/lib/api";
+import { WizardLauncher } from "@/components/admin/dashboard/wizard-launcher";
 import { swalError } from "@/lib/swal";
 import { money } from "@/lib/pos/money";
 import {
@@ -111,6 +112,10 @@ export function AdminDashboard() {
 
   if (!data) return null;
 
+  // La guía de bienvenida (wizards) aparece mientras el negocio está en blanco:
+  // sin productos o sin ninguna venta registrada.
+  const showWelcome = data.productCount === 0 || data.totalSales === 0;
+
   return (
     <div className="space-y-4">
       {/* Onboarding prompt */}
@@ -138,6 +143,12 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Bienvenida con acciones guiadas (wizards) — solo en negocio en blanco */}
+      {showWelcome && (
+        <WizardLauncher productCount={data.productCount ?? 0} totalSales={data.totalSales ?? 0} />
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Ventas de hoy"

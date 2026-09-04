@@ -7,6 +7,8 @@ import { AppearanceSync } from "@/components/appearance/appearance-sync";
 import { Splash } from "@/components/appearance/splash";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { SessionGuard } from "@/components/auth/session-guard";
+import { OnboardingSheet } from "@/components/portal/onboarding-sheet";
+import { RouteTransition } from "@/components/layout/route-transition";
 
 export default async function PortalShopLayout({
   children,
@@ -36,12 +38,13 @@ export default async function PortalShopLayout({
       <>
         <AppearanceSync tenant={tenant} />
         <Splash delay={500} />
+        <OnboardingSheet />
         <PortalShell
           storeName={storeName}
           logoUrl={logoUrl}
           user={{ name: session?.user?.name, image: session?.user?.image }}
         >
-          {children}
+          <RouteTransition>{children}</RouteTransition>
         </PortalShell>
       </>
     </SessionGuard>

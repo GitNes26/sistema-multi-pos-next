@@ -14,6 +14,7 @@ import { ProductBuilder } from "@/components/pos/product-builder"
 import { cn } from "@/lib/utils"
 import { SPRING_BOUNCE, SPRING_DEFAULT } from "@/lib/animation-tokens"
 import { haptic } from "@/lib/haptics"
+import { MaskReveal } from "@/components/shared/mask-reveal"
 
 function PlaceholderImage() {
   return (
@@ -38,7 +39,7 @@ function StockBadge({ stock, track }: { stock: number; track: boolean }) {
   return <span className="rounded-full bg-emerald-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white">{Math.floor(stock)} u</span>
 }
 
-export function ProductCard({ product }: { product: PortalProduct }) {
+export function ProductCard({ product, layoutId }: { product: PortalProduct; layoutId?: string }) {
   const setBulkProduct = usePortalStore((s) => s.setBulkProduct)
   const addStandard = usePortalStore((s) => s.addStandard)
   const favorites = usePortalStore((s) => s.favorites)
@@ -129,10 +130,16 @@ export function ProductCard({ product }: { product: PortalProduct }) {
         whileTap={{ scale: 0.97 }}
         transition={SPRING_DEFAULT}
       >
-        <div className="relative overflow-hidden">
+        <div className="relative">
           {product.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.imageUrl} alt={product.name} className="aspect-square w-full object-cover" />
+            <MaskReveal shape="circle" duration={0.5} className="aspect-square">
+              <motion.img
+                layoutId={layoutId ? `${layoutId}-img` : undefined}
+                src={product.imageUrl}
+                alt={product.name}
+                className="aspect-square w-full object-cover"
+              />
+            </MaskReveal>
           ) : (
             <PlaceholderImage />
           )}

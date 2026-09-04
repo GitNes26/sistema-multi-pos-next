@@ -1,7 +1,7 @@
 "use client"
 
-import * as React from "react"
-import { Crosshair, MapPin, Search, Loader2 } from "lucide-react"
+import { useState } from "react"
+import { MapPin, MapPinned } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { InfoTooltip } from "@/components/base/info-tooltip"
 import { InfoField } from "@/components/base/info-field"
+import { LocationSearch } from "@/components/shared/location-search"
+import { MapPinPicker } from "@/components/shared/map-pin-picker-lazy"
+import { useLocation, type LocationResult } from "@/hooks/use-location"
 
 export interface GpsValue {
   lat: number
@@ -32,22 +35,6 @@ export interface GpsPickerProps {
   className?: string
 }
 
-interface NominatimResult {
-  lat: string
-  lon: string
-  display_name: string
-  address?: {
-    road?: string
-    house_number?: string
-    suburb?: string
-    neighborhood?: string
-    postcode?: string
-    city?: string
-    town?: string
-    state?: string
-  }
-}
-
 export function GpsPicker({
   value,
   onChange,
@@ -58,107 +45,49 @@ export function GpsPicker({
   disabled,
   className,
 }: GpsPickerProps) {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [searching, setSearching] = React.useState(false)
-  const [locating, setLocating] = React.useState(false)
-  const [searchError, setSearchError] = React.useState<string>()
-  const [geoError, setGeoError] = React.useState<string>()
+  const { hasGoogleMaps } = useLocation()
+  const [showMap, setShowMap] = useState(false)
 
-  async function queryNominatim(
-    q: string,
-    type: "query" | "reverse",
-    lat?: number,
-    lon?: number
-  ): Promise<NominatimResult | null> {
-    const params = new URLSearchParams()
-    if (type === "query") {
-      params.set("q", q)
-      params.set("format", "json")
-      params.set("addressdetails", "1")
-      params.set("limit", "1")
-    } else {
-      params.set("lat", String(lat))
-      params.set("lon", String(lon))
-      params.set("format", "json")
-      params.set("addressdetails", "1")
-    }
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/${type === "query" ? "search" : "reverse"}?${params.toString()}`,
-      { headers: { Accept: "application/json" } }
-    )
-    if (!res.ok) return null
-    const data = type === "query" ? (await res.json()) as NominatimResult[] : [await res.json()] as NominatimResult[]
-    return data[0] ?? null
-  }
-
-  async function handleSearch(e?: React.FormEvent) {
-    e?.preventDefault()
-    const q = searchQuery.trim()
-    if (!q || searching || disabled) return
-    setSearching(true)
-    setSearchError(undefined)
-    try {
-      const result = await queryNominatim(q, "query")
-      if (!result) {
-        setSearchError("No se encontró la ubicación.")
-        return
-      }
-      applyResult(result)
-    } catch {
-      setSearchError("Error consultando el geocodificador.")
-    } finally {
-      setSearching(false)
+  function handleLocationChange(address: string, coords: { lat: number; lon: number } | null) {
+    if (coords) {
+      onChange?.({
+        lat: coords.lat,
+        lon: coords.lon,
+        calle: value?.calle,
+        numero: value?.numero,
+        colonia: value?.colonia,
+        cp: value?.cp,
+        municipio: value?.municipio,
+        estado: value?.estado,
+      })
     }
   }
 
-  function applyResult(r: NominatimResult) {
-    const a = r.address ?? {}
-    const next: GpsValue = {
-      lat: Number(r.lat),
-      lon: Number(r.lon),
-      calle: a.road,
-      numero: a.house_number,
-      colonia: a.suburb ?? a.neighborhood,
-      cp: a.postcode,
-      municipio: a.city ?? a.town,
-      estado: a.state,
-    }
-    onChange?.(next)
+  function handleLocationSelect(result: LocationResult) {
+    onChange?.({
+      lat: result.coords.lat,
+      lon: result.coords.lon,
+      calle: result.parts.calle,
+      numero: result.parts.numero,
+      colonia: result.parts.colonia,
+      cp: result.parts.cp,
+      municipio: result.parts.municipio,
+      estado: result.parts.estado,
+    })
   }
 
-  function useMyLocation() {
-    if (!("geolocation" in navigator)) {
-      setGeoError("Tu navegador no soporta geolocalización.")
-      return
-    }
-    setLocating(true)
-    setGeoError(undefined)
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude
-        const lon = pos.coords.longitude
-        try {
-          const r = await queryNominatim("", "reverse", lat, lon)
-          if (r) applyResult(r)
-          else onChange?.({ lat, lon })
-        } catch {
-          onChange?.({ lat, lon })
-        } finally {
-          setLocating(false)
-        }
-      },
-      () => {
-        setLocating(false)
-        setGeoError("No se pudo obtener tu ubicación.")
-        onPermissionError?.()
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    )
+  function handleMapPick(lat: number, lon: number) {
+    onChange?.({
+      lat,
+      lon,
+      calle: value?.calle,
+      numero: value?.numero,
+      colonia: value?.colonia,
+      cp: value?.cp,
+      municipio: value?.municipio,
+      estado: value?.estado,
+    })
   }
-
-  const bbox = value
-    ? `${value.lon - 0.002},${value.lat - 0.002},${value.lon + 0.002},${value.lat + 0.002}`
-    : null
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -172,54 +101,42 @@ export function GpsPicker({
         </div>
       )}
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <form onSubmit={handleSearch} className="flex flex-1 gap-2">
-          <div className="relative flex-1">
-            <MapPin className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar dirección, calle o colonia…"
-              disabled={disabled || searching}
-              className="pl-9 md:pl-9"
-            />
-          </div>
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            disabled={disabled || searching}
-            className="h-8"
-          >
-            {searching ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Search className="size-4" />
-            )}
-            Buscar
-          </Button>
-        </form>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={disabled || locating}
-          onClick={useMyLocation}
-          className="h-8"
-        >
-          {locating ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Crosshair className="size-4" />
-          )}
-          Usar mi ubicación
-        </Button>
-      </div>
+      <LocationSearch
+        value={value ? [value.calle, value.numero, value.colonia, value.municipio, value.estado, value.cp].filter(Boolean).join(", ") : ""}
+        onChange={handleLocationChange}
+        onLocationSelect={handleLocationSelect}
+        lat={value?.lat}
+        lon={value?.lon}
+        placeholder="Buscar dirección, calle o colonia…"
+        disabled={disabled}
+        showMap={false}
+        showDetect={true}
+      />
 
-      {(searchError || geoError) && (
-        <p className="text-xs text-destructive">{searchError ?? geoError}</p>
+      {/* Map toggle button */}
+      <Button
+        type="button"
+        variant={showMap ? "default" : "outline"}
+        size="sm"
+        className="w-full"
+        disabled={disabled}
+        onClick={() => setShowMap(!showMap)}
+      >
+        <MapPinned className="mr-1.5 size-4" />
+        {showMap ? "Ocultar mapa" : "Seleccionar en mapa"}
+      </Button>
+
+      {/* Interactive map picker */}
+      {showMap && (
+        <MapPinPicker
+          lat={value?.lat}
+          lon={value?.lon}
+          onChange={handleMapPick}
+          height={280}
+        />
       )}
 
+      {/* Coordinate fields + details */}
       {value && (
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid grid-cols-2 gap-2">
@@ -280,19 +197,13 @@ export function GpsPicker({
               </InfoField>
             )}
           </div>
-
-          {bbox && (
-            <div className="overflow-hidden rounded-lg border">
-              <iframe
-                title="Mapa"
-                className="block h-52 w-full"
-                loading="lazy"
-                referrerPolicy="no-referrer"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${value.lat},${value.lon}`}
-              />
-            </div>
-          )}
         </div>
+      )}
+
+      {!hasGoogleMaps && (
+        <p className="text-[10px] text-muted-foreground">
+          Usa Google Maps para mejores resultados de búsqueda
+        </p>
       )}
     </div>
   )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock,
   Search,
@@ -346,9 +347,18 @@ export function DigitalMenu({ tableId }: DigitalMenuProps) {
           >
             <div className="relative">
               <ShoppingCart className="w-6 h-6" />
-              <Badge className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center bg-rose-500 text-white text-[10px]">
-                {cartCount}
-              </Badge>
+              <AnimatePresence>
+                <motion.div
+                  key={cartCount}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                  className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-bold"
+                >
+                  {cartCount}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </Button>
         </div>

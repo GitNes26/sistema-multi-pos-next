@@ -1,13 +1,45 @@
 
-> sistema-multi-pos-react-node-chadcnui@0.14.0.0 dev
+> sistema-multi-pos-react-node-chadcnui@0.15.1.0 dev
 > next dev --turbopack
 
-[32m✔[0m [33mConsole Ninja[0m extension is connected to [33mNext.js[0m, see [36mhttps://tinyurl.com/2vt8jxzw[0m
    ▲ Next.js 15.5.23 (Turbopack)
-   - Local:        http://localhost:60924
-   - Network:      http://192.168.252.12:60924
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.252.12:3000
    - Environments: .env.local, .env
 
  ✓ Starting...
- ✓ Compiled middleware in 163ms
- ✓ Ready in 1457ms
+ ✓ Compiled middleware in 199ms
+ ✓ Ready in 1856ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3.6s
+ GET / 200 in 4329ms
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 2.2s
+ GET /admin 200 in 2801ms
+ ○ Compiling /api/reports ...
+ GET /api/menus 200 in 1748ms
+ GET /api/reports?type=dashboard 200 in 1756ms
+ ✓ Compiled /api/reports in 1758ms
+ GET /admin/onboarding 200 in 2055ms
+ GET /api/auth/session 200 in 2325ms
+ POST /api/auth/_log 200 in 701ms
+ POST /api/auth/_log 200 in 759ms
+ GET /api/auth/session 200 in 600ms
+ GET /api/menus 200 in 747ms
+ GET /api/auth/session 200 in 537ms
+ ○ Compiling /onboarding ...
+ ✓ Compiled /onboarding in 533ms
+ GET /onboarding 200 in 851ms
+ POST /api/auth/_log 200 in 576ms
+ GET /api/auth/session 200 in 626ms
+ GET /api/auth/session 200 in 397ms
+ GET /api/notifications/stream 200 in 46956ms
+ GET /api/notifications/stream 200 in 44167ms
+ ✓ Compiled in 540ms
+ GET /admin 200 in 472ms
+ POST /api/auth/_log 200 in 744ms
+ GET /api/auth/session 200 in 751ms
+ GET /api/menus 200 in 762ms
+ GET /api/reports?type=dashboard 200 in 766ms
+ GET /api/auth/session 200 in 644ms
+[?25h

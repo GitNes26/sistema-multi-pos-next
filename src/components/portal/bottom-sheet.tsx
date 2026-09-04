@@ -38,25 +38,21 @@ export function BottomSheet({
   bodyClassName,
   showCloseButton = true,
 }: BottomSheetProps) {
-  const [snap, setSnap] = React.useState<number | string | null>(0.85)
+  const [snap, setSnap] = React.useState<number | string | null>(0.95)
 
   return (
     <Drawer
       open={open}
       onOpenChange={onOpenChange}
-      snapPoints={[0.85, 1]}
-      activeSnapPoint={snap}
-      setActiveSnapPoint={setSnap}
-      fadeFromIndex={0}
     >
       <DrawerPortal>
         <DrawerContent
           overlayClassName="bg-black/60 backdrop-blur-md supports-backdrop-filter:backdrop-blur-md"
           className={cn(
-            "mx-auto flex max-h-[92vh] flex-col rounded-t-3xl border-t border-border/30 bg-background shadow-[0_-8px_30px_rgba(0,0,0,0.18)]",
-            snap === 1 && "rounded-none",
+            "mx-auto flex flex-col rounded-t-3xl border-t border-border/30 bg-background shadow-[0_-8px_30px_rgba(0,0,0,0.18)]",
             className
           )}
+          style={{ height: '95vh', maxHeight: '95vh', marginTop: 0 }}
         >
           {/* Drag handle */}
           <div className="mx-auto mt-2.5 mb-1 flex h-1.5 w-12 shrink-0 cursor-grab touch-none items-center justify-center rounded-full bg-muted-foreground/25 active:cursor-grabbing active:bg-muted-foreground/40" />
@@ -94,7 +90,7 @@ export function BottomSheet({
           {/* Body */}
           <div
             className={cn(
-              "flex-1 overflow-y-auto px-4 pb-4",
+              "flex-1 overflow-y-auto px-4 pb-4 min-h-0",
               bodyClassName
             )}
           >
@@ -103,7 +99,7 @@ export function BottomSheet({
 
           {/* Footer */}
           {footer && (
-            <DrawerFooter className="flex-row justify-end gap-2 border-t px-4 py-3">
+            <DrawerFooter className="shrink-0 flex-row justify-end gap-2 border-t px-4 py-3">
               {footer}
             </DrawerFooter>
           )}

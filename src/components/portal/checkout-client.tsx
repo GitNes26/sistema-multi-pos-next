@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Banknote, CreditCard, Globe, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, CircleCheck, Home, Plus, Trash2, Sparkles } from "lucide-react";
+import { ArrowLeft, Banknote, CreditCard, Globe, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, CircleCheck, Home, Plus, Trash2, Sparkles, Navigation } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePortalStore, cartSubtotal, cartTax } from "@/stores/portal-store";
 import { portalApi, type LoyaltyData, type PortalPromotionPreview } from "@/lib/portal/client";
@@ -148,6 +148,8 @@ export function CheckoutClient() {
   }, []);
 
   const pickupLocations = useMemo(() => locations.filter((l) => l.allowsPickup), [locations]);
+
+  // ── Nearest branch computation ──────────────────────────────
   const selectedCard = methods.find((m) => m.id === cardId) ?? methods[0];
 
   useEffect(() => {
@@ -155,6 +157,37 @@ export function CheckoutClient() {
   }, [methods, cardId]);
 
   const coords = useMemo(() => (gps ? { lat: gps.lat, lng: gps.lon } : null), [gps]);
+
+  // ── Nearest branch computation ──────────────────────────────
+  const pickupWithDistance = useMemo(() => {
+    return pickupLocations
+      .map((l) => ({
+        ...l,
+        distanceKm: l.latitude != null && l.longitude != null && coords
+          ? distanceKm(coords.lat, coords.lng, l.latitude, l.longitude)
+          : null,
+      }))
+      .sort((a, b) => {
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+      });
+  }, [pickupLocations, coords]);
+
+  const nearestPickup = pickupWithDistance.find((l) => l.distanceKm != null);
+
+  // Nearest branch for delivery fulfillment
+  const nearestDeliveryBranch = useMemo(() => {
+    if (deliveryMethod !== "delivery" || !coords) return null;
+    const withDist = locations
+      .filter((l) => l.allowsDelivery && l.latitude != null && l.longitude != null)
+      .map((l) => ({
+        ...l,
+        dist: distanceKm(coords.lat, coords.lng, l.latitude!, l.longitude!),
+      }))
+      .sort((a, b) => a.dist - b.dist);
+    return withDist[0] ?? null;
+  }, [deliveryMethod, coords, locations]);
 
   function composeAddress(g: GpsValue): string {
     const parts = [
@@ -213,6 +246,15 @@ export function CheckoutClient() {
       // silent
     }
   };
+
+  // Auto-select closest pickup branch when GPS changes
+  useEffect(() => {
+    if (deliveryMethod !== "pickup" || !coords || pickupWithDistance.length === 0) return;
+    const closest = pickupWithDistance[0];
+    if (closest && closest.id !== locationId) {
+      setLocationId(closest.id);
+    }
+  }, [coords, deliveryMethod]);
 
   // Validación de radio de entrega (distancia a la sucursal más cercana).
   const radiusError = useMemo(() => {
@@ -394,23 +436,45 @@ export function CheckoutClient() {
                   className="overflow-hidden"
                 >
                   <RadioGroup value={locationId} onValueChange={setLocationId} className="space-y-2 pt-1">
-                    {pickupLocations.map((l) => (
-                      <Label
-                        key={l.id}
-                        htmlFor={`loc-${l.id}`}
-                        className={cn(
-                          "flex cursor-pointer items-start gap-3 rounded-xl border-2 p-3 transition-all",
-                          locationId === l.id ? "border-primary bg-primary/5" : "border-transparent bg-muted/50"
-                        )}
-                      >
-                        <RadioGroupItem value={l.id} id={`loc-${l.id}`} className="mt-0.5" />
-                        <div className="flex-1">
-                          <span className="block text-sm font-medium">{l.name}</span>
-                          {l.address && <span className="block text-xs text-muted-foreground">{l.address}</span>}
-                          {l.openingHours && <span className="block text-xs text-muted-foreground">{l.openingHours}</span>}
-                        </div>
-                      </Label>
-                    ))}
+                    {pickupWithDistance.map((l, idx) => {
+                      const isNearest = nearestPickup?.id === l.id && l.distanceKm != null;
+                      return (
+                        <Label
+                          key={l.id}
+                          htmlFor={`loc-${l.id}`}
+                          className={cn(
+                            "flex cursor-pointer items-start gap-3 rounded-xl border-2 p-3 transition-all",
+                            locationId === l.id
+                              ? "border-primary bg-primary/5 shadow-sm"
+                              : isNearest
+                                ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-950/30"
+                                : "border-transparent bg-muted/50"
+                          )}
+                        >
+                          <RadioGroupItem value={l.id} id={`loc-${l.id}`} className="mt-0.5" />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">{l.name}</span>
+                              {isNearest && (
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
+                                  <Navigation className="size-2.5" />
+                                  Más cercana
+                                </span>
+                              )}
+                              {l.distanceKm != null && (
+                                <span className="text-[11px] tabular-nums text-muted-foreground">
+                                  {l.distanceKm < 1
+                                    ? `${Math.round(l.distanceKm * 1000)} m`
+                                    : `${l.distanceKm.toFixed(1)} km`}
+                                </span>
+                              )}
+                            </div>
+                            {l.address && <span className="block text-xs text-muted-foreground">{l.address}</span>}
+                            {l.openingHours && <span className="block text-xs text-muted-foreground">{l.openingHours}</span>}
+                          </div>
+                        </Label>
+                      );
+                    })}
                   </RadioGroup>
                 </motion.div>
               )}
@@ -479,6 +543,20 @@ export function CheckoutClient() {
                     )}
                   </div>
 
+                  {nearestDeliveryBranch && (
+                    <div className="flex items-center gap-2 rounded-xl bg-primary/5 px-3 py-2">
+                      <Store className="size-4 shrink-0 text-primary" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium">Se surtirá desde: {nearestDeliveryBranch.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {nearestDeliveryBranch.dist < 1
+                            ? `${Math.round(nearestDeliveryBranch.dist * 1000)} m de distancia`
+                            : `${nearestDeliveryBranch.dist.toFixed(1)} km de distancia`}
+                          {nearestDeliveryBranch.address && ` · ${nearestDeliveryBranch.address}`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {policy?.deliveryEstimatedMins != null && (
                     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Clock className="size-3.5" /> Entrega estimada: {policy.deliveryEstimatedMins} min

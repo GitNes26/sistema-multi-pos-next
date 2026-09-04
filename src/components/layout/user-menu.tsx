@@ -2,13 +2,19 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   KeyRound,
   LogOut,
   Settings2,
+  Sparkles,
   UserRound,
   ChevronsUpDown,
 } from "lucide-react";
+import {
+  clearWelcomeGuideDismissal,
+  requestWelcomeGuideRestore,
+} from "@/lib/welcome-guide";
 
 import type { AppRole } from "@/lib/auth/permissions";
 import { logout } from "@/lib/auth/logout";
@@ -56,6 +62,19 @@ function initials(name?: string | null, email?: string | null): string {
 // FASE 5.3 — Dropdown de usuario: perfil, cambiar contraseña, cerrar sesión.
 export function UserMenu({ user }: { user: UserMenuUser }) {
   const role = user.role ? (ROLE_LABELS[user.role] ?? user.role) : undefined;
+  const router = useRouter();
+  const pathname = usePathname();
+  const orgId = user.activeOrganizationId ?? user.organizationId ?? null;
+
+  const showWelcomeGuide = () => {
+    // Restaura la guía de bienvenida del dashboard (si fue ocultada por error).
+    clearWelcomeGuideDismissal(orgId);
+    if (pathname === "/admin") {
+      requestWelcomeGuideRestore();
+    } else {
+      router.push("/admin");
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -113,6 +132,10 @@ export function UserMenu({ user }: { user: UserMenuUser }) {
               <Settings2 className="size-4" />
               Preferencias
             </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={showWelcomeGuide}>
+            <Sparkles className="size-4" />
+            Mostrar guía de bienvenida
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

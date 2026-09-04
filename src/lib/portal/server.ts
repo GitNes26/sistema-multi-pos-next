@@ -122,6 +122,8 @@ export interface PortalProduct {
   bulk: PortalBulkInfo | null;
   /** Opciones configurables del producto (sabores, toppings, etc.). */
   options: PortalProductOption[];
+  /** Descripción del producto (opcional). */
+  description: string | null;
 }
 
 export interface PortalCategory {
@@ -207,6 +209,7 @@ export async function getStorefront(
         categoryName: p.category?.name ?? null,
         imageUrl: v.imageUrl ?? p.imageUrl,
         trackInventory: p.trackInventory,
+        description: p.description ?? null,
         stock: 0,
         variants: [],
         bulk: null,
@@ -251,6 +254,7 @@ export async function getStorefront(
       categoryName: p.category?.name ?? null,
       imageUrl: p.imageUrl,
       trackInventory: p.trackInventory,
+      description: p.description ?? null,
       stock: productStock.get(p.id) ?? 0,
       variants: [],
       bulk: {

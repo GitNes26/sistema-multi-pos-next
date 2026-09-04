@@ -32,7 +32,15 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "Cliente no encontrado" }, { status: 404 });
   }
 
-  return NextResponse.json({ ok: true, customer });
+  // Prisma Decimal fields arrive as objects — convert to plain numbers.
+  const safe = {
+    ...customer,
+    points: customer.points != null ? Number(customer.points) : 0,
+    latitude: customer.latitude != null ? Number(customer.latitude) : null,
+    longitude: customer.longitude != null ? Number(customer.longitude) : null,
+  };
+
+  return NextResponse.json({ ok: true, customer: safe });
 }
 
 // PATCH /api/portal/profile — Update customer profile
@@ -77,7 +85,14 @@ export async function PATCH(req: Request) {
     },
   });
 
-  return NextResponse.json({ ok: true, customer: updated });
+  const safeUpdated = updated ? {
+    ...updated,
+    points: updated.points != null ? Number(updated.points) : 0,
+    latitude: updated.latitude != null ? Number(updated.latitude) : null,
+    longitude: updated.longitude != null ? Number(updated.longitude) : null,
+  } : updated;
+
+  return NextResponse.json({ ok: true, customer: safeUpdated });
 }
 
 // DELETE /api/portal/profile — Self-delete customer account

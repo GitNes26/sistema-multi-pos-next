@@ -482,6 +482,8 @@ export interface DashboardData {
   };
   customers: number;
   orgName: string;
+  productCount: number;
+  totalSales: number;
 }
 
 export interface SalesReportRow {

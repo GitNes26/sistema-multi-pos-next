@@ -155,15 +155,21 @@ const pick = <T>(arr: T[], rnd: () => number): T =>
 
 async function cleanupDemo(orgId: string, emails: string[]) {
   const d = prisma
+  // Pedidos + mesas (food_service) y devoluciones/ventas
   await d.orderPreparationItem.deleteMany()
   await d.orderPreparation.deleteMany()
   await d.orderStatusHistory.deleteMany()
   await d.orderItem.deleteMany()
   await d.order.deleteMany()
+  await d.tableSession.deleteMany()
+  await d.table.deleteMany()
   await d.saleDiscount.deleteMany()
   await d.salePayment.deleteMany()
   await d.saleItem.deleteMany()
   await d.sale.deleteMany()
+  await d.saleReturnItem.deleteMany()
+  await d.saleReturn.deleteMany()
+  await d.employeeCommission.deleteMany()
   await d.coupon.deleteMany()
   await d.loyaltyTransaction.deleteMany()
   await d.promotionTarget.deleteMany()
@@ -173,6 +179,15 @@ async function cleanupDemo(orgId: string, emails: string[]) {
   await d.variantPriceHistory.deleteMany()
   await d.inventoryMovement.deleteMany()
   await d.inventory.deleteMany()
+  // Transferencias, snapshots y pares (dependen de productos/ubicaciones)
+  await d.transferItem.deleteMany()
+  await d.transfer.deleteMany()
+  await d.inventorySnapshot.deleteMany()
+  await d.dailySalesSummary.deleteMany()
+  await d.hourlySalesSnapshot.deleteMany()
+  await d.productPair.deleteMany()
+  await d.comboItem.deleteMany()
+  await d.productCombo.deleteMany()
   await d.customerAddress.deleteMany()
   await d.branchDeliveryPolicy.deleteMany()
   await d.deliveryPolicy.deleteMany()
@@ -185,6 +200,11 @@ async function cleanupDemo(orgId: string, emails: string[]) {
   await d.productOption.deleteMany()
   await d.product.deleteMany()
   await d.category.deleteMany()
+  // Crédito, segmentos y métodos de pago del cliente
+  await d.customerSegment.deleteMany()
+  await d.creditTransaction.deleteMany()
+  await d.customerCredit.deleteMany()
+  await d.creditPolicy.deleteMany()
   await d.customerPaymentMethod.deleteMany()
   await d.customer.deleteMany()
   await d.cashSession.deleteMany()
@@ -197,11 +217,17 @@ async function cleanupDemo(orgId: string, emails: string[]) {
   await d.userInvitation.deleteMany()
   await d.notification.deleteMany()
   await d.publication.deleteMany()
+  await d.pushSubscription.deleteMany()
   await d.companyProfile.deleteMany()
   await d.appSettings.deleteMany()
   await d.profile.deleteMany()
   await d.organization.delete({ where: { id: orgId } })
-  await d.user.deleteMany({ where: { email: { in: emails } } })
+  // Conserva cuentas que siguen siendo dueñas de otra organización (ownerId
+  // de organizations es NOT NULL): si otro org de prueba usa al dueño demo,
+  // no se borra su cuenta sino que el seeder la reutiliza (upsert).
+  await d.user.deleteMany({
+    where: { email: { in: emails }, organizationsOwned: { none: {} } },
+  })
 }
 
 export async function seedDemo() {
@@ -232,9 +258,13 @@ export async function seedDemo() {
     m.hash(DEMO_PASSWORD, 10)
   )
 
+  // upsert: si la cuenta sobrevive a la limpieza (p. ej. es owner de otra
+  // organización), se reutiliza reseteando contraseña y nombre.
   const mkUser = async (email: string, fullName: string) =>
-    prisma.user.create({
-      data: { email, passwordHash, fullName, isActive: true },
+    prisma.user.upsert({
+      where: { email },
+      update: { passwordHash, fullName, isActive: true },
+      create: { email, passwordHash, fullName, isActive: true },
     })
 
   const ownerUser = await mkUser("demo@multi-pos.com", "Ana López")
@@ -247,11 +277,14 @@ export async function seedDemo() {
   )
 
   // ── Organización ─────────────────────────────────────────────────────────
+  // businessMode explícito (retail): define páginas, permisos y wizards
+  // visibles para esta organización (ver src/lib/business-modes.ts).
   const org = await prisma.organization.create({
     data: {
       name: DEMO_ORG_NAME,
       ownerId: ownerUser.id,
       currency: "MXN",
+      businessMode: "retail",
       pointsPerCurrency: 1,
       pointValue: 0.1,
       loyaltyEnabled: true,
@@ -467,8 +500,12 @@ export async function seedDemo() {
   for (let i = 0; i < CUSTOMERS.length; i++) {
     const c = CUSTOMERS[i]
     const code = `CLI-${String(i + 1).padStart(3, "0")}`
-    const user = await prisma.user.create({
-      data: {
+    const user = await prisma.user.upsert({
+      where: {
+        email: `cli-${String(i + 1).padStart(3, "0")}@portal.local`,
+      },
+      update: { passwordHash, fullName: c.name, isActive: true },
+      create: {
         email: `cli-${String(i + 1).padStart(3, "0")}@portal.local`,
         passwordHash,
         fullName: c.name,

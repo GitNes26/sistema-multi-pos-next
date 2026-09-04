@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { businessMode, companyName, taxId, address, city, state, postalCode, country, phone, email, locationName, locationAddress } = body;
+    const { businessMode, currency, companyName, taxId, address, city, state, postalCode, country, phone, email, locationName, locationAddress } = body;
 
     // Validate business mode
     const validModes = ["retail", "food_service", "services", "rental", "hybrid"];
@@ -63,11 +63,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // If no organization yet (first-time user), create one
+    // Si no hay organización aún (flujo futuro de auto-registro), se crea una
+    // igual que hace el superAdmin: nombre + moneda y propietario con su cuenta.
     let orgId = organizationId;
     if (!orgId) {
-      // This is a first-time setup — the user should have been redirected here
-      // after creating their session. We'll need to create an org.
       const userId = (session.user as { id?: string }).id;
       if (!userId) {
         return NextResponse.json(
@@ -80,6 +79,7 @@ export async function POST(req: Request) {
         data: {
           name: companyName || "Mi Empresa",
           ownerId: userId,
+          currency: currency?.trim() || "MXN",
           businessMode: businessMode as "retail" | "food_service" | "services" | "rental" | "hybrid",
         },
       });
@@ -94,10 +94,13 @@ export async function POST(req: Request) {
         },
       });
     } else {
-      // Update existing organization
+      // Update existing organization (modo de negocio y moneda si se envían)
       await prisma.organization.update({
         where: { id: orgId },
-        data: { businessMode: businessMode as "retail" | "food_service" | "services" | "rental" | "hybrid" },
+        data: {
+          businessMode: businessMode as "retail" | "food_service" | "services" | "rental" | "hybrid",
+          ...(currency?.trim() ? { currency: currency.trim() } : {}),
+        },
       });
     }
 
@@ -133,21 +136,34 @@ export async function POST(req: Request) {
       });
     }
 
-    // Create first location if provided
-    if (locationName) {
-      const existingLocations = await prisma.location.count({
-        where: { organizationId: orgId },
+    // Sucursal base (Matriz) + Caja 1: la base mínima para operar el POS.
+    // En el flujo del superAdmin ya se crean al dar de alta la organización;
+    // aquí se garantizan para el flujo futuro de auto-registro.
+    const existingLocations = await prisma.location.count({
+      where: { organizationId: orgId },
+    });
+    if (existingLocations === 0) {
+      const matriz = await prisma.location.create({
+        data: {
+          organizationId: orgId,
+          name: locationName || "Matriz",
+          code: "MATRIZ",
+          address: locationAddress || null,
+          managerName: (session.user as { name?: string }).name ?? null,
+          allowsPickup: true,
+          allowsDelivery: true,
+          isActive: true,
+        },
       });
-      if (existingLocations === 0) {
-        await prisma.location.create({
-          data: {
-            organizationId: orgId,
-            name: locationName,
-            address: locationAddress || null,
-            isActive: true,
-          },
-        });
-      }
+      await prisma.cashRegister.create({
+        data: {
+          organizationId: orgId,
+          locationId: matriz.id,
+          name: "Caja 1",
+          folioPrefix: "C1",
+          isActive: true,
+        },
+      });
     }
 
     // Configure default features based on business mode

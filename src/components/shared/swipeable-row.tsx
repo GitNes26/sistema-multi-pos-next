@@ -14,7 +14,7 @@ export function SwipeableRow({
   className?: string
 }) {
   const x = useMotionValue(0)
-  const bg = useTransform(x, [-100, -50, 0], ["#ef4444", "#f97316", "transparent"])
+  const bg = useTransform(x, [-100, -50, 0], ["#ef4444", "#f97316", "rgba(0,0,0,0)"])
   const opacity = useTransform(x, [-100, -50, 0], [1, 0.8, 0])
 
   return (

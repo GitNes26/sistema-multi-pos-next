@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.16.0.0] — 2026-09-04
+- **Tipo:** `feat` (Minor)
+- feat:se mejoro diseño y se agregaron los wizard
+
 ### [0.15.1.0] — 2026-09-02
 - **Tipo:** `fix` (Patch)
 - fix: se sigue modificando la nueva version con los negocios, se agrego algo de estilo movil

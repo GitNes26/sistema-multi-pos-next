@@ -3,7 +3,24 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ChevronRight, CreditCard, Heart, LogOut, Mail, Phone, Shield, Sparkles, User, LayoutGrid, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  CreditCard,
+  Heart,
+  LogOut,
+  Mail,
+  Phone,
+  Shield,
+  Sparkles,
+  User,
+  LayoutGrid,
+  Trash2,
+  ShoppingCart,
+  Receipt,
+  Settings,
+  Bell,
+} from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import { logout } from "@/lib/auth/logout";
 import type { PortalCustomer } from "@/lib/portal/server";
@@ -18,25 +35,43 @@ import { TapScale } from "@/components/shared/tap-scale";
 import packageJson from "../../../package.json";
 import { STAGGER_FADE_UP } from "@/lib/animation-tokens";
 
-const LINKS = [
-  { href: "/portal/loyalty", label: "Puntos y lealtad", icon: Sparkles, color: "text-amber-500 bg-amber-500/10" },
-  { href: "/portal/favorites", label: "Favoritos", icon: Heart, color: "text-rose-500 bg-rose-500/10" },
-  { href: "/portal/payment-methods", label: "Métodos de pago", icon: CreditCard, color: "text-blue-500 bg-blue-500/10" },
-];
-
 const { container, item } = STAGGER_FADE_UP;
+
+interface ProfileStats {
+  orders: number;
+  points: number;
+  favorites: number;
+}
 
 export function ProfileClient() {
   const [customer, setCustomer] = useState<PortalCustomer | null>(null);
-  const [form, setForm] = useState({ fullName: "", phone: "", email: "", address: "", latitude: null as number | null, longitude: null as number | null });
+  const [form, setForm] = useState({
+    fullName: "",
+    phone: "",
+    email: "",
+    address: "",
+    latitude: null as number | null,
+    longitude: null as number | null,
+  });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<ProfileStats>({ orders: 0, points: 0, favorites: 0 });
+  const [showEditForm, setShowEditForm] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    portalApi
-      .profile()
-      .then((d) => {
-        if (!active) return;
+  const fetchProfile = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [profileData, ordersData, loyaltyData, favoritesData] = await Promise.allSettled([
+        portalApi.profile(),
+        portalApi.listOrders(),
+        portalApi.loyalty(),
+        portalApi.favorites(),
+      ]);
+
+      if (profileData.status === "fulfilled") {
+        const d = profileData.value;
         setCustomer(d.customer);
         setForm({
           fullName: d.customer.fullName,
@@ -46,11 +81,22 @@ export function ProfileClient() {
           latitude: d.customer.latitude,
           longitude: d.customer.longitude,
         });
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
+      }
+
+      setStats({
+        orders: ordersData.status === "fulfilled" ? ordersData.value.orders.length : 0,
+        points: loyaltyData.status === "fulfilled" ? loyaltyData.value.points : 0,
+        favorites: favoritesData.status === "fulfilled" ? favoritesData.value.variantIds.length : 0,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cargar el perfil.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
   }, []);
 
   const save = async () => {
@@ -66,6 +112,7 @@ export function ProfileClient() {
       });
       setCustomer(res.customer);
       swalToast("Perfil actualizado");
+      setShowEditForm(false);
     } catch (err) {
       swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
     } finally {
@@ -73,15 +120,32 @@ export function ProfileClient() {
     }
   };
 
-  if (!customer) {
+  if (loading) {
     return (
       <div className="space-y-4 p-4">
+        <Skeleton className="h-44 w-full rounded-2xl" />
         <Skeleton className="h-24 w-full rounded-2xl" />
         <Skeleton className="h-40 w-full rounded-2xl" />
-        <Skeleton className="h-32 w-full rounded-2xl" />
       </div>
     );
   }
+
+  if (error && !customer) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-6 text-center">
+        <span className="flex size-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+          <AlertTriangle className="size-6" />
+        </span>
+        <h1 className="text-lg font-bold">No se pudo cargar el perfil</h1>
+        <p className="max-w-sm text-sm text-muted-foreground">{error}</p>
+        <Button onClick={fetchProfile} variant="outline" className="mt-2">
+          Reintentar
+        </Button>
+      </div>
+    );
+  }
+
+  if (!customer) return null;
 
   const initials = customer.fullName
     .split(" ")
@@ -92,101 +156,163 @@ export function ProfileClient() {
 
   return (
     <motion.div
-      className="space-y-5 p-4"
+      className="space-y-4 p-4"
       variants={container}
       initial="hidden"
       animate="show"
     >
-      {/* Avatar hero */}
-      <motion.div
-        variants={item}
-        className="flex flex-col items-center rounded-2xl border border-border/50 bg-card p-6 shadow-sm"
-      >
-        <div className="flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-2xl font-bold text-primary-foreground shadow-lg shadow-primary/20">
-          {initials}
+      {/* Profile Header — Avatar + Name + Stats */}
+      <motion.div variants={item} className="relative">
+        <div className="flex flex-col items-center rounded-3xl border border-border/30 bg-card p-6 pb-5 shadow-sm">
+          {/* Avatar */}
+          <div className="relative">
+            <div className="flex size-24 items-center justify-center rounded-full bg-gradient-to-br from-primary via-primary/80 to-emerald-500 text-3xl font-bold text-primary-foreground shadow-xl shadow-primary/25 ring-4 ring-background">
+              {customer.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={customer.imageUrl} alt="" className="size-full rounded-full object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+          </div>
+
+          {/* Name + @username */}
+          <h1 className="mt-3 text-xl font-bold tracking-tight">{customer.fullName}</h1>
+          {customer.email && (
+            <p className="text-sm text-muted-foreground">@{customer.email.split("@")[0]}</p>
+          )}
+
+          {/* Stats row */}
+          <div className="mt-5 flex w-full max-w-xs items-center justify-around">
+            <StatItem value={stats.orders} label="Pedidos" />
+            <div className="h-10 w-px bg-border/50" />
+            <StatItem value={stats.points} label="Puntos" highlight />
+            <div className="h-10 w-px bg-border/50" />
+            <StatItem value={stats.favorites} label="Favoritos" />
+          </div>
         </div>
-        <h1 className="mt-3 text-lg font-bold">{customer.fullName}</h1>
-        {customer.email && (
-          <p className="text-sm text-muted-foreground">{customer.email}</p>
-        )}
-        {customer.phone && (
-          <p className="text-xs text-muted-foreground/70">Tel: {customer.phone}</p>
-        )}
       </motion.div>
 
-      {/* Quick links */}
-      <motion.div variants={item} className="space-y-2">
-        {LINKS.map((l) => {
-          const Icon = l.icon;
-          return (
-            <TapScale key={l.href}>
-              <Link
-                href={l.href}
-                className="flex items-center gap-3.5 rounded-xl border border-border/50 bg-card p-3.5 shadow-sm"
-              >
-                <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${l.color}`}>
-                  <Icon className="size-5" />
-                </div>
-                <span className="flex-1 text-sm font-semibold">{l.label}</span>
+      {/* Loyalty / Rewards Card */}
+      <motion.div variants={item}>
+        <Link href="/portal/loyalty" className="block">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-600/5 to-orange-500/10 border border-amber-500/20 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
+                <Sparkles className="size-5 text-amber-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Puntos de Lealtad</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats.points > 0
+                    ? `${stats.points} puntos disponibles — canjea por descuentos`
+                    : "Acumula puntos con cada compra"}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-lg font-bold text-amber-500">{stats.points}</span>
                 <ChevronRight className="size-4 text-muted-foreground" />
-              </Link>
-            </TapScale>
-          );
-        })}
+              </div>
+            </div>
+          </div>
+        </Link>
       </motion.div>
 
-      {/* Edit form */}
-      <motion.section variants={item} className="space-y-3 rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-1">
-          <User className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold">Datos personales</h2>
-        </div>
-        <InputGroupField
-          label="Nombre"
-          leftIcon={<User className="size-4" />}
-          value={form.fullName}
-          onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+      {/* Menu sections */}
+      <motion.div variants={item} className="space-y-2">
+        <ProfileMenuItem
+          href="/portal/loyalty"
+          icon={Sparkles}
+          iconColor="text-amber-500 bg-amber-500/10"
+          label="Puntos y lealtad"
         />
-        <InputGroupField
-          label="Teléfono"
-          helper="Solo 10 dígitos."
-          inputMode="numeric"
-          leftIcon={<Phone className="size-4" />}
-          value={form.phone}
-          onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+        <ProfileMenuItem
+          href="/portal/favorites"
+          icon={Heart}
+          iconColor="text-rose-500 bg-rose-500/10"
+          label="Favoritos"
+          badge={stats.favorites > 0 ? stats.favorites : undefined}
         />
-        <InputGroupField
-          label="Email"
-          type="email"
-          leftIcon={<Mail className="size-4" />}
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value.toLowerCase() })}
+        <ProfileMenuItem
+          href="/portal/payment-methods"
+          icon={CreditCard}
+          iconColor="text-blue-500 bg-blue-500/10"
+          label="Métodos de pago"
         />
-        <AddressField
-          address={form.address}
-          onAddressChange={(address) => setForm({ ...form, address })}
-          latitude={form.latitude}
-          longitude={form.longitude}
-          onGpsChange={(gps) => setForm({ ...form, latitude: gps?.lat ?? null, longitude: gps?.lon ?? null })}
-          className="sm:col-span-2"
+        <ProfileMenuItem
+          href="/portal/orders"
+          icon={Receipt}
+          iconColor="text-emerald-500 bg-emerald-500/10"
+          label="Mis pedidos"
+          badge={stats.orders > 0 ? stats.orders : undefined}
         />
-        <Button className="w-full h-11 rounded-xl font-semibold" onClick={save} disabled={saving}>
-          {saving ? "Guardando…" : "Guardar cambios"}
-        </Button>
-      </motion.section>
+        <ProfileMenuItem
+          href="/portal/notifications"
+          icon={Bell}
+          iconColor="text-violet-500 bg-violet-500/10"
+          label="Notificaciones"
+        />
+        <button
+          onClick={() => setShowEditForm(!showEditForm)}
+          className="flex w-full items-center gap-3.5 rounded-xl border border-border/30 bg-card p-3.5 shadow-sm transition-colors hover:bg-muted/50"
+        >
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 bg-slate-500/10">
+            <Settings className="size-5" />
+          </div>
+          <span className="flex-1 text-left text-sm font-semibold">Configuración</span>
+          <ChevronRight className={`size-4 text-muted-foreground transition-transform ${showEditForm ? "rotate-90" : ""}`} />
+        </button>
+      </motion.div>
 
-      {/* Nav customizer */}
-      <motion.section variants={item} className="rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
-        <div className="mb-3 flex items-center gap-2">
-          <LayoutGrid className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold">Personalizar navegación</h2>
-        </div>
-        <NavCustomizer />
-      </motion.section>
+      {/* Edit Form (collapsible) */}
+      {showEditForm && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="space-y-3 rounded-2xl border border-border/30 bg-card p-4 shadow-sm overflow-hidden"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <User className="size-4 text-primary" />
+            <h2 className="text-sm font-semibold">Datos personales</h2>
+          </div>
+          <InputGroupField
+            label="Nombre"
+            leftIcon={<User className="size-4" />}
+            value={form.fullName}
+            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+          />
+          <InputGroupField
+            label="Teléfono"
+            helper="Solo 10 dígitos."
+            inputMode="numeric"
+            leftIcon={<Phone className="size-4" />}
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+          />
+          <InputGroupField
+            label="Email"
+            type="email"
+            leftIcon={<Mail className="size-4" />}
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value.toLowerCase() })}
+          />
+          <AddressField
+            address={form.address}
+            onAddressChange={(address) => setForm({ ...form, address })}
+            latitude={form.latitude}
+            longitude={form.longitude}
+            onGpsChange={(gps) => setForm({ ...form, latitude: gps?.lat ?? null, longitude: gps?.lon ?? null })}
+          />
+          <Button className="w-full h-11 rounded-xl font-semibold" onClick={save} disabled={saving}>
+            {saving ? "Guardando…" : "Guardar cambios"}
+          </Button>
+        </motion.div>
+      )}
 
       {/* Permisos */}
-      <motion.section variants={item} className="space-y-3 rounded-2xl border border-border/50 bg-card p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-1">
+      <motion.div variants={item} className="rounded-2xl border border-border/30 bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
           <Shield className="size-4 text-primary" />
           <h2 className="text-sm font-semibold">Permisos de la aplicación</h2>
         </div>
@@ -194,7 +320,16 @@ export function ProfileClient() {
           Gestiona los permisos que usa la app para funcionalidades como ubicación, cámara y notificaciones.
         </p>
         <PortalPermissionsSection />
-      </motion.section>
+      </motion.div>
+
+      {/* Nav customizer */}
+      <motion.div variants={item} className="rounded-2xl border border-border/30 bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <LayoutGrid className="size-4 text-primary" />
+          <h2 className="text-sm font-semibold">Personalizar navegación</h2>
+        </div>
+        <NavCustomizer />
+      </motion.div>
 
       {/* Logout */}
       <motion.div variants={item}>
@@ -213,17 +348,61 @@ export function ProfileClient() {
       </motion.div>
 
       {/* Version */}
-      <motion.p variants={item} className="text-center text-[0.65rem] text-muted-foreground/50">
+      <motion.p variants={item} className="text-center text-[0.65rem] text-muted-foreground/50 pb-4">
         Sistema Multi-POS v{packageJson.version}
       </motion.p>
     </motion.div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Delete Account Button                                              */
-/* ------------------------------------------------------------------ */
+/* ─── Stat Item ─── */
+function StatItem({ value, label, highlight }: { value: number; label: string; highlight?: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className={`text-lg font-bold ${highlight ? "text-amber-500" : ""}`}>
+        {value}
+      </span>
+      <span className="text-[11px] text-muted-foreground">{label}</span>
+    </div>
+  );
+}
 
+/* ─── Profile Menu Item ─── */
+function ProfileMenuItem({
+  href,
+  icon: Icon,
+  iconColor,
+  label,
+  badge,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  label: string;
+  badge?: number;
+}) {
+  return (
+    <TapScale>
+      <Link
+        href={href}
+        className="flex items-center gap-3.5 rounded-xl border border-border/30 bg-card p-3.5 shadow-sm transition-colors hover:bg-muted/50"
+      >
+        <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${iconColor}`}>
+          <Icon className="size-5" />
+        </div>
+        <span className="flex-1 text-sm font-semibold">{label}</span>
+        {badge !== undefined && (
+          <span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
+        <ChevronRight className="size-4 text-muted-foreground" />
+      </Link>
+    </TapScale>
+  );
+}
+
+/* ─── Delete Account Button ─── */
 function DeleteAccountButton() {
   const [deleting, setDeleting] = useState(false);
 

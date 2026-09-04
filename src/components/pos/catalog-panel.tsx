@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useRef } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { STAGGER_COMPACT, STAGGER } from "@/lib/animation-tokens"
 import { Keyboard, Package, Puzzle, ScanBarcode, Search } from "lucide-react"
 import { usePosStore } from "@/stores/pos-store"
 import type { PosCombo, PosProduct } from "@/types/pos"
@@ -158,12 +160,25 @@ export function CatalogPanel({
         />
       )}
 
-      <div className="scrollbar-none flex shrink-0 items-center gap-1.5 overflow-x-auto pb-1">
+      <motion.div
+        className="scrollbar-none flex shrink-0 items-center gap-1.5 overflow-x-auto pb-1"
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: {},
+          show: { transition: { staggerChildren: STAGGER.TIGHT } },
+        }}
+      >
         {withCount.map((c) => (
-          <button
+          <motion.button
             key={c.id}
             type="button"
             onClick={() => setActiveCategory(c.id || null)}
+            variants={{
+              hidden: { opacity: 0, scale: 0.85 },
+              show: { opacity: 1, scale: 1 },
+            }}
+            whileTap={{ scale: 0.95 }}
             className={cn(
               "h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition",
               activeCategory === (c.id || null)
@@ -180,9 +195,9 @@ export function CatalogPanel({
             >
               {c.productCount}
             </span>
-          </button>
+          </motion.button>
         ))}
-      </div>
+      </motion.div>
 
       <div className="scrollbar-none flex-1 overflow-y-auto pb-4">
         {activeCategory === COMBOS_CATEGORY_ID ? (
@@ -192,11 +207,24 @@ export function CatalogPanel({
               <p className="text-sm">No hay combos disponibles.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5">
-              {combos.map((c) => (
-                <ComboCard key={c.id} combo={c} onSelect={onSelectCombo} />
-              ))}
-            </div>
+            <motion.div
+              className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5"
+              variants={STAGGER_COMPACT.container}
+              initial="hidden"
+              animate="show"
+            >
+              <AnimatePresence mode="popLayout">
+                {combos.map((c) => (
+                  <motion.div
+                    key={c.id}
+                    variants={STAGGER_COMPACT.item}
+                    layout
+                  >
+                    <ComboCard combo={c} onSelect={onSelectCombo} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
           )
         ) : filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
@@ -204,11 +232,24 @@ export function CatalogPanel({
             <p className="text-sm">Sin resultados para “{search}”.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5">
-            {filtered.map((p) => (
-              <ProductCard key={p.id} product={p} onSelect={onSelect} />
-            ))}
-          </div>
+          <motion.div
+            className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5"
+            variants={STAGGER_COMPACT.container}
+            initial="hidden"
+            animate="show"
+          >
+            <AnimatePresence mode="popLayout">
+              {filtered.map((p) => (
+                <motion.div
+                  key={p.id}
+                  variants={STAGGER_COMPACT.item}
+                  layout
+                >
+                  <ProductCard product={p} onSelect={onSelect} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
     </div>

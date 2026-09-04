@@ -9,15 +9,13 @@ import {
   Bell,
   BellRing,
 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import { usePortalStore } from "@/stores/portal-store"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { TapScale } from "@/components/shared/tap-scale"
 import { Logo } from "@/components/layout/logo"
 import { playSound } from "@/lib/sounds"
 import { usePushSound } from "@/hooks/use-push-sound"
-import { PushSubscriber } from "@/components/portal/push-subscriber"
 
 const PAGE_TITLES: Record<string, string> = {
   "/portal": "",
@@ -119,27 +117,43 @@ export function PortalHeader({
           )}
         </div>
 
-        {/* Right — compact icon row: Cart → Bell → Theme → Avatar(rightmost) */}
-        <div className="flex items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative size-8"
-            aria-label="Carrito"
-            onClick={() => setCartOpen(true)}
-          >
-            <ShoppingCart className="size-[18px]" />
+        {/* Right — Cart (conditional) → Notifications → Avatar */}
+        <div className="flex items-center gap-1">
+          <AnimatePresence>
             {itemCount > 0 && (
-              <Badge className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center p-0 text-[9px] font-bold">
-                {itemCount > 99 ? "99+" : itemCount}
-              </Badge>
+              <motion.div
+                key="cart-btn"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative size-9"
+                  aria-label="Carrito"
+                  onClick={() => setCartOpen(true)}
+                >
+                  <ShoppingCart className="size-[18px]" />
+                  <motion.div
+                    key={itemCount}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                    className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] font-bold"
+                  >
+                    {itemCount > 99 ? "99+" : itemCount}
+                  </motion.div>
+                </Button>
+              </motion.div>
             )}
-          </Button>
+          </AnimatePresence>
 
           <TapScale>
             <Link
               href="/portal/notifications"
-              className="relative flex size-8 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted"
+              className="relative flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted"
               aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ""}`}
             >
               {unreadCount > 0 ? (
@@ -155,13 +169,10 @@ export function PortalHeader({
             </Link>
           </TapScale>
 
-          <PushSubscriber />
-          <ThemeToggle />
-
           <TapScale>
             <Link
               href="/portal/profile"
-              className="flex size-8 items-center justify-center overflow-hidden rounded-full border-2 border-primary/20 bg-primary/5"
+              className="flex size-9 items-center justify-center overflow-hidden rounded-full border-2 border-primary/20 bg-primary/5"
               aria-label="Perfil"
             >
               {user.image ? (

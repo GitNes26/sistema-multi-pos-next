@@ -36,7 +36,9 @@ export function DeliveryPolicyForm() {
     try {
       const res = await fetch("/api/delivery-policy")
       if (!res.ok) throw new Error()
-      const { policy: data } = await res.json()
+      const { policy: raw } = await res.json()
+      // Negocio nuevo: puede no existir política todavía (policy === null).
+      const data = raw ?? {}
       setForm({
         pickupEnabled: data.pickupEnabled ?? false,
         pickupMinAmount:
@@ -101,7 +103,8 @@ export function DeliveryPolicyForm() {
         }),
       })
       if (!res.ok) throw new Error()
-      const { policy: data } = await res.json()
+      const { policy: raw } = await res.json()
+      const data = raw ?? {}
       setForm({
         pickupEnabled: data.pickupEnabled ?? false,
         pickupMinAmount:
