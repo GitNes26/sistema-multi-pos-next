@@ -28,6 +28,7 @@ import {
   type AppNotification,
 } from "@/stores/notifications-store"
 import { useNotificationSse } from "@/hooks/use-notifications"
+import { LiveBadge } from "@/components/shared/live-badge"
 import { SPRING_BOUNCE } from "@/lib/animation-tokens"
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -38,7 +39,7 @@ const ICONS: Record<string, React.ReactNode> = {
 
 // FASE 5.4 — Campana de notificaciones: badge animado + popover + SSE.
 export function NotificationsBell() {
-  useNotificationSse()
+  useNotificationSse(true, "notifications-bell")
 
   const items = useNotificationStore((s) => s.items)
   const unread = useNotificationStore((s) => s.unread)
@@ -101,15 +102,7 @@ export function NotificationsBell() {
         <div className="flex items-center justify-between border-b px-3 py-2">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold">Notificaciones</span>
-            <span className="flex items-center gap-1 text-[0.65rem] text-muted-foreground">
-              <span
-                className={cn(
-                  "size-1.5 rounded-full",
-                  connected ? "bg-emerald-500" : "bg-amber-500"
-                )}
-              />
-              {connected ? "en vivo" : "demo"}
-            </span>
+            <LiveBadge compact className="text-[0.65rem]" />
           </div>
           {unread > 0 && (
             <Button

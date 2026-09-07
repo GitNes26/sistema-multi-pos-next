@@ -54,7 +54,12 @@ export function AppShell({ user, permissions, logoUrl, children }: AppShellProps
   return (
     <div className="flex min-h-svh bg-background">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width)] border-r bg-sidebar lg:block">
-        <AppSidebar sections={sections} logoUrl={logoUrl} />
+        <AppSidebar
+          sections={sections}
+          logoUrl={logoUrl}
+          orgScope={user.scope ?? null}
+          orgActiveId={user.activeOrganizationId ?? null}
+        />
       </aside>
 
       <div className="flex min-h-svh w-full flex-col lg:pl-[var(--sidebar-width)]">
@@ -65,7 +70,11 @@ export function AppShell({ user, permissions, logoUrl, children }: AppShellProps
         </main>
       </div>
 
-      <NavigationDrawer sections={sections} />
+      <NavigationDrawer
+        sections={sections}
+        orgScope={user.scope ?? null}
+        orgActiveId={user.activeOrganizationId ?? null}
+      />
       <BottomTabBar
         items={bottomNav}
         permissions={permissions}

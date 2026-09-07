@@ -1,10 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Armchair, Check, X } from "lucide-react"
+import { Armchair, Check, Clock, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
+import { LiveBadge } from "@/components/shared/live-badge"
+import { useSseStore } from "@/stores/sse-store"
 import { cn } from "@/lib/utils"
 
 interface Table {
@@ -13,7 +15,10 @@ interface Table {
   name: string | null
   capacity: number | null
   status: string
+  room: { id: string; name: string } | null
   location: { name: string } | null
+  // Aviso de llegada: reservación confirmada próxima (anfitrión prepara el lugar).
+  upcomingReservation?: { guests: number; startsAt: string } | null
 }
 
 interface Props {
@@ -48,6 +53,11 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
   const retriesRef = useRef(0)
   const closedRef = useRef(false)
 
+  // Estado SSE reportado al badge "En vivo" compartido.
+  const registerSse = useSseStore((s) => s.register)
+  const unregisterSse = useSseStore((s) => s.unregister)
+  const setSseStatus = useSseStore((s) => s.setStatus)
+
   /** Mark a table as "just changed" for 2 seconds so it pulses. */
   const triggerGlow = (id: string) => {
     // Clear any existing timer for this id.
@@ -77,6 +87,7 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
 
     es.onopen = () => {
       retriesRef.current = 0
+      setSseStatus("tables", "connected")
     }
 
     es.onmessage = (event) => {
@@ -89,7 +100,20 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
         } else if (data.id && data.status) {
           // Single table update broadcast — merge into the list + trigger glow.
           setTables((prev) =>
-            prev.map((t) => (t.id === data.id ? { ...t, status: data.status, name: data.name ?? t.name } : t))
+            prev.map((t) =>
+              t.id === data.id
+                ? {
+                    ...t,
+                    status: data.status,
+                    name: data.name ?? t.name,
+                    room: data.room ?? t.room,
+                    upcomingReservation:
+                      data.upcomingReservation !== undefined
+                        ? data.upcomingReservation
+                        : t.upcomingReservation,
+                  }
+                : t
+            )
           )
           triggerGlow(data.id)
         }
@@ -100,6 +124,7 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
 
     es.onerror = () => {
       es.close()
+      setSseStatus("tables", "reconnecting")
       if (!closedRef.current && retriesRef.current < SSE_RETRIES_MAX) {
         retriesRef.current += 1
         const delay = Math.min(1000 * 2 ** retriesRef.current, 10_000)
@@ -130,12 +155,14 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
       .finally(() => setLoading(false))
 
     // Open SSE stream for live updates.
+    registerSse("tables")
     connectSse()
 
     return () => {
       closedRef.current = true
       esRef.current?.close()
       esRef.current = null
+      unregisterSse("tables")
       // Clean up glow timers.
       for (const timer of glowTimers.current.values()) clearTimeout(timer)
       glowTimers.current.clear()
@@ -150,6 +177,7 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
           <DialogTitle className="flex items-center gap-2">
             <Armchair className="size-5" />
             Seleccionar Mesa
+            <LiveBadge sources={["tables"]} compact className="ml-auto" />
           </DialogTitle>
         </DialogHeader>
 
@@ -175,48 +203,90 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex gap-3 text-xs text-muted-foreground">
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-green-200 border border-green-400" /> Libre</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-red-200 border border-red-400" /> Ocupada</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-amber-200 border border-amber-400" /> Reservada</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full border border-violet-400 ring-2 ring-violet-300/60" /> Llega hoy</span>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-              {tables.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  disabled={t.status === "occupied"}
-                  onClick={() => {
-                    // Marcar mesa como ocupada en BD
-                    fetch("/api/tables", {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ id: t.id, status: "occupied" }),
-                    }).then((res) => {
-                      if (!res.ok) console.error("[table-selector] No se pudo marcar mesa como ocupada")
-                    }).catch((err) => {
-                      console.error("[table-selector] Error marcando mesa:", err)
-                    })
-                    onSelect({ id: t.id, number: t.number, name: t.name })
-                    onClose()
-                  }}
-                  className={cn(
-                    "flex flex-col items-center gap-1 rounded-xl border-2 p-3 transition-all",
-                    statusColor(t.status),
-                    glowingIds.has(t.id) && "animate-table-glow"
-                  )}
-                >
-                  <Armchair className="size-5" />
-                  <span className="text-sm font-bold">{t.number}</span>
-                  {t.name && <span className="text-[10px] truncate w-full text-center">{t.name}</span>}
-                  {t.capacity && <span className="text-[10px]">{t.capacity} pers.</span>}
-                  <Badge variant="outline" className="text-[9px] px-1 py-0">
-                    {statusLabel(t.status)}
-                  </Badge>
-                </button>
-              ))}
-            </div>
+            {/* Mesas agrupadas por sala (el plano del local) */}
+            {(() => {
+              const groups = new Map<string, Table[]>()
+              for (const t of tables) {
+                const key = t.room?.name ?? "Sin sala"
+                if (!groups.has(key)) groups.set(key, [])
+                groups.get(key)!.push(t)
+              }
+              const order = [...groups.keys()].sort((a, b) =>
+                a === "Sin sala" ? 1 : b === "Sin sala" ? -1 : a.localeCompare(b, "es")
+              )
+              return (
+                <div className="space-y-3">
+                  {order.map((room) => (
+                    <div key={room}>
+                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {room}
+                      </p>
+                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                        {groups.get(room)!.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            disabled={t.status === "occupied"}
+                            onClick={() => {
+                              // Marcar mesa como ocupada en BD
+                              fetch("/api/tables", {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ id: t.id, status: "occupied" }),
+                              }).then((res) => {
+                                if (!res.ok) console.error("[table-selector] No se pudo marcar mesa como ocupada")
+                              }).catch((err) => {
+                                console.error("[table-selector] Error marcando mesa:", err)
+                              })
+                              onSelect({ id: t.id, number: t.number, name: t.name })
+                              onClose()
+                            }}
+                            title={t.upcomingReservation
+                              ? `Mesa ${t.number} · reservación confirmada ${new Date(t.upcomingReservation.startsAt).toLocaleString("es-MX", { hour: "2-digit", minute: "2-digit" })} · ${t.upcomingReservation.guests} pers.`
+                              : undefined}
+                            className={cn(
+                              "flex flex-col items-center gap-1 rounded-xl border-2 p-3 transition-all relative",
+                              statusColor(t.status),
+                              glowingIds.has(t.id) && "animate-table-glow",
+                              t.upcomingReservation && "ring-2 ring-violet-400/70"
+                            )}
+                          >
+                            {t.upcomingReservation && (
+                              <span className="absolute -top-2 -right-2 flex items-center gap-1 rounded-full bg-violet-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">
+                                <Clock className="size-2.5" />
+                                {new Date(t.upcomingReservation.startsAt).toLocaleTimeString("es-MX", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            )}
+                            <Armchair className="size-5" />
+                            <span className="text-sm font-bold">{t.number}</span>
+                            {t.name && <span className="text-[10px] truncate w-full text-center">{t.name}</span>}
+                            {t.capacity && <span className="text-[10px]">{t.capacity} pers.</span>}
+                            <Badge variant="outline" className="text-[9px] px-1 py-0">
+                              {statusLabel(t.status)}
+                            </Badge>
+                            {t.upcomingReservation && (
+                              <span className="text-[9px] font-semibold text-violet-600 dark:text-violet-400">
+                                Llega · {t.upcomingReservation.guests} pers.
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
 
             <div className="pt-2 border-t">
               <Button

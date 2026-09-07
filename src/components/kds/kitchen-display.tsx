@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   AlertTriangle,
+  Armchair,
+  CalendarCheck2,
   Check,
   ChefHat,
   Clock,
@@ -13,7 +16,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { RoleBadge } from "@/components/shared/role-badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useSseStore } from "@/stores/sse-store";
+import { useStaleData } from "@/hooks/use-stale-data";
+import { StaleBanner } from "@/components/shared/stale-banner";
 import { Spinner } from "@/components/base/spinner";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +34,12 @@ interface KDSOrder {
   status: string;
   createdAt: string;
   elapsedSeconds: number;
-  table: { id: string; number: number; name: string | null } | null;
+  table: {
+    id: string;
+    number: number;
+    name: string | null;
+    room: { id: string; name: string } | null;
+  } | null;
   location: { id: string; name: string } | null;
   items: {
     id: string;
@@ -47,6 +59,18 @@ interface KDSStats {
   preparing: number;
   totalItems: number;
   readyItems: number;
+}
+
+interface UpcomingReservation {
+  id: string;
+  guests: number;
+  startsAt: string;
+  table: {
+    id: string;
+    number: number;
+    name: string | null;
+    room: { id: string; name: string } | null;
+  } | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -114,6 +138,9 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
                 <MapPin className="w-3 h-3 mr-1" />
                 Mesa {order.table.number}
                 {order.table.name && ` · ${order.table.name}`}
+                {order.table.room?.name && (
+                  <span className="text-muted-foreground"> · {order.table.room.name}</span>
+                )}
               </Badge>
             )}
           </div>
@@ -271,11 +298,26 @@ interface KitchenDisplayProps {
 }
 
 export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenDisplayProps) {
+  const { data: session } = useSession();
   const [orders, setOrders] = useState<KDSOrder[]>([]);
   const [stats, setStats] = useState<KDSStats | null>(null);
+  const [upcomingReservations, setUpcomingReservations] = useState<UpcomingReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [sseConnected, setSseConnected] = useState(false);
+
+  // Estado SSE reportado al badge "En vivo" del encabezado de la página.
+  const registerSse = useSseStore((s) => s.register);
+  const unregisterSse = useSseStore((s) => s.unregister);
+  const setSseStatus = useSseStore((s) => s.setStatus);
+  const setSseConnected = useCallback(
+    (connected: boolean) => setSseStatus("kitchen", connected ? "connected" : "reconnecting"),
+    [setSseStatus]
+  );
+  const sseConnected = useSseStore((s) => s.sources["kitchen"]?.connected ?? false);
+
+  // Aviso de datos desactualizados si el stream de la parrilla se cae y el
+  // último refresco exitoso ya lleva más de un minuto.
+  const { stale: dataStale, markFresh } = useStaleData(sseConnected);
   const prevOrderCount = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -292,13 +334,15 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
         prevOrderCount.current = res.orders.length;
         setOrders(res.orders);
         setStats(res.stats);
+        setUpcomingReservations(res.upcomingReservations ?? []);
+        markFresh();
       }
     } catch {
       // silently fail
     } finally {
       setLoading(false);
     }
-  }, [locationId, soundEnabled]);
+  }, [locationId, soundEnabled, markFresh]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -309,6 +353,8 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
     let es: EventSource | null = null;
     let retries = 0;
     let closed = false;
+
+    registerSse("kitchen");
 
     const connect = () => {
       const params = new URLSearchParams();
@@ -348,6 +394,13 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
               totalItems: data.orders.reduce((sum: number, o: KDSOrder) => sum + o.items.length, 0),
               readyItems: data.orders.reduce((sum: number, o: KDSOrder) => sum + o.items.filter((i) => i.itemStatus === "ready").length, 0),
             });
+            return;
+          }
+
+          // Cambió una reservación de mesa (confirmada/cancelada/sentada):
+          // recargar la tira "Próximas reservas" sin tocar las órdenes.
+          if (data.type === "reservations_changed") {
+            void load();
             return;
           }
 
@@ -415,6 +468,7 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
     return () => {
       closed = true;
       es?.close();
+      unregisterSse("kitchen");
     };
   }, [locationId, soundEnabled]);
 
@@ -459,16 +513,19 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
             </div>
           )}
         </div>
-        <div className="flex gap-2">
-          <div className={cn(
-            "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
-            sseConnected
-              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-              : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-          )}>
-            <div className={cn("w-2 h-2 rounded-full", sseConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
-            {sseConnected ? "En vivo" : "Sin conexión"}
-          </div>
+        <div className="flex items-center gap-2">
+          {/* Operador de la sesión: demo walkers saben qué rol está activo. */}
+          {session?.user?.name || session?.user?.roleName ? (
+            <div className="hidden items-center gap-1.5 rounded-md bg-slate-100 py-0.5 pl-2 pr-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300 md:flex">
+              <span className="max-w-32 truncate text-xs font-medium">
+                {session.user.name}
+              </span>
+              <RoleBadge
+                roleName={session.user.roleName}
+                role={session.user.role}
+              />
+            </div>
+          ) : null}
           <Button
             variant={soundEnabled ? "default" : "outline"}
             size="sm"
@@ -481,6 +538,41 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
           </Button>
         </div>
       </div>
+
+      <StaleBanner show={dataStale} />
+
+      {/* Aviso de llegada: reservaciones confirmadas próximas — el anfitrión/la
+          cocina preparan el lugar. */}
+      {upcomingReservations.length > 0 && (
+        <div className="rounded-xl border border-violet-300/70 bg-violet-50 px-3.5 py-2.5 dark:border-violet-500/40 dark:bg-violet-500/10">
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300">
+            <CalendarCheck2 className="size-3.5" />
+            Próximas reservas — prepara el lugar
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {upcomingReservations.map((r) => (
+              <Badge
+                key={r.id}
+                variant="outline"
+                className="gap-1 border-violet-300/70 bg-white/70 px-2 py-1 text-xs text-violet-800 dark:border-violet-500/40 dark:bg-slate-900/60 dark:text-violet-200"
+              >
+                <Armchair className="size-3" />
+                Mesa {r.table?.number ?? "?"}
+                {r.table?.room?.name ? ` · ${r.table.room.name}` : ""}
+                <span className="font-mono font-bold">
+                  {new Date(r.startsAt).toLocaleTimeString("es-MX", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                <span className="opacity-70">
+                  {r.guests} {r.guests === 1 ? "pers." : "pers."}
+                </span>
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Orders grid */}
       {orders.length === 0 ? (

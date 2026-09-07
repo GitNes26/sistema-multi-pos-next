@@ -79,6 +79,8 @@ export interface CrudField {
   min?: number
   /** Valor máximo numérico (number/money/percent). */
   max?: number
+  /** Imagen: usar zona de arrastre sin recorte (ImageDropzoneField) en vez de Attachment con cropper. */
+  dropzone?: boolean
   /** Mensaje de error personalizado para required. */
   requiredMessage?: string
   /** Validaciones adicionales: array de funciones que retornan string | null. */
@@ -180,6 +182,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         key: "imageUrl",
         label: "Imagen",
         type: "image",
+        dropzone: true,
         full: true,
         placeholder: "https://…",
       },

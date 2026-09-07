@@ -8,6 +8,7 @@ import {
   Download,
   Eye,
   FileSpreadsheet,
+  ImagePlus,
   Layers,
   Loader2,
   Package,
@@ -27,13 +28,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable } from "@/components/base/data-table";
 import { crudApi, exportExcel, exportTemplate, importExcel, previewExcel, getCustomerActivity, type CustomerActivityData, type ExcelPreviewResult } from "@/lib/api";
+import { BulkImagesDialog } from "./bulk-images-dialog";
 import { money } from "@/lib/pos/money";
+import { categoryAccent } from "@/lib/catalog/placeholder";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { CrudForm } from "./crud-form";
 import { ProductsForm } from "./products-form";
 import { VariantsDialog } from "./variants-dialog";
 import { TooltipButton } from "@/components/shared/tooltip-button";
 import { getCrudUi, CRUD_PRODUCTS_TITLE, type CrudColumn, type CrudUiConfig } from "./crud-config";
+import { ThumbImage } from "@/components/base/thumb-image";
 
 interface CrudPageProps {
   moduleKey: string;
@@ -113,6 +117,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityCustomer, setActivityCustomer] = useState<Record<string, unknown> | null>(null);
   const [variantsProduct, setVariantsProduct] = useState<Record<string, unknown> | null>(null);
+  const [bulkImagesOpen, setBulkImagesOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -166,10 +171,25 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         cell: ({ row }) => {
           const img = String(row.original.imageUrl ?? "");
           return img ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={img} alt="" className="size-10 rounded-md object-cover" />
+            <ThumbImage src={img} alt="" className="size-10 rounded-md object-cover" />
           ) : (
-            <span className="flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            // Sin foto real: anillo + icono con el color de la categoría, el
+            // mismo lenguaje visual que las imágenes placeholder generadas.
+            <span
+              className="flex size-10 items-center justify-center rounded-md border-2"
+              style={{
+                borderColor: categoryAccent(
+                  row.original.categoryName
+                    ? String(row.original.categoryName)
+                    : null
+                ),
+                color: categoryAccent(
+                  row.original.categoryName
+                    ? String(row.original.categoryName)
+                    : null
+                ),
+              }}
+            >
               <Package className="size-4" />
             </span>
           );
@@ -452,6 +472,17 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         actions={
           canManage && (
             <div className="flex flex-wrap items-center gap-2">
+              {isProducts(moduleKey) && (
+                <TooltipButton
+                  label="Arrastra o elige una foto para cada producto y aplícalas todas de una vez"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBulkImagesOpen(true)}
+                >
+                  <ImagePlus className="size-4" />
+                  Imágenes
+                </TooltipButton>
+              )}
               {isExcelModule(moduleKey) && (
                 <>
                   <Button variant="outline" size="sm" onClick={handleExport} disabled={excelBusy !== null}>
@@ -602,6 +633,14 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         loading={activityLoading}
         onClose={() => setActivityCustomer(null)}
       />
+
+      {isProducts(moduleKey) && (
+        <BulkImagesDialog
+          open={bulkImagesOpen}
+          onOpenChange={setBulkImagesOpen}
+          onApplied={() => load()}
+        />
+      )}
 
       {variantsProduct && (
         <VariantsDialog

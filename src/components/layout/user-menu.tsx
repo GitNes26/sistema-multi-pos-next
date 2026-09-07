@@ -17,6 +17,7 @@ import {
 } from "@/lib/welcome-guide";
 
 import type { AppRole } from "@/lib/auth/permissions";
+import { COARSE_ROLE_LABELS } from "@/components/shared/role-badge";
 import { logout } from "@/lib/auth/logout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -36,19 +37,12 @@ export interface UserMenuUser {
   email?: string | null;
   image?: string | null;
   role?: AppRole | "superadmin" | null;
+  /** Nombre del rol resuelto (Role.name de la membresía), p.ej. "Mesero". */
+  roleName?: string | null;
   scope?: "superadmin" | "app" | "portal" | null;
   organizationId?: string | null;
   activeOrganizationId?: string | null;
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  superadmin: "Super admin",
-  admin: "Admin",
-  owner: "Propietario",
-  manager: "Gerente",
-  cashier: "Cajero",
-  customer: "Cliente",
-};
 
 function initials(name?: string | null, email?: string | null): string {
   const source = name?.trim() || email || "?";
@@ -61,7 +55,9 @@ function initials(name?: string | null, email?: string | null): string {
 
 // FASE 5.3 — Dropdown de usuario: perfil, cambiar contraseña, cerrar sesión.
 export function UserMenu({ user }: { user: UserMenuUser }) {
-  const role = user.role ? (ROLE_LABELS[user.role] ?? user.role) : undefined;
+  const role =
+    user.roleName?.trim() ||
+    (user.role ? (COARSE_ROLE_LABELS[user.role] ?? user.role) : undefined);
   const router = useRouter();
   const pathname = usePathname();
   const orgId = user.activeOrganizationId ?? user.organizationId ?? null;

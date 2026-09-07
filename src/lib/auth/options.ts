@@ -21,9 +21,13 @@ export type SessionUser = {
   email: string;
   image: string | null;
   role: AppRole | "superadmin";
+  /** Nombre legible del rol resuelto (Role.name de la membresía, p.ej. "Mesero", "Cocina (KDS)", "Repartidor"). */
+  roleName: string | null;
   organizationId: string | null;
   /** Organización en la que el usuario está operando (superAdmin / admin multi-org). */
   activeOrganizationId: string | null;
+  /** Nombre de la organización activa (contexto visual en encabezados). */
+  organizationName: string | null;
   /** Modo de negocio de la organización activa. */
   businessMode: BusinessMode;
   permissions: PermissionKey[];
@@ -36,8 +40,10 @@ declare module "next-auth" {
   }
   interface User {
     role?: AppRole | "superadmin";
+    roleName?: string | null;
     organizationId?: string | null;
     activeOrganizationId?: string | null;
+    organizationName?: string | null;
     businessMode?: BusinessMode;
     permissions?: PermissionKey[];
     scope?: AuthScope;
@@ -48,8 +54,10 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role?: AppRole | "superadmin";
+    roleName?: string | null;
     organizationId?: string | null;
     activeOrganizationId?: string | null;
+    organizationName?: string | null;
     businessMode?: BusinessMode;
     permissions?: PermissionKey[];
     scope?: AuthScope;
@@ -67,6 +75,8 @@ type ResolvedLoginUser = {
   passwordHash: string;
   isActive: boolean;
   isSuperadmin: boolean;
+  /** Última organización activa recordada (para retomarla al volver a entrar). */
+  lastOrganizationId: string | null;
   employees: { organizationId: string }[];
   customers: { organizationId: string }[];
   memberships: { organizationId: string; role: $Enums.OrgRole; roleId: string | null }[];
@@ -86,6 +96,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
       passwordHash: true,
       isActive: true,
       isSuperadmin: true,
+      lastOrganizationId: true,
       employees: { select: { organizationId: true } },
       customers: { select: { organizationId: true } },
       memberships: { select: { organizationId: true, role: true, roleId: true } },
@@ -115,6 +126,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
           passwordHash: true,
           isActive: true,
           isSuperadmin: true,
+          lastOrganizationId: true,
           memberships: { select: { organizationId: true, role: true, roleId: true } },
         },
       },
@@ -132,6 +144,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
       passwordHash: u.passwordHash,
       isActive: u.isActive,
       isSuperadmin: u.isSuperadmin,
+      lastOrganizationId: u.lastOrganizationId,
       employees: [{ organizationId: byEmployee.organizationId }],
       customers: [],
       memberships: u.memberships.map((m) => ({ organizationId: m.organizationId, role: m.role, roleId: m.roleId })),
@@ -151,6 +164,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
           passwordHash: true,
           isActive: true,
           isSuperadmin: true,
+          lastOrganizationId: true,
         },
       },
       organizationId: true,
@@ -167,6 +181,7 @@ export async function resolveLoginUser(identifier: string): Promise<ResolvedLogi
       passwordHash: u.passwordHash,
       isActive: u.isActive,
       isSuperadmin: u.isSuperadmin,
+      lastOrganizationId: u.lastOrganizationId,
       employees: [],
       customers: [{ organizationId: byCustomer.organizationId }],
       memberships: [],
@@ -200,6 +215,21 @@ function inferKindFromUser(user: NonNullable<Awaited<ReturnType<typeof resolveLo
   return { scope: "app" as AuthScope, role, organizationId: org, roleId };
 }
 
+/**
+ * Nombre legible del rol del usuario. Si la membresía apunta a un rol concreto
+ * (rol de sistema por modo de negocio o rol custom/empresa), se usa el nombre
+ * de esa fila ("Mesero", "Cocina (KDS)", "Repartidor", "Agente de atención"…);
+ * si no hay roleId, queda null y la UI cae al nombre del rol efectivo.
+ */
+async function resolveRoleName(roleId: string | null): Promise<string | null> {
+  if (!roleId) return null;
+  const role = await prisma.role.findUnique({
+    where: { id: roleId },
+    select: { name: true },
+  });
+  return role?.name ?? null;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -207,6 +237,8 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         identifier: { label: "Email o código", type: "text" },
         password: { label: "Contraseña", type: "password" },
+        // Elección opcional del picker de org del login (multi-org).
+        organizationId: { label: "Organización", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.identifier || !credentials?.password) return null;
@@ -218,22 +250,78 @@ export const authOptions: NextAuthOptions = {
         if (!valid) return null;
 
         const kind = inferKindFromUser(user);
-        const permissions: PermissionKey[] =
+        // Org elegida en el picker del login (solo app): la membresía de esa
+        // org define el rol efectivo, no la de login. Se valida contra las
+        // membresías reales: un valor ajeno o sin membresía se ignora.
+        const hintOrgId =
+          typeof (credentials as { organizationId?: unknown }).organizationId === "string"
+            ? ((credentials as { organizationId: string }).organizationId || null)
+            : null;
+        const pickedMembership =
+          kind.scope === "app" && hintOrgId
+            ? user.memberships.find((m) => m.organizationId === hintOrgId) ?? null
+            : null;
+        if (pickedMembership && hintOrgId) {
+          kind.organizationId = hintOrgId;
+          kind.role = effectiveRole(pickedMembership.role);
+          kind.roleId = pickedMembership.roleId;
+        }
+        const [permissions, roleName] = await Promise.all([
           kind.scope === "superadmin"
-            ? (await permissionsForRole("superadmin"))
+            ? permissionsForRole("superadmin")
             : kind.scope === "app"
-              ? await permissionsForRole(kind.role, kind.roleId, kind.organizationId)
-              : [];
+              ? permissionsForRole(kind.role, kind.roleId, kind.organizationId)
+              : Promise.resolve([] as PermissionKey[]),
+          kind.scope === "app" ? resolveRoleName(kind.roleId) : Promise.resolve(null),
+        ]);
 
-        // Fetch businessMode from the organization
+        // ── Organización activa: retomar la última recordada (si sigue teniendo
+        // acceso) o caer a la org natural (empleado / primera membresía).
+        const isSuper = kind.scope === "superadmin";
+        const accessibleOrgs = isSuper
+          ? null // el superAdmin puede operar cualquier org existente
+          : new Set([
+              ...user.employees.map((e) => e.organizationId),
+              ...user.memberships.map((m) => m.organizationId),
+            ]);
+        let preferredOrg: string | null = null;
+        if (pickedMembership && hintOrgId) {
+          // Elección explícita del picker: gana a la org recordada.
+          preferredOrg = hintOrgId;
+        } else if (user.lastOrganizationId) {
+          if (isSuper || accessibleOrgs!.has(user.lastOrganizationId)) {
+            preferredOrg = user.lastOrganizationId;
+          }
+        }
+        const candidateOrgId = preferredOrg ?? kind.organizationId ?? null;
+        // La elección del picker (o la org efectiva del login) se recuerda
+        // para el próximo login — misma filosofía que el switcher. Best-effort.
+        if (candidateOrgId && kind.scope === "app" && candidateOrgId !== user.lastOrganizationId) {
+          try {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { lastOrganizationId: candidateOrgId },
+            });
+          } catch (err) {
+            console.error("[auth] no se pudo recordar la organización del login", err);
+          }
+        }
+
+        // Fetch businessMode + nombre de la organización activa
         let businessMode: BusinessMode = "retail";
-        if (kind.organizationId) {
+        let organizationName: string | null = null;
+        if (candidateOrgId) {
           const org = await prisma.organization.findUnique({
-            where: { id: kind.organizationId },
-            select: { businessMode: true },
+            where: { id: candidateOrgId },
+            select: { businessMode: true, name: true },
           });
           if (org?.businessMode) businessMode = org.businessMode;
+          organizationName = org?.name ?? null;
         }
+        // Solo se activa si la org existe (el superAdmin con una org borrada
+        // vuelve a "Sin organización" en lugar de quedar en un id colgado).
+        const activeOrganizationId =
+          organizationName !== null ? candidateOrgId : null;
 
         return {
           id: user.id,
@@ -241,8 +329,10 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           image: user.avatarUrl,
           role: kind.role,
+          roleName,
           organizationId: kind.organizationId,
-          activeOrganizationId: kind.organizationId,
+          activeOrganizationId,
+          organizationName,
           businessMode,
           permissions,
           scope: kind.scope,
@@ -263,8 +353,10 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id!;
         token.role = user.role;
+        token.roleName = user.roleName ?? null;
         token.organizationId = user.organizationId ?? null;
         token.activeOrganizationId = user.activeOrganizationId ?? user.organizationId ?? null;
+        token.organizationName = user.organizationName ?? null;
         token.businessMode = user.businessMode ?? "retail";
         token.permissions = user.permissions ?? [];
         token.scope = user.scope ?? "app";
@@ -280,13 +372,42 @@ export const authOptions: NextAuthOptions = {
       if (trigger === "update" && updatePayload && "activeOrganizationId" in updatePayload) {
         const next = (updatePayload as { activeOrganizationId?: string | null }).activeOrganizationId;
         token.activeOrganizationId = next ?? null;
-        // Also refresh businessMode when org changes
+        // Refrescar nombre + businessMode de la organización al cambiar de org
+        // (o limpiarlos si el superAdmin sale de una organización).
         if (next) {
           const org = await prisma.organization.findUnique({
             where: { id: next },
-            select: { businessMode: true },
+            select: { businessMode: true, name: true },
           });
           if (org?.businessMode) token.businessMode = org.businessMode;
+          token.organizationName = org?.name ?? null;
+          // Las membresías pueden llevar un roleId distinto por organización:
+          // recalcular rol efectivo + permisos para que la sesión refleje la
+          // org activa, no la de login. El superAdmin (sin membresía) conserva
+          // su rol/permisos: su alcance no depende de la organización.
+          const membership = await prisma.membership.findFirst({
+            where: { userId: token.id, organizationId: next },
+            select: { role: true, roleId: true },
+          });
+          if (membership) {
+            const role = effectiveRole(membership.role);
+            token.role = role;
+            token.roleName = await resolveRoleName(membership.roleId);
+            token.permissions = await permissionsForRole(role, membership.roleId, next);
+          }
+        } else {
+          token.businessMode = "retail";
+          token.organizationName = null;
+        }
+        // Recordar la org activa en la BD (best-effort: si falla la escritura,
+        // el cambio de org de la sesión actual NO debe romperse).
+        try {
+          await prisma.user.update({
+            where: { id: token.id },
+            data: { lastOrganizationId: next ?? null },
+          });
+        } catch (err) {
+          console.error("[auth] no se pudo recordar la organización activa", err);
         }
       }
 
@@ -316,8 +437,10 @@ export const authOptions: NextAuthOptions = {
         email: token.email ?? "",
         image: typeof token.picture === "string" ? token.picture : null,
         role: token.role ?? "customer",
+        roleName: token.roleName ?? null,
         organizationId: token.organizationId ?? null,
         activeOrganizationId: token.activeOrganizationId ?? token.organizationId ?? null,
+        organizationName: token.organizationName ?? null,
         businessMode: token.businessMode ?? "retail",
         permissions: token.permissions ?? [],
         scope: token.scope ?? "app",

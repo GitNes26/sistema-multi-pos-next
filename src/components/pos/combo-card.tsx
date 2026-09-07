@@ -6,6 +6,7 @@ import { Check, Puzzle, Tag } from "lucide-react"
 import type { PosCombo } from "@/types/pos"
 import { money } from "@/lib/pos/money"
 import { cn } from "@/lib/utils"
+import { ThumbImage } from "@/components/base/thumb-image"
 
 interface ComboCardProps {
   combo: PosCombo
@@ -69,8 +70,7 @@ export const ComboCard = memo(function ComboCard({ combo, onSelect }: ComboCardP
       {/* Image or placeholder */}
       <div className="relative flex h-16 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30">
         {combo.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <ThumbImage
             src={combo.imageUrl}
             alt={combo.name}
             className="size-full rounded-xl object-cover"

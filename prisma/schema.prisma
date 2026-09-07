@@ -137,11 +137,11 @@ enum PublicationType {
 }
 
 enum BusinessMode {
-  retail        // Tienda, abarrotes, ferretería, snacks
-  food_service  // Neverías, restaurante, café, cafeteria
-  services      // Barbería, autolavado, veterinaria
-  rental        // Brincolines, fotografía, maquinaria
-  hybrid        // Combinación de los anteriores
+  retail // Tienda, abarrotes, ferretería, snacks
+  food_service // Neverías, restaurante, café, cafeteria
+  services // Barbería, autolavado, veterinaria
+  rental // Brincolines, fotografía, maquinaria
+  hybrid // Combinación de los anteriores
 }
 
 enum TableStatus {
@@ -149,6 +149,32 @@ enum TableStatus {
   occupied
   reserved
   cleaning
+}
+
+// Forma de la mesa en el plano de la sala (se dibuja distinto en el mapa).
+enum TableShape {
+  round
+  square
+  rectangle
+  booth
+  bar
+}
+
+// Estado de una reservación de mesa (portal de clientes / anfitrión).
+enum TableReservationStatus {
+  pending
+  confirmed
+  seated
+  cancelled
+  no_show
+}
+
+// Estado en la lista de espera de mesas (portal de clientes).
+enum TableWaitlistStatus {
+  waiting // En espera: aún no hay mesa libre que le quepa
+  available // Se liberó una mesa que le cabe: invitación abierta
+  seated // Confirmó y se le asignó la mesa liberada
+  cancelled // Salió de la lista (manual o porque la mesa se tomó)
 }
 
 enum OrderItemStatus {
@@ -163,106 +189,116 @@ enum OrderItemStatus {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
-  fullName      String
-  avatarUrl     String?
-  phone         String?
-  isActive      Boolean   @default(true)
-  emailVerified DateTime?
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  passwordHash         String
+  fullName             String
+  avatarUrl            String?
+  phone                String?
+  isActive             Boolean   @default(true)
+  emailVerified        DateTime?
   // 7.9 — Flag de rol superAdmin (identificación por rol, no por email)
-  isSuperadmin  Boolean   @default(false)
+  isSuperadmin         Boolean   @default(false)
   // FASE 2.5 — Recuperación de contraseña (token guardado hasheado)
   passwordResetToken   String?   @unique
   passwordResetExpires DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  // Recuerda la última organización activa del usuario (multi-org): al volver
+  // a entrar se retoma esa org si el usuario sigue teniendo acceso. Columna
+  // simple (sin FK): se valida contra membresías/empleo al iniciar sesión.
+  lastOrganizationId   String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  memberships                    Membership[]
-  profile                        Profile?
-  organizationsOwned             Organization[]               @relation("OrganizationOwner")
-  employees                      Employee[]
-  customers                      Customer[]
-  cashSessionsUser               CashSession[]                @relation("CashSessionUser")
-  cashSessionsOpened             CashSession[]                @relation("CashSessionOpenedBy")
-   salesCashier                   Sale[]                       @relation("SaleCashier")
-   saleReturnsProcessed           SaleReturn[]
-   inventoryMovements             InventoryMovement[]
-  variantPriceHistory            VariantPriceHistory[]
-  inventoryRevisionsPerformed    InventoryRevision[]          @relation("InventoryRevisionPerformedBy")
-  inventoryRevisionItemsCounted  InventoryRevisionItem[]      @relation("InventoryRevisionItemCountedBy")
-  promotionsCreated              Promotion[]                  @relation("PromotionCreatedBy")
-  orderStatusHistory             OrderStatusHistory[]
-  notifications                  Notification[]
-  invitationsSent                UserInvitation[]             @relation("UserInvitationInvitedBy")
-  pushSubscriptions              PushSubscription[]
+  memberships                   Membership[]
+  profile                       Profile?
+  organizationsOwned            Organization[]          @relation("OrganizationOwner")
+  employees                     Employee[]
+  customers                     Customer[]
+  cashSessionsUser              CashSession[]           @relation("CashSessionUser")
+  cashSessionsOpened            CashSession[]           @relation("CashSessionOpenedBy")
+  salesCashier                  Sale[]                  @relation("SaleCashier")
+  saleReturnsProcessed          SaleReturn[]
+  inventoryMovements            InventoryMovement[]
+  variantPriceHistory           VariantPriceHistory[]
+  inventoryRevisionsPerformed   InventoryRevision[]     @relation("InventoryRevisionPerformedBy")
+  inventoryRevisionItemsCounted InventoryRevisionItem[] @relation("InventoryRevisionItemCountedBy")
+  promotionsCreated             Promotion[]             @relation("PromotionCreatedBy")
+  orderStatusHistory            OrderStatusHistory[]
+  notifications                 Notification[]
+  invitationsSent               UserInvitation[]        @relation("UserInvitationInvitedBy")
+  pushSubscriptions             PushSubscription[]
 
   @@map("users")
 }
 
 model Organization {
-  id                 String   @id @default(cuid())
+  id                 String       @id @default(cuid())
   name               String
   ownerId            String
   businessMode       BusinessMode @default(retail)
-  currency           String   @default("MXN")
-  pointsPerCurrency  Decimal  @default(1) @db.Decimal(12, 4)
-  pointValue         Decimal  @default(1) @db.Decimal(12, 4)
-  loyaltyEnabled     Boolean  @default(true)
-  supervisorApproval Json     @default("{}")
-  paymentGateway     Json     @default("{}")
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  currency           String       @default("MXN")
+  pointsPerCurrency  Decimal      @default(1) @db.Decimal(12, 4)
+  pointValue         Decimal      @default(1) @db.Decimal(12, 4)
+  loyaltyEnabled     Boolean      @default(true)
+  supervisorApproval Json         @default("{}")
+  paymentGateway     Json         @default("{}")
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
-  owner                 User                  @relation("OrganizationOwner", fields: [ownerId], references: [id])
-  memberships           Membership[]
-  companyProfile        CompanyProfile?
-  appSettings           AppSettings?
-  employeePositions     EmployeePosition[]
-  employees             Employee[]
-  customers             Customer[]
+  owner                  User                    @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  memberships            Membership[]
+  companyProfile         CompanyProfile?
+  appSettings            AppSettings?
+  employeePositions      EmployeePosition[]
+  employees              Employee[]
+  appointments           Appointment[]
+  employeeServices       EmployeeService[]
+  customers              Customer[]
   customerPaymentMethods CustomerPaymentMethod[]
-  customerFavorites     CustomerFavorite[]
-  shoppingLists         ShoppingList[]
-  locations             Location[]
-  cedis                 Cedi[]
-  cashRegisters         CashRegister[]
-  cashSessions          CashSession[]
-  categories            Category[]
-  unitsOfMeasure        UnitOfMeasure[]
-  products              Product[]
-  productVariants       ProductVariant[]
-  inventory             Inventory[]
-  inventoryMovements    InventoryMovement[]
-  variantPriceHistory   VariantPriceHistory[]
-  inventoryRevisions    InventoryRevision[]
-   sales                 Sale[]
-   saleReturns           SaleReturn[]
-   promotions            Promotion[]
-  coupons               Coupon[]
-  loyaltyTransactions   LoyaltyTransaction[]
-  orders                Order[]
-  tables                Table[]
-  roles                 Role[]
-  rolePermissions       RolePermission[]
-  userInvitations       UserInvitation[]
-  notifications         Notification[]
-  publications          Publication[]
-  deliveryPolicy        DeliveryPolicy?
-  creditPolicy          CreditPolicy?
-  customerCredits       CustomerCredit[]
-  creditTransactions    CreditTransaction[]
-  productCombos         ProductCombo[]
-  customerAddresses     CustomerAddress[]
-  pushSubscriptions     PushSubscription[]
-  dailySalesSummaries   DailySalesSummary[]
-  hourlySnapshots       HourlySalesSnapshot[]
-  productPairs          ProductPair[]
-  inventorySnapshots    InventorySnapshot[]
-  transfers             Transfer[]
-  employeeCommissions   EmployeeCommission[]
-  customerSegments      CustomerSegment[]
+  customerFavorites      CustomerFavorite[]
+  shoppingLists          ShoppingList[]
+  locations              Location[]
+  cedis                  Cedi[]
+  cashRegisters          CashRegister[]
+  cashSessions           CashSession[]
+  categories             Category[]
+  unitsOfMeasure         UnitOfMeasure[]
+  products               Product[]
+  productVariants        ProductVariant[]
+  inventory              Inventory[]
+  inventoryMovements     InventoryMovement[]
+  variantPriceHistory    VariantPriceHistory[]
+  inventoryRevisions     InventoryRevision[]
+  sales                  Sale[]
+  saleReturns            SaleReturn[]
+  promotions             Promotion[]
+  coupons                Coupon[]
+  loyaltyTransactions    LoyaltyTransaction[]
+  orders                 Order[]
+  tables                 Table[]
+  tableRooms             TableRoom[]
+  tableReservations      TableReservation[]
+  tableWaitlist          TableWaitlist[]
+  reservations           Reservation[]
+  roles                  Role[]
+  rolePermissions        RolePermission[]
+  userInvitations        UserInvitation[]
+  notifications          Notification[]
+  publications           Publication[]
+  deliveryPolicy         DeliveryPolicy?
+  creditPolicy           CreditPolicy?
+  customerCredits        CustomerCredit[]
+  creditTransactions     CreditTransaction[]
+  productCombos          ProductCombo[]
+  customerAddresses      CustomerAddress[]
+  pushSubscriptions      PushSubscription[]
+  dailySalesSummaries    DailySalesSummary[]
+  hourlySnapshots        HourlySalesSnapshot[]
+  productPairs           ProductPair[]
+  inventorySnapshots     InventorySnapshot[]
+  transfers              Transfer[]
+  employeeCommissions    EmployeeCommission[]
+  customerSegments       CustomerSegment[]
 
   @@map("organizations")
 }
@@ -322,15 +358,15 @@ model CompanyProfile {
 }
 
 model DeliveryPolicy {
-  id             String   @id @default(cuid())
-  organizationId String   @unique
+  id             String @id @default(cuid())
+  organizationId String @unique
 
   // Pickup settings
-  pickupEnabled       Boolean  @default(true)
-  pickupMinAmount     Decimal? @db.Decimal(12, 2)
-  pickupFee           Decimal? @default(0) @db.Decimal(12, 2)
-  pickupFeeEnabled    Boolean  @default(false)
-  pickupScheduleJson  String?  @db.Text
+  pickupEnabled      Boolean  @default(true)
+  pickupMinAmount    Decimal? @db.Decimal(12, 2)
+  pickupFee          Decimal? @default(0) @db.Decimal(12, 2)
+  pickupFeeEnabled   Boolean  @default(false)
+  pickupScheduleJson String?  @db.Text
 
   // Delivery settings
   deliveryEnabled       Boolean  @default(false)
@@ -350,15 +386,15 @@ model DeliveryPolicy {
 }
 
 model BranchDeliveryPolicy {
-  id             String   @id @default(cuid())
-  branchId       String   @unique
+  id       String @id @default(cuid())
+  branchId String @unique
 
   // Pickup settings
-  pickupEnabled       Boolean  @default(true)
-  pickupMinAmount     Decimal? @db.Decimal(12, 2)
-  pickupFee           Decimal? @default(0) @db.Decimal(12, 2)
-  pickupFeeEnabled    Boolean  @default(false)
-  pickupScheduleJson  String?  @db.Text
+  pickupEnabled      Boolean  @default(true)
+  pickupMinAmount    Decimal? @db.Decimal(12, 2)
+  pickupFee          Decimal? @default(0) @db.Decimal(12, 2)
+  pickupFeeEnabled   Boolean  @default(false)
+  pickupScheduleJson String?  @db.Text
 
   // Delivery settings
   deliveryEnabled       Boolean  @default(false)
@@ -382,15 +418,15 @@ model BranchDeliveryPolicy {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model CreditPolicy {
-  id                    String   @id @default(cuid())
-  organizationId        String   @unique
-  creditEnabled         Boolean  @default(false)
-  defaultLimit          Decimal? @db.Decimal(12, 2)
-  maxDaysToPay          Int      @default(30)
-  requireApproval       Boolean  @default(true)
-  allowPartialPayments  Boolean  @default(true)
-  interestRate          Decimal? @db.Decimal(5, 4)
-  notifyBeforeDays      Int      @default(3)
+  id                   String   @id @default(cuid())
+  organizationId       String   @unique
+  creditEnabled        Boolean  @default(false)
+  defaultLimit         Decimal? @db.Decimal(12, 2)
+  maxDaysToPay         Int      @default(30)
+  requireApproval      Boolean  @default(true)
+  allowPartialPayments Boolean  @default(true)
+  interestRate         Decimal? @db.Decimal(5, 4)
+  notifyBeforeDays     Int      @default(3)
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
@@ -407,27 +443,27 @@ model CustomerCredit {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  customer     Customer     @relation(fields: [customerId], references: [id])
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  customer     Customer            @relation(fields: [customerId], references: [id])
   transactions CreditTransaction[]
 
   @@map("customer_credits")
 }
 
 model CreditTransaction {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   creditId       String
   customerId     String
   organizationId String
   type           String
-  amount         Decimal  @db.Decimal(12, 2)
-  balanceAfter   Decimal  @db.Decimal(12, 2)
+  amount         Decimal   @db.Decimal(12, 2)
+  balanceAfter   Decimal   @db.Decimal(12, 2)
   description    String?
   referenceType  String?
   referenceId    String?
   dueDate        DateTime?
   paidAt         DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   credit       CustomerCredit @relation(fields: [creditId], references: [id])
   customer     Customer       @relation(fields: [customerId], references: [id])
@@ -475,36 +511,38 @@ model EmployeePosition {
 }
 
 model Employee {
-  id             String   @id @default(cuid())
-  organizationId String
-  userId         String
-  positionId     String?
-  locationId     String?
-  employeeCode   String?
-  fullName       String
-  phone          String?
-  imageUrl       String?
+  id               String   @id @default(cuid())
+  organizationId   String
+  userId           String
+  positionId       String?
+  locationId       String?
+  employeeCode     String?
+  fullName         String
+  phone            String?
+  imageUrl         String?
   // Nómina / salario
-  salaryType     String   @default("")            // "hourly" | "monthly" | "commission" | ""
-  salaryAmount   Decimal  @default(0) @db.Decimal(12, 2)
-  paymentFrequency String @default("biweekly")   // "weekly" | "biweekly" | "monthly"
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  salaryType       String   @default("") // "hourly" | "monthly" | "commission" | ""
+  salaryAmount     Decimal  @default(0) @db.Decimal(12, 2)
+  paymentFrequency String   @default("biweekly") // "weekly" | "biweekly" | "monthly"
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  organization        Organization           @relation(fields: [organizationId], references: [id])
-  user                User                   @relation(fields: [userId], references: [id])
-  position            EmployeePosition?      @relation(fields: [positionId], references: [id])
-  location            Location?              @relation(fields: [locationId], references: [id])
-  cashSessions        CashSession[]
-   sales               Sale[]
-   saleReturns         SaleReturn[]
-   inventoryMovements  InventoryMovement[]
-  inventoryRevisions  InventoryRevision[]
-  orderStatusHistory  OrderStatusHistory[]
-  orderPreparation    OrderPreparation[]
-  notifications       Notification[]
-  commissions         EmployeeCommission[]
+  organization       Organization         @relation(fields: [organizationId], references: [id])
+  user               User                 @relation(fields: [userId], references: [id])
+  position           EmployeePosition?    @relation(fields: [positionId], references: [id])
+  location           Location?            @relation(fields: [locationId], references: [id])
+  cashSessions       CashSession[]
+  sales              Sale[]
+  saleReturns        SaleReturn[]
+  inventoryMovements InventoryMovement[]
+  inventoryRevisions InventoryRevision[]
+  orderStatusHistory OrderStatusHistory[]
+  orderPreparation   OrderPreparation[]
+  notifications      Notification[]
+  commissions        EmployeeCommission[]
+  appointments       Appointment[]
+  services           EmployeeService[]
 
   @@unique([organizationId, employeeCode])
   @@unique([organizationId, userId])
@@ -528,19 +566,23 @@ model Customer {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization          Organization            @relation(fields: [organizationId], references: [id])
-  user                  User                    @relation(fields: [userId], references: [id])
-  paymentMethods        CustomerPaymentMethod[]
-  favorites             CustomerFavorite[]
-  shoppingLists         ShoppingList[]
-  sales                 Sale[]
-  coupons               Coupon[]
-  loyaltyTransactions   LoyaltyTransaction[]
-  orders                Order[]
-  addresses             CustomerAddress[]
-  creditAccount         CustomerCredit?
-  creditTransactions    CreditTransaction[]
-  segments              CustomerSegment[]
+  organization        Organization            @relation(fields: [organizationId], references: [id])
+  user                User                    @relation(fields: [userId], references: [id])
+  paymentMethods      CustomerPaymentMethod[]
+  favorites           CustomerFavorite[]
+  shoppingLists       ShoppingList[]
+  sales               Sale[]
+  appointments        Appointment[]
+  reservations        Reservation[]
+  tableReservations   TableReservation[]
+  tableWaitlist       TableWaitlist[]
+  coupons             Coupon[]
+  loyaltyTransactions LoyaltyTransaction[]
+  orders              Order[]
+  addresses           CustomerAddress[]
+  creditAccount       CustomerCredit?
+  creditTransactions  CreditTransaction[]
+  segments            CustomerSegment[]
 
   @@unique([organizationId, customerCode])
   @@unique([organizationId, userId])
@@ -551,18 +593,18 @@ model Customer {
 }
 
 model CustomerPaymentMethod {
-  id                     String   @id @default(cuid())
-  customerId             String
-  organizationId         String
-  alias                  String?
-  brand                  String?
-  last4                  String?
-  expMonth               Int?
-  expYear                Int?
-  isDefault              Boolean  @default(false)
-  color                  String?
-  stripePaymentMethodId  String?
-  createdAt              DateTime @default(now())
+  id                    String   @id @default(cuid())
+  customerId            String
+  organizationId        String
+  alias                 String?
+  brand                 String?
+  last4                 String?
+  expMonth              Int?
+  expYear               Int?
+  isDefault             Boolean  @default(false)
+  color                 String?
+  stripePaymentMethodId String?
+  createdAt             DateTime @default(now())
 
   customer     Customer     @relation(fields: [customerId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id])
@@ -594,8 +636,8 @@ model CustomerFavorite {
   variantId      String
   createdAt      DateTime @default(now())
 
-  organization Organization  @relation(fields: [organizationId], references: [id])
-  customer     Customer      @relation(fields: [customerId], references: [id])
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  customer     Customer       @relation(fields: [customerId], references: [id])
   variant      ProductVariant @relation(fields: [variantId], references: [id])
 
   @@unique([customerId, variantId])
@@ -611,8 +653,8 @@ model ShoppingList {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization         @relation(fields: [organizationId], references: [id])
-  customer     Customer             @relation(fields: [customerId], references: [id])
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  customer     Customer           @relation(fields: [customerId], references: [id])
   items        ShoppingListItem[]
 
   @@map("shopping_lists")
@@ -625,8 +667,8 @@ model ShoppingListItem {
   quantity  Decimal  @default(1) @db.Decimal(12, 3)
   createdAt DateTime @default(now())
 
-  list    ShoppingList    @relation(fields: [listId], references: [id])
-  variant ProductVariant  @relation(fields: [variantId], references: [id])
+  list    ShoppingList   @relation(fields: [listId], references: [id])
+  variant ProductVariant @relation(fields: [variantId], references: [id])
 
   @@map("shopping_list_items")
 }
@@ -636,58 +678,63 @@ model ShoppingListItem {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Location {
-  id             String   @id @default(cuid())
-  organizationId String
-  name           String
-  code           String?
-  address        String?
-  latitude       Decimal? @db.Decimal(10, 8)
-  longitude      Decimal? @db.Decimal(11, 8)
-  managerName    String?
-  phone          String?
-  email          String?
+  id                  String   @id @default(cuid())
+  organizationId      String
+  name                String
+  code                String?
+  address             String?
+  latitude            Decimal? @db.Decimal(10, 8)
+  longitude           Decimal? @db.Decimal(11, 8)
+  managerName         String?
+  phone               String?
+  email               String?
   openingHours        String?
-  openingScheduleJson String?   @db.Text
+  openingScheduleJson String?  @db.Text
   imageUrl            String?
   notes               String?
   timezone            String   @default("America/Mexico_City")
   allowsPickup        Boolean  @default(true)
   allowsDelivery      Boolean  @default(false)
-  saleSeq        BigInt   @default(0)
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
+  saleSeq             BigInt   @default(0)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
 
-  organization    Organization          @relation(fields: [organizationId], references: [id])
-  cashRegisters   CashRegister[]
-  cashSessions    CashSession[]
-  sales           Sale[]
-  orders          Order[]
-  employees       Employee[]
-  notifications   Notification[]
-  tables          Table[]
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  cashRegisters        CashRegister[]
+  cashSessions         CashSession[]
+  sales                Sale[]
+  orders               Order[]
+  employees            Employee[]
+  appointments         Appointment[]
+  reservations         Reservation[]
+  tableRooms           TableRoom[]
+  tableReservations    TableReservation[]
+  tableWaitlist        TableWaitlist[]
+  notifications        Notification[]
+  tables               Table[]
   branchDeliveryPolicy BranchDeliveryPolicy?
-  dailySalesSummaries   DailySalesSummary[]
-  hourlySnapshots       HourlySalesSnapshot[]
-  inventorySnapshots    InventorySnapshot[]
-  transfersFrom         Transfer[] @relation("TransferFrom")
-  transfersTo           Transfer[] @relation("TransferTo")
+  dailySalesSummaries  DailySalesSummary[]
+  hourlySnapshots      HourlySalesSnapshot[]
+  inventorySnapshots   InventorySnapshot[]
+  transfersFrom        Transfer[]            @relation("TransferFrom")
+  transfersTo          Transfer[]            @relation("TransferTo")
 
   @@map("locations")
 }
 
 model Cedi {
-  id             String   @id @default(cuid())
-  organizationId String
-  name           String
-  code           String?
-  address        String?
-  latitude       Decimal? @db.Decimal(10, 8)
-  longitude      Decimal? @db.Decimal(11, 8)
-  managerName    String?
-  phone          String?
-  email          String?
+  id                  String   @id @default(cuid())
+  organizationId      String
+  name                String
+  code                String?
+  address             String?
+  latitude            Decimal? @db.Decimal(10, 8)
+  longitude           Decimal? @db.Decimal(11, 8)
+  managerName         String?
+  phone               String?
+  email               String?
   openingHours        String?
-  openingScheduleJson String?   @db.Text
+  openingScheduleJson String?  @db.Text
   imageUrl            String?
   notes               String?
   timezone            String   @default("America/Mexico_City")
@@ -708,8 +755,8 @@ model CashRegister {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
 
-  location     Location       @relation(fields: [locationId], references: [id])
-  organization Organization   @relation(fields: [organizationId], references: [id])
+  location     Location      @relation(fields: [locationId], references: [id])
+  organization Organization  @relation(fields: [organizationId], references: [id])
   cashSessions CashSession[]
   sales        Sale[]
 
@@ -738,10 +785,10 @@ model CashSession {
   employee     Employee?    @relation(fields: [employeeId], references: [id])
   user         User?        @relation("CashSessionUser", fields: [userId], references: [id])
   openedByUser User?        @relation("CashSessionOpenedBy", fields: [openedBy], references: [id])
-   sales        Sale[]
-   saleReturns  SaleReturn[]
+  sales        Sale[]
+  saleReturns  SaleReturn[]
 
-   @@map("cash_sessions")
+  @@map("cash_sessions")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -776,13 +823,13 @@ model UnitOfMeasure {
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
 
-  organization      Organization?       @relation(fields: [organizationId], references: [id])
-  bulkProducts      Product[]           @relation("BulkUnit")
-  splitProducts     Product[]           @relation("SplitUnit")
-  inventory         Inventory[]
+  organization       Organization?       @relation(fields: [organizationId], references: [id])
+  bulkProducts       Product[]           @relation("BulkUnit")
+  splitProducts      Product[]           @relation("SplitUnit")
+  inventory          Inventory[]
   inventoryMovements InventoryMovement[]
-  saleItems         SaleItem[]
-  orderItems        OrderItem[]
+  saleItems          SaleItem[]
+  orderItems         OrderItem[]
 
   @@unique([organizationId, abbreviation])
   @@map("units_of_measure")
@@ -794,7 +841,8 @@ model Product {
   categoryId        String?
   name              String
   description       String?
-  imageUrl          String?
+  // TEXT: admite data-URIs SVG de los placeholders de imagen de la demo.
+  imageUrl          String?     @db.Text
   taxRate           Decimal     @default(0) @db.Decimal(5, 4)
   isActive          Boolean     @default(true)
   trackInventory    Boolean     @default(true)
@@ -810,22 +858,22 @@ model Product {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  organization      Organization       @relation(fields: [organizationId], references: [id])
-  category          Category?          @relation(fields: [categoryId], references: [id])
-  bulkUnit          UnitOfMeasure?     @relation("BulkUnit", fields: [bulkUnitId], references: [id])
-  splitUnit         UnitOfMeasure?     @relation("SplitUnit", fields: [splitUnitId], references: [id])
-  options           ProductOption[]
-  variants          ProductVariant[]
-  inventory         Inventory[]
-  inventoryMovements InventoryMovement[]
+  organization           Organization            @relation(fields: [organizationId], references: [id])
+  category               Category?               @relation(fields: [categoryId], references: [id])
+  bulkUnit               UnitOfMeasure?          @relation("BulkUnit", fields: [bulkUnitId], references: [id])
+  splitUnit              UnitOfMeasure?          @relation("SplitUnit", fields: [splitUnitId], references: [id])
+  options                ProductOption[]
+  variants               ProductVariant[]
+  inventory              Inventory[]
+  inventoryMovements     InventoryMovement[]
   inventoryRevisionItems InventoryRevisionItem[]
-  saleItems         SaleItem[]
-  orderItems        OrderItem[]
-  comboItems        ComboItem[]
-  pairsA            ProductPair[] @relation("PairA")
-  pairsB            ProductPair[] @relation("PairB")
-  inventorySnapshots InventorySnapshot[]
-  transferItems     TransferItem[]
+  saleItems              SaleItem[]
+  orderItems             OrderItem[]
+  comboItems             ComboItem[]
+  pairsA                 ProductPair[]           @relation("PairA")
+  pairsB                 ProductPair[]           @relation("PairB")
+  inventorySnapshots     InventorySnapshot[]
+  transferItems          TransferItem[]
 
   @@map("products")
 }
@@ -839,23 +887,23 @@ model ProductOption {
   minSelect Int     @default(1)
   maxSelect Int     @default(1)
 
-  product Product               @relation(fields: [productId], references: [id])
+  product Product              @relation(fields: [productId], references: [id])
   values  ProductOptionValue[]
 
   @@map("product_options")
 }
 
 model ProductOptionValue {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   optionId   String
   value      String
-  extraPrice Decimal  @default(0) @db.Decimal(12, 2)
+  extraPrice Decimal @default(0) @db.Decimal(12, 2)
   imageUrl   String?
-  isActive   Boolean  @default(true)
-  position   Int      @default(0)
+  isActive   Boolean @default(true)
+  position   Int     @default(0)
 
-  option    ProductOption           @relation(fields: [optionId], references: [id])
-  variants  VariantOptionValue[]
+  option   ProductOption        @relation(fields: [optionId], references: [id])
+  variants VariantOptionValue[]
 
   @@map("product_option_values")
 }
@@ -873,26 +921,29 @@ model ProductVariant {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
 
-  product                  Product                  @relation(fields: [productId], references: [id])
-  organization             Organization             @relation(fields: [organizationId], references: [id])
-  optionValues             VariantOptionValue[]
-  inventory                Inventory[]
-  inventoryMovements       InventoryMovement[]
-  variantPriceHistory      VariantPriceHistory[]
-  saleItems                SaleItem[]
-  orderItems               OrderItem[]
-  customerFavorites        CustomerFavorite[]
-  shoppingListItems        ShoppingListItem[]
-  inventoryRevisionItems   InventoryRevisionItem[]
-  comboItems               ComboItem[]
+  product                Product                 @relation(fields: [productId], references: [id])
+  organization           Organization            @relation(fields: [organizationId], references: [id])
+  optionValues           VariantOptionValue[]
+  inventory              Inventory[]
+  inventoryMovements     InventoryMovement[]
+  variantPriceHistory    VariantPriceHistory[]
+  saleItems              SaleItem[]
+  orderItems             OrderItem[]
+  customerFavorites      CustomerFavorite[]
+  shoppingListItems      ShoppingListItem[]
+  inventoryRevisionItems InventoryRevisionItem[]
+  comboItems             ComboItem[]
+  appointments           Appointment[]
+  employeeServices       EmployeeService[]
+  reservationItems       ReservationItem[]
 
   @@index([barcode])
   @@map("product_variants")
 }
 
 model VariantOptionValue {
-  variantId      String
-  optionValueId  String
+  variantId     String
+  optionValueId String
 
   variant     ProductVariant     @relation(fields: [variantId], references: [id])
   optionValue ProductOptionValue @relation(fields: [optionValueId], references: [id])
@@ -916,20 +967,20 @@ model ProductCombo {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
   items        ComboItem[]
 
   @@map("product_combos")
 }
 
 model ComboItem {
-  id        String  @id @default(cuid())
-  comboId   String
-  productId String
-  variantId String?
-  quantity  Decimal @default(1) @db.Decimal(12, 3)
+  id         String  @id @default(cuid())
+  comboId    String
+  productId  String
+  variantId  String?
+  quantity   Decimal @default(1) @db.Decimal(12, 3)
   extraPrice Decimal @default(0) @db.Decimal(12, 2)
-  position  Int     @default(0)
+  position   Int     @default(0)
 
   combo   ProductCombo    @relation(fields: [comboId], references: [id])
   product Product         @relation(fields: [productId], references: [id])
@@ -1003,9 +1054,9 @@ model VariantPriceHistory {
   changedBy      String?
   createdAt      DateTime @default(now())
 
-  organization Organization     @relation(fields: [organizationId], references: [id])
-  variant      ProductVariant   @relation(fields: [variantId], references: [id])
-  changedByUser User?           @relation(fields: [changedBy], references: [id])
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  variant       ProductVariant @relation(fields: [variantId], references: [id])
+  changedByUser User?          @relation(fields: [changedBy], references: [id])
 
   @@map("variant_price_history")
 }
@@ -1024,31 +1075,31 @@ model InventoryRevision {
   completedAt    DateTime?
   createdAt      DateTime       @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  performedByUser User?     @relation("InventoryRevisionPerformedBy", fields: [performedBy], references: [id])
-  employee      Employee?   @relation(fields: [employeeId], references: [id])
-  items         InventoryRevisionItem[]
+  organization    Organization            @relation(fields: [organizationId], references: [id])
+  performedByUser User?                   @relation("InventoryRevisionPerformedBy", fields: [performedBy], references: [id])
+  employee        Employee?               @relation(fields: [employeeId], references: [id])
+  items           InventoryRevisionItem[]
 
   @@map("inventory_revisions")
 }
 
 model InventoryRevisionItem {
-  id                 String   @id @default(cuid())
-  revisionId         String
-  productId          String?
-  variantId          String?
-  expectedQuantity   Decimal? @db.Decimal(12, 3)
-  countedQuantity    Decimal? @db.Decimal(12, 3)
-  difference         Decimal? @db.Decimal(12, 3)
-  notes              String?
-  scanned            Boolean  @default(false)
-  countedBy          String?
-  createdAt          DateTime @default(now())
+  id               String   @id @default(cuid())
+  revisionId       String
+  productId        String?
+  variantId        String?
+  expectedQuantity Decimal? @db.Decimal(12, 3)
+  countedQuantity  Decimal? @db.Decimal(12, 3)
+  difference       Decimal? @db.Decimal(12, 3)
+  notes            String?
+  scanned          Boolean  @default(false)
+  countedBy        String?
+  createdAt        DateTime @default(now())
 
-  revision       InventoryRevision @relation(fields: [revisionId], references: [id])
-  product        Product?          @relation(fields: [productId], references: [id])
-  variant        ProductVariant?   @relation(fields: [variantId], references: [id])
-  countedByUser  User?             @relation("InventoryRevisionItemCountedBy", fields: [countedBy], references: [id])
+  revision      InventoryRevision @relation(fields: [revisionId], references: [id])
+  product       Product?          @relation(fields: [productId], references: [id])
+  variant       ProductVariant?   @relation(fields: [variantId], references: [id])
+  countedByUser User?             @relation("InventoryRevisionItemCountedBy", fields: [countedBy], references: [id])
 
   @@map("inventory_revision_items")
 }
@@ -1080,50 +1131,52 @@ model Sale {
   notes              String?
   createdAt          DateTime   @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  location     Location     @relation(fields: [locationId], references: [id])
-  cashSession  CashSession? @relation(fields: [cashSessionId], references: [id])
-  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id])
-  cashier      User?        @relation("SaleCashier", fields: [cashierId], references: [id])
-  employee     Employee?    @relation(fields: [employeeId], references: [id])
-  customer     Customer?    @relation(fields: [customerId], references: [id])
-  items        SaleItem[]
-  payments     SalePayment[]
-  discounts    SaleDiscount[]
-  coupons      Coupon[]
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  location            Location             @relation(fields: [locationId], references: [id])
+  cashSession         CashSession?         @relation(fields: [cashSessionId], references: [id])
+  cashRegister        CashRegister?        @relation(fields: [cashRegisterId], references: [id])
+  cashier             User?                @relation("SaleCashier", fields: [cashierId], references: [id])
+  employee            Employee?            @relation(fields: [employeeId], references: [id])
+  customer            Customer?            @relation(fields: [customerId], references: [id])
+  items               SaleItem[]
+  payments            SalePayment[]
+  discounts           SaleDiscount[]
+  coupons             Coupon[]
   loyaltyTransactions LoyaltyTransaction[]
-  orders       Order[]
-  returns      SaleReturn[]
-  commissions  EmployeeCommission[]
+  orders              Order[]
+  appointments        Appointment[]
+  reservations        Reservation[]
+  returns             SaleReturn[]
+  commissions         EmployeeCommission[]
 
   @@map("sales")
 }
 
 model SaleItem {
-  id                   String      @id @default(cuid())
-  saleId               String
-  productId            String?
-  variantId            String?
-  productName          String
-  variantName          String?
-  productType          ProductType
-  quantity             Decimal     @db.Decimal(12, 3)
-  unitId               String?
-  unitPrice            Decimal     @db.Decimal(12, 2)
-  unitCost             Decimal?    @db.Decimal(12, 2)
-  totalPrice           Decimal?    @db.Decimal(12, 2)
-  discount             Decimal     @default(0) @db.Decimal(12, 2)
-  taxRate              Decimal     @default(0) @db.Decimal(5, 4)
-  lineTotal            Decimal?    @db.Decimal(12, 2)
-  bulkQuantityDisplay  String?
-  notes                String?
-  selectedOptions      Json?
-  extraPrice           Decimal  @default(0) @db.Decimal(12, 2)
+  id                  String      @id @default(cuid())
+  saleId              String
+  productId           String?
+  variantId           String?
+  productName         String
+  variantName         String?
+  productType         ProductType
+  quantity            Decimal     @db.Decimal(12, 3)
+  unitId              String?
+  unitPrice           Decimal     @db.Decimal(12, 2)
+  unitCost            Decimal?    @db.Decimal(12, 2)
+  totalPrice          Decimal?    @db.Decimal(12, 2)
+  discount            Decimal     @default(0) @db.Decimal(12, 2)
+  taxRate             Decimal     @default(0) @db.Decimal(5, 4)
+  lineTotal           Decimal?    @db.Decimal(12, 2)
+  bulkQuantityDisplay String?
+  notes               String?
+  selectedOptions     Json?
+  extraPrice          Decimal     @default(0) @db.Decimal(12, 2)
 
-  sale     Sale           @relation(fields: [saleId], references: [id])
-  product  Product?       @relation(fields: [productId], references: [id])
-  variant  ProductVariant? @relation(fields: [variantId], references: [id])
-  unit     UnitOfMeasure? @relation(fields: [unitId], references: [id])
+  sale    Sale            @relation(fields: [saleId], references: [id])
+  product Product?        @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+  unit    UnitOfMeasure?  @relation(fields: [unitId], references: [id])
 
   @@map("sale_items")
 }
@@ -1142,15 +1195,15 @@ model SalePayment {
 }
 
 model SaleDiscount {
-  id           String   @id @default(cuid())
-  saleId       String
-  promotionId  String?
-  label        String
-  amount       Decimal  @db.Decimal(12, 2)
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  saleId      String
+  promotionId String?
+  label       String
+  amount      Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
 
-  sale      Sale        @relation(fields: [saleId], references: [id])
-  promotion Promotion?  @relation(fields: [promotionId], references: [id])
+  sale      Sale       @relation(fields: [saleId], references: [id])
+  promotion Promotion? @relation(fields: [promotionId], references: [id])
 
   @@map("sale_discounts")
 }
@@ -1160,39 +1213,39 @@ model SaleDiscount {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Promotion {
-  id                   String       @id @default(cuid())
-  organizationId       String
-  name                 String
-  description          String?
-  descriptionFinal     String?
-  imageUrl             String?
-  benefit              PromoBenefit
+  id                 String       @id @default(cuid())
+  organizationId     String
+  name               String
+  description        String?
+  descriptionFinal   String?
+  imageUrl           String?
+  benefit            PromoBenefit
   scope              PromoScope   @default(order)
-  businessMode        String?      // null=todos, "retail", "food_service", etc.
-  value                Decimal      @default(0) @db.Decimal(12, 2)
-  buyQuantity          Int          @default(0)
-  getQuantity          Int          @default(0)
-  minAmount            Decimal      @default(0) @db.Decimal(12, 2)
-  minQuantity          Decimal      @default(0) @db.Decimal(12, 3)
-  startsAt             DateTime?
-  endsAt               DateTime?
-  weekdays             String?
-  startTime            String?
-  endTime              String?
-  couponCode           String?
-  requiresCustomer     Boolean      @default(false)
-  priority             Int          @default(100)
-  exclusive            Boolean      @default(false)
-  maxUses              Int?
-  maxUsesPerCustomer   Int?
-  usesCount            Int          @default(0)
-  isActive             Boolean      @default(true)
-  createdBy            String?
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
+  businessMode       String? // null=todos, "retail", "food_service", etc.
+  value              Decimal      @default(0) @db.Decimal(12, 2)
+  buyQuantity        Int          @default(0)
+  getQuantity        Int          @default(0)
+  minAmount          Decimal      @default(0) @db.Decimal(12, 2)
+  minQuantity        Decimal      @default(0) @db.Decimal(12, 3)
+  startsAt           DateTime?
+  endsAt             DateTime?
+  weekdays           String?
+  startTime          String?
+  endTime            String?
+  couponCode         String?
+  requiresCustomer   Boolean      @default(false)
+  priority           Int          @default(100)
+  exclusive          Boolean      @default(false)
+  maxUses            Int?
+  maxUsesPerCustomer Int?
+  usesCount          Int          @default(0)
+  isActive           Boolean      @default(true)
+  createdBy          String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
-  organization Organization      @relation(fields: [organizationId], references: [id])
-  createdByUser User?            @relation("PromotionCreatedBy", fields: [createdBy], references: [id])
+  organization  Organization      @relation(fields: [organizationId], references: [id])
+  createdByUser User?             @relation("PromotionCreatedBy", fields: [createdBy], references: [id])
   targets       PromotionTarget[]
   coupons       Coupon[]
   saleDiscounts SaleDiscount[]
@@ -1261,46 +1314,46 @@ model LoyaltyTransaction {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Order {
-  id             String         @id @default(cuid())
-  organizationId String
-  locationId     String?
-  customerId     String?
-  tableId        String?        // Mesa asociada (food_service)
-  orderNumber    BigInt         @unique @default(autoincrement())
-  status         OrderStatus    @default(pending)
-  deliveryMethod DeliveryMethod
-  subtotal       Decimal        @default(0) @db.Decimal(12, 2)
-  discount       Decimal        @default(0) @db.Decimal(12, 2)
-  total          Decimal        @default(0) @db.Decimal(12, 2)
-  notes          String?
-  saleId         String?
+  id               String         @id @default(cuid())
+  organizationId   String
+  locationId       String?
+  customerId       String?
+  tableId          String? // Mesa asociada (food_service)
+  orderNumber      BigInt         @unique @default(autoincrement())
+  status           OrderStatus    @default(pending)
+  deliveryMethod   DeliveryMethod
+  subtotal         Decimal        @default(0) @db.Decimal(12, 2)
+  discount         Decimal        @default(0) @db.Decimal(12, 2)
+  total            Decimal        @default(0) @db.Decimal(12, 2)
+  notes            String?
+  saleId           String?
   // FASE 13.6 — entrega a domicilio + método de pago del pedido
-  address         String?
-  latitude        Decimal?       @db.Decimal(10, 8)
-  longitude       Decimal?       @db.Decimal(11, 8)
-  paymentMethod   PaymentMethod?
+  address          String?
+  latitude         Decimal?       @db.Decimal(10, 8)
+  longitude        Decimal?       @db.Decimal(11, 8)
+  paymentMethod    PaymentMethod?
   paymentReference String?
-  deliveryFee     Decimal?       @default(0) @db.Decimal(12, 2)
-  tip             Decimal?       @default(0) @db.Decimal(12, 2)
+  deliveryFee      Decimal?       @default(0) @db.Decimal(12, 2)
+  tip              Decimal?       @default(0) @db.Decimal(12, 2)
   // FASE — confirmación de entrega domicilio (PIN + QR)
-  deliveryPin     String?        @db.VarChar(6)
-  deliveryQrToken String?        @unique
+  deliveryPin      String?        @db.VarChar(6)
+  deliveryQrToken  String?        @unique
   // FASE — cobro en tienda (cuando el cliente paga al recoger/recibir)
-  paidAt          DateTime?
+  paidAt           DateTime?
   // FASE — redención de puntos en el portal
-  pointsRedeemed  Decimal?       @default(0) @db.Decimal(12, 2)
-  pointsValue     Decimal?       @default(0) @db.Decimal(12, 2)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  pointsRedeemed   Decimal?       @default(0) @db.Decimal(12, 2)
+  pointsValue      Decimal?       @default(0) @db.Decimal(12, 2)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
-  organization Organization      @relation(fields: [organizationId], references: [id])
-  location     Location?         @relation(fields: [locationId], references: [id])
-  customer     Customer?         @relation(fields: [customerId], references: [id])
-  table        Table?            @relation(fields: [tableId], references: [id])
-  sale         Sale?             @relation(fields: [saleId], references: [id])
-  items        OrderItem[]
+  organization  Organization         @relation(fields: [organizationId], references: [id])
+  location      Location?            @relation(fields: [locationId], references: [id])
+  customer      Customer?            @relation(fields: [customerId], references: [id])
+  table         Table?               @relation(fields: [tableId], references: [id])
+  sale          Sale?                @relation(fields: [saleId], references: [id])
+  items         OrderItem[]
   statusHistory OrderStatusHistory[]
-  preparation  OrderPreparation?
+  preparation   OrderPreparation?
   tableSessions TableSession[]
 
   @@map("orders")
@@ -1351,18 +1404,18 @@ model OrderStatusHistory {
 }
 
 model OrderPreparation {
-  id             String   @id @default(cuid())
-  orderId        String   @unique
+  id             String    @id @default(cuid())
+  orderId        String    @unique
   employeeId     String?
   startedAt      DateTime?
   completedAt    DateTime?
   elapsedSeconds Int?
   generalNotes   String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
-  order   Order                   @relation(fields: [orderId], references: [id])
+  order    Order                  @relation(fields: [orderId], references: [id])
   employee Employee?              @relation(fields: [employeeId], references: [id])
-  items   OrderPreparationItem[]
+  items    OrderPreparationItem[]
 
   @@map("order_preparation")
 }
@@ -1390,38 +1443,245 @@ model Table {
   id             String      @id @default(cuid())
   organizationId String
   locationId     String?
+  roomId         String?
   number         Int
   name           String?
   capacity       Int         @default(4)
+  shape          TableShape  @default(round)
+  width          Int? // Tamaño en el plano de la sala (px del lienzo)
+  height         Int?
   status         TableStatus @default(free)
   qrToken        String?     @unique
-  posX           Int?        // Posición en el mapa (grid)
-  posY           Int?        // Posición en el mapa (grid)
+  posX           Int? // Posición en el mapa (grid)
+  posY           Int? // Posición en el mapa (grid)
   isActive       Boolean     @default(true)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
-  organization Organization        @relation(fields: [organizationId], references: [id])
-  location     Location?           @relation(fields: [locationId], references: [id])
-  sessions     TableSession[]
-  orders       Order[]
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  location          Location?          @relation(fields: [locationId], references: [id])
+  room              TableRoom?         @relation(fields: [roomId], references: [id])
+  sessions          TableSession[]
+  orders            Order[]
+  reservations      TableReservation[]
+  waitlistAvailable TableWaitlist[]    @relation("waitlistAvailableTable")
+  waitlistSeated    TableWaitlist[]    @relation("waitlistSeatedTable")
 
   @@unique([organizationId, number])
   @@map("tables")
 }
 
 model TableSession {
-  id         String    @id @default(cuid())
-  tableId    String
-  orderId    String?
-  startedAt  DateTime  @default(now())
-  endedAt    DateTime?
-  notes      String?
+  id        String    @id @default(cuid())
+  tableId   String
+  orderId   String?
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  notes     String?
 
-  table  Table   @relation(fields: [tableId], references: [id])
-  order  Order?  @relation(fields: [orderId], references: [id])
+  table Table  @relation(fields: [tableId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id])
 
   @@map("table_sessions")
+}
+
+// Salas del local: el plano visual se organiza por sala (comedor, terraza,
+// bar…). Cada mesa pertenece a una sala y lleva su forma, tamaño y posición.
+model TableRoom {
+  id             String   @id @default(cuid())
+  organizationId String
+  locationId     String?
+  name           String
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  location     Location?          @relation(fields: [locationId], references: [id])
+  tables       Table[]
+  reservations TableReservation[]
+
+  @@unique([organizationId, name])
+  @@map("table_rooms")
+}
+
+// Lista de espera de mesas: cuando no hay disponibilidad, el cliente se anota
+// y recibe aviso en vivo (notificación + sonido) en cuanto se libera una mesa
+// que le quepa. El barrido corre al liberarse una mesa (broadcastTableUpdate).
+model TableWaitlist {
+  id               String              @id @default(cuid())
+  organizationId   String
+  locationId       String?
+  customerId       String?
+  guests           Int                 @default(2)
+  status           TableWaitlistStatus @default(waiting)
+  availableAt      DateTime?
+  availableTableId String?
+  seatedTableId    String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  location       Location?    @relation(fields: [locationId], references: [id])
+  customer       Customer?    @relation(fields: [customerId], references: [id])
+  availableTable Table?       @relation("waitlistAvailableTable", fields: [availableTableId], references: [id])
+  seatedTable    Table?       @relation("waitlistSeatedTable", fields: [seatedTableId], references: [id])
+
+  @@index([organizationId, status])
+  @@map("table_waitlist")
+}
+
+// Reservación de mesa (restaurante/híbrido): el cliente la pide desde el
+// portal (fecha/hora/comensales, con o sin mesa concreta) y el anfitrión la
+// confirma/sienta desde el mapa de mesas.
+model TableReservation {
+  id             String                 @id @default(cuid())
+  organizationId String
+  locationId     String?
+  roomId         String?
+  tableId        String?
+  customerId     String?
+  guests         Int                    @default(2)
+  name           String?
+  phone          String?
+  startsAt       DateTime
+  endsAt         DateTime
+  status         TableReservationStatus @default(pending)
+  notes          String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  location     Location?    @relation(fields: [locationId], references: [id])
+  room         TableRoom?   @relation(fields: [roomId], references: [id])
+  table        Table?       @relation(fields: [tableId], references: [id])
+  customer     Customer?    @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId, startsAt])
+  @@index([organizationId, status])
+  @@map("table_reservations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AGENDA / CITAS (services / hybrid)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AppointmentStatus {
+  pending // Solicitada, sin confirmar
+  confirmed // Confirmada por el negocio
+  completed // Atendida y cobrada (checkout ligado a una venta)
+  cancelled // Cancelada por el cliente o el negocio
+  no_show // El cliente no asistió
+}
+
+model Appointment {
+  id             String            @id @default(cuid())
+  organizationId String
+  locationId     String?
+  customerId     String?
+  // Personal asignado (empleado que presta el servicio)
+  employeeId     String
+  // Servicio a realizar (variante del producto con precio)
+  variantId      String
+  status         AppointmentStatus @default(pending)
+  startsAt       DateTime
+  endsAt         DateTime
+  durationMin    Int               @default(30)
+  notes          String?
+  // Venta generada por el checkout (cobro de la cita)
+  saleId         String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  location     Location?      @relation(fields: [locationId], references: [id])
+  customer     Customer?      @relation(fields: [customerId], references: [id])
+  employee     Employee       @relation(fields: [employeeId], references: [id])
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+  sale         Sale?          @relation(fields: [saleId], references: [id])
+
+  @@index([organizationId, startsAt])
+  @@index([employeeId, startsAt])
+  @@index([status])
+  @@map("appointments")
+}
+
+// Asignación de personal: qué servicios ofrece cada empleado y en cuánto
+// tiempo. Es la base de la agenda: solo se puede agendar un servicio a un
+// empleado que lo tenga asignado, y la duración define el bloque del calendario.
+model EmployeeService {
+  id             String   @id @default(cuid())
+  organizationId String
+  employeeId     String
+  variantId      String
+  durationMin    Int      @default(30)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  employee     Employee       @relation(fields: [employeeId], references: [id])
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@unique([employeeId, variantId])
+  @@index([organizationId])
+  @@map("employee_services")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RESERVACIONES (rental / hybrid)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum ReservationStatus {
+  pending // Solicitada, sin confirmar
+  confirmed // Confirmada (unidades apartadas)
+  completed // Cobrada y cerrada (checkout ligado a una venta)
+  cancelled // Cancelada por el cliente o el negocio
+}
+
+model Reservation {
+  id             String            @id @default(cuid())
+  organizationId String
+  locationId     String?
+  customerId     String?
+  status         ReservationStatus @default(pending)
+  // Período de la renta: [startsAt, endsAt) — la disponibilidad se calcula
+  // por día sobre las unidades apartadas en el rango.
+  startsAt       DateTime
+  endsAt         DateTime
+  notes          String?
+  // Venta generada por el checkout (cobro de la reservación)
+  saleId         String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  location     Location?         @relation(fields: [locationId], references: [id])
+  customer     Customer?         @relation(fields: [customerId], references: [id])
+  sale         Sale?             @relation(fields: [saleId], references: [id])
+  items        ReservationItem[]
+
+  @@index([organizationId, startsAt])
+  @@index([organizationId, status])
+  @@map("reservations")
+}
+
+// Artículos rentados en una reservación: variante + unidades + precio de renta
+// (snapshot al momento de reservar) y su línea.
+model ReservationItem {
+  id            String   @id @default(cuid())
+  reservationId String
+  variantId     String
+  quantity      Decimal  @default(1) @db.Decimal(12, 3)
+  unitPrice     Decimal  @default(0) @db.Decimal(12, 2)
+  lineTotal     Decimal? @db.Decimal(12, 2)
+  createdAt     DateTime @default(now())
+
+  reservation Reservation    @relation(fields: [reservationId], references: [id])
+  variant     ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([reservationId])
+  @@map("reservation_items")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1440,15 +1700,19 @@ model Permission {
 }
 
 model Role {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   organizationId String?
+  // Solo roles de sistema por modo de negocio (organizationId = null):
+  // null = compartido a todas las organizaciones; el modo concreto para
+  // roles específicos (mesero/cocina en food_service, agente en services…).
+  businessMode   BusinessMode?
   name           String
   description    String?
-  isSystem       Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isSystem       Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  organization Organization?  @relation(fields: [organizationId], references: [id])
+  organization Organization?    @relation(fields: [organizationId], references: [id])
   permissions  RolePermission[]
   memberships  Membership[]
 
@@ -1456,35 +1720,35 @@ model Role {
 }
 
 model RolePermission {
-  id             String  @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String?
   roleId         String
   permissionKey  String
-  allowed        Boolean @default(true)
+  allowed        Boolean  @default(true)
   createdAt      DateTime @default(now())
 
   organization Organization? @relation(fields: [organizationId], references: [id])
-  role         Role         @relation(fields: [roleId], references: [id])
-  permission   Permission   @relation(fields: [permissionKey], references: [key])
+  role         Role          @relation(fields: [roleId], references: [id])
+  permission   Permission    @relation(fields: [permissionKey], references: [key])
 
   @@unique([organizationId, roleId, permissionKey])
   @@map("role_permissions")
 }
 
 model UserInvitation {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   email          String
   role           OrgRole   @default(cashier)
   locationId     String?
-  status         String   @default("pending")
+  status         String    @default("pending")
   invitedBy      String?
   acceptedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  invitedByUser User?       @relation("UserInvitationInvitedBy", fields: [invitedBy], references: [id])
+  organization  Organization @relation(fields: [organizationId], references: [id])
+  invitedByUser User?        @relation("UserInvitationInvitedBy", fields: [invitedBy], references: [id])
 
   @@map("user_invitations")
 }
@@ -1512,7 +1776,7 @@ model Menu {
 }
 
 model Notification {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   locationId     String?
   userId         String?
@@ -1520,11 +1784,11 @@ model Notification {
   kind           String
   title          String
   body           String?
-  severity       String   @default("info")
+  severity       String    @default("info")
   link           String?
   metadata       Json?
   readAt         DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id])
   location     Location?    @relation(fields: [locationId], references: [id])
@@ -1542,7 +1806,7 @@ model Publication {
   imageUrl       String?
   type           PublicationType
   isActive       Boolean         @default(true)
-  businessMode   String?         // null=todos, "retail", "food_service", etc.
+  businessMode   String? // null=todos, "retail", "food_service", etc.
   publishedAt    DateTime?
   startsAt       DateTime?
   endsAt         DateTime?
@@ -1578,11 +1842,11 @@ model SaleReturn {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  organization Organization    @relation(fields: [organizationId], references: [id])
-  sale         Sale            @relation(fields: [saleId], references: [id])
-  cashSession  CashSession?    @relation(fields: [cashSessionId], references: [id])
-  employee     Employee?       @relation(fields: [employeeId], references: [id])
-  user         User?           @relation(fields: [userId], references: [id])
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  sale         Sale             @relation(fields: [saleId], references: [id])
+  cashSession  CashSession?     @relation(fields: [cashSessionId], references: [id])
+  employee     Employee?        @relation(fields: [employeeId], references: [id])
+  user         User?            @relation(fields: [userId], references: [id])
   items        SaleReturnItem[]
 
   @@index([organizationId])
@@ -1591,25 +1855,24 @@ model SaleReturn {
 }
 
 model SaleReturnItem {
-  id            String  @id @default(cuid())
-  returnId      String
-  saleItemId    String
-  productId     String?
-  variantId     String?
-  productName   String
-  variantName   String?
-  quantity      Decimal @db.Decimal(12, 3)
-  unitPrice     Decimal @db.Decimal(12, 2)
-  lineTotal     Decimal @db.Decimal(12, 2)
-  reason        String?
-  restockable   Boolean @default(true)
+  id          String  @id @default(cuid())
+  returnId    String
+  saleItemId  String
+  productId   String?
+  variantId   String?
+  productName String
+  variantName String?
+  quantity    Decimal @db.Decimal(12, 3)
+  unitPrice   Decimal @db.Decimal(12, 2)
+  lineTotal   Decimal @db.Decimal(12, 2)
+  reason      String?
+  restockable Boolean @default(true)
 
   return SaleReturn @relation(fields: [returnId], references: [id])
 
   @@index([returnId])
   @@map("sale_return_items")
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WEB PUSH NOTIFICATIONS
@@ -1643,36 +1906,36 @@ model DailySalesSummary {
   locationId     String
   date           DateTime @db.Date
 
-  salesCount       Int     @default(0)
-  grossSales       Decimal @default(0) @db.Decimal(14, 2)
-  returnsTotal     Decimal @default(0) @db.Decimal(14, 2)
-  netSales         Decimal @default(0) @db.Decimal(14, 2)
-  discountTotal    Decimal @default(0) @db.Decimal(14, 2)
-  taxTotal         Decimal @default(0) @db.Decimal(14, 2)
-  tipTotal         Decimal @default(0) @db.Decimal(14, 2)
+  salesCount    Int     @default(0)
+  grossSales    Decimal @default(0) @db.Decimal(14, 2)
+  returnsTotal  Decimal @default(0) @db.Decimal(14, 2)
+  netSales      Decimal @default(0) @db.Decimal(14, 2)
+  discountTotal Decimal @default(0) @db.Decimal(14, 2)
+  taxTotal      Decimal @default(0) @db.Decimal(14, 2)
+  tipTotal      Decimal @default(0) @db.Decimal(14, 2)
 
-  posSales         Decimal @default(0) @db.Decimal(14, 2)
-  portalSales      Decimal @default(0) @db.Decimal(14, 2)
-  pickupSales      Decimal @default(0) @db.Decimal(14, 2)
-  deliverySales    Decimal @default(0) @db.Decimal(14, 2)
+  posSales      Decimal @default(0) @db.Decimal(14, 2)
+  portalSales   Decimal @default(0) @db.Decimal(14, 2)
+  pickupSales   Decimal @default(0) @db.Decimal(14, 2)
+  deliverySales Decimal @default(0) @db.Decimal(14, 2)
 
-  cashPayments     Decimal @default(0) @db.Decimal(14, 2)
-  cardPayments     Decimal @default(0) @db.Decimal(14, 2)
-  creditPayments   Decimal @default(0) @db.Decimal(14, 2)
-  onlinePayments   Decimal @default(0) @db.Decimal(14, 2)
+  cashPayments   Decimal @default(0) @db.Decimal(14, 2)
+  cardPayments   Decimal @default(0) @db.Decimal(14, 2)
+  creditPayments Decimal @default(0) @db.Decimal(14, 2)
+  onlinePayments Decimal @default(0) @db.Decimal(14, 2)
 
-  ticketAverage    Decimal @default(0) @db.Decimal(14, 2)
-  totalItems       Int     @default(0)
-  upt              Decimal @default(0) @db.Decimal(8, 2)
+  ticketAverage Decimal @default(0) @db.Decimal(14, 2)
+  totalItems    Int     @default(0)
+  upt           Decimal @default(0) @db.Decimal(8, 2)
 
-  pointsEarned     Int     @default(0)
-  pointsRedeemed   Int     @default(0)
+  pointsEarned          Int     @default(0)
+  pointsRedeemed        Int     @default(0)
   pointsRedemptionValue Decimal @default(0) @db.Decimal(14, 2)
 
-  uniqueCustomers  Int     @default(0)
-  newCustomers     Int     @default(0)
+  uniqueCustomers Int @default(0)
+  newCustomers    Int @default(0)
 
-  createdAt        DateTime @default(now())
+  createdAt DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id])
   location     Location     @relation(fields: [locationId], references: [id])
@@ -1755,9 +2018,9 @@ model Transfer {
   createdAt      DateTime       @default(now())
   completedAt    DateTime?
 
-  organization Organization @relation(fields: [organizationId], references: [id])
-  fromLocation Location     @relation("TransferFrom", fields: [fromLocationId], references: [id])
-  toLocation   Location     @relation("TransferTo", fields: [toLocationId], references: [id])
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  fromLocation Location       @relation("TransferFrom", fields: [fromLocationId], references: [id])
+  toLocation   Location       @relation("TransferTo", fields: [toLocationId], references: [id])
   items        TransferItem[]
 
   @@index([organizationId, status])
@@ -1765,11 +2028,11 @@ model Transfer {
 }
 
 model TransferItem {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   transferId  String
   productId   String
   variantId   String?
-  quantity    Decimal @db.Decimal(14, 4)
+  quantity    Decimal  @db.Decimal(14, 4)
   receivedQty Decimal? @db.Decimal(14, 4)
 
   transfer Transfer @relation(fields: [transferId], references: [id])

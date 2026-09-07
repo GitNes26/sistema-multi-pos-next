@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
+import { hasPermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db";
 import { jsonResponse } from "@/lib/api-helpers";
 
 // GET /api/tables/history?tableId=xxx&limit=50
 // Returns sessions, linked orders, and aggregated revenue for one table.
+// Lectura operativa del POS/admin: exige sesión de app con organización y
+// pos.use o locations.manage (el historial expone totales por mesa, no es
+// material para clientes del portal ni roles sin acceso al POS).
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -16,6 +20,12 @@ export async function GET(req: Request) {
   const organizationId = effectiveOrgId(session);
   if (!organizationId) {
     return NextResponse.json({ ok: false, error: "Sin organización" }, { status: 403 });
+  }
+  if (!hasPermission(session, "pos.use") && !hasPermission(session, "locations.manage")) {
+    return NextResponse.json(
+      { ok: false, error: "Permiso requerido: pos.use o locations.manage" },
+      { status: 403 }
+    );
   }
 
   try {

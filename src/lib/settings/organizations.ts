@@ -1,21 +1,53 @@
-import { $Enums } from "@prisma/client";
+import { $Enums, type BusinessMode } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword, normalizeIdentifier } from "@/lib/auth/users";
+import { listRoles } from "@/lib/settings/server";
+import {
+  roleAllowedInOrg,
+  roleIdToEnum,
+  ROLE_MODE_GATE_MESSAGE,
+} from "@/lib/settings/system-roles";
 
 // FASE 15.9 — Helpers de servidor para la gestión de organizaciones
 // (exclusivo del superAdmin).
 
 const VALID_ROLES: $Enums.OrgRole[] = ["owner", "admin", "manager", "cashier"];
 
+// Roles de sistema que nunca se asignan desde este diálogo.
+const NON_ASSIGNABLE_SHARED_IDS = new Set(["system-superadmin", "system-customer"]);
+
+/**
+ * Roles de sistema asignables por el superAdmin para una organización:
+ * los 4 compartidos (owner/admin/manager/cashier), los específicos del modo
+ * de negocio (mesero/cocina, agente…) y los compartidos extra (repartidor).
+ * Todos se asignan por roleId.
+ */
+export async function assignableRolesFor(organizationId: string) {
+  const roles = await listRoles(organizationId);
+  return roles
+    .filter((r) => r.isSystem && !NON_ASSIGNABLE_SHARED_IDS.has(r.id))
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      permissionCount: r.permissionCount,
+    }));
+}
+
 export interface OrganizationRow {
   id: string;
   name: string;
+  /** Modo de negocio: define los roles/páginas/permisos de la organización. */
+  businessMode: BusinessMode;
   currency: string;
   ownerName: string | null;
   ownerEmail: string | null;
   memberCount: number;
   adminCount: number;
   createdAt: string;
+  /** Roles de sistema asignables por roleId (los 4 compartidos + los del modo
+   * + compartidos extra como repartidor), con su resumen de permisos. */
+  assignableRoles: { id: string; name: string; description: string | null; permissionCount: number }[];
 }
 
 export async function listOrganizations(): Promise<OrganizationRow[]> {
@@ -26,16 +58,20 @@ export async function listOrganizations(): Promise<OrganizationRow[]> {
       memberships: { select: { role: true } },
     },
   });
-  return orgs.map((o) => ({
-    id: o.id,
-    name: o.name,
-    currency: o.currency,
-    ownerName: o.owner.fullName,
-    ownerEmail: o.owner.email,
-    memberCount: o.memberships.length,
-    adminCount: o.memberships.filter((m) => m.role === "admin").length,
-    createdAt: o.createdAt.toISOString(),
-  }));
+  return Promise.all(
+    orgs.map(async (o) => ({
+      id: o.id,
+      name: o.name,
+      businessMode: o.businessMode as BusinessMode,
+      currency: o.currency,
+      ownerName: o.owner.fullName,
+      ownerEmail: o.owner.email,
+      memberCount: o.memberships.length,
+      adminCount: o.memberships.filter((m) => m.role === "admin").length,
+      createdAt: o.createdAt.toISOString(),
+      assignableRoles: await assignableRolesFor(o.id),
+    }))
+  );
 }
 
 export interface CreateOrganizationInput {
@@ -117,12 +153,14 @@ export async function createOrganization(input: CreateOrganizationInput): Promis
   return {
     id: org.id,
     name: org.name,
+    businessMode: org.businessMode as BusinessMode,
     currency: org.currency,
     ownerName: owner.fullName,
     ownerEmail: owner.email,
     memberCount: 1,
     adminCount: 0,
     createdAt: org.createdAt.toISOString(),
+    assignableRoles: [],
   };
 }
 
@@ -148,7 +186,15 @@ export interface UserRow {
   email: string;
   isActive: boolean;
   isSuperadmin: boolean;
-  memberships: { membershipId: string; organizationId: string; organizationName: string; role: string }[];
+  memberships: {
+    membershipId: string;
+    organizationId: string;
+    organizationName: string;
+    businessMode: string;
+    role: string;
+    roleId: string | null;
+    roleName: string | null;
+  }[];
 }
 
 export async function listAllUsers(): Promise<UserRow[]> {
@@ -165,7 +211,9 @@ export async function listAllUsers(): Promise<UserRow[]> {
           id: true,
           organizationId: true,
           role: true,
-          organization: { select: { name: true } },
+          roleId: true,
+          roleRef: { select: { name: true } },
+          organization: { select: { name: true, businessMode: true } },
         },
         orderBy: { createdAt: "asc" },
       },
@@ -181,7 +229,10 @@ export async function listAllUsers(): Promise<UserRow[]> {
       membershipId: m.id,
       organizationId: m.organizationId,
       organizationName: m.organization.name,
+      businessMode: m.organization.businessMode,
       role: m.role,
+      roleId: m.roleId ?? null,
+      roleName: m.roleRef?.name ?? null,
     })),
   }));
 }
@@ -219,7 +270,10 @@ export async function listOrgMembers(orgId: string) {
   const memberships = await prisma.membership.findMany({
     where: { organizationId: orgId },
     orderBy: { createdAt: "asc" },
-    include: { user: { select: { id: true, fullName: true, email: true } } },
+    include: {
+      user: { select: { id: true, fullName: true, email: true } },
+      roleRef: { select: { name: true, isSystem: true, businessMode: true } },
+    },
   });
   return memberships.map((m) => ({
     membershipId: m.id,
@@ -227,27 +281,60 @@ export async function listOrgMembers(orgId: string) {
     fullName: m.user.fullName,
     email: m.user.email,
     role: m.role,
+    roleId: m.roleId ?? null,
+    roleName: m.roleRef?.name ?? null,
   }));
 }
 
-/** Asigna un usuario a una organización con un rol (upsert). */
+/**
+ * Asigna un usuario a una organización (upsert).
+ * `role` es el valor enum (owner/admin/manager/cashier); `roleId` opcional
+ * apunta a un rol de sistema específico (p. ej. system-food_service-waiter)
+ * para que los permisos se resuelvan por roleId también.
+ */
 export async function assignUserToOrg(
   organizationId: string,
   userId: string,
-  role: string
+  role?: string,
+  roleId?: string | null
 ): Promise<{ ok: boolean }> {
-  if (!VALID_ROLES.includes(role as $Enums.OrgRole)) {
-    throw new Error("Rol inválido");
-  }
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new Error("Usuario no encontrado");
   const org = await prisma.organization.findUnique({ where: { id: organizationId } });
   if (!org) throw new Error("Organización no encontrada");
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("Usuario no encontrado");
+
+  // Resolver el rol efectivo
+  let enumRole: $Enums.OrgRole;
+  let resolvedRoleId: string | null = null;
+
+  if (roleId) {
+    const roleRecord = await prisma.role.findUnique({
+      where: { id: roleId },
+      select: { id: true, isSystem: true, businessMode: true, organizationId: true },
+    });
+    if (!roleRecord) throw new Error("Rol no encontrado");
+
+    // Compuerta de modo siempre activa: un rol de sistema de otro modo
+    // (mesero/cocina/agente…) o un rol custom de otra empresa no puede
+    // asignarse a esta organización.
+    if (!roleAllowedInOrg(roleRecord, org.businessMode, org.id)) {
+      throw new Error(ROLE_MODE_GATE_MESSAGE);
+    }
+
+    resolvedRoleId = roleRecord.id;
+    // Mapear el rol a su enum equivalente para el fallback por enum
+    enumRole = roleIdToEnum(roleRecord.id);
+  } else {
+    if (!role || !VALID_ROLES.includes(role as $Enums.OrgRole)) {
+      throw new Error("Rol inválido");
+    }
+    enumRole = role as $Enums.OrgRole;
+  }
 
   await prisma.membership.upsert({
     where: { userId_organizationId: { userId, organizationId } },
-    update: { role: role as $Enums.OrgRole },
-    create: { userId, organizationId, role: role as $Enums.OrgRole },
+    update: { role: enumRole, roleId: resolvedRoleId },
+    create: { userId, organizationId, role: enumRole, roleId: resolvedRoleId },
   });
   return { ok: true };
 }

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import {
   CheckCircle2,
+  ChefHat,
+  Loader2,
   RotateCcw,
   TicketPercent,
   UserRound,
@@ -25,6 +27,7 @@ import { AnimatedNumber } from "@/components/base/animated-number"
 import { TicketItemRow } from "./ticket-item-row"
 import { SPRING_LAYOUT } from "@/lib/animation-tokens"
 import { TableSelector } from "./table-selector"
+import { KitchenStatus } from "./kitchen-status"
 
 interface TicketPanelProps {
   onEditBulk: (item: PosLineItem) => void
@@ -50,6 +53,20 @@ export function TicketPanel({
   const features = usePosStore((s) => s.features)
   const selectedTable = usePosStore((s) => s.selectedTable)
   const setTable = usePosStore((s) => s.setTable)
+  const markSent = usePosStore((s) => s.markSent)
+  const resetSent = usePosStore((s) => s.resetSent)
+
+  // Enviar a cocina: líneas del ticket aún no enviadas (qty > sentQty).
+  const unsentLines = items.filter((i) => i.qty > (i.sentQty ?? 0))
+  const anySent = items.some((i) => (i.sentQty ?? 0) > 0)
+  const [sendingKitchen, setSendingKitchen] = useState(false)
+  const [kitchenError, setKitchenError] = useState<string | null>(null)
+  const [lastSent, setLastSent] = useState<{ orderNumber: number; at: number } | null>(null)
+  useEffect(() => {
+    if (!lastSent) return
+    const t = setTimeout(() => setLastSent(null), 4000)
+    return () => clearTimeout(t)
+  }, [lastSent])
 
   const t = usePosTotals()
   const customer = selectCustomer(customerId)
@@ -90,6 +107,49 @@ export function TicketPanel({
   const [justAdded, setJustAdded] = useState(false)
   const [tableDialogOpen, setTableDialogOpen] = useState(false)
   const [releasingTable, setReleasingTable] = useState(false)
+
+  const sendToKitchen = async () => {
+    if (!selectedTable || sendingKitchen || unsentLines.length === 0) return
+    setSendingKitchen(true)
+    setKitchenError(null)
+    try {
+      const locationId = usePosStore.getState().location.id
+      const res = await fetch("/api/pos/kitchen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tableId: selectedTable.id,
+          locationId,
+          customerId,
+          items: unsentLines.map((i) => ({
+            key: i.key,
+            productId: i.productId,
+            variantId: i.variantId,
+            productName: i.name,
+            productType: i.kind === "bulk" ? "bulk" : "standard",
+            quantity: i.qty - (i.sentQty ?? 0),
+            unitId: i.unitId,
+            unitPrice: i.unitPrice,
+            bulkQuantityDisplay: i.bulkQuantityDisplay,
+            taxRate: i.taxRate,
+            notes: i.notes,
+            selectedOptions: i.selectedOptions,
+            extraPrice: i.extraPrice,
+          })),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo enviar a cocina")
+      unsentLines.forEach((i) => markSent(i.key, i.qty))
+      setLastSent({ orderNumber: data.orderNumber, at: Date.now() })
+    } catch (err) {
+      setKitchenError(
+        err instanceof Error ? err.message : "No se pudo enviar a cocina"
+      )
+    } finally {
+      setSendingKitchen(false)
+    }
+  }
 
   // Auto-scroll al fondo solo cuando se AGREGA un producto nuevo
   useEffect(() => {
@@ -402,6 +462,54 @@ export function TicketPanel({
               onClose={() => setTableDialogOpen(false)}
               onSelect={(t) => setTable(t)}
             />
+
+            {/* Cocina: orden abierta de la mesa + estado KDS en vivo + cancelar */}
+            <KitchenStatus
+              tableId={selectedTable && !selectedTable.id.startsWith("manual-") ? selectedTable.id : null}
+              refreshKey={lastSent?.at ?? 0}
+              onKitchenOrderCancelled={resetSent}
+            />
+
+            {/* Enviar a cocina (solo mesas reales del mapa) */}
+            {selectedTable &&
+              !selectedTable.id.startsWith("manual-") &&
+              (anySent || unsentLines.length > 0) && (
+                <div className="space-y-1.5">
+                  {unsentLines.length > 0 ? (
+                    <Button
+                      size="lg"
+                      disabled={sendingKitchen}
+                      onClick={sendToKitchen}
+                      className="h-11 w-full bg-amber-500 font-bold text-white shadow-md shadow-amber-500/25 hover:bg-amber-600"
+                    >
+                      {sendingKitchen ? (
+                        <Loader2 className="size-5 animate-spin" />
+                      ) : (
+                        <ChefHat className="size-5" />
+                      )}
+                      Enviar a cocina
+                      <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs">
+                        {unsentLines.length}
+                      </span>
+                    </Button>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="size-4" />
+                      Enviado a cocina
+                    </div>
+                  )}
+                  {kitchenError && (
+                    <p className="text-center text-xs font-medium text-red-600 dark:text-red-400">
+                      {kitchenError}
+                    </p>
+                  )}
+                  {lastSent && !kitchenError && (
+                    <p className="text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      ✓ Enviado · Pedido #{lastSent.orderNumber}
+                    </p>
+                  )}
+                </div>
+              )}
           </>
         )}
 

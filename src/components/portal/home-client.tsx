@@ -4,17 +4,19 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { motion, useTransform } from "framer-motion"
 import {
+  ArrowRight,
+  Calendar,
+  CalendarCheck2,
   ChevronRight,
   Megaphone,
-  Sparkles,
   Package,
   Puzzle,
   ShoppingBag,
-  ArrowRight,
-  Calendar,
+  Sparkles,
 } from "lucide-react"
 import { portalApi } from "@/lib/portal/client"
 import type { PortalHomeData } from "@/lib/portal/server"
+import { ThumbImage } from "@/components/base/thumb-image"
 import { money, qty } from "@/lib/pos/money"
 import {
   ORDER_STATUS_LABELS,
@@ -213,6 +215,25 @@ export function HomeClient() {
     >
       {/* Puntos hero — parallax decorative circles */}
       <HeroParallaxCard points={data.points} />
+
+      {/* Reservar mesa — accesible desde el inicio del portal */}
+      <motion.section variants={item}>
+        <Link
+          href="/portal/reservations"
+          className="flex items-center gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/10 via-transparent to-amber-500/10 p-3.5 shadow-sm transition active:scale-[0.99]"
+        >
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <CalendarCheck2 className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold">Reservar mesa</p>
+            <p className="text-xs text-muted-foreground">
+              Elige tu mesa desde el plano del local
+            </p>
+          </div>
+          <ArrowRight className="size-4 text-muted-foreground" />
+        </Link>
+      </motion.section>
 
       {/* Pedidos activos */}
       {activeOrders.length > 0 && (
@@ -444,8 +465,7 @@ export function HomeClient() {
                 onKeyDown={(e) => e.key === "Enter" && setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
               >
                 {pub.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <ThumbImage
                     src={pub.imageUrl}
                     alt={pub.title}
                     className="size-12 shrink-0 rounded-xl object-cover"

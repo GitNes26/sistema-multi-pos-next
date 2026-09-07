@@ -19,29 +19,37 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DialogComponent } from "@/components/ui/dialog";
 import { InputGroupField } from "@/components/base/input-group-field";
-import { FormCombobox } from "@/components/base/form-combobox";
+import { FormCombobox, type ComboboxOption } from "@/components/base/form-combobox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
+import { businessModeInfo } from "@/lib/business-modes";
+import type { BusinessMode } from "@/lib/auth/options";
 
 // FASE 15.9 — Gestión de organizaciones y asignación de admins (superAdmin).
 
 type OrgRow = {
   id: string;
   name: string;
+  businessMode: BusinessMode;
   currency: string;
   ownerName: string | null;
   ownerEmail: string | null;
   memberCount: number;
   adminCount: number;
   createdAt: string;
+  assignableRoles: { id: string; name: string; description: string | null; permissionCount: number }[];
 };
 
 type MembershipRow = {
   membershipId: string;
   organizationId: string;
   organizationName: string;
+  businessMode: BusinessMode;
   role: string;
+  roleId: string | null;
+  roleName: string | null;
 };
 
 type UserRow = {
@@ -53,12 +61,67 @@ type UserRow = {
   memberships: MembershipRow[];
 };
 
-const ROLE_OPTIONS = [
-  { value: "owner", label: "Owner" },
-  { value: "admin", label: "Admin" },
-  { value: "manager", label: "Manager" },
-  { value: "cashier", label: "Cajero" },
-];
+// Las membresías legacy guardan solo el enum (owner/admin/manager/cashier);
+// para el diálogo se normaliza al id del rol de sistema equivalente.
+const ENUM_TO_SYSTEM: Record<string, string> = {
+  owner: "system-owner",
+  admin: "system-admin",
+  manager: "system-manager",
+  cashier: "system-cashier",
+};
+
+/** Valor del rol para el combobox: el roleId si existe, si no el id de sistema del enum. */
+const roleValue = (m: MembershipRow) => m.roleId ?? ENUM_TO_SYSTEM[m.role] ?? m.role;
+
+const displayRole = (m: MembershipRow) => m.roleName ?? m.role;
+
+/** Opción del combobox con tooltip de resumen de permisos al pasar el mouse. */
+function RoleOption({ option }: { option: ComboboxOption }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            <span className="truncate">{option.label}</span>
+            {typeof option.permissionCount === "number" && (
+              <span className="shrink-0 text-xs text-muted-foreground">{option.permissionCount}</span>
+            )}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-xs">
+          <div className="space-y-1 py-0.5">
+            <p className="font-medium">{option.label}</p>
+            {option.description && <p>{option.description}</p>}
+            <p className="text-muted-foreground">
+              {option.permissionCount ?? 0} {option.permissionCount === 1 ? "permiso" : "permisos"}
+            </p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+/** Punto de color con el gradiente del modo (para badges y listas). */
+function ModeDot({ mode, className }: { mode: BusinessMode; className?: string }) {
+  const info = businessModeInfo(mode);
+  return (
+    <span
+      className={`inline-block size-2 shrink-0 rounded-full bg-gradient-to-br ${info.gradient} ${className ?? ""}`}
+    />
+  );
+}
+
+/** Badge del modo de negocio con tooltip de descripción. */
+function ModeBadge({ mode }: { mode: BusinessMode }) {
+  const info = businessModeInfo(mode);
+  return (
+    <Badge variant="secondary" title={info.description} className="gap-1.5">
+      <ModeDot mode={mode} />
+      {info.label}
+    </Badge>
+  );
+}
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -172,6 +235,7 @@ function OrganizationsTab() {
                   {org.ownerName ?? "—"} · {org.ownerEmail ?? ""}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
+                  <ModeBadge mode={org.businessMode} />
                   <Badge variant="secondary">{org.currency}</Badge>
                   <Badge variant="outline">{org.memberCount} miembros</Badge>
                   {org.adminCount > 0 && (
@@ -435,8 +499,14 @@ function UsersTab() {
                   <span className="text-xs text-muted-foreground">Sin organizaciones asignadas</span>
                 )}
                 {u.memberships.map((m) => (
-                  <Badge key={m.membershipId} variant="outline">
-                    {m.organizationName} · {m.role}
+                  <Badge
+                    key={m.membershipId}
+                    variant="outline"
+                    title={`${m.organizationName} (${businessModeInfo(m.businessMode).label})`}
+                    className="gap-1.5"
+                  >
+                    <ModeDot mode={m.businessMode} />
+                    {m.organizationName} · {displayRole(m)}
                   </Badge>
                 ))}
               </div>
@@ -553,7 +623,7 @@ function AssignOrgDialog({
     const next: Record<string, string> = {};
     for (const o of orgs) {
       const current = user.memberships.find((m) => m.organizationId === o.id);
-      next[o.id] = current?.role ?? "";
+      next[o.id] = current ? roleValue(current) : "";
     }
     setRoles(next);
   }, [user, orgs]);
@@ -564,16 +634,17 @@ function AssignOrgDialog({
     setSaving(true);
     try {
       for (const o of orgs) {
-        const role = roles[o.id] ?? "";
+        const value = roles[o.id] ?? "";
         const current = user.memberships.find((m) => m.organizationId === o.id);
-        if (!role && current) {
+        const currentValue = current ? roleValue(current) : "";
+        if (!value && current) {
           await api(`/api/settings/organizations/${o.id}/members/${current.membershipId}`, {
             method: "DELETE",
           });
-        } else if (role && (!current || current.role !== role)) {
+        } else if (value && value !== currentValue) {
           await api(`/api/settings/organizations/${o.id}/members`, {
             method: "POST",
-            body: JSON.stringify({ userId: user.id, role }),
+            body: JSON.stringify({ userId: user.id, roleId: value }),
           });
         }
       }
@@ -610,24 +681,43 @@ function AssignOrgDialog({
             No hay organizaciones registradas. Crea una primero.
           </p>
         )}
-        {orgs.map((o) => (
-          <div key={o.id} className="flex items-center justify-between gap-2 rounded-lg border p-2.5">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{o.name}</p>
-              <p className="text-xs text-muted-foreground">{o.currency}</p>
+        {orgs.map((o) => {
+          const options: ComboboxOption[] = o.assignableRoles.map((r) => ({
+            value: r.id,
+            label: r.name,
+            description: r.description,
+            permissionCount: r.permissionCount,
+          }));
+          return (
+            <div key={o.id} className="flex items-center justify-between gap-2 rounded-lg border p-2.5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate text-sm font-medium">{o.name}</span>
+                  <ModeDot mode={o.businessMode} />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {businessModeInfo(o.businessMode).label} · {o.currency}
+                </p>
+                {options.length > 0 && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Roles disponibles: {options.map((r) => r.label).join(" · ")}
+                  </p>
+                )}
+              </div>
+              <FormCombobox
+                className="w-44"
+                value={roles[o.id] ?? ""}
+                onChange={(v) => setRoles((prev) => ({ ...prev, [o.id]: v }))}
+                onClear={() => setRoles((prev) => ({ ...prev, [o.id]: "" }))}
+                options={options}
+                searchable
+                clearable
+                placeholder="— Sin rol —"
+                renderOption={(opt) => <RoleOption option={opt} />}
+              />
             </div>
-            <FormCombobox
-              className="w-32"
-              value={roles[o.id] ?? ""}
-              onChange={(v) => setRoles((prev) => ({ ...prev, [o.id]: v }))}
-              onClear={() => setRoles((prev) => ({ ...prev, [o.id]: "" }))}
-              options={ROLE_OPTIONS}
-              searchable={false}
-              clearable
-              placeholder="— Sin rol —"
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </DialogComponent>
   );

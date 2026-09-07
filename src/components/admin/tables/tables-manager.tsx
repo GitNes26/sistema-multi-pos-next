@@ -3,9 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Armchair,
+  CalendarCheck2,
   Check,
   Clock,
+  DoorOpen,
+  Download,
   History,
+  LayoutGrid,
   Loader2,
   MapPin,
   Plus,
@@ -24,6 +28,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { cn } from "@/lib/utils";
 import { TableHistoryDialog } from "./table-history";
+import { FloorPlan, type PlanTable } from "./floor-plan";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -36,10 +41,36 @@ interface TableData {
   capacity: number;
   status: string;
   qrToken: string | null;
+  shape: string;
+  width: number | null;
+  height: number | null;
   posX: number | null;
   posY: number | null;
+  room: { id: string; name: string } | null;
   location: { id: string; name: string } | null;
   _count: { orders: number; sessions: number };
+}
+
+interface RoomData {
+  id: string;
+  name: string;
+  location: { id: string; name: string } | null;
+  _count: { tables: number };
+}
+
+interface ReservationRow {
+  id: string;
+  guests: number;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  notes: string | null;
+  // Reservación de invitado (sin cuenta): nombre y teléfono van en la fila.
+  name: string | null;
+  phone: string | null;
+  room: { id: string; name: string } | null;
+  table: { id: string; number: number; name: string | null; capacity: number } | null;
+  customer: { id: string; fullName: string | null; phone: string | null } | null;
 }
 
 interface LocationData {
@@ -58,26 +89,71 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   cleaning: { label: "Limpieza", color: "text-sky-600", bg: "bg-sky-100 border-sky-300", icon: Loader2 },
 };
 
+const SHAPE_OPTIONS = [
+  { value: "round", label: "Redonda" },
+  { value: "square", label: "Cuadrada" },
+  { value: "rectangle", label: "Rectangular" },
+  { value: "booth", label: "Camarote" },
+  { value: "bar", label: "Barra" },
+];
+
+/** Convierte TableData → PlanTable para el editor de plano. */
+const planOf = (t: TableData): PlanTable => ({
+  id: t.id,
+  number: t.number,
+  name: t.name,
+  capacity: t.capacity,
+  shape: t.shape || "round",
+  width: t.width,
+  height: t.height,
+  posX: t.posX,
+  posY: t.posY,
+  status: t.status,
+});
+
 /* ------------------------------------------------------------------ */
 /*  TablesManager                                                      */
 /* ------------------------------------------------------------------ */
 
-export function TablesManager() {
+export function TablesManager({ canManage = false }: { canManage?: boolean }) {
   const [tables, setTables] = useState<TableData[]>([]);
+  const [rooms, setRooms] = useState<RoomData[]>([]);
   const [locations, setLocations] = useState<LocationData[]>([]);
   const [loading, setLoading] = useState(true);
   const [locationFilter, setLocationFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [view, setView] = useState<"list" | "plan">("list");
+  const [selectedRoomId, setSelectedRoomId] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<TableData | null>(null);
   const [qrDialogTable, setQrDialogTable] = useState<TableData | null>(null);
   const [historyTable, setHistoryTable] = useState<TableData | null>(null);
+  const [exporting, setExporting] = useState(false);
+  // Dialogo de salas
+  const [roomDialogOpen, setRoomDialogOpen] = useState(false);
+  const [roomEditing, setRoomEditing] = useState<RoomData | null>(null);
+  const [formRoomName, setFormRoomName] = useState("");
+  // Reservaciones de mesa (anfitrión): pendientes/confirmadas del día.
+  const [reservations, setReservations] = useState<ReservationRow[]>([]);
+  // Lista de espera (anfitrión): clientes esperando mesa libre.
+  const [waitlistEntries, setWaitlistEntries] = useState<
+    {
+      id: string;
+      guests: number;
+      status: string;
+      position: number;
+      customer: { id: string; fullName: string | null; phone: string | null } | null;
+      availableTable: { id: string; number: number; capacity: number; room: { name: string } | null } | null;
+    }[]
+  >([]);
 
   // Form
   const [formNumber, setFormNumber] = useState("");
   const [formName, setFormName] = useState("");
   const [formCapacity, setFormCapacity] = useState("4");
   const [formLocation, setFormLocation] = useState("");
+  const [formRoom, setFormRoom] = useState("");
+  const [formShape, setFormShape] = useState("round");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,12 +161,18 @@ export function TablesManager() {
       const params = new URLSearchParams();
       if (locationFilter) params.set("locationId", locationFilter);
       if (statusFilter) params.set("status", statusFilter);
-      const [tablesRes, locsRes] = await Promise.all([
+      const [tablesRes, locsRes, roomsRes, reservationsRes, waitlistRes] = await Promise.all([
         fetch(`/api/tables?${params}`).then((r) => r.json()),
-        fetch("/api/locations").then((r) => r.json()),
+        fetch("/api/crud/locations?pageSize=200").then((r) => r.json()),
+        fetch(`/api/tables/rooms?${params}`).then((r) => r.json()),
+        fetch("/api/table-reservations").then((r) => r.json()),
+        fetch("/api/table-waitlist").then((r) => r.json()),
       ]);
       if (tablesRes.ok) setTables(tablesRes.tables);
       if (locsRes.ok) setLocations(locsRes.rows || []);
+      if (roomsRes.ok) setRooms(roomsRes.rooms);
+      if (reservationsRes.ok) setReservations(reservationsRes.reservations);
+      if (waitlistRes.ok) setWaitlistEntries(waitlistRes.entries);
     } catch {
       swalError("Error al cargar mesas");
     } finally {
@@ -100,12 +182,70 @@ export function TablesManager() {
 
   useEffect(() => { load(); }, [load]);
 
+  /**
+   * Exportación masiva de QRs: abre una ventana de impresión con un QR por
+   * cada mesa activa (también sirve de "Guardar como PDF"). Pensado para
+   * onboarding de local nuevo: imprimir, recortar y pegar en cada mesa.
+   */
+  const exportQrs = useCallback(() => {
+    const active = tables.filter((t) => t.qrToken);
+    if (active.length === 0) {
+      swalError("No hay mesas con QR para exportar");
+      return;
+    }
+    const origin = window.location.origin;
+    const cards = active
+      .map(
+        (t) => `
+      <div class="card">
+        <img
+          src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+            `${origin}/portal/menu?table=${t.id}&token=${t.qrToken}`
+          )}"
+          alt="QR Mesa ${t.number}"
+        />
+        <p class="num">Mesa #${t.number}</p>
+        <p class="hint">Escanea para ver el menú y pedir</p>
+      </div>`
+      )
+      .join("");
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) {
+      swalError("El navegador bloqueó la ventana de impresión");
+      return;
+    }
+    win.document.write(`<!doctype html>
+      <html>
+        <head>
+          <title>QRs de mesas</title>
+          <style>
+            body { font-family: system-ui, sans-serif; margin: 24px; }
+            h1 { font-size: 18px; }
+            .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+            .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; text-align: center; page-break-inside: avoid; }
+            .card img { width: 200px; height: 200px; }
+            .num { font-weight: 700; margin: 8px 0 2px; }
+            .hint { color: #666; font-size: 12px; margin: 0; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <h1>Menú digital — QRs por mesa</h1>
+          <div class="grid">${cards}</div>
+          <script>window.onload = () => setTimeout(() => window.print(), 400)</script>
+        </body>
+      </html>`);
+    win.document.close();
+  }, [tables]);
+
   const openCreate = () => {
     setEditingTable(null);
     setFormNumber(String(tables.length + 1));
     setFormName("");
     setFormCapacity("4");
     setFormLocation(locations[0]?.id || "");
+    setFormRoom(selectedRoomId || rooms[0]?.id || "");
+    setFormShape("round");
     setDialogOpen(true);
   };
 
@@ -115,6 +255,8 @@ export function TablesManager() {
     setFormName(t.name || "");
     setFormCapacity(String(t.capacity));
     setFormLocation(t.location?.id || "");
+    setFormRoom(t.room?.id || "");
+    setFormShape(t.shape || "round");
     setDialogOpen(true);
   };
 
@@ -126,6 +268,8 @@ export function TablesManager() {
         name: formName || null,
         capacity: Number(formCapacity),
         locationId: formLocation || null,
+        roomId: formRoom || null,
+        shape: formShape,
       };
 
       if (editingTable) {
@@ -155,6 +299,103 @@ export function TablesManager() {
       load();
     } catch {
       swalError("Error al eliminar");
+    }
+  };
+
+  const openRoomCreate = () => {
+    setRoomEditing(null);
+    setFormRoomName("");
+    setRoomDialogOpen(true);
+  };
+
+  const openRoomEdit = (r: RoomData) => {
+    setRoomEditing(r);
+    setFormRoomName(r.name);
+    setRoomDialogOpen(true);
+  };
+
+  const saveRoom = async () => {
+    const name = formRoomName.trim();
+    if (!name) {
+      swalError("Nombre de sala requerido");
+      return;
+    }
+    try {
+      const res = await fetch("/api/tables/rooms", {
+        method: roomEditing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(roomEditing ? { id: roomEditing.id } : {}),
+          name,
+          locationId: formLocation || null,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.ok) throw new Error(body.error || "No se pudo guardar");
+      swalToast(roomEditing ? "Sala actualizada" : "Sala creada");
+      setRoomDialogOpen(false);
+      load();
+    } catch (err) {
+      swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
+    }
+  };
+
+  /** Cierra una entrada de la lista de espera (sentado/cancelado). */
+  const closeWaitlistEntry = async (id: string, status: string) => {
+    try {
+      const res = await fetch("/api/table-waitlist", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.ok) throw new Error(body.error || "No se pudo actualizar");
+      swalToast(status === "seated" ? "Cliente sentado" : "Entrada cerrada");
+      load();
+    } catch (err) {
+      swalError("No se pudo actualizar", err instanceof Error ? err.message : undefined);
+    }
+  };
+
+  /** Cambia el estado de una reservación de mesa (confirmar/sentar/cancelar). */
+  const setReservationStatus = async (r: ReservationRow, status: string) => {
+    try {
+      const res = await fetch("/api/table-reservations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: r.id, status }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.ok) throw new Error(body.error || "No se pudo actualizar");
+      swalToast(
+        status === "seated"
+          ? "Mesa sentada — quedó ocupada en el POS"
+          : status === "confirmed"
+            ? "Reservación confirmada"
+            : "Reservación cancelada"
+      );
+      load();
+    } catch (err) {
+      swalError("No se pudo actualizar", err instanceof Error ? err.message : undefined);
+    }
+  };
+
+  const handleDeleteRoom = async (r: RoomData) => {
+    const confirmed = await swalConfirm(
+      "¿Eliminar sala?",
+      `Se eliminará «${r.name}». Sus mesas quedarán sin sala (no se borran).`,
+      { confirmText: "Eliminar", danger: true }
+    );
+    if (!confirmed) return;
+    try {
+      const res = await fetch(`/api/tables/rooms?id=${r.id}`, { method: "DELETE" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.ok) throw new Error(body.error || "No se pudo eliminar");
+      swalToast("Sala eliminada");
+      if (selectedRoomId === r.id) setSelectedRoomId("");
+      load();
+    } catch (err) {
+      swalError("No se pudo eliminar", err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -223,6 +464,103 @@ export function TablesManager() {
         </Card>
       </div>
 
+      {/* Lista de espera (anfitrión) */}
+      {waitlistEntries.length > 0 && (
+        <div className="rounded-xl border bg-card">
+          <div className="flex items-center gap-2 border-b px-4 py-2.5">
+            <Clock className="size-4 text-amber-600" />
+            <p className="text-sm font-semibold">Lista de espera</p>
+            <Badge variant="outline" className="ml-auto text-[10px]">
+              {waitlistEntries.length} {waitlistEntries.length === 1 ? "cliente" : "clientes"}
+            </Badge>
+          </div>
+          <div className="divide-y">
+            {waitlistEntries.map((e) => (
+              <div key={e.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+                  <Clock className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">
+                    #{e.position} · {e.guests} {e.guests === 1 ? "persona" : "personas"}
+                    {e.availableTable ? ` · Mesa #${e.availableTable.number} libre` : " · en espera"}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {e.customer?.fullName ?? "Cliente del portal"}
+                    {e.customer?.phone ? ` · ${e.customer.phone}` : ""}
+                    {e.availableTable?.room?.name ? ` · ${e.availableTable.room.name}` : ""}
+                  </p>
+                </div>
+                <Badge variant="outline" className={cn("text-[10px]", e.status === "available" ? "text-emerald-600" : "text-amber-600")}>
+                  {e.status === "available" ? "Mesa lista" : "Esperando"}
+                </Badge>
+                <div className="flex gap-1.5">
+                  <Button size="sm" className="h-8 px-2 text-xs" onClick={() => closeWaitlistEntry(e.id, "seated")}>
+                    Sentado
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-8 px-2 text-xs text-destructive" onClick={() => closeWaitlistEntry(e.id, "cancelled")}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reservaciones de mesa del día (anfitrión) */}
+      {reservations.filter((r) => r.status === "pending" || r.status === "confirmed").length > 0 && (
+        <div className="rounded-xl border bg-card">
+          <div className="flex items-center gap-2 border-b px-4 py-2.5">
+            <CalendarCheck2 className="size-4 text-primary" />
+            <p className="text-sm font-semibold">Reservaciones de mesa</p>
+            <Badge variant="outline" className="ml-auto text-[10px]">
+              {reservations.filter((r) => r.status === "pending" || r.status === "confirmed").length} activas
+            </Badge>
+          </div>
+          <div className="divide-y">
+            {reservations
+              .filter((r) => r.status === "pending" || r.status === "confirmed")
+              .map((r) => (
+                <div key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Users className="size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">
+                      {new Date(r.startsAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}{" "}
+                      · {r.guests} {r.guests === 1 ? "persona" : "personas"}
+                      {r.table ? ` · Mesa #${r.table.number}` : r.room ? ` · ${r.room.name}` : " · sin mesa"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {r.name ?? r.customer?.fullName ?? "Cliente del portal"}
+                      {(r.phone ?? r.customer?.phone) ? ` · ${r.phone ?? r.customer?.phone}` : ""}
+                      {!r.customer && r.name ? " · Invitado" : ""}
+                      {r.notes ? ` · ${r.notes}` : ""}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className={cn("text-[10px]", r.status === "pending" ? "text-amber-600" : "text-sky-600")}>
+                    {r.status === "pending" ? "Pendiente" : "Confirmada"}
+                  </Badge>
+                  <div className="flex gap-1.5">
+                    {r.status === "pending" && (
+                      <Button size="sm" variant="outline" className="h-8 px-2 text-xs" onClick={() => setReservationStatus(r, "confirmed")}>
+                        Confirmar
+                      </Button>
+                    )}
+                    <Button size="sm" className="h-8 px-2 text-xs" onClick={() => setReservationStatus(r, "seated")}>
+                      Sentar
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 px-2 text-xs text-destructive" onClick={() => setReservationStatus(r, "cancelled")}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* Filters + Actions */}
       <div className="flex flex-wrap items-center gap-3">
         <select
@@ -250,23 +588,135 @@ export function TablesManager() {
           ))}
         </div>
 
+        <div className="flex gap-1">
+          <Button
+            variant={view === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setView("list")}
+            className="text-xs"
+          >
+            <Armchair className="w-3.5 h-3.5 mr-1" />
+            Lista
+          </Button>
+          <Button
+            variant={view === "plan" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setView("plan")}
+            className="text-xs"
+          >
+            <LayoutGrid className="w-3.5 h-3.5 mr-1" />
+            Plano
+          </Button>
+        </div>
+
         <div className="flex-1" />
 
+        {canManage && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportQrs}
+            disabled={exporting}
+            title="Descarga un QR imprimible por cada mesa activa"
+          >
+            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+            Descargar QRs
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={load}>
           <RefreshCcw className="w-4 h-4 mr-1" />
           Actualizar
         </Button>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="w-4 h-4 mr-1" />
-          Nueva mesa
-        </Button>
+        {canManage && (
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="w-4 h-4 mr-1" />
+            Nueva mesa
+          </Button>
+        )}
       </div>
 
-      {/* Table grid */}
+      {/* Salas (solo vista plano): chips + crear/renombrar/eliminar */}
+      {view === "plan" && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+            <DoorOpen className="size-3.5" /> Salas
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedRoomId("")}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs font-medium transition",
+              selectedRoomId === ""
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:bg-muted"
+            )}
+          >
+            Sin sala ({tables.filter((t) => !t.room).length})
+          </button>
+          {rooms.map((r) => (
+            <span key={r.id} className="relative">
+              <button
+                type="button"
+                onClick={() => setSelectedRoomId(selectedRoomId === r.id ? "" : r.id)}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-medium transition",
+                  selectedRoomId === r.id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {r.name} ({r._count.tables})
+              </button>
+              {canManage && (
+                <span className="absolute -right-1 -top-1 flex gap-0.5">
+                  <button
+                    type="button"
+                    title="Renombrar sala"
+                    onClick={() => openRoomEdit(r)}
+                    className="flex size-4 items-center justify-center rounded-full border bg-background text-[9px] text-muted-foreground hover:text-foreground"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    type="button"
+                    title="Eliminar sala"
+                    onClick={() => handleDeleteRoom(r)}
+                    className="flex size-4 items-center justify-center rounded-full border bg-background text-[9px] text-rose-500 hover:bg-rose-50"
+                  >
+                    ✕
+                  </button>
+                </span>
+              )}
+            </span>
+          ))}
+          {canManage && (
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={openRoomCreate}>
+              <Plus className="size-3.5" />
+              Nueva sala
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Table grid / Plano */}
       {loading ? (
         <div className="flex justify-center py-12">
           <Spinner />
         </div>
+      ) : view === "plan" ? (
+        <FloorPlan
+          key={selectedRoomId || "no-room"}
+          tables={
+            selectedRoomId
+              ? tables.filter((t) => t.room?.id === selectedRoomId).map(planOf)
+              : tables.filter((t) => !t.room).map(planOf)
+          }
+          roomName={
+            selectedRoomId ? rooms.find((r) => r.id === selectedRoomId)?.name ?? null : null
+          }
+          canManage={canManage}
+          onChanged={load}
+        />
       ) : tables.length === 0 ? (
         <EmptyState icon={Armchair} title="Sin mesas" description="Crea tu primera mesa para comenzar." />
       ) : (
@@ -277,7 +727,7 @@ export function TablesManager() {
             return (
               <button
                 key={t.id}
-                onClick={() => openEdit(t)}
+                onClick={() => (canManage ? openEdit(t) : setHistoryTable(t))}
                 className={cn(
                   "relative group text-center p-4 rounded-2xl border-2 transition-all duration-200",
                   "hover:shadow-md hover:-translate-y-0.5",
@@ -299,12 +749,15 @@ export function TablesManager() {
                   >
                     <QrCode className="w-3 h-3" />
                   </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
-                    className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center hover:bg-rose-100"
-                  >
-                    <Trash2 className="w-3 h-3 text-rose-500" />
-                  </button>
+                  {canManage && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
+                      title="Eliminar mesa"
+                      className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center hover:bg-rose-100"
+                    >
+                      <Trash2 className="w-3 h-3 text-rose-500" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Table number */}
@@ -330,6 +783,14 @@ export function TablesManager() {
                   <div className="flex items-center justify-center gap-1 mt-1">
                     <MapPin className="w-3 h-3 text-slate-400" />
                     <span className="text-xs text-slate-400 truncate">{t.location.name}</span>
+                  </div>
+                )}
+
+                {/* Sala */}
+                {t.room && (
+                  <div className="flex items-center justify-center gap-1 mt-0.5">
+                    <DoorOpen className="w-3 h-3 text-slate-400" />
+                    <span className="text-xs text-slate-400 truncate">{t.room.name}</span>
                   </div>
                 )}
 
@@ -387,6 +848,31 @@ export function TablesManager() {
               ))}
             </select>
           </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block">Sala</label>
+            <select
+              value={formRoom}
+              onChange={(e) => setFormRoom(e.target.value)}
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Sin sala</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block">Forma</label>
+            <select
+              value={formShape}
+              onChange={(e) => setFormShape(e.target.value)}
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {SHAPE_OPTIONS.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
@@ -394,6 +880,29 @@ export function TablesManager() {
             <Button onClick={handleSave}>
               {editingTable ? "Guardar" : "Crear mesa"}
             </Button>
+          </div>
+        </div>
+      </DialogComponent>
+
+      {/* Sala Dialog (crear/renombrar) */}
+      <DialogComponent
+        open={roomDialogOpen}
+        onOpenChange={setRoomDialogOpen}
+        title={roomEditing ? `Renombrar sala` : "Nueva sala"}
+      >
+        <div className="space-y-4 p-4">
+          <InputGroupField
+            label="Nombre de la sala"
+            placeholder="Ej: Salón principal, Terraza, Bar…"
+            value={formRoomName}
+            onChange={(e) => setFormRoomName(e.target.value)}
+            leftIcon={<DoorOpen className="w-4 h-4 text-slate-400" />}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setRoomDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={saveRoom}>{roomEditing ? "Guardar" : "Crear sala"}</Button>
           </div>
         </div>
       </DialogComponent>

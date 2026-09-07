@@ -42,6 +42,28 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Agenda de citas (services / hybrid)
+  if (pathname.startsWith("/agenda")) {
+    if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    if (token!.scope === "portal")
+      return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    // El superAdmin sin organización activa primero elige empresa (igual que /admin).
+    if (token!.scope === "superadmin" && !token!.activeOrganizationId)
+      return NextResponse.redirect(new URL("/admin/settings/organizations", req.url));
+    return NextResponse.next();
+  }
+
+  // Reservaciones (rental / hybrid)
+  if (pathname.startsWith("/reservaciones")) {
+    if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    if (token!.scope === "portal")
+      return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    // El superAdmin sin organización activa primero elige empresa (igual que /admin).
+    if (token!.scope === "superadmin" && !token!.activeOrganizationId)
+      return NextResponse.redirect(new URL("/admin/settings/organizations", req.url));
+    return NextResponse.next();
+  }
+
   // Panel admin
   if (pathname.startsWith("/admin")) {
     if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
@@ -80,5 +102,12 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/pos/:path*", "/admin/:path*", "/portal/:path*", "/onboarding"],
+  matcher: [
+    "/pos/:path*",
+    "/agenda/:path*",
+    "/reservaciones/:path*",
+    "/admin/:path*",
+    "/portal/:path*",
+    "/onboarding",
+  ],
 };

@@ -3,21 +3,42 @@ import { getServerSession } from "next-auth";
 import { $Enums } from "@prisma/client";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
+import { hasPermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db";
 import { broadcastKdsUpdate } from "@/lib/kds/live";
+import { listUpcomingReservations } from "@/lib/tables/upcoming";
 import { jsonResponse } from "@/lib/api-helpers";
+
+// Guard del KDS: sesión de app (no portal) con organización y permiso de
+// pedidos (orders.view para leer / kds.operate para operar el tablero), igual
+// que /api/kds/stream. La operación del tablero es de cocina (kds.operate):
+// el repartidor (delivery.manage) puede ver pero NO avanzar artículos.
+async function requireKdsSession(permission: "orders.view" | "kds.operate") {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return { response: NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 }) };
+  }
+  const organizationId = effectiveOrgId(session);
+  if (session.user.scope === "portal" || !organizationId) {
+    return { response: NextResponse.json({ ok: false, error: "Acceso denegado" }, { status: 403 }) };
+  }
+  if (!hasPermission(session, permission)) {
+    return {
+      response: NextResponse.json(
+        { ok: false, error: "Permiso requerido: " + permission },
+        { status: 403 }
+      ),
+    };
+  }
+  return { session, organizationId };
+}
 
 // GET /api/kds — Get orders pending preparation for KDS
 // GET /api/kds?locationId=xxx — Filter by location
 export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
-  }
-  const organizationId = effectiveOrgId(session);
-  if (!organizationId) {
-    return NextResponse.json({ ok: false, error: "Sin organización" }, { status: 403 });
-  }
+  const guard = await requireKdsSession("orders.view");
+  if ("response" in guard) return guard.response;
+  const { organizationId } = guard;
 
   try {
     const url = new URL(req.url);
@@ -34,7 +55,14 @@ export async function GET(req: Request) {
     const orders = await prisma.order.findMany({
       where,
       include: {
-        table: { select: { id: true, number: true, name: true } },
+        table: {
+          select: {
+            id: true,
+            number: true,
+            name: true,
+            room: { select: { id: true, name: true } },
+          },
+        },
         location: { select: { id: true, name: true } },
         items: {
           select: {
@@ -81,25 +109,30 @@ export async function GET(req: Request) {
       ),
     };
 
-    return jsonResponse({ ok: true, orders: ordersWithTime, stats });
+    // Aviso de llegada: reservaciones confirmadas próximas para que la
+    // cocina/el anfitrión preparen el lugar.
+    const upcoming = await listUpcomingReservations(organizationId, locationId ?? null);
+    const upcomingReservations = upcoming.map((r) => ({
+      id: r.id,
+      guests: r.guests,
+      startsAt: r.startsAt.toISOString(),
+      table: r.table,
+    }));
+
+    return jsonResponse({ ok: true, orders: ordersWithTime, stats, upcomingReservations });
   } catch (error) {
     console.error("[kds] GET Error:", error);
     return NextResponse.json({ ok: false, error: "Error al obtener órdenes KDS" }, { status: 500 });
   }
 }
 
-// PUT /api/kds — Update order item status
+// PUT /api/kds — Update order item status (kds.operate: cocina y gestión)
 // Body: { orderItemId: string, status: OrderItemStatus }
 // Or: { orderId: string, action: "start" | "ready" | "complete" }
 export async function PUT(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
-    return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
-  }
-  const organizationId = effectiveOrgId(session);
-  if (!organizationId) {
-    return NextResponse.json({ ok: false, error: "Sin organización" }, { status: 403 });
-  }
+  const guard = await requireKdsSession("kds.operate");
+  if ("response" in guard) return guard.response;
+  const { session, organizationId } = guard;
 
   try {
     const body = await req.json();
@@ -133,7 +166,16 @@ export async function PUT(req: Request) {
       // Broadcast item update to all KDS screens
       const updatedOrder = await prisma.order.findUnique({
         where: { id: item.orderId },
-        include: { table: { select: { id: true, number: true, name: true } } },
+        include: {
+          table: {
+            select: {
+              id: true,
+              number: true,
+              name: true,
+              room: { select: { id: true, name: true } },
+            },
+          },
+        },
       });
       if (updatedOrder) {
         const now = Date.now();
@@ -208,7 +250,16 @@ export async function PUT(req: Request) {
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: { status: newStatus },
-        include: { table: { select: { id: true, number: true, name: true } } },
+        include: {
+          table: {
+            select: {
+              id: true,
+              number: true,
+              name: true,
+              room: { select: { id: true, name: true } },
+            },
+          },
+        },
       });
 
       // Log status change

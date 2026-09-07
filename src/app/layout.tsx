@@ -63,11 +63,15 @@ export default function RootLayout({
           <HttpErrorToast />
           {children}
         </Providers>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){})})}`,
-          }}
-        />
+        {/* El service worker (push + caché) solo corre en builds de producción:
+          en dev estorba con respuestas cacheadas viejas y jobs de push falsos. */}
+        {process.env.NODE_ENV === "production" && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){})})}`,
+            }}
+          />
+        )}
       </body>
     </html>
   );

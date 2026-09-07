@@ -93,18 +93,18 @@ export function DatePicker({
               {value ? formatDate(value, DATE_FORMAT) : placeholder}
             </span>
             {clearable && value && !disabled && onClear ? (
-              <button
-                type="button"
+              <span
+                role="button"
                 aria-label="Limpiar fecha"
                 tabIndex={-1}
-                className="rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                className="cursor-pointer rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
                 onClick={(e) => {
                   e.stopPropagation()
                   onClear?.()
                 }}
               >
                 <X className="size-3.5" />
-              </button>
+              </span>
             ) : null}
           </Button>
         </PopoverTrigger>

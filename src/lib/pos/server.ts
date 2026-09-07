@@ -15,6 +15,7 @@ import type { BusinessMode } from "@/lib/auth/options"
 import { maybeNotifyLowStock } from "@/lib/inventory/server";
 import { notifySaleCompleted } from "@/lib/notifications/events";
 import { broadcastTableUpdate } from "@/lib/tables/live";
+import { closeKitchenOrderOnSale } from "./kitchen";
 
 export class PosError extends Error {
   status: number;
@@ -812,6 +813,12 @@ export async function createSale(
         data: { endedAt: new Date() },
       });
     }
+    // Cerrar la orden de cocina de la mesa si el ticket se envió al KDS:
+    // liga la venta (saleId + paidAt) y la saca de la pantalla de cocina.
+    await closeKitchenOrderOnSale(organizationId, payload.tableId, result.sale.id, {
+      userId: ctx.userId,
+      employeeId: ctx.employeeId,
+    });
   }
 
   // Notificar venta completada por SSE (11.6) — fuera de la transacción.

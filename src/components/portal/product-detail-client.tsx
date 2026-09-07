@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils"
 import { SPRING_BOUNCE, SPRING_DEFAULT, STAGGER_FADE_UP } from "@/lib/animation-tokens"
 import { haptic } from "@/lib/haptics"
 import { MaskReveal } from "@/components/shared/mask-reveal"
+import { ThumbImage } from "@/components/base/thumb-image"
 
 /* ------------------------------------------------------------------ */
 /*  Loading skeleton                                                   */
@@ -262,10 +263,10 @@ export function ProductDetailClient({ productId }: { productId: string }) {
 
         {p.imageUrl ? (
           <MaskReveal shape="wipe" duration={0.7} className="aspect-square w-full">
-            <motion.img
-              layoutId={`${p.id}-img`}
+            <ThumbImage
               src={p.imageUrl}
               alt={p.name}
+              layoutId={`${p.id}-img`}
               className="aspect-square w-full object-cover"
             />
           </MaskReveal>
@@ -378,8 +379,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
                     )}
                   >
                     {v.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={v.imageUrl} alt={v.name} className="size-8 rounded-lg object-cover" />
+                      <ThumbImage src={v.imageUrl} alt={v.name} className="size-8 rounded-lg object-cover" />
                     )}
                     <div className="text-left">
                       <span className="block text-xs font-medium">{v.name}</span>
@@ -566,8 +566,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
               >
                 <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/60">
                   {v.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={v.imageUrl} alt={name} className="size-full object-cover" />
+                    <ThumbImage src={v.imageUrl} alt={name} className="size-full object-cover" />
                   ) : (
                     <Layers className="size-5 text-muted-foreground" />
                   )}

@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { cn } from "@/lib/utils"
 import {
   Tooltip,
   TooltipContent,
@@ -27,7 +28,9 @@ import { DialogComponent } from "@/components/ui/dialog"
 import { variantApi, type VariantRow } from "@/lib/api"
 import { money } from "@/lib/pos/money"
 import { swalConfirm, swalError, swalToast } from "@/lib/swal"
-import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads"
+import { uploadFile } from "@/lib/uploads"
+import { useImageDropzone } from "@/hooks/use-image-dropzone"
+import { ThumbImage } from "@/components/base/thumb-image"
 
 // ── Thumbnail de imagen de variante ──────────────────────────────────────────
 
@@ -40,7 +43,6 @@ function VariantImageCell({
   productId: string
   onSaved: () => void
 }) {
-  const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
 
   const change = async (file: File) => {
@@ -59,6 +61,13 @@ function VariantImageCell({
     }
   }
 
+  // Picker + zona de arrastre compartidos: clic o suelta una foto sobre el
+  // thumbnail de la variante para cambiarla.
+  const dropzone = useImageDropzone({
+    subject: "la imagen de la variante",
+    onFile: (file) => void change(file),
+  })
+
   const remove = async () => {
     setBusy(true)
     try {
@@ -76,26 +85,19 @@ function VariantImageCell({
 
   return (
     <div className="relative inline-block">
-      <input
-        ref={inputRef}
-        type="file"
-        accept={UPLOAD_IMAGE_ACCEPT}
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0]
-          if (f) void change(f)
-          e.target.value = ""
-        }}
-      />
+      {dropzone.inputs.image}
       <button
         type="button"
-        title="Cambiar imagen"
-        onClick={() => inputRef.current?.click()}
-        className="group relative block size-10 overflow-hidden rounded-md border bg-muted"
+        title="Cambiar imagen (clic o arrastrar)"
+        onClick={dropzone.openPicker}
+        {...dropzone.dragHandlers}
+        className={cn(
+          "group relative block size-10 overflow-hidden rounded-md border bg-muted",
+          dropzone.dragging && "border-primary ring-2 ring-primary/30"
+        )}
       >
         {variant.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <ThumbImage
             src={variant.imageUrl}
             alt={variant.name}
             className="size-full object-cover"
@@ -404,8 +406,7 @@ export function VariantsDialog({
       {/* Cabecera del producto */}
       <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-3">
         {productImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <ThumbImage
             src={productImage}
             alt={productName}
             className="size-12 rounded-md object-cover"

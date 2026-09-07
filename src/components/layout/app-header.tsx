@@ -11,6 +11,7 @@ import { Logo } from "@/components/layout/logo";
 import { SearchDialog, SearchTrigger } from "@/components/layout/search-dialog";
 import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { PushSubscriber } from "@/components/portal/push-subscriber";
+import { RoleBadge } from "@/components/shared/role-badge";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu, type UserMenuUser } from "@/components/layout/user-menu";
 import { OrgSwitcher } from "@/components/layout/org-switcher";
@@ -71,12 +72,17 @@ export function AppHeader({ sections, user, logoUrl }: AppHeaderProps) {
         </div>
 
         <div className="flex items-center gap-1">
-          {user.role === "superadmin" || user.role === "admin" ? (
+          {user.scope === "superadmin" || user.scope === "app" ? (
             <OrgSwitcher
               activeOrganizationId={user.activeOrganizationId ?? null}
               scope={user.scope ?? null}
             />
           ) : null}
+          <RoleBadge
+            roleName={user.roleName}
+            role={user.role}
+            className="hidden lg:inline-flex"
+          />
           <ThemeToggle />
           <NotificationsBell />
           <PushSubscriber />

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TapScale } from "@/components/shared/tap-scale"
+import { ThumbImage } from "@/components/base/thumb-image"
 import { cn } from "@/lib/utils"
 import { STAGGER_FADE_UP } from "@/lib/animation-tokens"
 import Link from "next/link"
@@ -168,8 +169,7 @@ export function CombosClient() {
 
                   {/* Image */}
                   {combo.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <ThumbImage
                       src={combo.imageUrl}
                       alt={combo.name}
                       className="h-40 w-full object-cover"

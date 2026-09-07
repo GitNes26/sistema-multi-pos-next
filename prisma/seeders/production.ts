@@ -6,7 +6,9 @@ import { PERMISSIONS } from "../../src/lib/auth/permission-keys";
 // FASE 1.3.1 + FASE 2.8 — Seed de producción (base mínima)
 // - SuperAdmin default
 // - 30 permisos predefinidos (fuente: src/lib/auth/permission-keys.ts)
-// - 4 roles default de sistema (superadmin, owner, manager, cashier)
+// - Roles default de sistema: compartidos (owner, cashier, courier…) +
+//   un set por modo de negocio (food_service → mesero/cocina, services →
+//   agente, rental → agente de renta; hybrid → mesero/cocina).
 // - Unidades de medida del sistema (PLAN §6b)
 
 const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL ?? "admin@multi-pos.com";
@@ -17,29 +19,70 @@ const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME ?? "Super Admin";
 const allPermissionKeys = PERMISSIONS.map((p) => p.key);
 const appPermissionKeys = PERMISSIONS.filter((p) => p.key !== "organizations.manage").map((p) => p.key);
 
-export const SYSTEM_ROLES = [
+// ── Roles de sistema por businessMode ──────────────────────────────────────
+// Los compartidos (businessMode = null) aplican a cualquier organización.
+// Cada modo agrega su set propio: food_service/hybrid suman mesero y cocina
+// (KDS), services suma agente de atención, rental suma agente de renta.
+// Los ids son estables para upsert: `system-{name}` (compartidos, mantienen
+// el fallback por enum en permissionsForRole) y `system-{mode}-{name}`.
+
+type BusinessMode = "retail" | "food_service" | "services" | "rental" | "hybrid";
+
+type SystemRoleDef = {
+  id: string;
+  name: string;
+  description: string;
+  /** null = compartido a todas las organizaciones. */
+  businessMode?: BusinessMode | null;
+  permissions: readonly string[];
+};
+
+// Mesero: toma pedidos, atiende mesas y los manda a cocina (no toca caja).
+const WAITER_PERMISSIONS = [
+  "pos.use",
+  "products.view",
+  "customers.view",
+  "customers.manage",
+  "promotions.view",
+  "sales.view",
+  "orders.view",
+  "orders.manage",
+  "locations.view",
+] as const;
+
+// Cocina (KDS): ve los pedidos y opera el tablero (kds.operate). SIN
+// orders.manage ni delivery.manage: la cocina no confirma pedidos ni entregas.
+const KITCHEN_PERMISSIONS = ["orders.view", "kds.operate", "products.view"] as const;
+
+export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
+  // ── Compartidos (todos los modos de negocio) ─────────────────────────────
   {
+    id: "system-superadmin",
     name: "superadmin",
     description: "Acceso total al sistema",
     permissions: allPermissionKeys,
   },
   {
-    name: "owner",
+    id: "system-owner",
+    name: "Propietario",
     description: "Dueño de la empresa: acceso total",
     permissions: appPermissionKeys,
   },
   {
-    name: "admin",
+    id: "system-admin",
+    name: "Admin",
     description: "Admin multi-empresa: acceso total en sus organizaciones",
     permissions: appPermissionKeys,
   },
   {
-    name: "manager",
+    id: "system-manager",
+    name: "Gerente",
     description: "Gerente: todo excepto gestión de usuarios",
     permissions: appPermissionKeys.filter((k) => k !== "users.manage"),
   },
   {
-    name: "cashier",
+    id: "system-cashier",
+    name: "Cajero",
     description: "Cajero: POS, catálogos y caja",
     permissions: [
       "pos.use",
@@ -57,11 +100,92 @@ export const SYSTEM_ROLES = [
     ],
   },
   {
+    id: "system-courier",
+    name: "Repartidor",
+    description: "Repartidor: entrega a domicilio y su estatus (no opera el KDS)",
+    permissions: ["orders.view", "delivery.manage", "customers.view", "locations.view"],
+  },
+  {
+    id: "system-customer",
     name: "customer",
     description: "Cliente con cuenta en el portal (sin permisos de panel)",
     permissions: [],
   },
-] as const;
+
+  // ── food_service: mesero + cocina (KDS) ───────────────────────────────────
+  {
+    id: "system-food_service-waiter",
+    name: "Mesero",
+    businessMode: "food_service",
+    description: "Mesero: tickets de mesas y pedidos a cocina",
+    permissions: WAITER_PERMISSIONS,
+  },
+  {
+    id: "system-food_service-kitchen",
+    name: "Cocina (KDS)",
+    businessMode: "food_service",
+    description: "Cocina (KDS): ve y actualiza pedidos en la pantalla de cocina",
+    permissions: KITCHEN_PERMISSIONS,
+  },
+
+  // ── services: agente de atención ─────────────────────────────────────────
+  {
+    id: "system-services-attendant",
+    name: "Agente de atención",
+    businessMode: "services",
+    description: "Agente de atención: agenda de citas, clientes y cobro en caja",
+    permissions: [
+      "pos.use",
+      "products.view",
+      "customers.view",
+      "customers.manage",
+      "promotions.view",
+      "sales.view",
+      "orders.view",
+      "orders.manage",
+      "locations.view",
+      "appointments.view",
+      "appointments.manage",
+    ],
+  },
+
+  // ── rental: agente de renta ──────────────────────────────────────────────
+  {
+    id: "system-rental-agent",
+    name: "Agente de renta",
+    businessMode: "rental",
+    description: "Agente de renta: reservaciones y disponibilidad, clientes y cobro en caja",
+    permissions: [
+      "pos.use",
+      "products.view",
+      "customers.view",
+      "customers.manage",
+      "promotions.view",
+      "sales.view",
+      "orders.view",
+      "orders.manage",
+      "locations.view",
+      "reservations.view",
+      "reservations.manage",
+    ],
+  },
+
+  // ── hybrid: incluye los roles específicos de food_service ─────────────────
+  {
+    id: "system-hybrid-waiter",
+    name: "Mesero",
+    businessMode: "hybrid",
+    description: "Mesero: tickets de mesas y pedidos a cocina",
+    permissions: WAITER_PERMISSIONS,
+  },
+  {
+    id: "system-hybrid-kitchen",
+    name: "Cocina (KDS)",
+    businessMode: "hybrid",
+    description: "Cocina (KDS): ve y actualiza pedidos en la pantalla de cocina",
+    permissions: KITCHEN_PERMISSIONS,
+  },
+];
 
 // Unidades del sistema (organizationId = null → globales)
 export const SYSTEM_UNITS = [
@@ -117,6 +241,8 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   { id: "menu-creditos", parentId: "menu-operacion", type: "item", label: "Crédito", icon: "Landmark", href: "/admin/credits", permissionKey: "orders.view", sortOrder: 6 },
   { id: "menu-mesas", parentId: "menu-operacion", type: "item", label: "Mesas", icon: "Armchair", href: "/admin/tables", permissionKey: "locations.view", sortOrder: 7 },
   { id: "menu-kds", parentId: "menu-operacion", type: "item", label: "Cocina (KDS)", icon: "ChefHat", href: "/kds", permissionKey: "orders.view", sortOrder: 8 },
+  { id: "menu-agenda", parentId: "menu-operacion", type: "item", label: "Agenda de citas", icon: "CalendarDays", href: "/agenda", permissionKey: "appointments.view", sortOrder: 9 },
+  { id: "menu-reservaciones", parentId: "menu-operacion", type: "item", label: "Reservaciones", icon: "CalendarRange", href: "/reservaciones", permissionKey: "reservations.view", sortOrder: 10 },
 
   { id: "menu-ajustes", parentId: null, type: "section", label: "Ajustes", icon: "Settings", sortOrder: 4 },
   { id: "menu-apariencia", parentId: "menu-ajustes", type: "item", label: "Apariencia", icon: "Palette", href: "/admin/settings/appearance", permissionKey: "settings.manage", sortOrder: 1 },
@@ -156,13 +282,23 @@ export async function seedProduction() {
     });
   }
 
-  // Roles de sistema
+  // Roles de sistema (compartidos + por modo de negocio)
   for (const def of SYSTEM_ROLES) {
-    const id = `system-${def.name}`;
     const role = await prisma.role.upsert({
-      where: { id },
-      update: { name: def.name, description: def.description, isSystem: true },
-      create: { id, name: def.name, description: def.description, isSystem: true },
+      where: { id: def.id },
+      update: {
+        name: def.name,
+        description: def.description,
+        isSystem: true,
+        businessMode: def.businessMode ?? null,
+      },
+      create: {
+        id: def.id,
+        name: def.name,
+        description: def.description,
+        isSystem: true,
+        businessMode: def.businessMode ?? null,
+      },
     });
     await prisma.rolePermission.deleteMany({ where: { roleId: role.id, organizationId: null } });
     if (def.permissions.length > 0) {

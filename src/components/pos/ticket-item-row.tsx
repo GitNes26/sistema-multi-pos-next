@@ -6,6 +6,7 @@ import { Minus, Package, Pencil, Plus, Trash2 } from "lucide-react";
 import type { PosLineItem } from "@/types/pos";
 import { money } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
+import { ThumbImage } from "@/components/base/thumb-image";
 
 interface TicketItemRowProps {
   item: PosLineItem;
@@ -62,8 +63,7 @@ export const TicketItemRow = memo(function TicketItemRow({
       >
         <div className="flex items-start gap-2">
           {item.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <ThumbImage
               src={item.imageUrl}
               alt={item.name}
               className="size-10 shrink-0 rounded-md border object-cover"
@@ -74,7 +74,21 @@ export const TicketItemRow = memo(function TicketItemRow({
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <p className="line-clamp-1 text-sm font-medium leading-tight">{item.name}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="line-clamp-1 text-sm font-medium leading-tight">{item.name}</p>
+              {(item.sentQty ?? 0) > 0 && (
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+                    (item.sentQty ?? 0) >= item.qty
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  )}
+                >
+                  {(item.sentQty ?? 0) >= item.qty ? "✓ Cocina" : `✓ ${item.sentQty}/${item.qty}`}
+                </span>
+              )}
+            </div>
             {/* Selected options */}
             {item.selectedOptions && item.selectedOptions.length > 0 && (
               <div className="mt-0.5 flex flex-wrap gap-1">

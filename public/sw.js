@@ -1,5 +1,12 @@
-const CACHE_NAME = "multi-pos-v2";
-const PRECACHE = ["/", "/sounds/notification.mp3", "/sounds/order-received.mp3", "/sounds/order-ready.mp3"];
+const CACHE_NAME = "multi-pos-v3";
+// Solo assets estáticos de bajo volumen. La shell de la app (/) NO se precachea:
+// en dev dispara la compilación de la ruta y en producción cambia en cada deploy.
+const PRECACHE = ["/sounds/notification.mp3", "/sounds/order-received.mp3", "/sounds/order-ready.mp3"];
+
+// En desarrollo el servidor de Next compila rutas bajo demanda y el hash de los
+// chunks cambia a cada reinicio; cachear ahí sirve HTML/chunks obsoletos que
+// rompen la hidratación y dejan la página congelada. En dev todo pasa directo.
+const IS_DEV = ["localhost", "127.0.0.1"].includes(self.location.hostname);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -16,17 +23,22 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+  const req = event.request;
+  if (req.method !== "GET") return;
+  if (IS_DEV) return;
+  // Las navegaciones (HTML de la app) nunca se cachean ni se responden desde
+  // caché: un shell viejo con chunks nuevos rompe la app. Solo pasan por red.
+  if (req.mode === "navigate") return;
   event.respondWith(
-    fetch(event.request)
+    fetch(req)
       .then((res) => {
-        if (res.ok && event.request.url.startsWith(self.location.origin)) {
+        if (res.ok && req.url.startsWith(self.location.origin)) {
           const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
         }
         return res;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(req))
   );
 });
 

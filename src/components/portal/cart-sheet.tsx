@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { BottomSheet } from "@/components/portal/bottom-sheet"
 import { CartEmptyIllustration } from "@/components/shared/animated-illustrations"
 import { SlideToPay } from "@/components/shared/slide-to-pay"
+import { ThumbImage } from "@/components/base/thumb-image"
 import { haptic } from "@/lib/haptics"
 import { useState } from "react"
 
@@ -80,7 +81,7 @@ function SwipeableCartItem({
         {/* Product image */}
         <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-zinc-700">
           {item.imageUrl ? (
-            <img
+            <ThumbImage
               src={item.imageUrl}
               alt={item.name}
               className="size-full object-cover"

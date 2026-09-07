@@ -32,8 +32,8 @@ export async function POST(
 
   const { id } = await params;
   try {
-    const body = (await req.json()) as { userId: string; role: string };
-    const result = await assignUserToOrg(id, body.userId, body.role);
+    const body = (await req.json()) as { userId: string; role?: string; roleId?: string | null };
+    const result = await assignUserToOrg(id, body.userId, body.role, body.roleId);
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json(

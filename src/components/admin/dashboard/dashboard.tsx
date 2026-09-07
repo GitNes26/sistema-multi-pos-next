@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   Banknote,
   ShoppingCart,
@@ -95,6 +96,28 @@ export function AdminDashboard() {
     load();
   }, [load]);
 
+  // Recarga al cambiar de organización: `router.refresh()` del switcher
+  // re-renderiza el shell, pero el estado de este componente cliente (con las
+  // métricas de la org anterior) sobrevive — sin esto, el panel seguiría
+  // mostrando los números de la org previa hasta un F5.
+  const { data: session } = useSession();
+  const activeOrgId =
+    (session?.user as { activeOrganizationId?: string } | undefined)
+      ?.activeOrganizationId ?? null;
+  const prevOrgRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeOrgId) return;
+    if (prevOrgRef.current === null) {
+      // Primera observación (hidratación de la sesión): ya cargó arriba.
+      prevOrgRef.current = activeOrgId;
+      return;
+    }
+    if (prevOrgRef.current !== activeOrgId) {
+      prevOrgRef.current = activeOrgId;
+      load();
+    }
+  }, [activeOrgId, load]);
+
   if (loading && !data) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -111,10 +134,6 @@ export function AdminDashboard() {
   }
 
   if (!data) return null;
-
-  // La guía de bienvenida (wizards) aparece mientras el negocio está en blanco:
-  // sin productos o sin ninguna venta registrada.
-  const showWelcome = data.productCount === 0 || data.totalSales === 0;
 
   return (
     <div className="space-y-4">
@@ -144,10 +163,11 @@ export function AdminDashboard() {
         </Card>
       )}
 
-      {/* Bienvenida con acciones guiadas (wizards) — solo en negocio en blanco */}
-      {showWelcome && (
-        <WizardLauncher productCount={data.productCount ?? 0} totalSales={data.totalSales ?? 0} />
-      )}
+      {/* Bienvenida con acciones guiadas (wizards).
+          El launcher se auto-oculta si no hay acciones disponibles o si el
+          usuario ya la descartó (persiste por organización en localStorage);
+          con negocio en marcha muestra su hero "sigue haciendo crecer". */}
+      <WizardLauncher productCount={data.productCount ?? 0} totalSales={data.totalSales ?? 0} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard

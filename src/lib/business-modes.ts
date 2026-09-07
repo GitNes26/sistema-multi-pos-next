@@ -67,9 +67,11 @@ export const BUSINESS_MODES: Record<BusinessMode, BusinessModeInfo> = {
       "Venta de productos y servicios con agenda: citas, asignación de personal, promociones y cobro en caja.",
     features: [
       "Punto de venta (POS)",
+      "Agenda / citas",
+      "Asignación de personal",
       "Catálogo de productos",
       "Promociones",
-      "Agenda / citas (próximamente)",
+      "Cobro en caja",
       "Portal del cliente",
     ],
     gradient: "from-violet-500 to-purple-600",
@@ -78,12 +80,14 @@ export const BUSINESS_MODES: Record<BusinessMode, BusinessModeInfo> = {
     id: "rental",
     label: "Renta / Alquiler",
     description:
-      "Productos que se rentan por períodos: calendario de disponibilidad, reservaciones, contratos y cobro en caja.",
+      "Productos que se rentan por períodos: calendario de disponibilidad, reservaciones por unidades, contratos y cobro en caja.",
     features: [
       "Punto de venta (POS)",
-      "Catálogo de productos",
+      "Reservaciones por períodos",
+      "Calendario de disponibilidad",
+      "Catálogo de productos por unidad",
       "Promociones",
-      "Reservaciones (próximamente)",
+      "Cobro en caja",
       "Portal del cliente",
     ],
     gradient: "from-sky-500 to-blue-600",
@@ -128,6 +132,8 @@ export type WizardActionKind =
   | "inventory"
   | "tables"
   | "kds"
+  | "agenda"
+  | "reservation"
   | "delivery"
   | "credit"
   | "promotion"
@@ -187,6 +193,22 @@ export const WIZARD_ACTIONS: Record<WizardActionKind, WizardActionDef> = {
     href: "/kds",
     permission: "orders.view",
     modes: ["food_service", "hybrid"],
+  },
+  agenda: {
+    kind: "agenda",
+    title: "Configura tu agenda de citas",
+    description: "Asigna servicios a tu personal y agenda la primera cita",
+    href: "/agenda",
+    permission: "appointments.manage",
+    modes: ["services", "hybrid"],
+  },
+  reservation: {
+    kind: "reservation",
+    title: "Configura tus reservaciones",
+    description: "Revisa el calendario de disponibilidad y aparta la primera renta",
+    href: "/reservaciones",
+    permission: "reservations.manage",
+    modes: ["rental", "hybrid"],
   },
   delivery: {
     kind: "delivery",
@@ -252,8 +274,8 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "company",
     "portal",
   ],
-  services: ["product", "promotion", "payments", "company", "portal"],
-  rental: ["product", "promotion", "payments", "company", "portal"],
+  services: ["product", "agenda", "promotion", "payments", "company", "portal"],
+  rental: ["product", "reservation", "promotion", "payments", "company", "portal"],
   hybrid: [
     "product",
     "combos",

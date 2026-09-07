@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { closeCashSession, openCashSession, getSalesStats } from "@/lib/pos/server";
 import { effectiveOrgId } from "@/lib/auth/org-context";
+import {
+  assertPermission,
+  PermissionDeniedError,
+} from "@/lib/auth/server-permissions";
 import { requirePosSession, resolveLocationId } from "../helpers";
 
 export async function GET(req: Request) {
@@ -32,6 +36,15 @@ export async function POST(req: Request) {
     };
     const locationId = await resolveLocationId(organizationId, body.locationId);
 
+    // RBAC server-side: abrir/cerrar la caja exige cash.open / cash.close.
+    // El mesero (y roles sin caja) no puede operarla aunque el control se
+    // oculte en el cliente.
+    if (body.action === "open") {
+      assertPermission(session, "cash.open");
+    } else if (body.action === "close") {
+      assertPermission(session, "cash.close");
+    }
+
     if (body.action === "open") {
       if (!body.registerId) {
         return NextResponse.json({ ok: false, error: "Selecciona una caja registradora" }, { status: 400 });
@@ -61,6 +74,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: false, error: "Acción no válida" }, { status: 400 });
   } catch (err) {
+    if (err instanceof PermissionDeniedError) {
+      return NextResponse.json({ ok: false, error: err.message }, { status: 403 });
+    }
     const message = err instanceof Error ? err.message : "Error en la caja";
     const status = message.includes("no está abierta") ? 400 : 500;
     console.error("[pos/cash]", err);

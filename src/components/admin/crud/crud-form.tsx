@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { OptionSelect } from "./option-select"
 import { MultiSelect } from "./multi-select"
 import { Attachment } from "@/components/base/attachment"
+import { ImageDropzoneField } from "./image-dropzone-field"
 import { GpsPicker } from "@/components/base/gps-picker"
 import { AddressField } from "@/components/base/address-field"
 import { InputGroupField } from "@/components/base/input-group-field"
@@ -370,15 +371,22 @@ export function CrudForm({
                 {field.label}
                 {field.required && <span className="text-destructive"> *</span>}
               </Label>
-              <Attachment
-                value={value ? String(value) : null}
-                onChange={(v) => set(field.key, v)}
-                upload={uploadFile}
-                accept={UPLOAD_IMAGE_ACCEPT}
-                label=""
-                widthClass="w-24"
-                heightClass="h-24"
-              />
+              {field.dropzone ? (
+                <ImageDropzoneField
+                  value={value ? String(value) : null}
+                  onChange={(v) => set(field.key, v)}
+                />
+              ) : (
+                <Attachment
+                  value={value ? String(value) : null}
+                  onChange={(v) => set(field.key, v)}
+                  upload={uploadFile}
+                  accept={UPLOAD_IMAGE_ACCEPT}
+                  label=""
+                  widthClass="w-24"
+                  heightClass="h-24"
+                />
+              )}
             </FieldWrapper>
           )
         }

@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/db";
-import type { $Enums, Prisma } from "@prisma/client";
+import type { $Enums, Prisma, BusinessMode } from "@prisma/client";
 import { PERMISSIONS } from "@/lib/auth/permission-keys";
+import {
+  roleAllowedInOrg,
+  roleIdToEnum,
+  ROLE_MODE_GATE_MESSAGE,
+} from "@/lib/settings/system-roles";
 
 // FASE 15 — Servidor de ajustes: empresa, perfil, usuarios, roles, invitaciones,
 // lealtad y supervisor.
@@ -113,20 +118,51 @@ export async function listOrgUsers(organizationId: string): Promise<OrgUserRow[]
 export async function updateMembershipRole(
   membershipId: string,
   role?: string,
-  roleId?: string
+  roleId?: string,
+  callerOrganizationId?: string
 ): Promise<{ ok: boolean }> {
+  // La membresía debe existir y pertenecer a la organización del llamador
+  // (evita modificar miembros de otra empresa con un id adivinado).
+  const membership = await prisma.membership.findUnique({
+    where: { id: membershipId },
+    select: { organizationId: true },
+  });
+  if (!membership) throw new Error("Membresía no encontrada");
+  if (callerOrganizationId && membership.organizationId !== callerOrganizationId) {
+    throw new Error("Membresía no encontrada");
+  }
+
   const data: { role?: $Enums.OrgRole; roleId?: string | null } = {};
   if (roleId) {
-    // Asignar rol por foreign key (sistema híbrido)
-    const roleRecord = await prisma.role.findUnique({ where: { id: roleId }, select: { id: true } });
+    // Asignar rol por foreign key (sistema híbrido / roles del modo).
+    const roleRecord = await prisma.role.findUnique({
+      where: { id: roleId },
+      select: { id: true, isSystem: true, businessMode: true, organizationId: true },
+    });
     if (!roleRecord) throw new Error("Rol no encontrado");
+
+    // Compuerta de modo siempre activa (igual que la asignación del superAdmin):
+    // un rol de sistema de otro modo (mesero/cocina/agente…) o un rol custom de
+    // otra empresa no puede asignarse a esta organización.
+    const org = await prisma.organization.findUnique({
+      where: { id: membership.organizationId },
+      select: { businessMode: true },
+    });
+    if (!roleAllowedInOrg(roleRecord, org?.businessMode ?? "retail", membership.organizationId)) {
+      throw new Error(ROLE_MODE_GATE_MESSAGE);
+    }
+
     data.roleId = roleId;
-    // Also update the enum for backward compatibility
-    if (role && ["owner", "manager", "cashier"].includes(role)) {
+    // El enum efectivo siempre acompaña al roleId (owner→owner, gerente→manager,
+    // mesero/cocina/repartidor→cashier…) para que el rol grueso no quede viejo.
+    data.role = roleIdToEnum(roleId);
+    // Permite un override explícito del enum si el cliente lo manda.
+    if (role && ["owner", "manager", "cashier", "admin"].includes(role)) {
       data.role = role as $Enums.OrgRole;
     }
   } else if (role && ["owner", "manager", "cashier"].includes(role)) {
     data.role = role as $Enums.OrgRole;
+    data.roleId = null;
   }
   if (Object.keys(data).length === 0) throw new Error("Rol inválido");
   await prisma.membership.update({ where: { id: membershipId }, data });
@@ -138,7 +174,18 @@ export async function setUserActive(userId: string, isActive: boolean): Promise<
   return { ok: true };
 }
 
-export async function removeMembership(membershipId: string): Promise<{ ok: boolean }> {
+export async function removeMembership(
+  membershipId: string,
+  callerOrganizationId?: string
+): Promise<{ ok: boolean }> {
+  const membership = await prisma.membership.findUnique({
+    where: { id: membershipId },
+    select: { organizationId: true },
+  });
+  if (!membership) throw new Error("Membresía no encontrada");
+  if (callerOrganizationId && membership.organizationId !== callerOrganizationId) {
+    throw new Error("Membresía no encontrada");
+  }
   await prisma.membership.delete({ where: { id: membershipId } });
   return { ok: true };
 }
@@ -151,12 +198,32 @@ export interface RoleRow {
   description: string | null;
   isSystem: boolean;
   organizationId: string | null;
+  /** Modo de negocio al que aplica este rol de sistema (null = compartido). */
+  businessMode: BusinessMode | null;
   permissionCount: number;
 }
 
 export async function listRoles(organizationId: string): Promise<RoleRow[]> {
+  // Roles visibles: los de la empresa + los roles de sistema que aplican al
+  // modo de negocio de la organización. Los compartidos (businessMode = null)
+  // se muestran siempre; los específicos de un modo solo si la org es de ese
+  // modo (hybrid tiene su propio set: mesero/cocina incluidos).
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { businessMode: true },
+  });
+  const mode = org?.businessMode ?? "retail";
+
   const roles = await prisma.role.findMany({
-    where: { OR: [{ isSystem: true }, { organizationId }] },
+    where: {
+      OR: [
+        { organizationId },
+        {
+          isSystem: true,
+          OR: [{ businessMode: null }, { businessMode: mode }],
+        },
+      ],
+    },
     include: { _count: { select: { permissions: true } } },
     orderBy: [{ isSystem: "desc" }, { name: "asc" }],
   });
@@ -166,6 +233,7 @@ export async function listRoles(organizationId: string): Promise<RoleRow[]> {
     description: r.description,
     isSystem: r.isSystem,
     organizationId: r.organizationId,
+    businessMode: r.businessMode,
     permissionCount: r._count.permissions,
   }));
 }
@@ -224,6 +292,7 @@ export async function createRole(
     description: created.description,
     isSystem: created.isSystem,
     organizationId: created.organizationId,
+    businessMode: created.businessMode,
     permissionCount: input.copyRoleId
       ? await prisma.rolePermission.count({ where: { roleId: created.id } })
       : 0,

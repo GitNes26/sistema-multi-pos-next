@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.16.1.0] — 2026-09-07
+- **Tipo:** `fix` (Patch)
+- fix:se implemento la ventana de reservacion de mesas
+
 ### [0.16.0.0] — 2026-09-04
 - **Tipo:** `feat` (Minor)
 - feat:se mejoro diseño y se agregaron los wizard

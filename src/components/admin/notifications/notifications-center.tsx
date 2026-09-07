@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { useNotificationStore } from "@/stores/notifications-store";
 import { useNotificationSse } from "@/hooks/use-notifications";
+import { LiveBadge } from "@/components/shared/live-badge";
 
 // FASE 11.2 — Centro de notificaciones (lista completa, leer individual y batch).
 
@@ -115,12 +116,15 @@ export function NotificationsCenter({ icon }: { icon?: React.ReactNode }) {
         title="Notificaciones"
         description="Centro de notificaciones de tu organización."
         actions={
-          unreadCount > 0 ? (
-            <Button size="sm" onClick={markAll}>
-              <CheckCheck className="size-4" />
-              Marcar todo leído
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            <LiveBadge />
+            {unreadCount > 0 && (
+              <Button size="sm" onClick={markAll}>
+                <CheckCheck className="size-4" />
+                Marcar todo leído
+              </Button>
+            )}
+          </div>
         }
       />
 

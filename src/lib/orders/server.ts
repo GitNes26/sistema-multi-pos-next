@@ -3,6 +3,7 @@ import type { $Enums, Prisma } from "@prisma/client";
 import crypto from "crypto";
 import { notifyOrderEvent } from "@/lib/notifications/events";
 import { broadcastOrderStatus } from "@/lib/portal/live";
+import { broadcastKdsUpdate } from "@/lib/kds/live";
 
 // FASE 12 — Servidor de pedidos (admin): listado, detalle, estados, preparación.
 
@@ -21,6 +22,9 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 /** Estados que mantienen el pedido "activo" para el monitoreo (12.4). */
 export const ACTIVE_STATUSES: OrderStatus[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "at_destination", "delivered"];
+
+/** Estados que el tablero de cocina (KDS) considera abiertos. */
+const KDS_OPEN_STATUSES = new Set<string>(["pending", "confirmed", "preparing"]);
 
 const toNum = (v: Prisma.Decimal | number | string | null): number =>
   v == null ? 0 : Number(v);
@@ -44,6 +48,8 @@ export interface OrderRow {
   deliveryMethod: string;
   customerName: string | null;
   locationName: string | null;
+  /** Dirección de entrega (delivery) para la cola del repartidor. */
+  address: string | null;
   itemsCount: number;
   total: number;
   createdAt: string;
@@ -101,18 +107,18 @@ export async function listOrders(
     getOrderReportCounts(organizationId),
   ]);
 
-  return {
-    rows: rows.map((o) => ({
-      id: o.id,
-      orderNumber: Number(o.orderNumber),
-      status: o.status,
-      deliveryMethod: o.deliveryMethod,
-      customerName: o.customer?.fullName ?? null,
-      locationName: o.location?.name ?? null,
-      itemsCount: o._count.items,
-      total: toNum(o.total),
-      createdAt: o.createdAt.toISOString(),
-    })),
+  return {      rows: rows.map((o) => ({
+        id: o.id,
+        orderNumber: Number(o.orderNumber),
+        status: o.status,
+        deliveryMethod: o.deliveryMethod,
+        customerName: o.customer?.fullName ?? null,
+        locationName: o.location?.name ?? null,
+        address: o.address,
+        itemsCount: o._count.items,
+        total: toNum(o.total),
+        createdAt: o.createdAt.toISOString(),
+      })),
     total,
     counts,
   };
@@ -136,6 +142,8 @@ export interface OrderDetail {
   customerName: string | null;
   customerPhone: string | null;
   locationName: string | null;
+  /** Número de mesa (food_service/hybrid) para el panel de cocina en el POS. */
+  tableNumber: number | null;
   saleId: string | null;
   isPaid: boolean;
   paymentMethod: string | null;
@@ -168,6 +176,7 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
     include: {
       customer: { select: { fullName: true, phone: true } },
       location: { select: { name: true } },
+      table: { select: { number: true } },
       items: {
         include: { unit: { select: { name: true } } },
         orderBy: { createdAt: "asc" },
@@ -194,6 +203,7 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
     customerName: order.customer?.fullName ?? null,
     customerPhone: order.customer?.phone ?? null,
     locationName: order.location?.name ?? null,
+    tableNumber: order.table?.number ?? null,
     saleId: order.saleId,
     isPaid: order.paidAt != null || order.saleId != null,
     paymentMethod: order.paymentMethod,
@@ -295,6 +305,15 @@ export async function updateOrderStatus(
       status: detail.status,
       updatedAt: detail.updatedAt,
     });
+    // Espejo en el canal KDS: los estados dentro del tablero de cocina van como
+    // order_updated; al salir de él (ready/in_transit/…/delivered/cancelled) el
+    // tablero de cocina lo quita y el tablero de entregas refresca al vuelo.
+    broadcastKdsUpdate(organizationId, {
+      type: KDS_OPEN_STATUSES.has(detail.status) ? "order_updated" : "order_removed",
+      orderId: id,
+      orderNumber: detail.orderNumber,
+      status: detail.status,
+    });
   }
   return detail;
 }
@@ -383,6 +402,15 @@ export async function confirmArrival(
       status: "at_destination",
       updatedAt: detail.updatedAt,
     });
+    // Espejo KDS (ver updateOrderStatus): confirmArrival hace su propia
+    // transacción y no pasa por updateOrderStatus, así que sin esto la
+    // llegada nunca llegaría al tablero de entregas en vivo.
+    broadcastKdsUpdate(organizationId, {
+      type: "order_removed",
+      orderId,
+      orderNumber: detail.orderNumber,
+      status: "at_destination",
+    });
   }
   return detail;
 }
@@ -465,6 +493,13 @@ export async function confirmDelivery(
       orderNumber: detail.orderNumber,
       status: "delivered",
       updatedAt: detail.updatedAt,
+    });
+    // Espejo KDS (ver updateOrderStatus): entregado salió del tablero de cocina.
+    broadcastKdsUpdate(organizationId, {
+      type: "order_removed",
+      orderId,
+      orderNumber: detail.orderNumber,
+      status: "delivered",
     });
   }
   return { ok: true, order: detail! };

@@ -11,7 +11,12 @@ export interface DriverLocation {
 }
 
 const locations = new Map<string, DriverLocation>();
-const channels = new Map<string, Set<Controller>>();
+// Singleton en globalThis (misma razón que lib/kds/live.ts en dev).
+const globalForDriverLive = globalThis as unknown as {
+  driverChannels: Map<string, Set<Controller>> | undefined;
+};
+const channels = globalForDriverLive.driverChannels ?? new Map<string, Set<Controller>>();
+if (process.env.NODE_ENV !== "production") globalForDriverLive.driverChannels = channels;
 const encoder = new TextEncoder();
 
 function okChunk(obj: unknown) {

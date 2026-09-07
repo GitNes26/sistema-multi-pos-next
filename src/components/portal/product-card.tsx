@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { SPRING_BOUNCE, SPRING_DEFAULT } from "@/lib/animation-tokens"
 import { haptic } from "@/lib/haptics"
 import { MaskReveal } from "@/components/shared/mask-reveal"
+import { ThumbImage } from "@/components/base/thumb-image"
 
 function PlaceholderImage() {
   return (
@@ -133,10 +134,10 @@ export function ProductCard({ product, layoutId }: { product: PortalProduct; lay
         <div className="relative">
           {product.imageUrl ? (
             <MaskReveal shape="circle" duration={0.5} className="aspect-square">
-              <motion.img
-                layoutId={layoutId ? `${layoutId}-img` : undefined}
+              <ThumbImage
                 src={product.imageUrl}
                 alt={product.name}
+                layoutId={layoutId ? `${layoutId}-img` : undefined}
                 className="aspect-square w-full object-cover"
               />
             </MaskReveal>

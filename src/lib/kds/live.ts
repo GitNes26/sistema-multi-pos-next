@@ -4,10 +4,10 @@
 type Controller = ReadableStreamDefaultController<Uint8Array>;
 
 export interface KdsUpdatePayload {
-  type: "order_new" | "order_updated" | "order_removed";
-  orderId: string;
-  orderNumber: string | number;
-  status: string;
+  type: "order_new" | "order_updated" | "order_removed" | "reservations_changed";
+  orderId?: string;
+  orderNumber?: string | number;
+  status?: string;
   locationId?: string | null;
   table?: { id: string; number: number; name: string | null } | null;
   elapsedSeconds?: number;
@@ -20,7 +20,15 @@ export interface KdsUpdatePayload {
   }[];
 }
 
-const channels = new Map<string, Set<Controller>>();
+// En dev, turbopack evalúa los módulos por ruta: sin el singleton en
+// globalThis, el route del stream y el route que difunde llevarían Maps
+// distintos y los eventos nunca cruzarían de un módulo al otro.
+const globalForKdsLive = globalThis as unknown as {
+  kdsChannels: Map<string, Set<Controller>> | undefined;
+};
+const channels = globalForKdsLive.kdsChannels ?? new Map<string, Set<Controller>>();
+if (process.env.NODE_ENV !== "production") globalForKdsLive.kdsChannels = channels;
+
 const encoder = new TextEncoder();
 
 function okChunk(obj: unknown) {

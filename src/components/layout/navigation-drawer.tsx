@@ -10,7 +10,16 @@ import { useUiStore } from "@/stores/ui-store";
 import { DURATION, SPRING_SOFT, TRANSITION_FADE_FAST } from "@/lib/animation-tokens";
 
 // FASE 5.7 — NavigationDrawer: slide-in con overlay (tablet y móvil < 1024px).
-export function NavigationDrawer({ sections }: { sections: NavSection[] }) {
+export function NavigationDrawer({
+  sections,
+  orgScope,
+  orgActiveId,
+}: {
+  sections: NavSection[];
+  /** Contexto de org para el OrgSwitcher del sidebar (el header lo oculta). */
+  orgScope?: string | null;
+  orgActiveId?: string | null;
+}) {
   const navOpen = useUiStore((s) => s.navOpen);
   const setNavOpen = useUiStore((s) => s.setNavOpen);
 
@@ -58,7 +67,12 @@ export function NavigationDrawer({ sections }: { sections: NavSection[] }) {
               <X className="size-4" />
             </button>
             <div className="h-full">
-              <AppSidebar sections={sections} />
+              <AppSidebar
+                sections={sections}
+                orgScope={orgScope}
+                orgActiveId={orgActiveId}
+                onOrgSwitched={() => setNavOpen(false)}
+              />
             </div>
           </motion.aside>
         </div>

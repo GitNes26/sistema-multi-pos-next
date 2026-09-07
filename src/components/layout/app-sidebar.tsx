@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { isNavActive, type NavItem, type NavSection } from "@/lib/nav";
 import { NavLink } from "@/components/layout/nav-link";
 import { Logo } from "@/components/layout/logo";
+import { OrgSwitcher } from "@/components/layout/org-switcher";
 import {
   Collapsible,
   CollapsibleContent,
@@ -19,6 +20,9 @@ import {
 export interface AppSidebarProps {
   sections: NavSection[];
   logoUrl?: string | null;
+  /** Contexto de org para el OrgSwitcher del footer (sidebar y drawer). */
+  orgScope?: string | null;
+  orgActiveId?: string | null;
 }
 
 // FASE 5.5 / 14.7 — Sidebar agrupada por secciones colapsables + items multinivel.
@@ -67,7 +71,13 @@ function NavNode({ item, depth }: { item: NavItem; depth: number }) {
   );
 }
 
-export function AppSidebar({ sections, logoUrl }: AppSidebarProps) {
+export function AppSidebar({
+  sections,
+  logoUrl,
+  orgScope,
+  orgActiveId,
+  onOrgSwitched,
+}: AppSidebarProps & { onOrgSwitched?: () => void }) {
   const pathname = usePathname();
   const [expanded, setExpanded] = React.useState(true);
 
@@ -121,7 +131,16 @@ export function AppSidebar({ sections, logoUrl }: AppSidebarProps) {
         })}
       </nav>
 
-      <div className="shrink-0 border-t p-3">
+      {/* Pie: selector de organización (convención móvil) + versión. */}
+      <div className="shrink-0 space-y-2 border-t p-3">
+        {orgScope === "superadmin" || orgScope === "app" ? (
+          <OrgSwitcher
+            variant="sidebar"
+            activeOrganizationId={orgActiveId ?? null}
+            scope={orgScope}
+            onSwitched={onOrgSwitched}
+          />
+        ) : null}
         <p className={cn("text-[0.65rem] text-sidebar-foreground/40", !expanded && "hidden")}>
           Sistema Multi-POS v{packageJson.version}
         </p>

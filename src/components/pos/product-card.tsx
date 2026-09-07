@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, Package, Scale } from "lucide-react";
 import type { PosProduct } from "@/types/pos";
 import { money } from "@/lib/pos/money";
+import { categoryAccent } from "@/lib/catalog/placeholder";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
+import { ThumbImage } from "@/components/base/thumb-image";
 
 interface ProductCardProps {
   product: PosProduct;
@@ -86,14 +88,23 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
       )}
       <div className="relative flex h-16 items-center justify-center rounded-xl bg-muted/40">
         {product.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <ThumbImage
             src={product.imageUrl}
             alt={product.name}
             className="size-full rounded-xl object-cover"
           />
         ) : (
-          <Package className="size-6 text-muted-foreground" />
+          // Sin foto real: anillo + icono con el color de la categoría, el
+          // mismo lenguaje visual que las imágenes placeholder generadas.
+          <span
+            className="flex size-9 items-center justify-center rounded-full border-2"
+            style={{
+              borderColor: categoryAccent(product.categoryName),
+              color: categoryAccent(product.categoryName),
+            }}
+          >
+            <Package className="size-4" />
+          </span>
         )}
         {product.variantCount > 1 && (
           <span className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">

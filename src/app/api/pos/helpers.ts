@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions, type SessionUser } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
+import { hasPermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db";
 
 export type PosSession = { user: SessionUser };
@@ -15,6 +16,17 @@ export async function requirePosSession(): Promise<
   }
   if (session.user.scope === "portal" || !effectiveOrgId(session)) {
     return { response: NextResponse.json({ ok: false, error: "Acceso denegado" }, { status: 403 }) };
+  }
+  // POS operativo exige pos.use (meseros/cajeros/owners…). Roles sin él (cocina,
+  // repartidor) no deben poder operar la API del POS, igual que cash.open en la
+  // apertura de caja.
+  if (!hasPermission(session, "pos.use")) {
+    return {
+      response: NextResponse.json(
+        { ok: false, error: "Permiso requerido: pos.use" },
+        { status: 403 }
+      ),
+    };
   }
   return { session: session as PosSession };
 }

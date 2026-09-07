@@ -4,6 +4,8 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { MapPin } from "lucide-react";
 import { authOptions } from "@/lib/auth/options";
+import { hasPermission } from "@/lib/auth/permissions";
+import { prisma } from "@/lib/db";
 import { getAppSettings } from "@/lib/db/app-settings";
 import { getPosCatalog, PosError } from "@/lib/pos/server";
 import { AppearanceSync } from "@/components/appearance/appearance-sync";
@@ -25,6 +27,12 @@ export default async function PosPage() {
       redirect("/admin/settings/organizations");
     }
     redirect("/auth/login?callbackUrl=/pos");
+  }
+
+  // Roles sin pos.use (cocina, repartidor) no operan el punto de venta;
+  // se redirige a su superficie natural (KDS) — mismo criterio que el API.
+  if (!hasPermission(session, "pos.use")) {
+    redirect("/kds");
   }
 
   let catalog: Awaited<ReturnType<typeof getPosCatalog>>;
@@ -59,11 +67,39 @@ export default async function PosPage() {
     throw err;
   }
 
+  // RBAC cliente: solo quien puede abrir/cerrar caja ve el control de caja
+  // (el servidor sigue exigiendo cash.open/cash.close en /api/pos/cash).
+  const canOperateCash =
+    !!session?.user &&
+    (hasPermission(session, "cash.open") || hasPermission(session, "cash.close"));
+  // La agenda (services/hybrid) y las reservaciones (rental/hybrid) se enlazan
+  // solo si el modo aplica y la sesión tiene el permiso correspondiente.
+  const orgMode = organizationId
+    ? await prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { businessMode: true },
+      })
+    : null;
+  const canViewAgenda =
+    !!session?.user &&
+    hasPermission(session, "appointments.view") &&
+    (orgMode?.businessMode === "services" || orgMode?.businessMode === "hybrid");
+  const canViewReservations =
+    !!session?.user &&
+    hasPermission(session, "reservations.view") &&
+    (orgMode?.businessMode === "rental" || orgMode?.businessMode === "hybrid");
+
   return (
     <>
       <AppearanceSync tenant={tenant} />
       <Splash />
-      <PosApp catalog={catalog} />
+      <PosApp
+        catalog={catalog}
+        canOperateCash={canOperateCash}
+        canViewAgenda={canViewAgenda}
+        canViewReservations={canViewReservations}
+        orgMode={orgMode?.businessMode}
+      />
     </>
   );
 }

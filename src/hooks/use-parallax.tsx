@@ -56,6 +56,7 @@ export function useParallax(
 
   const { scrollYProgress } = useScroll({
     target: ref,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     offset: offset as any,
   })
 

@@ -12,6 +12,7 @@ import { VirtualKeyboard } from "./virtual-keyboard"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ThumbImage } from "@/components/base/thumb-image"
 
 const COMBOS_CATEGORY_ID = "__combos__"
 
@@ -186,6 +187,16 @@ export function CatalogPanel({
                 : "border-border bg-background text-muted-foreground hover:bg-muted"
             )}
           >
+            {c.imageUrl && (
+              <ThumbImage
+                src={c.imageUrl}
+                alt=""
+                className={cn(
+                  "mr-1 inline-block size-4 rounded-full object-cover align-[-2px]",
+                  activeCategory === (c.id || null) && "ring-1 ring-primary-foreground/60"
+                )}
+              />
+            )}
             {c.name}
             <span
               className={cn(

@@ -593,6 +593,8 @@ export interface PortalOrderInput {
   subtotal: number;
   discount: number;
   deliveryFee?: number;
+  /** Par mesa QR (token del QR escaneado) para pedidos desde el menú digital. */
+  tableToken?: string | null;
   total: number;
   tip?: number;
   notes?: string | null;
@@ -737,7 +739,28 @@ export async function createPortalOrder(
   if (!VALID_PAYMENT_METHODS.includes(input.paymentMethod)) {
     throw new PortalError("Método de pago inválido");
   }
-  if (input.deliveryMethod === "pickup" && !input.locationId) {
+  // Pedido a mesa (menú digital por QR): el par (tableId, tableToken) debe
+  // validar contra la BD — no basta con conocer el id de la mesa (un id
+  // adivinado no debe permitir colgar pedidos en mesas ajenas). Va ANTES de
+  // la validación de sucursal: la mesa define la ubicación del pedido.
+  let effectiveLocationId = input.locationId ?? null;
+  if (input.tableId) {
+    if (!input.tableToken) {
+      throw new PortalError("Token de mesa requerido: escanea el QR de tu mesa", 400);
+    }
+    const table = await prisma.table.findFirst({
+      where: { id: input.tableId, organizationId, qrToken: input.tableToken, isActive: true },
+      select: { id: true, locationId: true },
+    });
+    if (!table) {
+      throw new PortalError("QR de mesa inválido", 400);
+    }
+    effectiveLocationId = table.locationId;
+  } else if (input.tableToken) {
+    // Token sin mesa: par incompleto, rechazar.
+    throw new PortalError("QR de mesa inválido", 400);
+  }
+  if (input.deliveryMethod === "pickup" && !input.locationId && !input.tableId) {
     throw new PortalError("Selecciona una sucursal para recoger");
   }
   if (input.deliveryMethod === "delivery" && !input.address?.trim()) {
@@ -830,7 +853,7 @@ export async function createPortalOrder(
       data: {
         organizationId,
         customerId,
-        locationId: input.locationId ?? null,
+        locationId: effectiveLocationId,
         tableId: input.tableId ?? null,
         status: "pending",
         deliveryMethod: input.deliveryMethod,

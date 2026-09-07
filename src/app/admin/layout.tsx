@@ -42,6 +42,7 @@ export default async function AdminLayout({
             email: session?.user?.email,
             image: session?.user?.image,
             role: session?.user?.role,
+            roleName: session?.user?.roleName,
             scope: session?.user?.scope,
             organizationId: session?.user?.organizationId,
             activeOrganizationId: session?.user?.activeOrganizationId,

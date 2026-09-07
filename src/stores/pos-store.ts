@@ -66,6 +66,10 @@ interface PosState extends PosCatalog {
 
   setCustomer: (customerId: string | null) => void;
   setTable: (table: { id: string; number: number; name?: string | null } | null) => void;
+  /** Registra la cantidad de una línea que ya se envió a cocina. */
+  markSent: (key: string, qty: number) => void;
+  /** Devuelve el ticket a "sin enviar" (pull-back de la orden de cocina). */
+  resetSent: () => void;
   setManualDiscount: (d: { kind: "percent" | "amount"; value: number } | null) => void;
   applyCoupon: (result: CouponApplied) => void;
   couponError: (message: string) => void;
@@ -250,6 +254,18 @@ export const usePosStore = create<PosState>()((set, get) => ({
 
   setCustomer: (customerId) => set({ customerId }),
   setTable: (table) => set({ selectedTable: table }),
+  markSent: (key, qty) =>
+    set((s) => ({
+      items: s.items.map((i) =>
+        i.key === key ? { ...i, sentQty: Math.max(i.sentQty ?? 0, qty) } : i
+      ),
+    })),
+  resetSent: () =>
+    set((s) => ({
+      items: s.items.map((i) =>
+        (i.sentQty ?? 0) > 0 ? { ...i, sentQty: 0 } : i
+      ),
+    })),
   setManualDiscount: (manualDiscount) => set({ manualDiscount }),
   applyCoupon: (result) =>
     set({ coupon: { status: "applied", code: result.code, result } }),

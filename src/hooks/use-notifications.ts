@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useNotificationStore, type AppNotification } from "@/stores/notifications-store";
+import { useSseStore } from "@/stores/sse-store";
 import { playSound } from "@/lib/sounds";
 import { swalNotificationToast } from "@/lib/swal";
 
@@ -20,8 +21,15 @@ const SOUND_BY_ICON: Record<string, Parameters<typeof playSound>[0]> = {
   success: "sale-complete",
 };
 
-export function useNotificationSse(enabled = true) {
+export function useNotificationSse(enabled = true, id = "notifications") {
   const seeded = React.useRef(false);
+
+  // El estado también alimenta al badge "En vivo" compartido. La campana y el
+  // centro de notificaciones pueden montar el hook a la vez: cada montaje
+  // registra su propio id para que el unregister no pise al otro.
+  const registerSse = useSseStore((s) => s.register);
+  const unregisterSse = useSseStore((s) => s.unregister);
+  const setSseStatus = useSseStore((s) => s.setStatus);
 
   React.useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
@@ -31,12 +39,15 @@ export function useNotificationSse(enabled = true) {
     let retries = 0;
     let closed = false;
 
+    registerSse(id);
+
     const connect = () => {
       es = new EventSource("/api/notifications/stream");
 
       es.onopen = () => {
         retries = 0;
         store().setConnected(true);
+        setSseStatus(id, "connected");
       };
 
       es.onmessage = (event) => {
@@ -74,6 +85,7 @@ export function useNotificationSse(enabled = true) {
       es.onerror = () => {
         es?.close();
         store().setConnected(false);
+        setSseStatus(id, "reconnecting");
         if (!closed && retries < MAX_RETRIES) {
           retries += 1;
           const delay = Math.min(1000 * 2 ** retries, 15_000);
@@ -87,6 +99,7 @@ export function useNotificationSse(enabled = true) {
     return () => {
       closed = true;
       es?.close();
+      unregisterSse(id);
     };
   }, [enabled]);
 

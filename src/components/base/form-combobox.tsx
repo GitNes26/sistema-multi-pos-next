@@ -16,6 +16,10 @@ export interface ComboboxOption {
   label: string
   meta?: string
   disabled?: boolean
+  /** Descripción del rol (tooltip). */
+  description?: string | null
+  /** Cantidad de permisos del rol (tooltip). */
+  permissionCount?: number
 }
 
 export interface FormComboboxProps {
@@ -130,12 +134,12 @@ export function FormCombobox({
                 <AlertCircle className="size-4 text-destructive" />
               )}
               {clearable && selected && !disabled && (
-                <button
-                  type="button"
+                <span
+                  role="button"
                   aria-label="Limpiar selección"
                   tabIndex={-1}
                   className={cn(
-                    "rounded-sm p-0.5 text-muted-foreground transition-colors",
+                    "cursor-pointer rounded-sm p-0.5 text-muted-foreground transition-colors",
                     "hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   )}
                   onClick={(e) => {
@@ -145,7 +149,7 @@ export function FormCombobox({
                   }}
                 >
                   <X className="size-3.5" />
-                </button>
+                </span>
               )}
               <ChevronsUpDown className="size-4 opacity-50" />
             </span>

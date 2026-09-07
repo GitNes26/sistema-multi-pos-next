@@ -5,6 +5,7 @@ import { Puzzle, Tag, Check } from "lucide-react"
 import type { PortalCombo } from "@/lib/portal/server"
 import { money } from "@/lib/pos/money"
 import { cn } from "@/lib/utils"
+import { ThumbImage } from "@/components/base/thumb-image"
 
 interface PortalComboCardProps {
   combo: PortalCombo
@@ -40,8 +41,7 @@ export function PortalComboCard({ combo, onAdd }: PortalComboCardProps) {
 
       {/* Image */}
       {combo.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <ThumbImage
           src={combo.imageUrl}
           alt={combo.name}
           className="h-32 w-full object-cover"

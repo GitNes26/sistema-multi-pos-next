@@ -126,6 +126,11 @@ export const ordersApi = {
     json<{ ok: boolean; order: OrderDetail }>(`/api/orders/${id}/confirm-arrival`, {
       method: "POST",
     }),
+  startDelivery: (id: string, notes?: string | null) =>
+    json<{ ok: boolean; order: OrderDetail }>(`/api/orders/${id}/deliver`, {
+      method: "POST",
+      body: JSON.stringify({ notes: notes ?? undefined }),
+    }),
   confirmDelivery: (id: string, input: { pin?: string; qrToken?: string }) =>
     json<{ ok: boolean; order: OrderDetail }>(`/api/orders/${id}/confirm-delivery`, {
       method: "POST",

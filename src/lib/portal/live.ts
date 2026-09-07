@@ -9,7 +9,13 @@ export interface OrderStatusPayload {
   updatedAt: string;
 }
 
-const channels = new Map<string, Set<Controller>>();
+// Singleton en globalThis: en dev, turbopack evalúa el módulo por ruta y sin
+// esto el stream y los broadcasters llevarían Maps distintos.
+const globalForPortalLive = globalThis as unknown as {
+  portalOrderChannels: Map<string, Set<Controller>> | undefined;
+};
+const channels = globalForPortalLive.portalOrderChannels ?? new Map<string, Set<Controller>>();
+if (process.env.NODE_ENV !== "production") globalForPortalLive.portalOrderChannels = channels;
 const encoder = new TextEncoder();
 
 function okChunk(obj: unknown) {

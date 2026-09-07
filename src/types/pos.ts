@@ -220,6 +220,8 @@ export interface PosLineItem {
   notes?: string;
   selectedOptions?: { optionName: string; value: string; extraPrice: number }[];
   extraPrice?: number;
+  /** Cantidad ya enviada a cocina (mesas · food_service/hybrid). */
+  sentQty?: number;
 }
 
 export interface PosSalePayload {

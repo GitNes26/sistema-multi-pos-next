@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 
 // Fix Leaflet default icon path for bundlers
 import L from "leaflet"
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
@@ -47,7 +48,7 @@ function DraggableMarker({
 
   const eventHandlers = {
     dragend() {
-      const marker = (this as any) as L.Marker
+      const marker = this as unknown as L.Marker
       const latlng = marker.getLatLng()
       setPos([latlng.lat, latlng.lng])
       onDrop(latlng.lat, latlng.lng)

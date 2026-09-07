@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { InputGroupField } from "@/components/base/input-group-field";
+import { ThumbImage } from "@/components/base/thumb-image";
 import { Spinner } from "@/components/base/spinner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ProductBuilder } from "@/components/pos/product-builder";
@@ -74,7 +75,7 @@ interface DigitalMenuProps {
 /*  DigitalMenu                                                        */
 /* ------------------------------------------------------------------ */
 
-export function DigitalMenu({ tableId }: DigitalMenuProps) {
+export function DigitalMenu({ tableId, tableToken }: DigitalMenuProps) {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -274,7 +275,7 @@ export function DigitalMenu({ tableId }: DigitalMenuProps) {
                 {/* Image */}
                 <div className="relative h-48 bg-slate-100 dark:bg-slate-800 overflow-hidden">
                   {item.imageUrl ? (
-                    <img
+                    <ThumbImage
                       src={item.imageUrl}
                       alt={item.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -391,8 +392,8 @@ export function DigitalMenu({ tableId }: DigitalMenuProps) {
                     key={item.key}
                     className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800"
                   >
-                    <img
-                      src={item.product.imageUrl || ""}
+                    <ThumbImage
+                      src={item.product.imageUrl}
                       alt={item.product.name}
                       className="w-14 h-14 rounded-lg object-cover bg-slate-200"
                     />
@@ -461,6 +462,7 @@ export function DigitalMenu({ tableId }: DigitalMenuProps) {
                         credentials: "include",
                         body: JSON.stringify({
                           tableId: tableId || undefined,
+                          tableToken: tableToken || undefined,
                           deliveryMethod: "pickup",
                           locationId: undefined,
                           paymentMethod: "cash",

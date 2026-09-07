@@ -5,13 +5,17 @@ import {
   Check,
   ClipboardList,
   Clock,
+  Flame,
   MapPin,
   PackageCheck,
   Truck,
+  Undo2,
   X,
 } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { money } from "@/lib/pos/money";
+import { swalConfirm, swalToast, swalError } from "@/lib/swal";
 import {
   DELIVERY_METHOD_LABELS,
   ORDER_STATUS_COLORS,
@@ -19,6 +23,9 @@ import {
 } from "@/lib/orders/client";
 import type { OrderDetail } from "@/lib/orders/server";
 import { cn } from "@/lib/utils";
+
+/** Estados en los que la orden sigue abierta en cocina (sin cobrar). */
+const KITCHEN_OPEN_STATUSES = new Set(["pending", "confirmed", "preparing"]);
 
 const HISTORY_ICONS: Record<string, React.ReactNode> = {
   pending: <Clock className="size-3.5" />,
@@ -41,6 +48,39 @@ export function PosOrderDetail({
   const [open, setOpen] = useState(true);
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+
+  const cancelKitchenOrder = async () => {
+    if (!order || cancelling) return;
+    const ok = await swalConfirm(
+      "¿Cancelar la orden de cocina?",
+      `El pedido #${order.orderNumber} saldrá del KDS y no se cobrará. La mesa queda libre.`,
+      {
+        confirmText: "Cancelar orden",
+        danger: true,
+        icon: "warning",
+      }
+    );
+    if (!ok) return;
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/pos/kitchen?orderId=${order.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo cancelar la orden");
+      swalToast(`Orden #${data.orderNumber} cancelada`);
+      setOpen(false);
+      onChanged?.();
+    } catch (err) {
+      swalError(
+        "No se pudo cancelar",
+        err instanceof Error ? err.message : "Intenta de nuevo"
+      );
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) {
@@ -99,6 +139,48 @@ export function PosOrderDetail({
             <div className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm">
               <MapPin className="size-4 shrink-0 text-muted-foreground" />
               <span>{order.address}</span>
+            </div>
+          )}
+
+          {order.tableNumber != null && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm">
+              <Flame className={cn(
+                "size-4 shrink-0 text-amber-600",
+                order.status === "preparing" && "animate-pulse"
+              )} />
+              <span className="font-semibold">En cocina · Pedido #{order.orderNumber}</span>
+              <span className={cn(
+                "rounded-full px-2 py-0.5 text-[0.65rem] font-semibold",
+                KITCHEN_OPEN_STATUSES.has(order.status)
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                  : "bg-muted text-muted-foreground"
+              )}>
+                {order.status === "preparing"
+                  ? "En preparación"
+                  : order.status === "confirmed"
+                    ? "Enviada"
+                    : order.status === "pending"
+                      ? "Pendiente"
+                      : order.status === "ready"
+                        ? "Lista"
+                        : order.status === "delivered"
+                          ? "Entregada / cobrada"
+                          : order.status === "cancelled"
+                            ? "Cancelada"
+                            : order.status}
+              </span>
+              {KITCHEN_OPEN_STATUSES.has(order.status) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={cancelling}
+                  onClick={cancelKitchenOrder}
+                  className="ml-auto h-7 px-2 text-xs text-destructive hover:text-destructive"
+                >
+                  <Undo2 className="size-3.5" />
+                  Cancelar orden
+                </Button>
+              )}
             </div>
           )}
 

@@ -9,6 +9,7 @@ import type { PosCatalog, PosCombo, PosLineItem, PosProduct, PosSalePayload } fr
 import { swalToast, swalError } from "@/lib/swal";
 import { bulkDisplay } from "@/stores/pos-store";
 import { usePosRefresh } from "@/hooks/use-pos-refresh";
+import { PosRoleGuide } from "./pos-role-guide";
 import { SupervisorProvider } from "./supervisor-gate";
 import { PosHeader } from "./pos-header";
 import { CatalogPanel } from "./catalog-panel";
@@ -30,6 +31,14 @@ import {
 
 interface PosAppProps {
   catalog: PosCatalog;
+  /** true si la sesión puede abrir/cerrar caja (cash.open/cash.close). */
+  canOperateCash?: boolean;
+  /** true si la sesión ve la agenda de citas (appointments.view). */
+  canViewAgenda?: boolean;
+  /** true si la sesión ve reservaciones (reservations.view). */
+  canViewReservations?: boolean;
+  /** Modo de negocio de la org activa (para la guía de roles mesa/KDS). */
+  orgMode?: string | null;
 }
 
 type BulkTarget = {
@@ -37,7 +46,13 @@ type BulkTarget = {
   editing?: { key: string; draft: BulkDraft };
 };
 
-export function PosApp({ catalog }: PosAppProps) {
+export function PosApp({
+  catalog,
+  canOperateCash = false,
+  canViewAgenda = false,
+  canViewReservations = false,
+  orgMode = null,
+}: PosAppProps) {
   const setCatalog = usePosStore((s) => s.setCatalog);
   const products = usePosStore((s) => s.products);
   const addProduct = usePosStore((s) => s.addProduct);
@@ -56,6 +71,9 @@ export function PosApp({ catalog }: PosAppProps) {
   const [catalogsOpen, setCatalogsOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [builderTarget, setBuilderTarget] = useState<PosProduct | null>(null);
+  // Diálogo de la guía de roles (mesa/KDS): lo abre la tarjeta o el menú del
+  // header («Guía del POS»), así se reabre aunque la tarjeta esté descartada.
+  const [guideOpen, setGuideOpen] = useState(false);
   const [lastSale, setLastSale] = useState<{
     sale: { id: string; saleNumber: string; locationName: string };
     payload: PosSalePayload;
@@ -158,7 +176,27 @@ export function PosApp({ catalog }: PosAppProps) {
   return (
     <SupervisorProvider>
       <div className="flex h-svh flex-col bg-background text-foreground">
-        <PosHeader onOpenCatalogs={() => setCatalogsOpen(true)} onOpenCash={() => setCashOpen(true)} />
+        <PosHeader
+          canOperateCash={canOperateCash}
+          canViewAgenda={canViewAgenda}
+          canViewReservations={canViewReservations}
+          onOpenCatalogs={() => setCatalogsOpen(true)}
+          onOpenCash={() => setCashOpen(true)}
+          // Solo los modos con mesa/cocina ofrecen la guía en el menú.
+          onOpenGuide={
+            orgMode === "food_service" || orgMode === "hybrid"
+              ? () => setGuideOpen(true)
+              : undefined
+          }
+        />
+        {/* Guía de roles para food/hybrid (mesero/cocina): Mesas + KDS. */}
+        {(orgMode === "food_service" || orgMode === "hybrid") && (
+          <PosRoleGuide
+            orgMode={orgMode}
+            open={guideOpen}
+            onOpenChange={setGuideOpen}
+          />
+        )}
 
         <main className="flex min-h-0 flex-1">
           <ResizablePanelGroup orientation="horizontal" className="gap-0">

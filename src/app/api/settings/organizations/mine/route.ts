@@ -19,7 +19,7 @@ export async function GET() {
     if (isSuperadminSession(session)) {
       const orgs = await prisma.organization.findMany({
         orderBy: { name: "asc" },
-        select: { id: true, name: true, currency: true },
+        select: { id: true, name: true, currency: true, businessMode: true },
       });
       return NextResponse.json({ ok: true, organizations: orgs });
     }
@@ -27,12 +27,15 @@ export async function GET() {
     const memberships = await prisma.membership.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: "asc" },
-      include: { organization: { select: { id: true, name: true, currency: true } } },
+      include: {
+        organization: { select: { id: true, name: true, currency: true, businessMode: true } },
+      },
     });
     const organizations = memberships.map((m) => ({
       id: m.organization.id,
       name: m.organization.name,
       currency: m.organization.currency,
+      businessMode: m.organization.businessMode,
       role: m.role,
     }));
     return NextResponse.json({ ok: true, organizations });

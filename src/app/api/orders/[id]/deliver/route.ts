@@ -7,7 +7,9 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const guard = await ordersGuard("orders.manage");
+  // Iniciar la entrega es tarea del repartidor (delivery.manage), no de
+  // cocina: la cocina solo opera el tablero (kds.operate).
+  const guard = await ordersGuard("delivery.manage");
   if (guard instanceof NextResponse) return guard;
   const { id } = await params;
 

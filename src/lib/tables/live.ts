@@ -9,11 +9,19 @@ export interface TableUpdatePayload {
   name: string | null;
   capacity: number | null;
   status: string;
+  room?: { id: string; name: string } | null;
   location: { name: string } | null;
   updatedAt: string;
+  // Aviso de llegada: reservación confirmada próxima de la mesa (o null).
+  upcomingReservation?: { guests: number; startsAt: string } | null;
 }
 
-const channels = new Map<string, Set<Controller>>();
+// Singleton en globalThis (misma razón que lib/kds/live.ts en dev).
+const globalForTablesLive = globalThis as unknown as {
+  tableChannels: Map<string, Set<Controller>> | undefined;
+};
+const channels = globalForTablesLive.tableChannels ?? new Map<string, Set<Controller>>();
+if (process.env.NODE_ENV !== "production") globalForTablesLive.tableChannels = channels;
 const encoder = new TextEncoder();
 
 import { safeJson } from "@/lib/api-helpers";
@@ -47,5 +55,13 @@ export function broadcastTableUpdate(organizationId: string, payload: TableUpdat
     } catch {
       set.delete(ctrl);
     }
+  }
+
+  // Mesa liberada → correr el barrido de la lista de espera (fire-and-forget;
+  // import dinámico para no crear ciclo tables/live ↔ tables/waitlist).
+  if (payload.status === "free") {
+    import("@/lib/tables/waitlist")
+      .then((m) => m.sweepTableWaitlist(organizationId))
+      .catch((err) => console.error("[waitlist] sweep failed:", err));
   }
 }

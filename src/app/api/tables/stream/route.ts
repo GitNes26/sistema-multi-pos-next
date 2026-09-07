@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
 import { openTableChannel } from "@/lib/tables/live";
+import { upcomingReservationsByTable } from "@/lib/tables/upcoming";
 import { safeJson } from "@/lib/api-helpers";
 
 // SSE endpoint for real-time table status updates.
@@ -35,19 +36,28 @@ export async function GET(req: Request) {
       prisma.table
         .findMany({
           where: { organizationId, isActive: true, ...(locationId ? { locationId } : {}) },
-          include: { location: { select: { name: true } } },
+          include: {
+            location: { select: { name: true } },
+            room: { select: { id: true, name: true, sortOrder: true } },
+          },
           orderBy: { number: "asc" },
         })
-        .then((tables) => {
+        .then(async (tables) => {
+          const upcoming = await upcomingReservationsByTable(organizationId, locationId ?? null);
           const payload = {
-            tables: tables.map((t) => ({
-              id: t.id,
-              number: t.number,
-              name: t.name,
-              capacity: t.capacity,
-              status: t.status,
-              location: t.location,
-            })),
+            tables: tables.map((t) => {
+              const u = upcoming.get(t.id);
+              return {
+                id: t.id,
+                number: t.number,
+                name: t.name,
+                capacity: t.capacity,
+                status: t.status,
+                room: t.room,
+                location: t.location,
+                upcomingReservation: u ? { guests: u.guests, startsAt: u.startsAt.toISOString() } : null,
+              };
+            }),
           };
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(safeJson(payload))}\n\n`));
         })

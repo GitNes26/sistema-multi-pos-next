@@ -19,9 +19,9 @@ export async function PATCH(
     const body = await req.json();
 
     if (body.roleId) {
-      await updateMembershipRole(membershipId, undefined, body.roleId);
+      await updateMembershipRole(membershipId, undefined, body.roleId, guard.organizationId);
     } else if (body.role) {
-      await updateMembershipRole(membershipId, body.role);
+      await updateMembershipRole(membershipId, body.role, undefined, guard.organizationId);
     }
     if (typeof body.isActive === "boolean") {
       const membership = await prisma.membership.findUnique({ where: { id: membershipId } });
@@ -42,7 +42,7 @@ export async function DELETE(
 
   const { membershipId } = await params;
   try {
-    const result = await removeMembership(membershipId);
+    const result = await removeMembership(membershipId, guard.organizationId);
     return NextResponse.json(result);
   } catch (err) {
     return settingsErrorResponse(err);

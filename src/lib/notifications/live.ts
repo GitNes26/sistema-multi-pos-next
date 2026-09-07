@@ -14,7 +14,14 @@ export interface LiveNotificationPayload {
   createdAt: string;
 }
 
-const channels = new Map<string, Set<Controller>>();
+// Singleton en globalThis (misma razón que lib/kds/live.ts en dev).
+const globalForNotificationsLive = globalThis as unknown as {
+  notificationChannels: Map<string, Set<Controller>> | undefined;
+};
+const channels =
+  globalForNotificationsLive.notificationChannels ?? new Map<string, Set<Controller>>();
+if (process.env.NODE_ENV !== "production")
+  globalForNotificationsLive.notificationChannels = channels;
 
 const encoder = new TextEncoder();
 

@@ -7,7 +7,8 @@ export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const guard = await ordersGuard("orders.manage");
+  // Confirmar la llegada es tarea del repartidor (delivery.manage).
+  const guard = await ordersGuard("delivery.manage");
   if (guard instanceof NextResponse) return guard;
   const { id } = await params;
 
