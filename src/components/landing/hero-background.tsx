@@ -1,6 +1,7 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { useRef } from "react"
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion"
 import {
   ShoppingCart,
   Package,
@@ -67,35 +68,54 @@ function FloatingIcon({
 }
 
 export function HeroBackground() {
+  // Parallax: el fondo (orbes + rejilla) se mueve más lento que el scroll y
+  // los iconos flotantes más rápido — profundidad en capas. Desactivado con
+  // prefers-reduced-motion.
+  const ref = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  })
+  const opacity = useTransform(scrollYProgress, [0, 0.9], [1, reduced ? 1 : 0.45])
+  const bgY = useTransform(scrollYProgress, [0, 1], [0, reduced ? 0 : 140])
+  const iconsY = useTransform(scrollYProgress, [0, 1], [0, reduced ? 0 : 260])
+
   return (
-    <div
+    <motion.div
+      ref={ref}
       aria-hidden
       className="pointer-events-none absolute inset-0 overflow-hidden"
+      style={{ opacity }}
     >
-      {/* Orbes de gradiente */}
-      <motion.div
-        className="absolute -top-32 -left-32 size-[28rem] rounded-full bg-emerald-500/20 blur-3xl"
-        animate={{ x: [0, 40, 0], y: [0, 30, 0], scale: [1, 1.1, 1] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute -right-32 top-10 size-[26rem] rounded-full bg-violet-500/20 blur-3xl"
-        animate={{ x: [0, -30, 0], y: [0, 50, 0], scale: [1, 1.15, 1] }}
-        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute bottom-[-8rem] left-1/3 size-[24rem] rounded-full bg-sky-500/20 blur-3xl"
-        animate={{ x: [0, 30, 0], y: [0, -30, 0], scale: [1, 1.08, 1] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-      />
+      <motion.div style={{ y: bgY }} className="absolute inset-0">
+        {/* Orbes de gradiente */}
+        <motion.div
+          className="absolute -top-32 -left-32 size-[28rem] rounded-full bg-emerald-500/20 blur-3xl"
+          animate={{ x: [0, 40, 0], y: [0, 30, 0], scale: [1, 1.1, 1] }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute -right-32 top-10 size-[26rem] rounded-full bg-violet-500/20 blur-3xl"
+          animate={{ x: [0, -30, 0], y: [0, 50, 0], scale: [1, 1.15, 1] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute bottom-[-8rem] left-1/3 size-[24rem] rounded-full bg-sky-500/20 blur-3xl"
+          animate={{ x: [0, 30, 0], y: [0, -30, 0], scale: [1, 1.08, 1] }}
+          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+        />
 
-      {/* Rejilla sutil */}
-      <div className="absolute inset-0 [background-image:linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black_35%,transparent_75%)]" />
+        {/* Rejilla sutil */}
+        <div className="absolute inset-0 [background-image:linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black_35%,transparent_75%)]" />
+      </motion.div>
 
-      {/* Iconos flotantes */}
-      {ICONS.map((item) => (
-        <FloatingIcon key={item.name} {...item} />
-      ))}
-    </div>
+      {/* Iconos flotantes (capa más rápida) */}
+      <motion.div style={{ y: iconsY }} className="absolute inset-0">
+        {ICONS.map((item) => (
+          <FloatingIcon key={item.name} {...item} />
+        ))}
+      </motion.div>
+    </motion.div>
   )
 }

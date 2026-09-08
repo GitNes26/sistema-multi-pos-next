@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import {
   Check,
   Minus,
@@ -23,10 +23,21 @@ import type {
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-interface SelectedOption {
+export interface SelectedOption {
   optionId: string
   optionName: string
   values: { id: string; value: string; extraPrice: number }[]
+}
+
+/**
+ * Huella estable de una configuración (opciones elegidas): permite al carrito
+ * tratar dos configuraciones distintas como líneas separadas.
+ */
+export function selectedOptionsKey(options: SelectedOption[]): string {
+  return options
+    .flatMap((opt) => opt.values.map((v) => `${opt.optionId}:${v.id}`))
+    .sort()
+    .join("|")
 }
 
 /** Minimal portal product shape for the builder */
@@ -387,19 +398,32 @@ export function ProductBuilder({
     (option: PosProductOption, valueId: string) => {
       setSelections((prev) => {
         const next = new Map(prev)
-        const current = next.get(option.id) ?? new Set<string>()
+        const current = new Set(next.get(option.id) ?? new Set<string>())
 
         if (current.has(valueId)) {
+          // Quitar la selección.
           current.delete(valueId)
+        } else if (option.maxSelect <= 1) {
+          // Selección única: elegir otro valor reemplaza al anterior.
+          current.clear()
+          current.add(valueId)
         } else if (current.size < option.maxSelect) {
           current.add(valueId)
         }
-        next.set(option.id, current)
+
+        if (current.size === 0) next.delete(option.id)
+        else next.set(option.id, current)
         return next
       })
     },
     [],
   )
+
+  // Si cambia el producto mientras el panel está abierto, empezar de cero
+  // (nunca arrastrar selecciones/notas de un producto anterior).
+  useEffect(() => {
+    resetSelections()
+  }, [activeProduct?.id, resetSelections])
 
   const totalExtraPrice = useMemo(() => {
     if (!activeProduct) return 0
@@ -447,19 +471,20 @@ export function ProductBuilder({
   }, [activeProduct, selections])
 
   const handleAdd = useCallback(() => {
-    if (!product || !isValid) {
+    if (!activeProduct || !isValid) {
       setShowValidation(true)
       return
     }
-    onAdd({            product: activeProduct as PosProduct | PortalProductLike,
-            selectedOptions: buildSelectedOptions(),
+    onAdd({
+      product: activeProduct,
+      selectedOptions: buildSelectedOptions(),
       totalExtraPrice,
       notes,
       quantity,
     })
     handleClose()
   }, [
-    product,
+    activeProduct,
     isValid,
     onAdd,
     buildSelectedOptions,
@@ -660,7 +685,6 @@ export function ProductBuilder({
               </Button>
               <Button
                 onClick={handleAdd}
-                disabled={!isValid}
                 className="flex-1 rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 transition-all hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
               >
                 <ShoppingCart className="mr-2 size-4" />

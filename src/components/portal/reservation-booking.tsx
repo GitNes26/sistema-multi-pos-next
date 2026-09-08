@@ -1,20 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Armchair, CalendarCheck2, Clock, Loader2, MapPin } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Armchair, CalendarCheck2, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { swalError, swalToast } from "@/lib/swal";
-import { ReservationFloorPlan, type PlanTable } from "@/components/portal/reservation-floor-plan";
+import { ReservationWizard } from "@/components/reservations/reservation-wizard";
 
-// Reservación de mesa desde el portal: el cliente elige fecha, hora y
-// comensales y ve el plano del local por sala (forma + asientos de cada mesa)
-// para pedir una mesa concreta — o sin mesa, y el anfitrión la asigna.
+// Reservación de mesa desde el portal: wizard a pasos (sucursal → calendario
+// según políticas → hora/asientos → sala en el plano → datos). La lista de
+// espera y "mis reservaciones" se mantienen alrededor del wizard.
 
-interface Room {
+interface LocationRow {
   id: string;
   name: string;
-  tables: PlanTable[];
 }
 
 interface MyReservation {
@@ -22,7 +21,6 @@ interface MyReservation {
   guests: number;
   startsAt: string;
   status: string;
-  notes: string | null;
   room: { id: string; name: string } | null;
   table: { id: string; number: number } | null;
 }
@@ -55,19 +53,13 @@ function fmtDate(iso: string) {
 }
 
 export function ReservationBooking() {
-  const [date, setDate] = useState(() => {
-    const d = new Date(Date.now() + 24 * 3600 * 1000);
-    return d.toISOString().slice(0, 10);
-  });
-  const [time, setTime] = useState("13:00");
-  const [guests, setGuests] = useState("2");
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loose, setLoose] = useState<PlanTable[]>([]);
-  const [takenIds, setTakenIds] = useState<string[]>([]);
+  const [locations, setLocations] = useState<LocationRow[]>([]);
+  const [customerName, setCustomerName] = useState<string | null>(null);
+  const [customerPhone, setCustomerPhone] = useState<string | null>(null);
   const [mine, setMine] = useState<MyReservation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
   // Lista de espera: entrada activa del cliente + acciones.
   const [waitlist, setWaitlist] = useState<WaitlistEntry | null>(null);
   const [waitlistBusy, setWaitlistBusy] = useState(false);
@@ -77,46 +69,55 @@ export function ReservationBooking() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/portal/reservations?date=${date}&guests=${Number(guests) || 2}`, {
-        cache: "no-store",
-      });
+      const res = await fetch("/api/portal/reservations", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!data.ok) throw new Error(data.error || "No se pudo cargar");
-      setRooms(data.rooms ?? []);
-      setLoose(data.looseTables ?? []);
-      setTakenIds(data.takenTableIds ?? []);
+      // El GET sin date no trae plano: solo salas y mis reservaciones si vienen.
       setMine(data.myReservations ?? []);
-      setSelectedTable((prev) =>
-        prev && !(data.takenTableIds ?? []).includes(prev) ? prev : null
-      );
     } catch (err) {
       swalError("No se pudo cargar", err instanceof Error ? err.message : undefined);
     } finally {
       setLoading(false);
     }
-  }, [date, guests]);
+  }, []);
+
+  // Sucursales + perfil del cliente (nombre/teléfono prellenados).
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/portal/locations", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/portal/home", { cache: "no-store" })
+        .then((r) => r.json())
+        .catch(() => null),
+    ])
+      .then(([locs, home]) => {
+        if (locs?.ok) setLocations(locs.locations ?? []);
+        const profile = home?.ok ? home?.profile ?? home?.customer ?? null : null;
+        setCustomerName(profile?.fullName ?? profile?.name ?? null);
+        setCustomerPhone(profile?.phone ?? null);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const loadWaitlist = useCallback(async () => {
     try {
-      const res = await fetch(`/api/portal/waitlist?guests=${Number(guests) || 2}`, { cache: "no-store" });
+      const res = await fetch("/api/portal/waitlist", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!data.ok) return;
       const prev = waitlistRef.current;
       const next: WaitlistEntry | null = data.entry ?? null;
       setWaitlist(next);
-      // Aviso en vivo: transición waiting → available (llega por poll).
       if (prev?.status === "waiting" && next?.status === "available" && next.availableTable) {
         swalToast(`¡Mesa #${next.availableTable.number} disponible para tu grupo!`);
       }
     } catch {
       /* noop: la sección se queda con lo último que tenga */
     }
-  }, [guests]);
+  }, []);
 
   useEffect(() => {
     void load();
     void loadWaitlist();
-  }, [load, loadWaitlist]);
+  }, [load, loadWaitlist, reloadKey]);
 
   // Poll en vivo (20 s): mientras esté en espera, vigilar que se libere una mesa.
   useEffect(() => {
@@ -133,13 +134,12 @@ export function ReservationBooking() {
       const res = await fetch("/api/portal/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guests: Number(guests) || 2 }),
+        body: JSON.stringify({ guests: 2 }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo anotar");
       setWaitlist(data.entry ?? null);
       swalToast("Estás en la lista de espera — te avisaremos al liberarse una mesa");
-      void load();
     } catch (err) {
       swalError("No se pudo anotar", err instanceof Error ? err.message : undefined);
     } finally {
@@ -168,7 +168,7 @@ export function ReservationBooking() {
       if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo confirmar");
       swalToast("Mesa confirmada — el anfitrión te espera");
       setWaitlist(null);
-      void load();
+      setReloadKey((k) => k + 1);
     } catch (err) {
       swalError("No se pudo confirmar", err instanceof Error ? err.message : undefined);
       setWaitlist(null);
@@ -178,136 +178,24 @@ export function ReservationBooking() {
     }
   };
 
-  const available = useMemo(() => {
-    const party = Number(guests) || 2;
-    const ok = (t: PlanTable) =>
-      t.status !== "occupied" && !takenIds.includes(t.id) && t.capacity >= party;
-    return { rooms, loose: loose.filter(ok), party };
-  }, [rooms, loose, takenIds, guests]);
-
-  const submit = async () => {
-    if (!date || !time) {
-      swalError("Elige fecha y hora");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const startsAt = new Date(`${date}T${time}:00`);
-      const table = [...rooms.flatMap((r) => r.tables), ...loose].find((t) => t.id === selectedTable);
-      const res = await fetch("/api/portal/reservations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          startsAt: startsAt.toISOString(),
-          guests: Number(guests) || 2,
-          roomId: table
-            ? rooms.find((r) => r.tables.some((t) => t.id === table.id))?.id ?? null
-            : null,
-          tableId: table?.id ?? null,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo reservar");
-      swalToast(
-        table
-          ? `Solicitaste la mesa #${table.number} — la confirmará el anfitrión`
-          : "Solicitud enviada — el anfitrión asignará mesa"
-      );
-      setSelectedTable(null);
-      void load();
-    } catch (err) {
-      swalError("No se pudo reservar", err instanceof Error ? err.message : undefined);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  /** Mini-plano de una sala: reutiliza el renderizador compartido. */
-  const miniPlan = (tables: PlanTable[]) => (
-    <ReservationFloorPlan
-      tables={tables}
-      party={available.party}
-      takenIds={takenIds}
-      selectedId={selectedTable}
-      onSelect={setSelectedTable}
-    />
-  );
-
   return (
     <div className="space-y-5 p-4">
-      {/* Selectores */}
-      <div className="grid grid-cols-3 gap-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Fecha</label>
-          <input
-            type="date"
-            value={date}
-            min={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => setDate(e.target.value)}
-            className="h-10 w-full rounded-lg border border-input bg-background px-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Hora</label>
-          <input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className="h-10 w-full rounded-lg border border-input bg-background px-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Comensales</label>
-          <input
-            type="number"
-            min={1}
-            max={50}
-            value={guests}
-            onChange={(e) => setGuests(e.target.value)}
-            className="h-10 w-full rounded-lg border border-input bg-background px-2 text-sm"
-          />
-        </div>
-      </div>
-
       {loading ? (
         <div className="flex justify-center py-10 text-muted-foreground">
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
         <>
-          {/* Plano por sala */}
-          <div className="space-y-4">
-            {available.rooms.map((room) => (
-              <div key={room.id}>
-                <div className="mb-1.5 flex items-center gap-2">
-                  <MapPin className="size-3.5 text-muted-foreground" />
-                  <p className="text-sm font-semibold">{room.name}</p>
-                  <Badge variant="outline" className="text-[10px]">
-                    {room.tables.filter((t) => !takenIds.includes(t.id) && t.status !== "occupied" && t.capacity >= available.party).length} disponibles
-                  </Badge>
-                </div>
-                {room.tables.length > 0 ? miniPlan(room.tables) : (
-                  <p className="text-xs text-muted-foreground">Sin mesas en esta sala.</p>
-                )}
-              </div>
-            ))}
-            {available.loose.length > 0 && (
-              <div>
-                <p className="mb-1.5 text-sm font-semibold">Otras mesas</p>
-                {miniPlan(available.loose)}
-              </div>
-            )}
-            {available.rooms.length === 0 && available.loose.length === 0 && (
-              <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-                No hay mesas configuradas para reservar.
-              </p>
-            )}
-          </div>
-
-          <Button className="w-full h-11" onClick={submit} disabled={submitting}>
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <CalendarCheck2 className="size-4" />}
-            {selectedTable ? "Solicitar esta mesa" : "Solicitar mesa (asignación libre)"}
-          </Button>
+          <ReservationWizard
+            key={reloadKey}
+            locations={locations}
+            customerName={customerName}
+            customerPhone={customerPhone}
+            createUrl="/api/portal/reservations"
+            availabilityUrl="/api/table-reservations/availability?"
+            doneMessage="Reservación registrada"
+            onDone={() => setReloadKey((k) => k + 1)}
+          />
 
           {/* Lista de espera: anotarse y recibir aviso en vivo cuando se libera una mesa */}
           <div className="rounded-xl border bg-muted/30 p-3.5">
@@ -344,9 +232,7 @@ export function ReservationBooking() {
                     <Loader2 className="size-4 animate-spin" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">
-                      En espera · posición #{waitlist.position + 1}
-                    </p>
+                    <p className="text-sm font-semibold">En espera · posición #{waitlist.position + 1}</p>
                     <p className="text-xs text-muted-foreground">
                       {waitlist.guests} {waitlist.guests === 1 ? "persona" : "personas"} — te avisamos en vivo
                       cuando se libere una mesa que te quepa.
@@ -365,8 +251,7 @@ export function ReservationBooking() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">¿No encuentras mesa?</p>
                   <p className="text-xs text-muted-foreground">
-                    Anótate y te avisamos al instante cuando se libere una para {Number(guests) || 2}{" "}
-                    {Number(guests) === 1 ? "persona" : "personas"}.
+                    Anótate y te avisamos al instante cuando se libere una.
                   </p>
                 </div>
                 <Button size="sm" variant="outline" className="h-8 shrink-0 text-xs" onClick={enrollWaitlist} disabled={waitlistBusy}>

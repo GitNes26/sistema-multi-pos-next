@@ -54,7 +54,7 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
       onClick={handleClick}
       whileTap={{ scale: 0.96 }}
       className={cn(
-        "group relative flex h-full flex-col gap-2 rounded-2xl border bg-card p-2.5 text-left shadow-sm transition",
+        "group relative flex h-full w-full flex-col gap-2 rounded-2xl border bg-card p-2.5 text-left shadow-sm transition",
         "hover:border-primary/50 hover:shadow-md",
         product.stock <= 0 && "opacity-60",
         added && "border-primary bg-primary/5"

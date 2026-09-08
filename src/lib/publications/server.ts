@@ -143,25 +143,58 @@ export async function updatePublication(
   const existing = await prisma.publication.findFirst({ where: { id, organizationId } });
   if (!existing) throw new Error("Publicación no encontrada");
 
-  const updated = await prisma.publication.update({
-    where: { id },
-    data: {
-      ...(input.title !== undefined ? { title: input.title.trim() } : {}),
-      ...(input.content !== undefined ? { content: input.content ?? null } : {}),
-      ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl ?? null } : {}),
-      ...(input.type !== undefined ? { type: input.type as $Enums.PublicationType } : {}),
-      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-      ...(input.businessMode !== undefined ? { businessMode: input.businessMode ?? null } : {}),
-      ...(input.publishedAt !== undefined
-        ? { publishedAt: input.publishedAt ? new Date(input.publishedAt) : null }
-        : {}),
-      ...(input.startsAt !== undefined
-        ? { startsAt: input.startsAt ? new Date(input.startsAt.includes("T") ? input.startsAt : input.startsAt + "T00:00:00") : null }
-        : {}),
-      ...(input.endsAt !== undefined
-        ? { endsAt: input.endsAt ? new Date(input.endsAt.includes("T") ? input.endsAt : input.endsAt + "T00:00:00") : null }
-        : {}),
-    },
+  const TYPE_NOTIFICATION_KIND: Record<string, string> = {
+    product_new: "publication",
+    promotion: "promotion",
+    notice: "publication",
+  };
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const pub = await tx.publication.update({
+      where: { id },
+      data: {
+        ...(input.title !== undefined ? { title: input.title.trim() } : {}),
+        ...(input.content !== undefined ? { content: input.content ?? null } : {}),
+        ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl ?? null } : {}),
+        ...(input.type !== undefined ? { type: input.type as $Enums.PublicationType } : {}),
+        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        ...(input.businessMode !== undefined ? { businessMode: input.businessMode ?? null } : {}),
+        ...(input.publishedAt !== undefined
+          ? { publishedAt: input.publishedAt ? new Date(input.publishedAt) : null }
+          : {}),
+        ...(input.startsAt !== undefined
+          ? { startsAt: input.startsAt ? new Date(input.startsAt.includes("T") ? input.startsAt : input.startsAt + "T00:00:00") : null }
+          : {}),
+        ...(input.endsAt !== undefined
+          ? { endsAt: input.endsAt ? new Date(input.endsAt.includes("T") ? input.endsAt : input.endsAt + "T00:00:00") : null }
+          : {}),
+      },
+    });
+
+    // Notify customers about the updated publication
+    const customers = await tx.customer.findMany({
+      where: { organizationId },
+      select: { userId: true },
+    });
+
+    if (customers.length > 0) {
+      const title = input.title?.trim() ?? existing.title;
+      const content = input.content ?? existing.content;
+      const type = (input.type ?? existing.type) as string;
+      await tx.notification.createMany({
+        data: customers.map((c) => ({
+          organizationId,
+          userId: c.userId,
+          kind: TYPE_NOTIFICATION_KIND[type] ?? "publication",
+          title: `Actualizado: ${title}`,
+          body: content?.substring(0, 200) ?? null,
+          severity: "info",
+          metadata: { publicationId: pub.id, type },
+        })),
+      });
+    }
+
+    return pub;
   });
   return toRow(updated);
 }

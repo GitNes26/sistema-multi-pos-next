@@ -1,1113 +1,207 @@
+
+> sistema-multi-pos-react-node-chadcnui@0.16.1.0 dev
+> next dev --turbopack
+
 [32m✔[0m [33mConsole Ninja[0m extension is connected to [33mNext.js[0m, see [36mhttps://tinyurl.com/2vt8jxzw[0m
-   ▲ Next.js 15.5.23
-   - Local:        http://localhost:3000
-   - Network:      http://192.168.252.12:3000
+   ▲ Next.js 15.5.23 (Turbopack)
+   - Local:        http://localhost:62176
+   - Network:      http://192.168.252.12:62176
    - Environments: .env.local, .env
 
  ✓ Starting...
- ✓ Ready in 4.8s
+ ✓ Compiled middleware in 197ms
+ ✓ Ready in 1631ms
+ ○ Compiling /api/public/waitlist ...
+ ✓ Compiled /api/public/waitlist in 1305ms
+[messaging] Twilio no configurado — se omite el aviso al invitado
+ POST /api/public/waitlist?table=demo-rest-t4&token=demo-rest-qr-t4 200 in 1830ms
  ○ Compiling / ...
- ✓ Compiled / in 6.6s (1959 modules)
- GET / 200 in 7542ms
- GET / 200 in 7576ms
- ○ Compiling /reservar ...
- ✓ Compiled /reservar in 919ms (1947 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 1304ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 163ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 125ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 102ms
- ○ Compiling /api/public/reservations ...
- ✓ Compiled /api/public/reservations in 1650ms (2199 modules)
- GET /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4&date=2026-09-08&guests=2 200 in 2029ms
- GET /api/auth/session 200 in 2696ms
- POST /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 73ms
- GET /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4&date=2026-09-08&guests=2 200 in 104ms
- GET /api/auth/csrf 200 in 72ms
- POST /api/auth/callback/credentials 302 in 149ms
- ○ Compiling /api/table-reservations ...
- ✓ Compiled /api/table-reservations in 899ms (2261 modules)
- GET /api/table-reservations 200 in 1081ms
- ○ Compiling /auth/login ...
- ✓ Compiled /auth/login in 1963ms (2345 modules)
- GET /auth/login 200 in 2619ms
- GET /api/auth/csrf 200 in 103ms
- POST /api/auth/callback/credentials 302 in 156ms
- ○ Compiling /api/pos/cash ...
- ✓ Compiled /api/pos/cash in 625ms (2358 modules)
- POST /api/pos/cash 403 in 1399ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 859ms
- ○ Compiling /middleware ...
- ✓ Compiled /middleware in 691ms (220 modules)
- ○ Compiling /api/crud/[module] ...
- ✓ Compiled /api/crud/[module] in 603ms (2296 modules)
- POST /api/crud/products 403 in 1504ms
- GET /api/auth/csrf 200 in 74ms
- POST /api/auth/callback/credentials 302 in 158ms
- ✓ Compiled /api/pos/catalog in 500ms (2298 modules)
- GET /api/pos/catalog 200 in 675ms
- ○ Compiling /pos ...
- ✓ Compiled /pos in 5.8s (4734 modules)
- GET /pos 200 in 6785ms
- POST /api/pos/cash 200 in 96ms
- POST /api/pos/cash 200 in 1167ms
- POST /api/crud/products 403 in 276ms
- GET /api/auth/csrf 200 in 113ms
- POST /api/auth/callback/credentials 302 in 184ms
- GET /api/pos/catalog 403 in 84ms
- POST /api/pos/cash 403 in 57ms
- GET /pos 307 in 226ms
- GET /api/auth/csrf 200 in 64ms
- POST /api/auth/callback/credentials 302 in 140ms
- GET /api/pos/catalog 403 in 74ms
- POST /api/pos/cash 403 in 48ms
- GET /pos 307 in 141ms
- GET /api/auth/csrf 200 in 58ms
- POST /api/auth/callback/credentials 302 in 121ms
- ○ Compiling /api/agenda ...
- ✓ Compiled /api/agenda in 2.1s (4707 modules)
- GET /api/agenda 200 in 2362ms
- GET /api/auth/csrf 200 in 79ms
- POST /api/auth/callback/credentials 302 in 154ms
- GET /api/agenda 403 in 80ms
- GET /api/auth/csrf 200 in 71ms
- POST /api/auth/callback/credentials 302 in 146ms
- GET /api/agenda 403 in 64ms
- GET /api/auth/csrf 200 in 104ms
- POST /api/auth/callback/credentials 302 in 127ms
- ○ Compiling /api/reservaciones ...
- ✓ Compiled /api/reservaciones in 839ms (4711 modules)
- GET /api/reservaciones 200 in 987ms
- GET /api/auth/csrf 200 in 79ms
- POST /api/auth/callback/credentials 302 in 162ms
- GET /api/reservaciones 403 in 81ms
- GET /api/auth/csrf 200 in 108ms
- POST /api/auth/callback/credentials 302 in 150ms
- GET /api/reservaciones 403 in 83ms
- GET /api/auth/csrf 200 in 84ms
- POST /api/auth/callback/credentials 302 in 142ms
- POST /api/pos/cash 200 in 92ms
- POST /api/pos/cash 200 in 141ms
- ○ Compiling /admin ...
- ✓ Compiled /admin in 5.4s (5941 modules)
- GET /admin 200 in 6319ms
- POST /api/crud/products 201 in 141ms
- ○ Compiling /api/crud/[module]/[id] ...
- ✓ Compiled /api/crud/[module]/[id] in 918ms (5943 modules)
- DELETE /api/crud/products/cmtqk08i50007yj98hch63hwg 200 in 1815ms
- GET /api/auth/csrf 200 in 94ms
- POST /api/auth/callback/credentials 302 in 161ms
- GET /api/auth/csrf 200 in 74ms
- POST /api/auth/callback/credentials 302 in 167ms
- ○ Compiling /api/tables ...
- ✓ Compiled /api/tables in 842ms (5945 modules)
- PUT /api/tables 200 in 985ms
- GET /api/auth/csrf 200 in 78ms
- POST /api/auth/callback/credentials 302 in 157ms
- PUT /api/tables 403 in 65ms
- ○ Compiling /api/pos/kitchen ...
- ✓ Compiled /api/pos/kitchen in 885ms (5947 modules)
- POST /api/pos/kitchen 200 in 1068ms
- ○ Compiling /api/kds ...
- ✓ Compiled /api/kds in 981ms (5949 modules)
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 1106ms
- PUT /api/kds 200 in 80ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 85ms
- ○ Compiling /api/pos/sales ...
- ✓ Compiled /api/pos/sales in 798ms (5951 modules)
- POST /api/pos/sales 200 in 1046ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 331ms
- GET /api/auth/csrf 200 in 64ms
- POST /api/auth/callback/credentials 302 in 143ms
- PUT /api/tables 200 in 95ms
- POST /api/pos/kitchen 200 in 132ms
- POST /api/pos/kitchen 200 in 83ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 69ms
- GET /api/auth/csrf 200 in 69ms
- POST /api/auth/callback/credentials 302 in 201ms
- DELETE /api/pos/kitchen?orderId=cmtqk0emr000xyj98b09izu7f 403 in 94ms
- DELETE /api/pos/kitchen?orderId=cmtqk0emr000xyj98b09izu7f 200 in 124ms
- ○ Compiling /api/tables/session ...
- ✓ Compiled /api/tables/session in 992ms (5953 modules)
- PATCH /api/tables/session 200 in 1122ms
- GET /api/auth/csrf 200 in 88ms
- POST /api/auth/callback/credentials 302 in 150ms
- GET /api/auth/csrf 200 in 44ms
- POST /api/auth/callback/credentials 302 in 144ms
- GET /api/auth/csrf 200 in 74ms
- POST /api/auth/callback/credentials 302 in 145ms
- PUT /api/tables 200 in 87ms
- POST /api/pos/kitchen 200 in 127ms
- GET /api/kds?locationId=cmtqim20z04ifyjpg9qz7nxu2 200 in 97ms
- PUT /api/kds 200 in 76ms
- POST /api/pos/sales 200 in 117ms
- GET /api/auth/csrf 200 in 92ms
- POST /api/auth/callback/credentials 302 in 151ms
- GET /api/auth/csrf 200 in 76ms
- POST /api/auth/session 200 in 101ms
- GET /api/auth/csrf 200 in 122ms
- POST /api/auth/callback/credentials 302 in 151ms
- GET /api/auth/session 200 in 78ms
- GET /api/auth/csrf 200 in 62ms
- POST /api/auth/callback/credentials 302 in 163ms
- ○ Compiling /api/kds/stream ...
- ✓ Compiled /api/kds/stream in 909ms (5953 modules)
- ○ Compiling /api/orders/[id]/deliver ...
- ✓ Compiled /api/orders/[id]/deliver in 985ms (5957 modules)
- POST /api/orders/cmtqk0hyt0001yjfowam00us2/deliver 200 in 1781ms
- ○ Compiling /api/orders/[id]/confirm-arrival ...
- ✓ Compiled /api/orders/[id]/confirm-arrival in 867ms (5959 modules)
- POST /api/orders/cmtqk0hyt0001yjfowam00us2/confirm-arrival 200 in 1641ms
- ○ Compiling /api/orders/[id]/confirm-delivery ...
- ✓ Compiled /api/orders/[id]/confirm-delivery in 915ms (5961 modules)
- POST /api/orders/cmtqk0hyt0001yjfowam00us2/confirm-delivery 200 in 1776ms
- GET /api/kds/stream 200 in 6406ms
- ○ Compiling /api/uploads ...
- ✓ Compiled /api/uploads in 1052ms (5967 modules)
- POST /api/uploads 401 in 1202ms
- GET /api/auth/csrf 200 in 100ms
- POST /api/auth/callback/credentials 302 in 151ms
- POST /api/uploads 415 in 68ms
- POST /api/uploads 413 in 117ms
- GET /api/auth/session 200 in 77ms
- POST /api/uploads 200 in 156ms
- GET /api/crud/products?pageSize=1 200 in 1722ms
- PATCH /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 200 in 731ms
- ✓ Compiled in 2.6s (2680 modules)
- GET /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 200 in 189ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 249ms
- GET /api/auth/csrf 200 in 86ms
- POST /api/auth/callback/credentials 302 in 152ms
- GET /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 404 in 79ms
- PATCH /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 404 in 75ms
- POST /api/uploads 200 in 111ms
- GET /api/auth/csrf 200 in 185ms
- POST /api/auth/callback/credentials 302 in 451ms
- ✓ Compiled in 1080ms (2680 modules)
- GET /api/auth/session 200 in 142ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 195ms
- ○ Compiling /api/reports ...
- ✓ Compiled /api/reports in 1240ms (5983 modules)
- GET /api/reports?type=dashboard 200 in 1456ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 270ms
- GET /api/auth/csrf 200 in 138ms
- POST /api/auth/callback/credentials 302 in 150ms
- GET /api/auth/session 200 in 76ms
- GET /pos 200 in 715ms
- GET /api/auth/csrf 200 in 100ms
- POST /api/auth/callback/credentials 302 in 153ms
- GET /api/auth/session 200 in 76ms
- GET /pos 200 in 294ms
- GET /api/auth/csrf 200 in 78ms
- POST /api/auth/callback/credentials 302 in 155ms
- ○ Compiling /api/portal/waitlist ...
- ✓ Compiled /api/portal/waitlist in 1023ms (5976 modules)
- POST /api/portal/waitlist 200 in 1177ms
- GET /api/auth/csrf 200 in 91ms
- POST /api/auth/callback/credentials 302 in 151ms
- PUT /api/tables 200 in 89ms
- GET /api/portal/waitlist 200 in 84ms
- ○ Compiling /api/portal/waitlist/claim ...
- ✓ Compiled /api/portal/waitlist/claim in 1068ms (5978 modules)
- POST /api/portal/waitlist/claim 200 in 1254ms
- ○ Compiling /api/public/reservations ...
- ✓ Compiled /api/public/reservations in 708ms (3314 modules)
- GET /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4&date=2030-01-15&guests=2 200 in 801ms
- POST /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4 400 in 46ms
- POST /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 55ms
- GET /api/auth/csrf 200 in 108ms
- POST /api/auth/callback/credentials 302 in 156ms
- ○ Compiling /api/table-reservations ...
- ✓ Compiled /api/table-reservations in 781ms (3316 modules)
- GET /api/table-reservations 200 in 930ms
- ✓ Compiled in 623ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 109ms
- ✓ Compiled in 1114ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 77ms
- ✓ Compiled in 1130ms (3634 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 519ms
- ✓ Compiled in 733ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 84ms
- ✓ Compiled in 539ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 67ms
- ✓ Compiled in 560ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 110ms
- ✓ Compiled in 715ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 93ms
- ✓ Compiled in 661ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 70ms
- ✓ Compiled in 734ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 169ms
- ✓ Compiled in 605ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 90ms
- ✓ Compiled in 691ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 79ms
- ✓ Compiled in 531ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 68ms
- ✓ Compiled in 637ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 69ms
- ✓ Compiled in 1860ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 68ms
- ✓ Compiled in 713ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 104ms
- ✓ Compiled in 947ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 104ms
- ○ Compiling /auth/login ...
- ✓ Compiled /auth/login in 856ms (1300 modules)
- GET /auth/login 200 in 1523ms
- ✓ Compiled /api/auth/[...nextauth] in 230ms (1307 modules)
- GET /api/auth/csrf 200 in 580ms
- POST /api/auth/callback/credentials 302 in 191ms
- ✓ Compiled /api/pos/cash in 325ms (1392 modules)
- POST /api/pos/cash 403 in 902ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 669ms
- ○ Compiling /api/crud/[module] ...
- ✓ Compiled /api/crud/[module] in 834ms (1408 modules)
- POST /api/crud/products 403 in 1058ms
- GET /api/auth/csrf 200 in 105ms
- POST /api/auth/callback/credentials 302 in 189ms
- ✓ Compiled /api/pos/catalog in 429ms (1410 modules)
- GET /api/pos/catalog 200 in 772ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 466ms
- ○ Compiling /pos ...
- ✓ Compiled /pos in 1855ms (2619 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 1128ms
- GET /pos 200 in 3067ms
- POST /api/pos/cash 200 in 140ms
- POST /api/pos/cash 200 in 91ms
- POST /api/crud/products 403 in 115ms
- GET /api/auth/csrf 200 in 99ms
- POST /api/auth/callback/credentials 302 in 181ms
- GET /api/pos/catalog 403 in 93ms
- POST /api/pos/cash 403 in 111ms
- GET /pos 307 in 228ms
- GET /api/auth/csrf 200 in 107ms
- POST /api/auth/callback/credentials 302 in 157ms
- GET /api/pos/catalog 403 in 101ms
- POST /api/pos/cash 403 in 79ms
- GET /pos 307 in 192ms
- GET /api/auth/csrf 200 in 90ms
- POST /api/auth/callback/credentials 302 in 149ms
- ○ Compiling /api/agenda ...
- ✓ Compiled /api/agenda in 1536ms (2623 modules)
- GET /api/agenda 200 in 1826ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 366ms
- GET /api/auth/csrf 200 in 75ms
- POST /api/auth/callback/credentials 302 in 154ms
- GET /api/agenda 403 in 93ms
- GET /api/auth/csrf 200 in 77ms
- POST /api/auth/callback/credentials 302 in 145ms
- GET /api/agenda 403 in 69ms
- GET /api/auth/csrf 200 in 109ms
- POST /api/auth/callback/credentials 302 in 167ms
- ○ Compiling /api/reservaciones ...
- ✓ Compiled /api/reservaciones in 544ms (2627 modules)
- GET /api/reservaciones 200 in 772ms
- GET /api/auth/csrf 200 in 148ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 326ms
- POST /api/auth/callback/credentials 302 in 168ms
- GET /api/reservaciones 403 in 79ms
- GET /api/auth/csrf 200 in 108ms
- POST /api/auth/callback/credentials 302 in 149ms
- GET /api/reservaciones 403 in 66ms
- GET /api/auth/csrf 200 in 115ms
- POST /api/auth/callback/credentials 302 in 170ms
- POST /api/pos/cash 200 in 126ms
- POST /api/pos/cash 200 in 93ms
- ○ Compiling /admin ...
- ✓ Compiled /admin in 1672ms (3271 modules)
- GET /admin 200 in 2657ms
- POST /api/crud/products 201 in 148ms
- ○ Compiling /api/crud/[module]/[id] ...
- ✓ Compiled /api/crud/[module]/[id] in 648ms (3273 modules)
- DELETE /api/crud/products/cmtqk781x002oyj98clrotaiq 200 in 895ms
- GET /api/auth/csrf 200 in 89ms
- POST /api/auth/callback/credentials 302 in 175ms
- GET /api/auth/csrf 200 in 89ms
- POST /api/auth/callback/credentials 302 in 164ms
- ○ Compiling /api/tables ...
- ✓ Compiled /api/tables in 571ms (3276 modules)
- PUT /api/tables 200 in 775ms
- GET /api/auth/csrf 200 in 139ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 293ms
- POST /api/auth/callback/credentials 302 in 166ms
- PUT /api/tables 403 in 66ms
- ○ Compiling /api/pos/kitchen ...
- ✓ Compiled /api/pos/kitchen in 767ms (3278 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 312ms
- POST /api/pos/kitchen 200 in 1165ms
- ○ Compiling /api/kds ...
- ✓ Compiled /api/kds in 597ms (3280 modules)
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 810ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 283ms
- PUT /api/kds 200 in 77ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 84ms
- ○ Compiling /api/pos/sales ...
- ✓ Compiled /api/pos/sales in 594ms (3282 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 266ms
- POST /api/pos/sales 200 in 941ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 85ms
- GET /api/auth/csrf 200 in 77ms
- POST /api/auth/callback/credentials 302 in 151ms
- PUT /api/tables 200 in 101ms
- POST /api/pos/kitchen 200 in 114ms
- POST /api/pos/kitchen 200 in 104ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 78ms
- GET /api/auth/csrf 200 in 105ms
- POST /api/auth/callback/credentials 302 in 194ms
- DELETE /api/pos/kitchen?orderId=cmtqk7d0s003eyj987pwcl1jr 403 in 81ms
- DELETE /api/pos/kitchen?orderId=cmtqk7d0s003eyj987pwcl1jr 200 in 118ms
- ○ Compiling /api/tables/session ...
- ✓ Compiled /api/tables/session in 708ms (3284 modules)
- PATCH /api/tables/session 200 in 1364ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 665ms
- GET /api/auth/csrf 200 in 64ms
- POST /api/auth/callback/credentials 302 in 176ms
- GET /api/auth/csrf 200 in 77ms
- POST /api/auth/callback/credentials 302 in 154ms
- GET /api/auth/csrf 200 in 78ms
- POST /api/auth/callback/credentials 302 in 197ms
- PUT /api/tables 200 in 85ms
- POST /api/pos/kitchen 200 in 127ms
- GET /api/kds?locationId=cmtqim20z04ifyjpg9qz7nxu2 200 in 101ms
- PUT /api/kds 200 in 109ms
- POST /api/pos/sales 200 in 97ms
- GET /api/auth/csrf 200 in 60ms
- POST /api/auth/callback/credentials 302 in 147ms
- GET /api/auth/csrf 200 in 91ms
- POST /api/auth/session 200 in 90ms
- GET /api/auth/csrf 200 in 77ms
- POST /api/auth/callback/credentials 302 in 176ms
- GET /api/auth/session 200 in 78ms
- GET /api/auth/csrf 200 in 77ms
- POST /api/auth/callback/credentials 302 in 158ms
- ○ Compiling /api/kds/stream ...
- ✓ Compiled /api/kds/stream in 669ms (3286 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 272ms
- ○ Compiling /api/orders/[id]/deliver ...
- ✓ Compiled /api/orders/[id]/deliver in 722ms (3290 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 330ms
- POST /api/orders/cmtqk7go90001yjgsfc7ty3jv/deliver 200 in 1206ms
- ○ Compiling /api/orders/[id]/confirm-arrival ...
- ✓ Compiled /api/orders/[id]/confirm-arrival in 661ms (3292 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 276ms
- POST /api/orders/cmtqk7go90001yjgsfc7ty3jv/confirm-arrival 200 in 1011ms
- ○ Compiling /api/orders/[id]/confirm-delivery ...
- ✓ Compiled /api/orders/[id]/confirm-delivery in 663ms (3294 modules)
- POST /api/orders/cmtqk7go90001yjgsfc7ty3jv/confirm-delivery 200 in 1080ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 366ms
- GET /api/kds/stream 200 in 4345ms
- ○ Compiling /api/uploads ...
- ✓ Compiled /api/uploads in 3.1s (3300 modules)
- POST /api/uploads 401 in 3718ms
- GET /api/auth/csrf 200 in 63ms
- POST /api/auth/callback/credentials 302 in 156ms
- POST /api/uploads 415 in 55ms
- POST /api/uploads 413 in 91ms
- GET /api/auth/session 200 in 62ms
- POST /api/uploads 200 in 188ms
- GET /api/crud/products?pageSize=1 200 in 177ms
- PATCH /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 200 in 488ms
- GET /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 200 in 152ms
- GET /api/auth/csrf 200 in 105ms
- POST /api/auth/callback/credentials 302 in 1242ms
- ✓ Compiled in 2.6s (2680 modules)
- GET /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 404 in 283ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 295ms
- PATCH /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 404 in 117ms
- POST /api/uploads 200 in 122ms
- GET /api/auth/csrf 200 in 503ms
- POST /api/auth/callback/credentials 302 in 155ms
- ✓ Compiled in 1080ms (2680 modules)
- GET /api/auth/session 200 in 362ms
- ○ Compiling /api/reports ...
- ✓ Compiled /api/reports in 793ms (3304 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 1835ms
- GET /api/reports?type=dashboard 200 in 1814ms
- GET /api/auth/csrf 200 in 93ms
- POST /api/auth/callback/credentials 302 in 165ms
- GET /api/auth/session 200 in 64ms
- GET /pos 200 in 970ms
- GET /api/auth/csrf 200 in 76ms
- POST /api/auth/callback/credentials 302 in 142ms
- GET /api/auth/session 200 in 78ms
- GET /pos 200 in 324ms
- GET /api/auth/csrf 200 in 64ms
- POST /api/auth/callback/credentials 302 in 147ms
- ○ Compiling /api/portal/waitlist ...
- ✓ Compiled /api/portal/waitlist in 632ms (3311 modules)
- POST /api/portal/waitlist 200 in 851ms
- GET /api/auth/csrf 200 in 81ms
- POST /api/auth/callback/credentials 302 in 152ms
- PUT /api/tables 200 in 97ms
- GET /api/portal/waitlist 200 in 98ms
- ○ Compiling /api/portal/waitlist/claim ...
- ✓ Compiled /api/portal/waitlist/claim in 655ms (3313 modules)
- POST /api/portal/waitlist/claim 200 in 878ms
- ○ Compiling /api/public/reservations ...
- ✓ Compiled /api/public/reservations in 699ms (3315 modules)
- GET /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4&date=2030-01-15&guests=2 200 in 802ms
- POST /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4 400 in 45ms
- POST /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 83ms
- GET /api/auth/csrf 200 in 138ms
- POST /api/auth/callback/credentials 302 in 164ms
- ○ Compiling /api/table-reservations ...
- ✓ Compiled /api/table-reservations in 736ms (3317 modules)
- GET /api/table-reservations 200 in 921ms
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 230ms
- ✓ Compiled in 755ms (2680 modules)
- GET /reservar?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 934ms
- GET /api/auth/csrf 200 in 176ms
- POST /api/auth/callback/credentials 302 in 163ms
- GET /api/tables 200 in 115ms
- GET /api/auth/csrf 200 in 99ms
- POST /api/auth/callback/credentials 302 in 145ms
- GET /api/kds 200 in 89ms
- GET /api/auth/csrf 200 in 86ms
- POST /api/auth/callback/credentials 302 in 176ms
- GET /pos 200 in 570ms
- POST /api/auth/_log 200 in 174ms
- ○ Compiling /api/pos/orders ...
- ✓ Compiled /api/placeholder/image in 3.4s (5312 modules)
- GET /api/placeholder/image?e=%F0%9F%8D%BD%EF%B8%8F&c=Platos+fuertes 200 in 3231ms
- GET /api/auth/session 200 in 3653ms
- GET /api/pos/orders 200 in 3692ms
- GET /pos 200 in 563ms
- GET /api/tables? 200 in 100ms
- ○ Compiling /api/tables/stream ...
- ✓ Compiled /api/tables/stream in 1296ms (5314 modules)
- GET /api/pos/orders 200 in 124ms
- GET /api/auth/csrf 200 in 85ms
- POST /api/auth/callback/credentials 302 in 206ms
- GET /api/pos/orders 403 in 63ms
+ ✓ Compiled / in 2.8s
+ GET / 200 in 268ms
+ GET / 200 in 496ms
+ GET / 200 in 405ms
+ GET / 200 in 1241ms
+ ✓ Compiled /api/auth/[...nextauth] in 414ms
+ GET /api/auth/session 200 in 1639ms
  ○ Compiling /kds ...
- ✓ Compiled /kds in 8.1s (5362 modules)
- GET /api/tables/stream? 200 in 35417ms
- GET /kds 200 in 8888ms
- POST /api/auth/_log 200 in 178ms
- GET /api/kds? 200 in 323ms
- GET /api/auth/session 200 in 312ms
- ○ Compiling /api/kds/stream ...
- ✓ Compiled /api/kds/stream in 2.9s (2652 modules)
- GET /api/auth/csrf 200 in 103ms
- POST /api/auth/callback/credentials 302 in 196ms
- ○ Compiling /api/table-reservations ...
- ✓ Compiled /api/table-reservations in 2.3s (2647 modules)
- PATCH /api/table-reservations 200 in 2569ms
- GET /api/kds? 200 in 95ms
- ○ Compiling /auth/login ...
- ✓ Compiled /auth/login in 3.1s (2667 modules)
- GET /auth/login 200 in 3937ms
- GET /api/auth/csrf 200 in 93ms
- POST /api/auth/callback/credentials 302 in 206ms
- ○ Compiling /api/pos/cash ...
- ✓ Compiled /api/pos/cash in 863ms (2669 modules)
- POST /api/pos/cash 403 in 1183ms
- ○ Compiling /api/crud/[module] ...
- ✓ Compiled /api/crud/[module] in 4.8s (2685 modules)
- POST /api/crud/products 403 in 5084ms
- GET /api/auth/csrf 200 in 84ms
- POST /api/auth/callback/credentials 302 in 147ms
- ○ Compiling /api/pos/catalog ...
- ✓ Compiled /api/pos/catalog in 793ms (2687 modules)
- GET /api/pos/catalog 200 in 1095ms
- GET /pos 200 in 1056ms
- POST /api/pos/cash 200 in 72ms
- POST /api/pos/cash 200 in 76ms
- POST /api/crud/products 403 in 138ms
- GET /api/auth/csrf 200 in 69ms
- POST /api/auth/callback/credentials 302 in 185ms
- GET /api/pos/catalog 403 in 78ms
- POST /api/pos/cash 403 in 133ms
- GET /pos 307 in 236ms
- GET /api/auth/csrf 200 in 117ms
- POST /api/auth/callback/credentials 302 in 202ms
- GET /api/pos/catalog 403 in 122ms
- POST /api/pos/cash 403 in 129ms
- GET /pos 307 in 259ms
- GET /api/auth/csrf 200 in 120ms
- POST /api/auth/callback/credentials 302 in 235ms
- ○ Compiling /api/agenda ...
- ✓ Compiled /api/agenda in 3.1s (2687 modules)
- GET /api/agenda 200 in 3416ms
- GET /api/auth/csrf 200 in 111ms
- POST /api/auth/callback/credentials 302 in 190ms
- GET /api/agenda 403 in 79ms
- GET /api/auth/csrf 200 in 94ms
- POST /api/auth/callback/credentials 302 in 200ms
- GET /api/agenda 403 in 100ms
- GET /api/auth/csrf 200 in 120ms
- POST /api/auth/callback/credentials 302 in 182ms
- ○ Compiling /api/reservaciones ...
- ✓ Compiled /api/reservaciones in 965ms (2691 modules)
- GET /api/reservaciones 200 in 1232ms
- GET /api/auth/csrf 200 in 121ms
- POST /api/auth/callback/credentials 302 in 206ms
- GET /api/reservaciones 403 in 81ms
- GET /api/auth/csrf 200 in 74ms
- POST /api/auth/callback/credentials 302 in 189ms
- GET /api/reservaciones 403 in 80ms
- GET /api/auth/csrf 200 in 92ms
- POST /api/auth/callback/credentials 302 in 172ms
- POST /api/pos/cash 200 in 127ms
- POST /api/pos/cash 200 in 93ms
- ○ Compiling /admin ...
- ✓ Compiled /admin in 1904ms (3332 modules)
- GET /admin 200 in 5732ms
- POST /api/crud/products 201 in 970ms
- ○ Compiling /api/crud/[module]/[id] ...
- ✓ Compiled /api/crud/[module]/[id] in 4.6s (3334 modules)
- DELETE /api/crud/products/cmtqkba4q0055yj987res6hdk 200 in 4955ms
- GET /api/auth/csrf 200 in 146ms
- POST /api/auth/callback/credentials 302 in 235ms
- GET /api/auth/csrf 200 in 100ms
- POST /api/auth/callback/credentials 302 in 209ms
- ○ Compiling /api/tables ...
- ✓ Compiled /api/tables in 2.4s (3336 modules)
- PUT /api/tables 200 in 2674ms
- GET /api/auth/csrf 200 in 121ms
- POST /api/auth/callback/credentials 302 in 161ms
- PUT /api/tables 403 in 82ms
- ○ Compiling /api/pos/kitchen ...
- ✓ Compiled /api/pos/kitchen in 882ms (3338 modules)
- POST /api/pos/kitchen 200 in 1242ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 169ms
- PUT /api/kds 200 in 110ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 91ms
- ○ Compiling /api/pos/sales ...
- ✓ Compiled /api/pos/sales in 734ms (3340 modules)
- POST /api/pos/sales 200 in 1043ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 99ms
- GET /api/auth/csrf 200 in 76ms
- POST /api/auth/callback/credentials 302 in 169ms
- PUT /api/tables 200 in 112ms
- POST /api/pos/kitchen 200 in 179ms
- POST /api/pos/kitchen 200 in 119ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 107ms
- GET /api/auth/csrf 200 in 126ms
- POST /api/auth/callback/credentials 302 in 174ms
- DELETE /api/pos/kitchen?orderId=cmtqkbjjd005vyj98zblh9xq0 403 in 120ms
- DELETE /api/pos/kitchen?orderId=cmtqkbjjd005vyj98zblh9xq0 200 in 98ms
- ○ Compiling /api/tables/session ...
- ✓ Compiled /api/tables/session in 977ms (3342 modules)
- PATCH /api/tables/session 200 in 1251ms
- GET /api/auth/csrf 200 in 108ms
- POST /api/auth/callback/credentials 302 in 182ms
- GET /api/auth/csrf 200 in 58ms
- POST /api/auth/callback/credentials 302 in 187ms
- GET /api/auth/csrf 200 in 93ms
- POST /api/auth/callback/credentials 302 in 207ms
- PUT /api/tables 200 in 135ms
- POST /api/pos/kitchen 200 in 198ms
- GET /api/kds?locationId=cmtqim20z04ifyjpg9qz7nxu2 200 in 122ms
- PUT /api/kds 200 in 143ms
- POST /api/pos/sales 200 in 278ms
- GET /api/auth/csrf 200 in 191ms
- POST /api/auth/callback/credentials 302 in 197ms
- GET /api/auth/csrf 200 in 91ms
- POST /api/auth/session 200 in 111ms
- GET /api/auth/csrf 200 in 135ms
- POST /api/auth/callback/credentials 302 in 183ms
- GET /api/auth/session 200 in 109ms
- GET /api/auth/csrf 200 in 81ms
- POST /api/auth/callback/credentials 302 in 206ms
- ○ Compiling /api/kds/stream ...
- ✓ Compiled /api/kds/stream in 812ms (3342 modules)
- ○ Compiling /api/orders/[id]/deliver ...
- ✓ Compiled /api/orders/[id]/deliver in 832ms (3346 modules)
- POST /api/orders/cmtqkbnrj0001yjtcq1zd0n8q/deliver 200 in 1133ms
- ○ Compiling /api/orders/[id]/confirm-arrival ...
- ✓ Compiled /api/orders/[id]/confirm-arrival in 1343ms (3348 modules)
- POST /api/orders/cmtqkbnrj0001yjtcq1zd0n8q/confirm-arrival 200 in 1720ms
- ○ Compiling /api/orders/[id]/confirm-delivery ...
- ✓ Compiled /api/orders/[id]/confirm-delivery in 956ms (3350 modules)
- POST /api/orders/cmtqkbnrj0001yjtcq1zd0n8q/confirm-delivery 200 in 1201ms
- GET /api/kds/stream 200 in 5233ms
- ○ Compiling /api/uploads ...
- ✓ Compiled /api/uploads in 1191ms (3356 modules)
- POST /api/uploads 401 in 1419ms
- GET /api/auth/csrf 200 in 110ms
- POST /api/auth/callback/credentials 302 in 185ms
- POST /api/uploads 415 in 71ms
- POST /api/uploads 413 in 113ms
- GET /api/auth/session 200 in 150ms
- POST /api/uploads 200 in 273ms
- GET /api/crud/products?pageSize=1 200 in 250ms
- ⨯ SyntaxError: Unexpected end of JSON input
-    at JSON.parse (<anonymous>) {
-  page: '/api/crud/products/cmtqim23m04kryjpgd1n1hgg4'
-}
- ○ Compiling /_error ...
- ✓ Compiled /_error in 7.8s (6429 modules)
- GET /kds 200 in 350ms
- PATCH /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 500 in 7979ms
- GET /kds 200 in 282ms
- GET /api/auth/csrf 200 in 176ms
- GET /kds 200 in 183ms
- POST /api/auth/callback/credentials 302 in 200ms
- GET /api/auth/session 200 in 106ms
- ○ Compiling /api/reports ...
- ✓ Compiled /api/reports in 1321ms (3554 modules)
- GET /api/reports?type=dashboard 200 in 1566ms
- GET /api/auth/csrf 200 in 105ms
- POST /api/auth/callback/credentials 302 in 171ms
- GET /api/auth/session 200 in 83ms
- GET /pos 200 in 1236ms
- GET /api/auth/csrf 200 in 89ms
- POST /api/auth/callback/credentials 302 in 200ms
- GET /api/auth/session 200 in 96ms
- GET /pos 200 in 357ms
- GET /api/auth/csrf 200 in 79ms
- POST /api/auth/callback/credentials 302 in 162ms
- ○ Compiling /api/portal/waitlist ...
- ✓ Compiled /api/portal/waitlist in 1058ms (3561 modules)
- POST /api/portal/waitlist 200 in 1339ms
- GET /api/auth/csrf 200 in 103ms
- POST /api/auth/callback/credentials 302 in 183ms
- PUT /api/tables 200 in 107ms
- GET /api/portal/waitlist 200 in 115ms
- ○ Compiling /api/portal/waitlist/claim ...
- ✓ Compiled /api/portal/waitlist/claim in 1013ms (3563 modules)
- POST /api/portal/waitlist/claim 200 in 1318ms
- ○ Compiling /api/public/reservations ...
- ✓ Compiled /api/public/reservations in 2.2s (3565 modules)
- GET /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4&date=2030-01-15&guests=2 200 in 2338ms
- POST /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4 400 in 47ms
- POST /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 91ms
- GET /api/auth/csrf 200 in 151ms
- POST /api/auth/callback/credentials 302 in 208ms
- ○ Compiling /api/table-reservations ...
- ✓ Compiled /api/table-reservations in 1511ms (3567 modules)
- GET /api/table-reservations 200 in 1746ms
- ✓ Compiled in 762ms (2879 modules)
- GET /kds 200 in 200ms
- GET /auth/login 200 in 1346ms
- GET /api/auth/csrf 200 in 140ms
- POST /api/auth/callback/credentials 302 in 173ms
- POST /api/pos/cash 403 in 183ms
- POST /api/crud/products 403 in 197ms
- GET /api/auth/csrf 200 in 112ms
- POST /api/auth/callback/credentials 302 in 161ms
- GET /api/pos/catalog 200 in 147ms
- GET /pos 200 in 500ms
- POST /api/pos/cash 200 in 124ms
- POST /api/pos/cash 200 in 89ms
- POST /api/crud/products 403 in 79ms
- GET /api/auth/csrf 200 in 88ms
- POST /api/auth/callback/credentials 302 in 183ms
- GET /api/pos/catalog 403 in 100ms
- POST /api/pos/cash 403 in 77ms
- GET /pos 307 in 275ms
- GET /api/auth/csrf 200 in 101ms
- POST /api/auth/callback/credentials 302 in 171ms
- GET /api/pos/catalog 403 in 95ms
- POST /api/pos/cash 403 in 95ms
- GET /pos 307 in 154ms
- GET /api/auth/csrf 200 in 91ms
- POST /api/auth/callback/credentials 302 in 175ms
- GET /api/agenda 200 in 130ms
- GET /api/auth/csrf 200 in 88ms
- POST /api/auth/callback/credentials 302 in 159ms
- GET /api/agenda 403 in 76ms
- GET /api/auth/csrf 200 in 76ms
- POST /api/auth/callback/credentials 302 in 156ms
- GET /api/agenda 403 in 94ms
- GET /api/auth/csrf 200 in 94ms
- POST /api/auth/callback/credentials 302 in 181ms
- GET /api/reservaciones 200 in 116ms
- GET /api/auth/csrf 200 in 79ms
- POST /api/auth/callback/credentials 302 in 184ms
- GET /api/reservaciones 403 in 107ms
- GET /api/auth/csrf 200 in 111ms
- POST /api/auth/callback/credentials 302 in 182ms
- GET /api/reservaciones 403 in 126ms
- GET /api/auth/csrf 200 in 98ms
- POST /api/auth/callback/credentials 302 in 172ms
- POST /api/pos/cash 200 in 90ms
- POST /api/pos/cash 200 in 161ms
- GET /admin 200 in 587ms
- POST /api/crud/products 201 in 124ms
- DELETE /api/crud/products/cmtqkcmga007myj98m0b0aewe 200 in 92ms
- GET /api/auth/csrf 200 in 94ms
- POST /api/auth/callback/credentials 302 in 274ms
- GET /api/auth/csrf 200 in 136ms
- POST /api/auth/callback/credentials 302 in 225ms
- PUT /api/tables 200 in 89ms
- GET /api/auth/csrf 200 in 114ms
- POST /api/auth/callback/credentials 302 in 1446ms
- PUT /api/tables 403 in 1258ms
- POST /api/pos/kitchen 200 in 142ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 105ms
- PUT /api/kds 200 in 118ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 102ms
- POST /api/pos/sales 200 in 157ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 98ms
- GET /api/auth/csrf 200 in 62ms
- POST /api/auth/callback/credentials 302 in 204ms
- PUT /api/tables 200 in 101ms
- POST /api/pos/kitchen 200 in 100ms
- POST /api/pos/kitchen 200 in 128ms
- GET /api/kds?locationId=cmtqilyyo01y6yjpg3be59pgu 200 in 102ms
- GET /api/auth/csrf 200 in 106ms
- POST /api/auth/callback/credentials 302 in 188ms
- DELETE /api/pos/kitchen?orderId=cmtqkcqf9008cyj98ulr10cgq 403 in 80ms
- DELETE /api/pos/kitchen?orderId=cmtqkcqf9008cyj98ulr10cgq 200 in 110ms
- PATCH /api/tables/session 200 in 134ms
- GET /api/auth/csrf 200 in 70ms
- POST /api/auth/callback/credentials 302 in 192ms
- GET /api/auth/csrf 200 in 105ms
- POST /api/auth/callback/credentials 302 in 163ms
- GET /api/auth/csrf 200 in 96ms
- POST /api/auth/callback/credentials 302 in 181ms
- PUT /api/tables 200 in 100ms
- POST /api/pos/kitchen 200 in 120ms
- GET /api/kds?locationId=cmtqim20z04ifyjpg9qz7nxu2 200 in 112ms
- PUT /api/kds 200 in 90ms
- POST /api/pos/sales 200 in 124ms
- GET /api/auth/csrf 200 in 94ms
- POST /api/auth/callback/credentials 302 in 168ms
- GET /api/auth/csrf 200 in 75ms
- POST /api/auth/session 200 in 126ms
- GET /api/auth/csrf 200 in 76ms
- POST /api/auth/callback/credentials 302 in 167ms
- GET /api/auth/session 200 in 111ms
- GET /api/auth/csrf 200 in 105ms
- POST /api/auth/callback/credentials 302 in 165ms
- POST /api/orders/cmtqkct9h0001yj34pdbbpz8o/deliver 200 in 163ms
- POST /api/orders/cmtqkct9h0001yj34pdbbpz8o/confirm-arrival 200 in 171ms
- POST /api/orders/cmtqkct9h0001yj34pdbbpz8o/confirm-delivery 200 in 153ms
- GET /api/kds/stream 200 in 737ms
- POST /api/uploads 401 in 142ms
- GET /api/auth/csrf 200 in 139ms
- POST /api/auth/callback/credentials 302 in 236ms
- POST /api/uploads 415 in 130ms
- POST /api/uploads 413 in 152ms
- GET /api/auth/session 200 in 192ms
- POST /api/uploads 200 in 262ms
- GET /api/crud/products?pageSize=1 200 in 133ms
- ✓ Compiled in 1017ms (2879 modules)
- PATCH /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 200 in 239ms
- GET /kds 200 in 374ms
- GET /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 200 in 242ms
- GET /api/auth/csrf 200 in 198ms
- POST /api/auth/callback/credentials 302 in 244ms
- GET /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 404 in 169ms
- PATCH /api/crud/products/cmtqim23m04kryjpgd1n1hgg4 404 in 130ms
- POST /api/uploads 200 in 303ms
- GET /api/auth/csrf 200 in 556ms
- POST /api/auth/callback/credentials 302 in 571ms
- ✓ Compiled in 1351ms (2879 modules)
- GET /api/auth/session 200 in 163ms
- GET /kds 200 in 284ms
- GET /api/reports?type=dashboard 200 in 175ms
- GET /api/auth/csrf 200 in 103ms
- POST /api/auth/callback/credentials 302 in 206ms
- GET /api/auth/session 200 in 98ms
- GET /pos 200 in 415ms
- GET /api/auth/csrf 200 in 108ms
- POST /api/auth/callback/credentials 302 in 210ms
- GET /api/auth/session 200 in 145ms
- GET /pos 200 in 338ms
- GET /api/auth/csrf 200 in 66ms
- POST /api/auth/callback/credentials 302 in 195ms
- POST /api/portal/waitlist 200 in 124ms
- GET /api/auth/csrf 200 in 136ms
- POST /api/auth/callback/credentials 302 in 171ms
- PUT /api/tables 200 in 128ms
- GET /api/portal/waitlist 200 in 112ms
- POST /api/portal/waitlist/claim 200 in 106ms
- GET /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4&date=2030-01-15&guests=2 200 in 107ms
- POST /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4 400 in 95ms
- POST /api/public/reservations?table=demo-hyb-t4&token=demo-hyb-qr-t4 200 in 84ms
- GET /api/auth/csrf 200 in 127ms
- POST /api/auth/callback/credentials 302 in 186ms
- GET /api/table-reservations 200 in 206ms
- ✓ Compiled in 852ms (2879 modules)
- GET /kds 200 in 126ms
- ✓ Compiled in 13.4s (5606 modules)
- ⨯ Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json',
-  page: '/kds'
-}
- ○ Compiling /_error ...
- ✓ Compiled /_error in 4.1s (5702 modules)
- ⨯ Error: Cannot find module './5611.js'
-Require stack:
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\webpack-runtime.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\require.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\load-components.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\utils.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\options.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\index.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\next-config-ts\transpile-config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\next.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\lib\start-server.js
-    at <unknown> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:327)
-    at Object.<anonymous> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:374) {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: [Array]
-}
-Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json',
-  page: '/kds'
-}
- ⨯ Error: Cannot find module './5611.js'
-Require stack:
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\webpack-runtime.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\require.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\load-components.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\utils.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\options.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\index.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\next-config-ts\transpile-config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\next.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\lib\start-server.js
-    at <unknown> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:327)
-    at Object.<anonymous> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:374) {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: [Array]
-}
-Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json'
-}
- GET /kds 500 in 10431ms
- GET /kds 500 in 200ms
- ⨯ Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json',
-  page: '/kds'
-}
- ⨯ Error: Cannot find module './5611.js'
-Require stack:
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\webpack-runtime.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\require.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\load-components.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\utils.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\options.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\index.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\next-config-ts\transpile-config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\next.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\lib\start-server.js
-    at <unknown> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:327)
-    at Object.<anonymous> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:374) {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: [Array]
-}
-Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json',
-  page: '/kds'
-}
- ⨯ Error: Cannot find module './5611.js'
-Require stack:
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\webpack-runtime.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\require.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\load-components.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\utils.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\options.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\index.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\next-config-ts\transpile-config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\next.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\lib\start-server.js
-    at <unknown> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:327)
-    at Object.<anonymous> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:374) {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: [Array]
-}
-Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json'
-}
- GET /kds 500 in 1309ms
- GET /kds 500 in 165ms
- ⨯ Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json',
-  page: '/kds'
-}
- ⨯ Error: Cannot find module './5611.js'
-Require stack:
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\webpack-runtime.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\require.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\load-components.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\utils.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\options.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\index.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\next-config-ts\transpile-config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\next.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\lib\start-server.js
-    at <unknown> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:327)
-    at Object.<anonymous> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:374) {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: [Array]
-}
-Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json',
-  page: '/kds'
-}
- ⨯ Error: Cannot find module './5611.js'
-Require stack:
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\webpack-runtime.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\require.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\load-components.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\utils.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\options.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\index.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\next-config-ts\transpile-config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\next.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\lib\start-server.js
-    at <unknown> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:327)
-    at Object.<anonymous> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages\_document.js:1:374) {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: [Array]
-}
-Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json'
-}
- GET /kds 500 in 2078ms
- GET /kds 500 in 144ms
- GET /api/kds/stream? 200 in 719495ms
- ○ Compiling /api/auth/[...nextauth] ...
- ✓ Compiled /api/auth/[...nextauth] in 690ms (2830 modules)
- ⨯ Error: Cannot find module './4996.js'
-Require stack:
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\webpack-runtime.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\app\api\auth\[...nextauth]\route.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\require.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\load-components.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\utils.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\options.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\index.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\next-config-ts\transpile-config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\next.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\lib\start-server.js
-    at <unknown> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\app\api\auth\[...nextauth]\route.js:1:7970)
-    at Object.<anonymous> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\app\api\auth\[...nextauth]\route.js:1:8032) {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: [Array],
-  page: '/api/auth/_log'
-}
- ⨯ Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\app-paths-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\server\\app-paths-manifest.json',
-  page: '/api/auth/session'
-}
- ⨯ Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\server\\pages-manifest.json'
-}
- ⨯ Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\server\\pages-manifest.json'
-}
-Error: Cannot find module './4996.js'
-Require stack:
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\webpack-runtime.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\app\api\auth\[...nextauth]\route.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\require.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\load-components.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\utils.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\options.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\swc\index.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\build\next-config-ts\transpile-config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\config.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\next.js
-- C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\node_modules\next\dist\server\lib\start-server.js
-    at <unknown> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\app\api\auth\[...nextauth]\route.js:1:7970)
-    at Object.<anonymous> (C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\app\api\auth\[...nextauth]\route.js:1:8032) {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: [Array],
-  page: '/api/auth/_log'
-}
-Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\app-paths-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\server\\app-paths-manifest.json',
-  page: '/api/auth/session'
-}
- ⨯ Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\server\\pages-manifest.json'
-}
- ⨯ Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\pages-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\server\\pages-manifest.json'
-}
-Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json'
-}
-Error: ENOENT: no such file or directory, open 'C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\routes-manifest.json'
-    at Object.readFileUtf8 (c:\Users\Usuario\.vscode\extensions\wallabyjs.console-ninja-1.0.541\out\buildHook\index.js:1:3589334) {
-  errno: -4058,
-  code: 'ENOENT',
-  syscall: 'open',
-  path: 'C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\.next\\routes-manifest.json'
-}
- POST /api/auth/_log 500 in 1152ms
- POST /api/auth/_log 500 in 205ms
- ✓ Compiled in 4.1s (5606 modules)
+ ✓ Compiled /kds in 1230ms
+ GET /kds 200 in 1748ms
+ POST /api/auth/_log 200 in 483ms
+ ○ Compiling /api/orders ...
+ GET /api/auth/session 200 in 517ms
+ ✓ Compiled /api/orders in 550ms
+ GET /api/orders?active=1&pageSize=100 200 in 1736ms
+ GET /api/kds? 200 in 1736ms
+ ✓ Compiled /api/tables in 215ms
+ PUT /api/tables 200 in 592ms
+[messaging] Twilio no configurado — se omite el aviso al invitado
+ DELETE /api/public/waitlist?table=demo-rest-t4&token=demo-rest-qr-t4 200 in 354ms
+ GET /api/orders?active=1&pageSize=100 200 in 377ms
+ GET /api/orders?active=1&pageSize=100 200 in 434ms
+ GET /api/orders?active=1&pageSize=100 200 in 381ms
+ GET /api/orders?active=1&pageSize=100 200 in 365ms
+ GET /api/orders?active=1&pageSize=100 200 in 365ms
+[messaging] Twilio no configurado — se omite el aviso al invitado
+ POST /api/public/waitlist?table=demo-rest-t4&token=demo-rest-qr-t4 200 in 624ms
+ GET /api/orders?active=1&pageSize=100 200 in 391ms
+ ✓ Compiled /api/table-waitlist in 247ms
+[messaging] Twilio no configurado — se omite el aviso al invitado
+ PATCH /api/table-waitlist 200 in 655ms
+ GET /api/orders?active=1&pageSize=100 200 in 439ms
+ GET /api/orders?active=1&pageSize=100 200 in 385ms
+ GET /api/orders?active=1&pageSize=100 200 in 360ms
+ GET /api/orders?active=1&pageSize=100 200 in 390ms
+ GET /api/orders?active=1&pageSize=100 200 in 416ms
+ ✓ Compiled in 756ms
+ GET /api/kds/stream? 200 in 524890ms
+ GET /kds 200 in 800ms
+ GET /api/kds/stream 200 in 524941ms
+ POST /api/auth/_log 200 in 483ms
+ GET /api/auth/session 200 in 722ms
+ GET /api/orders?active=1&pageSize=100 200 in 780ms
+ GET /api/kds? 200 in 798ms
+ GET /api/orders?active=1&pageSize=100 200 in 385ms
+ GET /api/kds/stream? 200 in 48524ms
+ GET /api/kds/stream 200 in 48568ms
+ GET / 200 in 882ms
+ POST /api/auth/_log 200 in 548ms
+ GET /api/auth/session 200 in 470ms
+ GET / 200 in 582ms
+ POST /api/auth/_log 200 in 544ms
+ GET /api/auth/session 200 in 405ms
+ ✓ Compiled in 418ms
+ GET / 200 in 879ms
+ POST /api/auth/_log 200 in 496ms
+ GET /api/auth/session 200 in 442ms
+ ✓ Compiled in 432ms
+ ✓ Compiled in 564ms
+ ○ Compiling /admin/tables ...
+ ✓ Compiled /admin/tables in 1650ms
+ GET /admin/tables 200 in 2582ms
+ POST /api/auth/_log 200 in 526ms
+ ○ Compiling /api/settings/organizations/mine ...
+ GET /api/table-waitlist 200 in 1010ms
+ ✓ Compiled /api/settings/organizations/mine in 1041ms
+ GET /api/tables? 200 in 1105ms
+ GET /api/tables/rooms? 200 in 1341ms
+ GET /api/table-reservations 200 in 1546ms
+ GET /api/settings/organizations/mine 200 in 1600ms
+ ○ Compiling /api/table-reservations/settings ...
+ ✓ Compiled /api/table-reservations/settings in 849ms
+ GET /api/table-reservations/settings 200 in 1188ms
+ GET /api/auth/session 200 in 935ms
+ GET /api/menus 200 in 1174ms
+ GET /api/settings/organizations/mine 200 in 874ms
+ GET /api/crud/locations?pageSize=200 200 in 2441ms
+ GET /api/notifications/stream 200 in 27499ms
+ GET /admin/tables 200 in 480ms
+ POST /api/auth/_log 200 in 538ms
+ GET /api/settings/organizations/mine 200 in 1153ms
+ GET /api/table-reservations 200 in 1130ms
+ GET /api/tables/rooms? 200 in 1155ms
+ GET /api/table-waitlist 200 in 1047ms
+ GET /api/crud/locations?pageSize=200 200 in 1173ms
+ GET /api/tables? 200 in 1205ms
+ GET /api/table-reservations/settings 200 in 1057ms
+ GET /api/auth/session 200 in 1000ms
+ GET /api/menus 200 in 1071ms
+ GET /api/settings/organizations/mine 200 in 1044ms
+ ✓ Compiled in 447ms
+ ✓ Compiled in 828ms
+ GET /api/notifications/stream 200 in 216345ms
+ GET /admin/tables 200 in 1151ms
+ POST /api/auth/_log 200 in 527ms
+ GET /api/settings/organizations/mine 200 in 1046ms
+ GET /api/table-reservations 200 in 1001ms
+ GET /api/crud/locations?pageSize=200 200 in 996ms
+ GET /api/table-waitlist 200 in 1013ms
+ GET /api/tables/rooms? 200 in 1060ms
+ GET /api/tables? 200 in 1075ms
+ GET /api/table-reservations/settings 200 in 840ms
+ GET /api/auth/session 200 in 755ms
+ GET /api/settings/organizations/mine 200 in 779ms
+ GET /api/menus 200 in 848ms
+ GET /api/notifications/stream 200 in 19710ms
+ GET /admin/tables 200 in 485ms
+ POST /api/auth/_log 200 in 532ms
+ GET /api/settings/organizations/mine 200 in 960ms
+ GET /api/table-reservations 200 in 928ms
+ GET /api/tables/rooms? 200 in 935ms
+ GET /api/table-waitlist 200 in 839ms
+ GET /api/crud/locations?pageSize=200 200 in 950ms
+ GET /api/tables? 200 in 967ms
+ GET /api/table-reservations/settings 200 in 850ms
+ GET /api/auth/session 200 in 864ms
+ GET /api/settings/organizations/mine 200 in 888ms
+ GET /api/menus 200 in 906ms
+ ✓ Compiled in 584ms
+ GET /api/notifications/stream 200 in 172432ms
+ GET /admin/tables 200 in 1014ms
+ POST /api/auth/_log 200 in 532ms
+ GET /api/settings/organizations/mine 200 in 933ms
+ GET /api/table-reservations 200 in 955ms
+ GET /api/table-waitlist 200 in 865ms
+ GET /api/tables/rooms? 200 in 959ms
+ GET /api/crud/locations?pageSize=200 200 in 961ms
+ GET /api/tables? 200 in 995ms
+ GET /api/table-reservations/settings 200 in 947ms
+ GET /api/auth/session 200 in 903ms
+ GET /api/menus 200 in 939ms
+ GET /api/settings/organizations/mine 200 in 943ms
+ ✓ Compiled in 439ms
+ GET /admin/tables 200 in 215ms
+ ✓ Compiled in 462ms
+ ✓ Compiled / in 68ms
+ GET /api/notifications/stream 200 in 89748ms
+ GET / 200 in 1010ms
+ POST /api/auth/_log 200 in 496ms
+ GET /api/auth/session 200 in 426ms
+ ✓ Compiled in 617ms
+ GET / 200 in 260ms
+ GET / 200 in 651ms
+ POST /api/auth/_log 200 in 512ms
+ GET /api/auth/session 200 in 548ms
+ ✓ Compiled /admin/tables in 105ms
+ GET /admin/tables 200 in 1078ms
+ POST /api/auth/_log 200 in 577ms
+ GET /api/settings/organizations/mine 200 in 1083ms
+ GET /api/tables/rooms? 200 in 1096ms
+ GET /api/table-waitlist 200 in 995ms
+ GET /api/table-reservations 200 in 1101ms
+ GET /api/crud/locations?pageSize=200 200 in 1098ms
+ GET /api/tables? 200 in 1147ms
+ GET /api/table-reservations/settings 200 in 816ms
+ GET /api/auth/session 200 in 733ms
+ GET /api/settings/organizations/mine 200 in 761ms
+ GET /api/menus 200 in 777ms
+ GET /api/notifications/stream 200 in 24707ms
+ GET /admin/tables 200 in 645ms
+ POST /api/auth/_log 200 in 520ms
+ GET /api/settings/organizations/mine 200 in 931ms
+ GET /api/table-reservations 200 in 923ms
+ GET /api/tables/rooms? 200 in 930ms
+ GET /api/table-waitlist 200 in 831ms
+ GET /api/crud/locations?pageSize=200 200 in 942ms
+ GET /api/tables? 200 in 977ms
+ GET /api/table-reservations/settings 200 in 849ms
+ GET /api/auth/session 200 in 798ms
+ GET /api/menus 200 in 847ms
+ GET /api/settings/organizations/mine 200 in 820ms
+ ✓ Compiled in 445ms
+ GET /api/notifications/stream 200 in 73151ms
+ GET /admin/tables 200 in 1018ms
+ POST /api/auth/_log 200 in 520ms
+ GET /api/settings/organizations/mine 200 in 1178ms
+ GET /api/tables/rooms? 200 in 1166ms
+ GET /api/table-reservations 200 in 1167ms
+ GET /api/table-waitlist 200 in 1112ms
+ GET /api/crud/locations?pageSize=200 200 in 1180ms
+ GET /api/tables? 200 in 1202ms
+ GET /api/table-reservations/settings 200 in 793ms
+ GET /api/auth/session 200 in 729ms
+ GET /api/settings/organizations/mine 200 in 744ms
+ GET /api/menus 200 in 770ms
+ ✓ Compiled in 396ms
+ ✓ Compiled in 475ms
+ GET /api/notifications/stream 200 in 1187108ms
+[?25h

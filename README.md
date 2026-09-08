@@ -144,6 +144,38 @@ anfitrión la ve en *Panel → Mesas → Reservaciones* con el nombre y teléfon
 No requiere sesión: ábrela en una ventana de incógnito y reserva con nombre +
 teléfono (p. ej. *María García / 55 1234 5678*).
 
+Cuando el anfitrión confirma la reservación, el invitado recibe un aviso por
+**WhatsApp** (con fallback a **SMS**) al teléfono que dejó: fecha, hora,
+comensales y mesa asignada. Requiere credenciales de Twilio (`TWILIO_ACCOUNT_SID`,
+`TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM` y `TWILIO_SMS_FROM`); sin ellas el
+aviso se omite con un log y la confirmación sigue funcionando igual.
+
+El **aviso de llegada** de reservaciones (la tira de "próximas reservas" del
+POS/KDS) es configurable por organización: en *Panel → Mesas*, junto a los
+filtros, se ajustan las **horas de anticipación** (1–24, default 3) con las
+que una reservación confirmada aparece como próxima.
+
+#### Confirmar o cancelar sin cuenta (invitado)
+
+Al reservar, el invitado recibe un **código de 6 dígitos** (vence en 15 min):
+aparece en pantalla y viaja por WhatsApp/SMS. En la página pública
+`/reservar/verificar` confirma o cancela su reservación con **teléfono +
+código** — sin cuenta y sin sesión. Hay botón "Enviarme un código" para pedir
+uno nuevo (limitado a 3 envíos cada 10 min); si cancela, la mesa se libera
+al instante en el POS/KDS.
+
+#### Lista de espera sin cuenta (invitado)
+
+Si no hay mesa disponible para el grupo, la página `/reservar` ofrece
+**anotarse en la lista de espera** con nombre y teléfono (mismo flujo sin
+cuenta). Cuando se libera una mesa que les quepa, el barrido de la lista de
+espera les manda el aviso por **WhatsApp/SMS** con el número de mesa; el
+anfitrión la ve en *Panel → Mesas → Lista de espera* con la etiqueta
+*Invitado* y la cierra con *Sentado*/*Cancelar* igual que las del portal. Si la
+mesa ofrecida se ocupa antes de que lleguen, el sistema re-empareja al invitado
+con la siguiente mesa libre y le avisa del cambio; al sentarlo recibe la
+confirmación por WhatsApp/SMS con el número de su mesa.
+
 #### Equipo por organización (panel de acceso)
 
 El **código de nómina** (columna "Código") sirve para entrar desde el login con
@@ -278,6 +310,9 @@ quedaron:
 | `NEXTAUTH_URL` / `NEXTAUTH_SECRET` | NextAuth (`NEXTAUTH_SECRET` se genera con `openssl rand -base64 32`) |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` / `NEXT_PUBLIC_WHATSAPP_MESSAGE` | Botón de contacto de la landing |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Autocomplete de direcciones (opcional) |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | Credenciales Twilio para avisar al invitado (WhatsApp/SMS) |
+| `TWILIO_WHATSAPP_FROM` / `TWILIO_SMS_FROM` | Remitentes de WhatsApp y SMS (el SMS es fallback; `TWILIO_MESSAGING_SERVICE_SID` es alternativa) |
+| `MESSAGING_DEFAULT_COUNTRY_CODE` | Lada por defecto para teléfonos locales de 10 dígitos (default: `52`) |
 
 ## Scripts útiles
 

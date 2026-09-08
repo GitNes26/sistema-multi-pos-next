@@ -3,10 +3,24 @@ import { prisma } from "@/lib/db"
 import type { Prisma } from "@prisma/client"
 import { ordersGuard, ordersErrorResponse } from "@/app/api/orders/guard"
 
+// Los combos son del mundo restaurante (food_service/hybrid); en retail no
+// existen, ni siquiera para crearlos desde el panel.
+async function combosAllowed(organizationId: string): Promise<boolean> {
+  const org = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { businessMode: true },
+  })
+  return org?.businessMode === "food_service" || org?.businessMode === "hybrid"
+}
+
 // GET /api/combos — list combos for the organization
 export async function GET(req: NextRequest) {
   const guard = await ordersGuard("products.manage")
   if (guard instanceof NextResponse) return guard
+  // Los combos son exclusivos de restaurantes (food_service/hybrid).
+  if (!(await combosAllowed(guard.organizationId))) {
+    return NextResponse.json([])
+  }
   try {
     const combos = await prisma.productCombo.findMany({
       where: { organizationId: guard.organizationId },
@@ -39,6 +53,13 @@ export async function POST(req: NextRequest) {
   const guard = await ordersGuard("products.manage")
   if (guard instanceof NextResponse) return guard
   const organizationId = guard.organizationId
+  // Los combos son exclusivos de restaurantes (food_service/hybrid).
+  if (!(await combosAllowed(organizationId))) {
+    return NextResponse.json(
+      { error: "Los combos están disponibles solo en restaurantes (modo Comida)." },
+      { status: 403 }
+    )
+  }
   try {
 
     const body = await req.json()
@@ -112,6 +133,13 @@ export async function PUT(req: NextRequest) {
   const guard = await ordersGuard("products.manage")
   if (guard instanceof NextResponse) return guard
   const organizationId = guard.organizationId
+  // Los combos son exclusivos de restaurantes (food_service/hybrid).
+  if (!(await combosAllowed(organizationId))) {
+    return NextResponse.json(
+      { error: "Los combos están disponibles solo en restaurantes (modo Comida)." },
+      { status: 403 }
+    )
+  }
   try {
 
     const body = await req.json()
@@ -187,6 +215,13 @@ export async function DELETE(req: NextRequest) {
   const guard = await ordersGuard("products.manage")
   if (guard instanceof NextResponse) return guard
   const organizationId = guard.organizationId
+  // Los combos son exclusivos de restaurantes (food_service/hybrid).
+  if (!(await combosAllowed(organizationId))) {
+    return NextResponse.json(
+      { error: "Los combos están disponibles solo en restaurantes (modo Comida)." },
+      { status: 403 }
+    )
+  }
   try {
 
     const { searchParams } = new URL(req.url)

@@ -37,7 +37,7 @@ export default async function PortalShopLayout({
     <SessionGuard loginPath="/portal/auth/login">
       <>
         <AppearanceSync tenant={tenant} />
-        <Splash delay={500} />
+        <Splash delay={500} orgName={storeName} logoUrl={logoUrl} />
         <OnboardingSheet />
         <PortalShell
           storeName={storeName}

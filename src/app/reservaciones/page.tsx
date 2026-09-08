@@ -39,7 +39,7 @@ export default async function ReservacionesPage() {
   return (
     <>
       <AppearanceSync tenant={tenant} />
-      <Splash />
+      <Splash orgName={org.name} />
       <ReservationsApp orgName={org.name} orgMode={org.businessMode} canManage={canManage} />
     </>
   );

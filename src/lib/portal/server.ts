@@ -137,7 +137,7 @@ export async function getStorefront(
   organizationId: string,
   customerId: string | null
 ): Promise<{ categories: PortalCategory[]; products: PortalProduct[] }> {
-  const [variantsRaw, bulkRaw, categories, favorites] = await Promise.all([
+  const [variantsRaw, bulkRaw, categories, favorites, orgRow] = await Promise.all([
     prisma.productVariant.findMany({
       where: { organizationId, isActive: true, product: { isActive: true } },
       include: {
@@ -169,9 +169,16 @@ export async function getStorefront(
           select: { variantId: true },
         })
       : Promise.resolve([]),
+    // Las opciones/constructor son de restaurantes; retail no las consume.
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { businessMode: true },
+    }),
   ]);
 
   const favoriteIds = new Set(favorites.map((f) => f.variantId));
+  const optionsEnabled =
+    orgRow?.businessMode === "food_service" || orgRow?.businessMode === "hybrid";
 
   // Stock total de la org (suma de todas las sucursales activas).
   const locationIds = (
@@ -213,21 +220,23 @@ export async function getStorefront(
         stock: 0,
         variants: [],
         bulk: null,
-        options: (p.options ?? []).map((o) => ({
-          id: o.id,
-          name: o.name,
-          position: o.position,
-          required: o.required,
-          minSelect: o.minSelect,
-          maxSelect: o.maxSelect,
-          values: o.values.map((val) => ({
-            id: val.id,
-            value: val.value,
-            extraPrice: toNum(val.extraPrice),
-            imageUrl: val.imageUrl ?? null,
-            isActive: val.isActive,
-          })),
-        })),
+        options: optionsEnabled
+          ? (p.options ?? []).map((o) => ({
+              id: o.id,
+              name: o.name,
+              position: o.position,
+              required: o.required,
+              minSelect: o.minSelect,
+              maxSelect: o.maxSelect,
+              values: o.values.map((val) => ({
+                id: val.id,
+                value: val.value,
+                extraPrice: toNum(val.extraPrice),
+                imageUrl: val.imageUrl ?? null,
+                isActive: val.isActive,
+              })),
+            }))
+          : [],
       };
       stdByProduct.set(p.id, entry);
     }

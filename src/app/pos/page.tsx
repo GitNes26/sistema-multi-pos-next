@@ -77,7 +77,7 @@ export default async function PosPage() {
   const orgMode = organizationId
     ? await prisma.organization.findUnique({
         where: { id: organizationId },
-        select: { businessMode: true },
+        select: { businessMode: true, name: true, companyProfile: { select: { tradeName: true } } },
       })
     : null;
   const canViewAgenda =
@@ -92,7 +92,9 @@ export default async function PosPage() {
   return (
     <>
       <AppearanceSync tenant={tenant} />
-      <Splash />
+      <Splash
+        orgName={orgMode?.companyProfile?.tradeName ?? orgMode?.name ?? null}
+      />
       <PosApp
         catalog={catalog}
         canOperateCash={canOperateCash}

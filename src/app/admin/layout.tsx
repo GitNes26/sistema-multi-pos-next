@@ -7,6 +7,7 @@ import { AppearanceSync } from "@/components/appearance/appearance-sync"
 import { Splash } from "@/components/appearance/splash"
 import { AppShell } from "@/components/layout/app-shell"
 import { SessionGuard } from "@/components/auth/session-guard"
+import { RouteTransition } from "@/components/layout/route-transition"
 
 export default async function AdminLayout({
   children,
@@ -21,19 +22,21 @@ export default async function AdminLayout({
   const tenant = organizationId ? await getAppSettings(organizationId) : null
 
   let logoUrl: string | null = null
+  let orgName: string | null = null
   if (organizationId) {
-    const profile = await prisma.companyProfile.findUnique({
-      where: { organizationId },
-      select: { logoUrl: true },
+    const org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true, companyProfile: { select: { tradeName: true, logoUrl: true } } },
     })
-    logoUrl = profile?.logoUrl ?? null
+    logoUrl = org?.companyProfile?.logoUrl ?? null
+    orgName = org?.companyProfile?.tradeName ?? org?.name ?? null
   }
 
   return (
     <SessionGuard loginPath="/auth/login">
       <>
         <AppearanceSync tenant={tenant} />
-        <Splash />
+        <Splash orgName={orgName} logoUrl={logoUrl} />
         <AppShell
           logoUrl={logoUrl}
           permissions={session?.user?.permissions}
@@ -48,7 +51,7 @@ export default async function AdminLayout({
             activeOrganizationId: session?.user?.activeOrganizationId,
           }}
         >
-          {children}
+          <RouteTransition>{children}</RouteTransition>
         </AppShell>
       </>
     </SessionGuard>

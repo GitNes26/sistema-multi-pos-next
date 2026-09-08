@@ -1,128 +1,24 @@
+import { icons } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import {
-  Activity,
-  ArrowLeftRight,
-  Banknote,
-  BarChart3,
-  Bell,
-  BellRing,
-  Boxes,
-  Briefcase,
-  Building,
-  Building2,
-  Calendar,
-  ChartColumn,
-  Check,
-  ChevronRight,
-  Circle,
-  ClipboardCheck,
-  ClipboardList,
-  CreditCard,
-  DollarSign,
-  Download,
-  FileText,
-  Filter,
-  Grid3x3,
-  Heart,
-  Home,
-  Image,
-  LayoutDashboard,
-  List,
-  MapPin,
-  Megaphone,
-  Menu,
-  Package,
-  PackageOpen,
-  Palette,
-  Percent,
-  Printer,
-  ReceiptText,
-  Ruler,
-  Search,
-  Settings,
-  Shield,
-  ShieldCheck,
-  ShoppingCart,
-  Sparkles,
-  Star,
-  Store,
-  Tags,
-  TrendingUp,
-  Truck,
-  Upload,
-  User,
-  UserCog,
-  Users,
-  Wallet,
-  Warehouse,
-  X,
-} from "lucide-react";
 
-// FASE 14 — Registro de íconos disponibles para el menú dinámico (BD).
-// El menú guarda el NOMBRE del ícono; aquí se resuelve al componente Lucide.
+// FASE 14 — Registro dinámico de TODOS los íconos de Lucide.
+// Se importan automáticamente desde lucide-react; no hace falta agregar
+// íconos manualmente cuando Lucide libere nuevos.
 
-export const MENU_ICONS: Record<string, LucideIcon> = {
-  Activity,
-  ArrowLeftRight,
-  Banknote,
-  BarChart3,
-  Bell,
-  BellRing,
-  Boxes,
-  Briefcase,
-  Building,
-  Building2,
-  Calendar,
-  ChartColumn,
-  Check,
-  ChevronRight,
-  Circle,
-  ClipboardCheck,
-  ClipboardList,
-  CreditCard,
-  DollarSign,
-  Download,
-  FileText,
-  Filter,
-  Grid3x3,
-  Heart,
-  Home,
-  Image,
-  LayoutDashboard,
-  List,
-  MapPin,
-  Megaphone,
-  Menu,
-  Package,
-  PackageOpen,
-  Palette,
-  Percent,
-  Printer,
-  ReceiptText,
-  Ruler,
-  Search,
-  Settings,
-  Shield,
-  ShieldCheck,
-  ShoppingCart,
-  Sparkles,
-  Star,
-  Store,
-  Tags,
-  TrendingUp,
-  Truck,
-  Upload,
-  User,
-  UserCog,
-  Users,
-  Wallet,
-  Warehouse,
-  X,
-};
+/** Mapa nombre → componente Lucide (generado dinámicamente). */
+export const MENU_ICONS: Record<string, LucideIcon> = icons as Record<
+  string,
+  LucideIcon
+>;
 
+/** Nombres ordenados alfabéticamente para el combobox del admin. */
 export const MENU_ICON_NAMES = Object.keys(MENU_ICONS).sort();
 
+/**
+ * Resuelve un nombre de ícono string al componente Lucide.
+ * Si el nombre no existe, devuelve Circle como fallback.
+ */
 export function resolveMenuIcon(name: string | null | undefined): LucideIcon {
-  if (!name) return Circle;
-  return MENU_ICONS[name] ?? Circle;
+  if (!name) return icons.Circle;
+  return MENU_ICONS[name] ?? icons.Circle;
 }

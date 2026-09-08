@@ -46,6 +46,24 @@ export function openTableChannel(organizationId: string, controller: Controller)
 
 /** Broadcast a table update to all subscribers of the given organization. */
 export function broadcastTableUpdate(organizationId: string, payload: TableUpdatePayload) {
+  // Barridos de la lista de espera: corran aunque no haya suscriptores SSE
+  // (el emparejamiento y el aviso al invitado no dependen del stream).
+  // Import dinámico para no crear ciclo tables/live ↔ tables/waitlist.
+  if (payload.status === "free") {
+    import("@/lib/tables/waitlist")
+      .then((m) => m.sweepTableWaitlist(organizationId))
+      .catch((err) => console.error("[waitlist] sweep failed:", err));
+  }
+
+  // Mesa ocupada/reservada → si estaba ofrecida a alguien de la lista de
+  // espera, reclamamos la oferta: avisamos al invitado y lo re-emparejamos
+  // con la siguiente mesa libre.
+  if (payload.status === "occupied" || payload.status === "reserved") {
+    import("@/lib/tables/waitlist")
+      .then((m) => m.reclaimTakenOffers(organizationId))
+      .catch((err) => console.error("[waitlist] reclaim failed:", err));
+  }
+
   const set = channels.get(organizationId);
   if (!set || set.size === 0) return;
   const chunk = okChunk(payload);
@@ -55,13 +73,5 @@ export function broadcastTableUpdate(organizationId: string, payload: TableUpdat
     } catch {
       set.delete(ctrl);
     }
-  }
-
-  // Mesa liberada → correr el barrido de la lista de espera (fire-and-forget;
-  // import dinámico para no crear ciclo tables/live ↔ tables/waitlist).
-  if (payload.status === "free") {
-    import("@/lib/tables/waitlist")
-      .then((m) => m.sweepTableWaitlist(organizationId))
-      .catch((err) => console.error("[waitlist] sweep failed:", err));
   }
 }

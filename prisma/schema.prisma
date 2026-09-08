@@ -184,6 +184,19 @@ enum OrderItemStatus {
   served
 }
 
+// Nodos fijos del plano de la sala que no son mesas: entrada, salida, baños,
+// cocina, etc. Se dibujan igual que las mesas (posición en el lienzo) para que
+// el plano refleje el local completo.
+enum PlanNodeKind {
+  entrance
+  exit
+  restroom
+  kitchen
+  bar_station
+  cashier
+  other
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ORGANIZACIÓN Y USUARIOS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -242,6 +255,9 @@ model Organization {
   loyaltyEnabled     Boolean      @default(true)
   supervisorApproval Json         @default("{}")
   paymentGateway     Json         @default("{}")
+  // Aviso de llegada de reservaciones: horas de anticipación con las que una
+  // reservación confirmada aparece como "próxima" en el POS/KDS (default 3 h).
+  upcomingWindowHours Int         @default(3)
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
@@ -279,6 +295,8 @@ model Organization {
   tableRooms             TableRoom[]
   tableReservations      TableReservation[]
   tableWaitlist          TableWaitlist[]
+  planNodes              PlanNode[]
+  reservationPolicy      ReservationPolicy?
   reservations           Reservation[]
   roles                  Role[]
   rolePermissions        RolePermission[]
@@ -710,6 +728,7 @@ model Location {
   tableRooms           TableRoom[]
   tableReservations    TableReservation[]
   tableWaitlist        TableWaitlist[]
+  planNodes            PlanNode[]
   notifications        Notification[]
   tables               Table[]
   branchDeliveryPolicy BranchDeliveryPolicy?
@@ -846,6 +865,7 @@ model Product {
   taxRate           Decimal     @default(0) @db.Decimal(5, 4)
   isActive          Boolean     @default(true)
   trackInventory    Boolean     @default(true)
+  isNew             Boolean     @default(false)
   productType       ProductType @default(standard)
   bulkUnitId        String?
   bulkPricePerUnit  Decimal     @default(0) @db.Decimal(12, 2)
@@ -1499,11 +1519,64 @@ model TableRoom {
 
   organization Organization       @relation(fields: [organizationId], references: [id])
   location     Location?          @relation(fields: [locationId], references: [id])
-  tables       Table[]
+  tables               Table[]
   reservations TableReservation[]
+  planNodes    PlanNode[]
 
   @@unique([organizationId, name])
   @@map("table_rooms")
+}
+
+// Nodo fijo del plano (entrada/salida/baños/cocina…): no es mesa, no participa
+// en reservaciones, pero se dibuja en el editor y en el plano de monitoreo.
+model PlanNode {
+  id             String       @id @default(cuid())
+  organizationId String
+  locationId     String?
+  roomId         String?
+  kind           PlanNodeKind @default(other)
+  label          String?
+  posX           Int // Posición en el lienzo del plano (px)
+  posY           Int
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  location     Location?    @relation(fields: [locationId], references: [id])
+  room         TableRoom?   @relation(fields: [roomId], references: [id])
+
+  @@index([organizationId])
+  @@map("plan_nodes")
+}
+
+// Políticas de reservación de mesas (por organización): anticipación mínima,
+// ventana máxima, comensales y reservas por cliente/día, duración de la mesa y
+// tamaño del slot. Se aplican al reservar (portal, invitado y panel) y se
+// muestran al cliente durante el flujo.
+model ReservationPolicy {
+  id             String  @id @default(cuid())
+  organizationId String  @unique
+  enabled             Boolean @default(true)
+  // Anticipación mínima para reservar (minutos desde ahora) y ventana máxima
+  // (días hacia adelante que acepta el calendario).
+  minNoticeMinutes    Int     @default(60)
+  maxAdvanceDays      Int     @default(60)
+  // Máximo de comensales por reservación y reservas por cliente al día.
+  maxGuests           Int     @default(20)
+  maxReservationsPerDay Int?
+  // Duración de la mesa (min) y tamaño del slot de horario (min).
+  durationMinutes     Int     @default(120)
+  slotMinutes         Int     @default(30)
+  // false = auto-confirmada al crear; true = queda pendiente al anfitrión.
+  requireConfirmation Boolean @default(false)
+  // Nota que se muestra al cliente en el flujo de reservación.
+  notesText           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("reservation_policies")
 }
 
 // Lista de espera de mesas: cuando no hay disponibilidad, el cliente se anota
@@ -1514,6 +1587,10 @@ model TableWaitlist {
   organizationId   String
   locationId       String?
   customerId       String?
+  // Entrada de invitado (sin cuenta): nombre y teléfono bastan, igual que
+  // /reservar. El aviso de mesa libre llega por WhatsApp/SMS.
+  name             String?
+  phone            String?
   guests           Int                 @default(2)
   status           TableWaitlistStatus @default(waiting)
   availableAt      DateTime?
@@ -1549,6 +1626,10 @@ model TableReservation {
   endsAt         DateTime
   status         TableReservationStatus @default(pending)
   notes          String?
+  // Verificación del invitado (sin cuenta): código de corto plazo para
+  // confirmar/cancelar desde /reservar/verificar con su teléfono.
+  verifyCode          String?
+  verifyCodeExpiresAt DateTime?
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
 

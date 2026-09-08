@@ -24,7 +24,10 @@ import { TapScale } from "@/components/shared/tap-scale"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BottomSheet } from "@/components/portal/bottom-sheet"
-import { ProductBuilder } from "@/components/pos/product-builder"
+import {
+  ProductBuilder,
+  selectedOptionsKey,
+} from "@/components/pos/product-builder"
 import { swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
 import { SPRING_BOUNCE, SPRING_DEFAULT, STAGGER_FADE_UP } from "@/lib/animation-tokens"
@@ -597,7 +600,16 @@ export function ProductDetailClient({ productId }: { productId: string }) {
           onAdd={(config) => {
             const variant = p.variants[0]
             if (!variant) return
-            const res = addStandard(p, variant, config.quantity)
+            // Agregar la variante base + los extras elegidos (opciones/notas)
+            // como una configuración propia, con su precio y su línea.
+            const res = addStandard(
+              p,
+              variant,
+              config.quantity,
+              config.totalExtraPrice,
+              selectedOptionsKey(config.selectedOptions),
+              config.notes
+            )
             if (res.added <= 0) {
               swalToast("Sin stock disponible", "info")
               return

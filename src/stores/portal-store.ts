@@ -45,6 +45,8 @@ export interface PortalCartItem {
   step: number;
   bulkQuantityDisplay?: string;
   comment?: string;
+  /** Recargo total por unidad aplicado al precio base (opciones del producto). */
+  extraPrice?: number;
 }
 
 interface PortalState {
@@ -65,7 +67,17 @@ interface PortalState {
   setBulkProduct: (product: PortalProduct | null) => void;
   setNavOrder: (order: NavItemId[]) => void;
 
-  addStandard: (product: PortalProduct, variant: PortalVariantOption, qty?: number) => { added: number; limited: boolean };
+  addStandard: (
+    product: PortalProduct,
+    variant: PortalVariantOption,
+    qty?: number,
+    /** Recargo por unidad (extras del constructor de opciones). */
+    extraPerUnit?: number,
+    /** Huella de la configuración (opciones elegidas) para líneas distintas. */
+    optionKey?: string,
+    /** Notas / modificaciones del producto (se envían como comentario). */
+    notes?: string
+  ) => { added: number; limited: boolean };
   addBulk: (product: PortalProduct, opts: BulkInputOptions) => { added: number; limited: boolean };
   reorderItems: (items: ReorderItem[]) => number;
   setQty: (key: string, qty: number) => void;
@@ -103,8 +115,12 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
   setBulkProduct: (bulkProduct) => set({ bulkProduct }),
   setNavOrder: (navOrder) => set({ navOrder }),
 
-  addStandard: (product, variant, qty = 1) => {
-    const key = standardKey(variant.id);
+  addStandard: (product, variant, qty = 1, extraPerUnit = 0, optionKey, notes) => {
+    // Dos configuraciones distintas de la misma variante conviven como líneas
+    // separadas (solo se fusionan cuando son idénticas).
+    const key = optionKey
+      ? `${standardKey(variant.id)}::${optionKey}`
+      : standardKey(variant.id);
     const existing = get().items.find((i) => i.key === key);
     const variantName = variant.name === "Estándar" ? null : variant.name;
     const track = product.trackInventory;
@@ -112,6 +128,7 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
     const maxAllowed = track ? Math.max(0, variant.stock - already) : Number.POSITIVE_INFINITY;
     const addQty = round3(Math.min(Math.max(1, qty), maxAllowed));
     if (addQty <= 0) return { added: 0, limited: true };
+    const extra = round3(Math.max(0, extraPerUnit));
 
     set((s) => {
       if (existing) {
@@ -129,7 +146,7 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
         name: product.name,
         variantName,
         imageUrl: variant.imageUrl ?? product.imageUrl,
-        unitPrice: variant.price,
+        unitPrice: round2(variant.price + extra),
         unitAbbrev: "pza",
         unitId: null,
         qty: addQty,
@@ -138,6 +155,8 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
         trackInventory: track,
         stock: variant.stock,
         step: 1,
+        extraPrice: extra,
+        comment: notes?.trim() || undefined,
       };
       return { items: [...s.items, line] };
     });

@@ -31,6 +31,7 @@ export interface ProductDto {
   taxRate: number;
   isActive: boolean;
   trackInventory: boolean;
+  isNew: boolean;
   productType: "standard" | "bulk";
   bulkUnitId: string | null;
   bulkUnitAbbrev: string | null;
@@ -58,6 +59,7 @@ type ProductRow = {
   taxRate: { toNumber(): number } | number;
   isActive: boolean;
   trackInventory: boolean;
+  isNew: boolean;
   productType: "standard" | "bulk";
   bulkUnitId: string | null;
   bulkPricePerUnit: { toNumber(): number } | number;
@@ -143,6 +145,7 @@ function serialize(p: ProductRow): ProductDto {
     taxRate: num(p.taxRate),
     isActive: p.isActive,
     trackInventory: p.trackInventory,
+    isNew: p.isNew,
     productType: p.productType,
     bulkUnitId: p.bulkUnitId,
     bulkUnitAbbrev: p.bulkUnit?.abbreviation ?? null,
@@ -243,6 +246,7 @@ export const productsModule: CrudModule<ProductDto> = {
       throw new CrudError("El nombre es obligatorio", 400, "name");
     }
     const productType = data.productType === "bulk" ? "bulk" : "standard";
+    const isNew = data.isNew === true;
 
     const product = await prisma.product.create({
       data: {
@@ -254,6 +258,7 @@ export const productsModule: CrudModule<ProductDto> = {
         taxRate: Number(data.taxRate) || 0,
         isActive: data.isActive !== false,
         trackInventory: data.trackInventory !== false,
+        isNew,
         productType,
         bulkUnitId: productType === "bulk" && data.bulkUnitId ? String(data.bulkUnitId) : null,
         bulkPricePerUnit: productType === "bulk" ? Number(data.bulkPricePerUnit) || 0 : 0,
@@ -295,6 +300,20 @@ export const productsModule: CrudModule<ProductDto> = {
       }
     }
 
+    // Auto-generate publication when product is marked as new
+    if (isNew) {
+      const { createPublication } = await import("@/lib/publications/server");
+      const firstVariant = product.variants?.[0];
+      const price = firstVariant ? num(firstVariant.price) : 0;
+      await createPublication(organizationId, {
+        title: `Nuevo: ${product.name}`,
+        content: product.description ?? `¡Llegó ${product.name} a nuestro catálogo!`,
+        imageUrl: product.imageUrl ?? null,
+        type: "product_new",
+        metadata: { productId: product.id, price },
+      });
+    }
+
     return serialize(
       (await prisma.product.findFirstOrThrow({
         where: { id: product.id },
@@ -305,11 +324,15 @@ export const productsModule: CrudModule<ProductDto> = {
 
   async update(organizationId, id, input, _ctx) {
     const data = input as Record<string, unknown>;
-    const existing = await prisma.product.findFirst({ where: { id, organizationId }, select: { id: true, productType: true } });
+    const existing = await prisma.product.findFirst({ where: { id, organizationId }, select: { id: true, productType: true, isNew: true, name: true, description: true, imageUrl: true } });
     if (!existing) throw new CrudError("Producto no encontrado", 404);
 
     const productType =
       data.productType === "bulk" || data.productType === "standard" ? data.productType : existing.productType;
+
+    // Detect if isNew changed from false to true
+    const newIsNew = data.isNew !== undefined ? data.isNew === true : existing.isNew;
+    const isNewToggledOn = data.isNew === true && !existing.isNew;
 
     const product = await prisma.product.update({
       where: { id },
@@ -321,6 +344,7 @@ export const productsModule: CrudModule<ProductDto> = {
         ...(data.taxRate !== undefined ? { taxRate: Number(data.taxRate) || 0 } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive !== false } : {}),
         ...(data.trackInventory !== undefined ? { trackInventory: data.trackInventory !== false } : {}),
+        ...(data.isNew !== undefined ? { isNew: data.isNew === true } : {}),
         productType,
         // Granel
         ...(data.bulkUnitId !== undefined ? { bulkUnitId: productType === "bulk" && data.bulkUnitId ? String(data.bulkUnitId) : null } : {}),
@@ -356,6 +380,28 @@ export const productsModule: CrudModule<ProductDto> = {
           },
         });
       }
+    }
+
+    // Auto-generate publication when isNew is toggled on
+    if (isNewToggledOn) {
+      const { createPublication } = await import("@/lib/publications/server");
+      const productName = data.name ? String(data.name).trim() : existing.name;
+      const productDesc = data.description !== undefined ? (data.description ? String(data.description) : null) : existing.description;
+      const productImg = data.imageUrl !== undefined ? (data.imageUrl ? String(data.imageUrl) : null) : existing.imageUrl;
+      // Get first variant price
+      const firstVariant = await prisma.productVariant.findFirst({
+        where: { productId: id },
+        select: { price: true },
+        orderBy: { createdAt: "asc" },
+      });
+      const price = firstVariant ? num(firstVariant.price) : 0;
+      await createPublication(organizationId, {
+        title: `Nuevo: ${productName}`,
+        content: productDesc ?? `¡Llegó ${productName} a nuestro catálogo!`,
+        imageUrl: productImg ?? null,
+        type: "product_new",
+        metadata: { productId: id, price },
+      });
     }
 
     return serialize((product as unknown) as ProductRow);

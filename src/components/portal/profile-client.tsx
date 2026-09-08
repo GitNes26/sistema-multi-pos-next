@@ -16,10 +16,12 @@ import {
   User,
   LayoutGrid,
   Trash2,
-  ShoppingCart,
   Receipt,
   Settings,
   Bell,
+  Camera,
+  BarChart3,
+  FileText,
 } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import { logout } from "@/lib/auth/logout";
@@ -32,6 +34,7 @@ import { AddressField } from "@/components/base/address-field";
 import { NavCustomizer } from "@/components/portal/nav-customizer";
 import { PortalPermissionsSection } from "@/components/portal/portal-permissions-section";
 import { TapScale } from "@/components/shared/tap-scale";
+import { AnimatedNumber } from "@/components/base/animated-number";
 import packageJson from "../../../package.json";
 import { STAGGER_FADE_UP } from "@/lib/animation-tokens";
 
@@ -123,9 +126,9 @@ export function ProfileClient() {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <Skeleton className="h-44 w-full rounded-2xl" />
-        <Skeleton className="h-24 w-full rounded-2xl" />
-        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-44 w-full rounded-3xl" />
+        <Skeleton className="h-20 w-full rounded-2xl" />
+        <Skeleton className="h-48 w-full rounded-2xl" />
       </div>
     );
   }
@@ -161,71 +164,97 @@ export function ProfileClient() {
       initial="hidden"
       animate="show"
     >
-      {/* Profile Header — Avatar + Name + Stats */}
-      <motion.div variants={item} className="relative">
-        <div className="flex flex-col items-center rounded-3xl border border-border/30 bg-card p-6 pb-5 shadow-sm">
-          {/* Avatar */}
-          <div className="relative">
-            <div className="flex size-24 items-center justify-center rounded-full bg-gradient-to-br from-primary via-primary/80 to-emerald-500 text-3xl font-bold text-primary-foreground shadow-xl shadow-primary/25 ring-4 ring-background">
-              {customer.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={customer.imageUrl} alt="" className="size-full rounded-full object-cover" />
-              ) : (
-                initials
-              )}
-            </div>
+      {/* ── Header ──────────────────────────────────── */}
+      <motion.div variants={item} className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Perfil</h1>
+        <Link href="/portal/notifications">
+          <div className="flex size-10 items-center justify-center rounded-full bg-muted/60 transition-colors hover:bg-muted">
+            <Bell className="size-5 text-muted-foreground" />
           </div>
+        </Link>
+      </motion.div>
 
-          {/* Name + @username */}
-          <h1 className="mt-3 text-xl font-bold tracking-tight">{customer.fullName}</h1>
-          {customer.email && (
-            <p className="text-sm text-muted-foreground">@{customer.email.split("@")[0]}</p>
-          )}
+      {/* ── Avatar Card ─────────────────────────────── */}
+      <motion.div variants={item}>
+        <div className="relative rounded-3xl border border-border/30 bg-card p-6 pb-5 shadow-sm">
+          {/* Avatar with gradient ring */}
+          <div className="flex flex-col items-center">
+            <div className="relative">
+              <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-rose-400 via-amber-400 to-emerald-400 opacity-60 blur-sm" />
+              <div className="relative flex size-24 items-center justify-center rounded-full bg-gradient-to-br from-rose-400 via-amber-400 to-emerald-400 p-[3px]">
+                <div className="flex size-full items-center justify-center rounded-full bg-background">
+                  {customer.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={customer.imageUrl}
+                      alt=""
+                      className="size-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-2xl font-bold text-muted-foreground">{initials}</span>
+                  )}
+                </div>
+              </div>
+            </div>
 
-          {/* Stats row */}
-          <div className="mt-5 flex w-full max-w-xs items-center justify-around">
-            <StatItem value={stats.orders} label="Pedidos" />
-            <div className="h-10 w-px bg-border/50" />
-            <StatItem value={stats.points} label="Puntos" highlight />
-            <div className="h-10 w-px bg-border/50" />
-            <StatItem value={stats.favorites} label="Favoritos" />
+            {/* Name + @username */}
+            <h2 className="mt-4 text-xl font-bold tracking-tight">{customer.fullName}</h2>
+            {customer.email && (
+              <p className="text-sm text-muted-foreground">@{customer.email.split("@")[0]}</p>
+            )}
+
+            {/* Stats row */}
+            <div className="mt-5 flex w-full max-w-xs items-center justify-around">
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-lg font-bold">
+                  <AnimatedNumber value={stats.orders} duration={0.6} />
+                </span>
+                <span className="text-[11px] text-muted-foreground">Pedidos</span>
+              </div>
+              <div className="h-10 w-px bg-border/50" />
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-lg font-bold text-amber-500">
+                  <AnimatedNumber value={stats.points} duration={0.6} />
+                </span>
+                <span className="text-[11px] text-muted-foreground">Puntos</span>
+              </div>
+              <div className="h-10 w-px bg-border/50" />
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-lg font-bold">
+                  <AnimatedNumber value={stats.favorites} duration={0.6} />
+                </span>
+                <span className="text-[11px] text-muted-foreground">Favoritos</span>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>
 
-      {/* Loyalty / Rewards Card */}
+      {/* ── Credit / Balance Card ───────────────────── */}
       <motion.div variants={item}>
-        <Link href="/portal/loyalty" className="block">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-600/5 to-orange-500/10 border border-amber-500/20 p-4">
+        <Link href="/portal/credit" className="block">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-muted/80 via-muted/40 to-muted/80 border border-border/30 p-4 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-center gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
-                <Sparkles className="size-5 text-amber-500" />
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-background/80 shadow-sm">
+                <CreditCard className="size-5 text-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">Puntos de Lealtad</p>
-                <p className="text-xs text-muted-foreground">
-                  {stats.points > 0
-                    ? `${stats.points} puntos disponibles — canjea por descuentos`
-                    : "Acumula puntos con cada compra"}
+                <p className="text-xs text-muted-foreground">Mi crédito</p>
+                <p className="text-lg font-bold">
+                  {stats.points > 0 ? `${stats.points} pts` : "$0"}
                 </p>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-lg font-bold text-amber-500">{stats.points}</span>
-                <ChevronRight className="size-4 text-muted-foreground" />
+              <div className="flex items-center gap-1.5 shrink-0 rounded-full bg-background/80 px-3 py-1.5 text-xs font-semibold shadow-sm">
+                Usar
+                <ChevronRight className="size-3.5" />
               </div>
             </div>
           </div>
         </Link>
       </motion.div>
 
-      {/* Menu sections */}
+      {/* ── Menu Items ──────────────────────────────── */}
       <motion.div variants={item} className="space-y-2">
-        <ProfileMenuItem
-          href="/portal/loyalty"
-          icon={Sparkles}
-          iconColor="text-amber-500 bg-amber-500/10"
-          label="Puntos y lealtad"
-        />
         <ProfileMenuItem
           href="/portal/favorites"
           icon={Heart}
@@ -234,10 +263,11 @@ export function ProfileClient() {
           badge={stats.favorites > 0 ? stats.favorites : undefined}
         />
         <ProfileMenuItem
-          href="/portal/payment-methods"
-          icon={CreditCard}
-          iconColor="text-blue-500 bg-blue-500/10"
-          label="Métodos de pago"
+          href="/portal/loyalty"
+          icon={Sparkles}
+          iconColor="text-amber-500 bg-amber-500/10"
+          label="Puntos y lealtad"
+          badge={stats.points > 0 ? stats.points : undefined}
         />
         <ProfileMenuItem
           href="/portal/orders"
@@ -247,24 +277,50 @@ export function ProfileClient() {
           badge={stats.orders > 0 ? stats.orders : undefined}
         />
         <ProfileMenuItem
+          href="/portal/payment-methods"
+          icon={FileText}
+          iconColor="text-blue-500 bg-blue-500/10"
+          label="Métodos de pago"
+        />
+        <ProfileMenuItem
           href="/portal/notifications"
           icon={Bell}
           iconColor="text-violet-500 bg-violet-500/10"
           label="Notificaciones"
         />
+      </motion.div>
+
+      {/* ── Settings Section ────────────────────────── */}
+      <motion.div variants={item} className="space-y-2">
+        <p className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Configuración
+        </p>
         <button
           onClick={() => setShowEditForm(!showEditForm)}
-          className="flex w-full items-center gap-3.5 rounded-xl border border-border/30 bg-card p-3.5 shadow-sm transition-colors hover:bg-muted/50"
+          className="flex w-full items-center gap-3.5 rounded-2xl border border-border/30 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
         >
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 bg-slate-500/10">
-            <Settings className="size-5" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted/60">
+            <Settings className="size-5 text-muted-foreground" />
           </div>
-          <span className="flex-1 text-left text-sm font-semibold">Configuración</span>
+          <span className="flex-1 text-left text-sm font-semibold">Editar perfil</span>
           <ChevronRight className={`size-4 text-muted-foreground transition-transform ${showEditForm ? "rotate-90" : ""}`} />
+        </button>
+        <button
+          onClick={() => {
+            const el = document.getElementById("nav-customizer");
+            el?.scrollIntoView({ behavior: "smooth" });
+          }}
+          className="flex w-full items-center gap-3.5 rounded-2xl border border-border/30 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
+        >
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted/60">
+            <LayoutGrid className="size-5 text-muted-foreground" />
+          </div>
+          <span className="flex-1 text-left text-sm font-semibold">Personalizar navegación</span>
+          <ChevronRight className="size-4 text-muted-foreground" />
         </button>
       </motion.div>
 
-      {/* Edit Form (collapsible) */}
+      {/* ── Edit Form (collapsible) ─────────────────── */}
       {showEditForm && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
@@ -310,7 +366,16 @@ export function ProfileClient() {
         </motion.div>
       )}
 
-      {/* Permisos */}
+      {/* ── Nav Customizer ──────────────────────────── */}
+      <motion.div variants={item} id="nav-customizer" className="rounded-2xl border border-border/30 bg-card p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <LayoutGrid className="size-4 text-primary" />
+          <h2 className="text-sm font-semibold">Personalizar navegación</h2>
+        </div>
+        <NavCustomizer />
+      </motion.div>
+
+      {/* ── Permissions ─────────────────────────────── */}
       <motion.div variants={item} className="rounded-2xl border border-border/30 bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <Shield className="size-4 text-primary" />
@@ -322,16 +387,7 @@ export function ProfileClient() {
         <PortalPermissionsSection />
       </motion.div>
 
-      {/* Nav customizer */}
-      <motion.div variants={item} className="rounded-2xl border border-border/30 bg-card p-4 shadow-sm">
-        <div className="mb-3 flex items-center gap-2">
-          <LayoutGrid className="size-4 text-primary" />
-          <h2 className="text-sm font-semibold">Personalizar navegación</h2>
-        </div>
-        <NavCustomizer />
-      </motion.div>
-
-      {/* Logout */}
+      {/* ── Logout ──────────────────────────────────── */}
       <motion.div variants={item}>
         <Button
           variant="outline"
@@ -342,28 +398,16 @@ export function ProfileClient() {
         </Button>
       </motion.div>
 
-      {/* Delete account */}
+      {/* ── Delete account ──────────────────────────── */}
       <motion.div variants={item}>
         <DeleteAccountButton />
       </motion.div>
 
-      {/* Version */}
+      {/* ── Version ─────────────────────────────────── */}
       <motion.p variants={item} className="text-center text-[0.65rem] text-muted-foreground/50 pb-4">
         Sistema Multi-POS v{packageJson.version}
       </motion.p>
     </motion.div>
-  );
-}
-
-/* ─── Stat Item ─── */
-function StatItem({ value, label, highlight }: { value: number; label: string; highlight?: boolean }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className={`text-lg font-bold ${highlight ? "text-amber-500" : ""}`}>
-        {value}
-      </span>
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-    </div>
   );
 }
 
@@ -385,14 +429,14 @@ function ProfileMenuItem({
     <TapScale>
       <Link
         href={href}
-        className="flex items-center gap-3.5 rounded-xl border border-border/30 bg-card p-3.5 shadow-sm transition-colors hover:bg-muted/50"
+        className="flex items-center gap-3.5 rounded-2xl border border-border/30 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
       >
         <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${iconColor}`}>
           <Icon className="size-5" />
         </div>
         <span className="flex-1 text-sm font-semibold">{label}</span>
         {badge !== undefined && (
-          <span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+          <span className="flex min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
             {badge > 99 ? "99+" : badge}
           </span>
         )}

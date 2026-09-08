@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import {
   AlertTriangle,
   Armchair,
+  Bell,
   CalendarCheck2,
   Check,
   ChefHat,
@@ -19,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { RoleBadge } from "@/components/shared/role-badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useSseStore } from "@/stores/sse-store";
+import { playSound } from "@/lib/sounds";
 import { useStaleData } from "@/hooks/use-stale-data";
 import { StaleBanner } from "@/components/shared/stale-banner";
 import { Spinner } from "@/components/base/spinner";
@@ -304,6 +306,13 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
   const [upcomingReservations, setUpcomingReservations] = useState<UpcomingReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  // Campana visual: banner efímero al confirmarse una reservación próxima.
+  const [arrivalAlert, setArrivalAlert] = useState<{
+    tableNumber: number | string;
+    time: string;
+    guests: number;
+  } | null>(null);
+  const arrivalAlertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Estado SSE reportado al badge "En vivo" del encabezado de la página.
   const registerSse = useSseStore((s) => s.register);
@@ -377,6 +386,10 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
             items?: KDSOrder["items"];
             table?: KDSOrder["table"];
             elapsedSeconds?: number;
+            // reservation_confirmed: aviso de llegada.
+            startsAt?: string;
+            guests?: number;
+            guestName?: string | null;
           };
 
           // Initial snapshot with full order list
@@ -400,6 +413,24 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
           // Cambió una reservación de mesa (confirmada/cancelada/sentada):
           // recargar la tira "Próximas reservas" sin tocar las órdenes.
           if (data.type === "reservations_changed") {
+            void load();
+            return;
+          }
+
+          // Campana: el anfitrión confirmó una reservación PRÓXIMA (con mesa
+          // y hora dentro de la ventana) → avisar al equipo con sonido y
+          // banner efímero, sin tener que mirar la tira.
+          if (data.type === "reservation_confirmed") {
+            if (soundEnabled) playSound("reservation-bell", { volume: 1 });
+            setArrivalAlert({
+              tableNumber: data.table?.number ?? "?",
+              time: data.startsAt
+                ? new Date(data.startsAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+                : "",
+              guests: data.guests ?? 0,
+            });
+            if (arrivalAlertTimer.current) clearTimeout(arrivalAlertTimer.current);
+            arrivalAlertTimer.current = setTimeout(() => setArrivalAlert(null), 10_000);
             void load();
             return;
           }
@@ -540,6 +571,19 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
       </div>
 
       <StaleBanner show={dataStale} />
+
+      {/* Campana visual: nueva reservación próxima confirmada (auto-desaparece). */}
+      {arrivalAlert && (
+        <div
+          role="status"
+          className="flex items-center gap-2 rounded-xl border border-violet-400 bg-violet-100 px-3.5 py-2.5 text-sm font-semibold text-violet-900 shadow-sm animate-pulse dark:border-violet-500/60 dark:bg-violet-500/20 dark:text-violet-100"
+        >
+          <Bell className="size-4 shrink-0" />
+          Nueva reservación confirmada: Mesa {arrivalAlert.tableNumber}
+          {arrivalAlert.time ? ` · ${arrivalAlert.time}` : ""} · {arrivalAlert.guests}{" "}
+          {arrivalAlert.guests === 1 ? "persona" : "personas"}
+        </div>
+      )}
 
       {/* Aviso de llegada: reservaciones confirmadas próximas — el anfitrión/la
           cocina preparan el lugar. */}

@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePortalCustomer, portalErrorResponse } from "../guard";
+import {
+  getReservationPolicy,
+  locationSchedule,
+  slotsForDay,
+  validatePolicyForCreate,
+} from "@/lib/tables/reservations-policy";
+import { hmToMinutes } from "@/lib/tables/reservations-utils";
 
 // Reservaciones de mesa desde el portal de clientes: el cliente pide fecha,
 // hora y comensales (con o sin mesa concreta) y el anfitrión la confirma.
@@ -116,8 +123,36 @@ export async function POST(req: Request) {
     if (!start || Number.isNaN(start.getTime())) {
       return NextResponse.json({ ok: false, error: "Fecha de reservación requerida" }, { status: 400 });
     }
-    const party = Math.max(1, Math.min(Number(guests) || 2, 50));
-    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // mesa por 2h
+    const policy = await getReservationPolicy(guard.organizationId);
+    const requested = Math.max(1, Number(guests) || 2);
+    const party = Math.min(requested, policy.maxGuests);
+    const end = new Date(start.getTime() + policy.durationMinutes * 60 * 1000);
+
+    // Políticas de reservación: anticipación, ventana, comensales y tope diario.
+    // Se valida con los comensales solicitados (rechaza, no recorta).
+    const policyCheck = await validatePolicyForCreate({
+      organizationId: guard.organizationId,
+      customerId: guard.customerId,
+      startsAt: start,
+      guests: requested,
+    });
+    if (!policyCheck.ok) {
+      return NextResponse.json({ ok: false, error: policyCheck.error }, { status: policyCheck.status });
+    }
+
+    // Horario de la sucursal: la hora debe caer en un slot reservable.
+    const schedule = await locationSchedule(locationId || null);
+    if (schedule) {
+      const ymd = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+      const validSlots = slotsForDay(policy, schedule, ymd);
+      const hm = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
+      if (!validSlots.includes(hm)) {
+        return NextResponse.json(
+          { ok: false, error: "La sucursal no recibe reservaciones a esa hora" },
+          { status: 400 }
+        );
+      }
+    }
 
     // Si pide mesa concreta: debe existir, caber los comensales y estar libre.
     if (tableId) {
@@ -149,6 +184,8 @@ export async function POST(req: Request) {
         tableId: tableId || null,
         customerId: guard.customerId,
         guests: party,
+        // La política define si el anfitrión confirma o nace confirmada.
+        status: policy.requireConfirmation ? "pending" : "confirmed",
         startsAt: start,
         endsAt: end,
         notes: notes || null,

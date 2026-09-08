@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Printer } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { usePosStore, selectCustomer } from "@/stores/pos-store";
 import type { PosCatalog, PosCombo, PosLineItem, PosProduct, PosSalePayload } from "@/types/pos";
 import { swalToast, swalError } from "@/lib/swal";
@@ -28,6 +29,8 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { useGroupRef } from "react-resizable-panels";
+import type { Layout, LayoutChangedMeta } from "react-resizable-panels";
 
 interface PosAppProps {
   catalog: PosCatalog;
@@ -46,6 +49,136 @@ type BulkTarget = {
   editing?: { key: string; draft: BulkDraft };
 };
 
+interface PosSplitProps {
+  catalogCollapsed: boolean;
+  onToggleCollapsed: () => void;
+  onSelect: (product: PosProduct) => void;
+  onSelectCombo: (combo: PosCombo) => void;
+  onEditBulk: (item: PosLineItem) => void;
+  onOpenCustomer: () => void;
+  onOpenDiscount: () => void;
+  onCheckout: () => void;
+  onSplitBill: (parts: number) => void;
+}
+
+/**
+ * Divide la pantalla del POS según la orientación (`stacked` = ticket arriba /
+ * catálogo abajo para tablet vertical; `wide` = catálogo | ticket para desktop
+ * y tablet apaisada). El reparto que deja el usuario al arrastrar el separador
+ * se recuerda por sucursal y por eje (localStorage), así sobrevive al recargar
+ * y al girar la tablet. Se monta con `key` desde PosApp para reiniciar limpio
+ * cuando cambia la orientación.
+ */
+function PosSplit({
+  variant,
+  locationId,
+  ...handlers
+}: PosSplitProps & { variant: "stacked" | "wide"; locationId: string }) {
+  const groupRef = useGroupRef();
+  const axis = variant === "stacked" ? "v" : "h";
+  const storageKey = `fb.pos-split.${axis}:${locationId}`;
+
+  // Cargar el reparto guardado de esta sucursal en esta orientación tras el
+  // montaje (no durante el render, para no romper la hidratación SSR).
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!group) return;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Layout;
+      if (saved && typeof saved === "object") group.setLayout(saved);
+    } catch {
+      // Almacenamiento no disponible o dato corrupto: se mantiene el default.
+    }
+  }, [groupRef, storageKey]);
+
+  // Guardar solo cuando el usuario arrastra el separador (ignora resizes y
+  // el propio setLayout de carga), para no pisar la preferencia con defaults.
+  const onLayoutChanged = useCallback(
+    (layout: Layout, meta: LayoutChangedMeta) => {
+      if (!meta.isUserInteraction) return;
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(layout));
+      } catch {
+        // Sin almacenamiento (incógnito / bloqueado): se ignora.
+      }
+    },
+    [storageKey]
+  );
+
+  if (variant === "stacked") {
+    return (
+      /* Modo vertical (tablet en vertical / estrecho): ticket arriba y
+         catálogo abajo, ambos paneles arrastrables con safe area. El ticket
+         arranca más alto que su contenido fijo (totales + cobrar) para que
+         nada se corte; si el espacio es muy justo, un scroll de respaldo evita
+         que se desborde sobre el separador. */
+      <ResizablePanelGroup
+        groupRef={groupRef}
+        orientation="vertical"
+        onLayoutChanged={onLayoutChanged}
+        className="size-full"
+      >
+        <ResizablePanel id="ticket" defaultSize="46" minSize="34" maxSize="72" className="min-h-0">
+          <div className="scrollbar-none h-full min-h-0 overflow-y-auto overscroll-contain">
+            <TicketPanel
+              onEditBulk={handlers.onEditBulk}
+              onOpenCustomer={handlers.onOpenCustomer}
+              onOpenDiscount={handlers.onOpenDiscount}
+              onCheckout={handlers.onCheckout}
+              onSplitBill={handlers.onSplitBill}
+            />
+          </div>
+        </ResizablePanel>
+        <ResizableHandle
+          withHandle
+          className="h-2 w-full shrink-0 items-center justify-center bg-border/70"
+        />
+        <ResizablePanel id="catalog" defaultSize="54" minSize="30" className="min-h-0">
+          <CatalogPanel
+            onSelect={handlers.onSelect}
+            onSelectCombo={handlers.onSelectCombo}
+            collapsed={handlers.catalogCollapsed}
+            onToggleCollapsed={handlers.onToggleCollapsed}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    );
+  }
+
+  return (
+    /* Modo ancho (desktop / tablet apaisada): catálogo | ticket. */
+    <ResizablePanelGroup
+      groupRef={groupRef}
+      orientation="horizontal"
+      onLayoutChanged={onLayoutChanged}
+      className="gap-0"
+    >
+      <ResizablePanel id="catalog" defaultSize="65" minSize="35" className="min-w-0">
+        <CatalogPanel
+          onSelect={handlers.onSelect}
+          onSelectCombo={handlers.onSelectCombo}
+          collapsed={handlers.catalogCollapsed}
+          onToggleCollapsed={handlers.onToggleCollapsed}
+        />
+      </ResizablePanel>
+      <ResizableHandle withHandle />
+      <ResizablePanel id="ticket" defaultSize="35" minSize="25" className="min-w-0">
+        <section className="scrollbar-none h-full overflow-y-auto">
+          <TicketPanel
+            onEditBulk={handlers.onEditBulk}
+            onOpenCustomer={handlers.onOpenCustomer}
+            onOpenDiscount={handlers.onOpenDiscount}
+            onCheckout={handlers.onCheckout}
+            onSplitBill={handlers.onSplitBill}
+          />
+        </section>
+      </ResizablePanel>
+    </ResizablePanelGroup>
+  );
+}
+
 export function PosApp({
   catalog,
   canOperateCash = false,
@@ -61,6 +194,13 @@ export function PosApp({
   const editItem = usePosStore((s) => s.editItem);
   const clearTicket = usePosStore((s) => s.clearTicket);
   const refresh = usePosRefresh();
+
+  // Layout sensible a la pantalla: en pantallas anchas el POS es de dos
+  // columnas (catálogo | ticket). En vertical/estrecho (tablet en vertical,
+  // móvil) se apilan: ticket arriba y catálogo abajo, ambos con arrastre.
+  const isWide = useMediaQuery("(min-width: 1024px)");
+  const isShort = useMediaQuery("(max-height: 559px)");
+  const stacked = !isWide && !isShort;
 
   const [catalogCollapsed, setCatalogCollapsed] = useState(false);
   const [bulkTarget, setBulkTarget] = useState<BulkTarget | null>(null);
@@ -175,7 +315,8 @@ export function PosApp({
 
   return (
     <SupervisorProvider>
-      <div className="flex h-svh flex-col bg-background text-foreground">
+      {/* Safe areas: tablet en PWA/standalone con notch e home indicator. */}
+      <div className="flex h-svh flex-col bg-background pt-[env(safe-area-inset-top)] text-foreground">
         <PosHeader
           canOperateCash={canOperateCash}
           canViewAgenda={canViewAgenda}
@@ -198,32 +339,26 @@ export function PosApp({
           />
         )}
 
-        <main className="flex min-h-0 flex-1">
-          <ResizablePanelGroup orientation="horizontal" className="gap-0">
-            <ResizablePanel defaultSize="65" minSize="35" className="min-w-0">
-              <CatalogPanel
-                onSelect={selectProduct}
-                onSelectCombo={selectCombo}
-                collapsed={catalogCollapsed}
-                onToggleCollapsed={() => setCatalogCollapsed((v) => !v)}
-              />
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize="35" minSize="25" className="min-w-0">
-              <section className="scrollbar-none h-full overflow-y-auto">
-                <TicketPanel
-                  onEditBulk={openBulkEdit}
-                  onOpenCustomer={() => setCustomerOpen(true)}
-                  onOpenDiscount={() => setDiscountOpen(true)}
-                  onCheckout={() => setPaymentOpen(true)}
-                  onSplitBill={(parts) => {
-                    setSplitParts(parts)
-                    setPaymentOpen(true)
-                  }}
-                />
-              </section>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+        <main className="flex min-h-0 flex-1 pb-[env(safe-area-inset-bottom)]">
+          {/* key: al girar la tablet se remonta la instancia del eje correcto
+              y restaura el reparto guardado de esta sucursal en ese eje. */}
+          <PosSplit
+            key={stacked ? "v" : "h"}
+            variant={stacked ? "stacked" : "wide"}
+            locationId={catalog.location?.id || "default"}
+            catalogCollapsed={catalogCollapsed}
+            onToggleCollapsed={() => setCatalogCollapsed((v) => !v)}
+            onSelect={selectProduct}
+            onSelectCombo={selectCombo}
+            onEditBulk={openBulkEdit}
+            onOpenCustomer={() => setCustomerOpen(true)}
+            onOpenDiscount={() => setDiscountOpen(true)}
+            onCheckout={() => setPaymentOpen(true)}
+            onSplitBill={(parts) => {
+              setSplitParts(parts)
+              setPaymentOpen(true)
+            }}
+          />
         </main>
       </div>
 

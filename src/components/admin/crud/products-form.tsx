@@ -144,6 +144,9 @@ export function ProductsForm({
   const [trackInventory, setTrackInventory] = useState(
     (initial?.trackInventory as boolean) ?? true
   )
+  const [isNew, setIsNew] = useState(
+    (initial?.isNew as boolean) ?? false
+  )
 
   const [bulkUnitId, setBulkUnitId] = useState(
     (initial?.bulkUnitId as string) ?? ""
@@ -266,6 +269,7 @@ export function ProductsForm({
       taxRate: numOrEmpty(taxRate),
       isActive,
       trackInventory,
+      isNew,
       productType,
     }
 
@@ -462,6 +466,13 @@ export function ProductsForm({
           description="Seguimiento de existencias"
           checked={trackInventory}
           onCheckedChange={setTrackInventory}
+        />
+        <SwitchField
+          id="prod-new"
+          label="Producto nuevo"
+          description="Genera publicación automática"
+          checked={isNew}
+          onCheckedChange={setIsNew}
         />
         {/* <div className="flex items-center justify-between gap-2  border border-input rounded-md p-3">
           <Switch

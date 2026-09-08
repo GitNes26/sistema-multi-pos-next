@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.17.0.0] — 2026-09-08
+- **Tipo:** `feat` (Minor)
+- feat: se agregaron secciones de acomodo de mesa y se corrigieron detalles
+
 ### [0.16.1.0] — 2026-09-07
 - **Tipo:** `fix` (Patch)
 - fix:se implemento la ventana de reservacion de mesas

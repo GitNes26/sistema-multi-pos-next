@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { InputGroupField } from "@/components/base/input-group-field"
-import { Logo } from "@/components/layout/logo"
 import { BusinessModeDot } from "@/components/shared/business-mode-badge"
 import { cn } from "@/lib/utils"
 
@@ -164,41 +163,12 @@ export function LoginForm({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
       >
-        {/* Hero icon */}
-        <motion.div
-          className="mx-auto mb-6"
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-        >
-          <Logo size={32} className="rounded-2xl shadow-lg shadow-primary/25" />
-        </motion.div>
-
-        <motion.h1
-          className="mb-1 text-center text-xl font-bold"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          {isPortal ? "Bienvenido" : "Multi-POS"}
-        </motion.h1>
-        <motion.p
-          className="mb-6 text-center text-sm text-muted-foreground"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.25 }}
-        >
-          {isPortal
-            ? "Ingresa para hacer pedidos y ganar puntos"
-            : "Punto de venta multi-sucursal"}
-        </motion.p>
-
         {/* Form card */}
         <motion.div
           className="rounded-2xl border border-border/50 bg-card/80 p-5 shadow-lg shadow-black/5 backdrop-blur-sm"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.15 }}
         >
           {(error ?? nextAuthError) && (
             <Alert variant="destructive" className="mb-4">

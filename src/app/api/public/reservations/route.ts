@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { resolvePublicOrg } from "@/lib/tables/public-org";
+import { GUEST_CODE_TTL_MIN, generateVerifyCode, verifyCodeExpiry } from "@/lib/reservations/guest-verification";
+import { normalizePhoneToE164, notifyGuestVerificationCode } from "@/lib/notifications/messaging";
+import {
+  getReservationPolicy,
+  locationSchedule,
+  slotsForDay,
+  validatePolicyForCreate,
+} from "@/lib/tables/reservations-policy";
 
 // Reservaciones de mesa SIN cuenta: el comensal da nombre y teléfono y el
 // anfitrión confirma. Ruta pública (no requiere sesión de portal) — la
@@ -7,37 +16,6 @@ import { prisma } from "@/lib/db";
 // (`?table=&token=`), igual que el menú digital.
 
 export const dynamic = "force-dynamic";
-
-type OrgCtx = { organizationId: string; locationId: string | null };
-
-/** Resuelve la organización de la solicitud (org directa o QR de mesa). */
-async function resolveOrg(url: URL): Promise<OrgCtx | { error: string; status: number }> {
-  const orgId = url.searchParams.get("org");
-  if (orgId) {
-    const org = await prisma.organization.findFirst({
-      where: { id: orgId },
-      select: { id: true },
-    });
-    if (!org) return { error: "Organización no encontrada", status: 404 };
-    return { organizationId: org.id, locationId: null };
-  }
-
-  const tableId = url.searchParams.get("table");
-  const tableToken = url.searchParams.get("token");
-  if (tableId) {
-    if (!tableToken) {
-      return { error: "Token de mesa requerido: escanea el QR de tu mesa", status: 400 };
-    }
-    const table = await prisma.table.findFirst({
-      where: { id: tableId, qrToken: tableToken, isActive: true },
-      select: { id: true, organizationId: true, locationId: true },
-    });
-    if (!table) return { error: "QR de mesa inválido", status: 400 };
-    return { organizationId: table.organizationId, locationId: table.locationId };
-  }
-
-  return { error: "Organización requerida (?org= o ?table=&token=)", status: 400 };
-}
 
 /** Disponibilidad de salas/mesas para una fecha y comensales (sin "mis reservas"). */
 async function availability(organizationId: string, dateParam: string | null, guests: number) {
@@ -104,7 +82,7 @@ async function availability(organizationId: string, dateParam: string | null, gu
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const org = await resolveOrg(url);
+    const org = await resolvePublicOrg(url);
     if ("error" in org) {
       return NextResponse.json({ ok: false, error: org.error }, { status: org.status });
     }
@@ -122,7 +100,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const url = new URL(req.url);
-    const org = await resolveOrg(url);
+    const org = await resolvePublicOrg(url);
     if ("error" in org) {
       return NextResponse.json({ ok: false, error: org.error }, { status: org.status });
     }
@@ -143,8 +121,43 @@ export async function POST(req: Request) {
     if (!start || Number.isNaN(start.getTime())) {
       return NextResponse.json({ ok: false, error: "Fecha de reservación requerida" }, { status: 400 });
     }
-    const party = Math.max(1, Math.min(Number(guests) || 2, 50));
-    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // mesa por 2h
+    const policy = await getReservationPolicy(org.organizationId);
+    const requested = Math.max(1, Number(guests) || 2);
+    const party = Math.min(requested, policy.maxGuests);
+    const end = new Date(start.getTime() + policy.durationMinutes * 60 * 1000);
+
+    // Políticas de reservación: anticipación, ventana y comensales (invitado
+    // no tiene customerId: el tope diario no aplica). Se valida con los
+    // comensales solicitados (rechaza, no recorta).
+    const policyCheck = await validatePolicyForCreate({
+      organizationId: org.organizationId,
+      customerId: null,
+      startsAt: start,
+      guests: requested,
+    });
+    if (!policyCheck.ok) {
+      return NextResponse.json({ ok: false, error: policyCheck.error }, { status: policyCheck.status });
+    }
+
+    // Horario de la sucursal: la hora debe caer en un slot reservable.
+    const schedule = await locationSchedule(locationId || org.locationId || null);
+    if (schedule) {
+      const ymd = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+      const validSlots = slotsForDay(policy, schedule, ymd);
+      const hm = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
+      if (!validSlots.includes(hm)) {
+        return NextResponse.json(
+          { ok: false, error: "La sucursal no recibe reservaciones a esa hora" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Teléfono normalizado (E.164) y código de corto plazo: el invitado
+    // confirma/cancela desde /reservar/verificar con teléfono + código.
+    const phoneToStore = normalizePhoneToE164(guestPhone) ?? guestPhone;
+    const verifyCode = generateVerifyCode();
+    const verifyCodeExpiresAt = verifyCodeExpiry();
 
     // Si pide mesa concreta: debe existir, caber los comensales y estar libre.
     if (tableId) {
@@ -177,16 +190,38 @@ export async function POST(req: Request) {
         customerId: null, // reservación de invitado, sin cuenta
         guests: party,
         name: guestName,
-        phone: guestPhone,
+        phone: phoneToStore,
+        // La política define si el anfitrión confirma o nace confirmada.
+        status: policy.requireConfirmation ? "pending" : "confirmed",
         startsAt: start,
         endsAt: end,
         notes: notes || "Reservación sin cuenta (invitado)",
+        verifyCode,
+        verifyCodeExpiresAt,
       },
       include: {
         room: { select: { id: true, name: true } },
         table: { select: { id: true, number: true, name: true } },
       },
     });
+
+    // El código también viaja por WhatsApp/SMS (fire-and-forget; el código
+    // ya se mostró en pantalla, así que un fallo de mensajería no bloquea).
+    if (reservation.verifyCode) {
+      const orgRow = await prisma.organization.findUnique({
+        where: { id: org.organizationId },
+        select: { name: true },
+      });
+      notifyGuestVerificationCode({
+        phone: phoneToStore,
+        code: reservation.verifyCode,
+        organizationName: orgRow?.name ?? null,
+        ttlMinutes: GUEST_CODE_TTL_MIN,
+      }).catch((err) => {
+        console.error("[public/reservations] verify code message failed:", err);
+      });
+    }
+
     return NextResponse.json({ ok: true, reservation });
   } catch (err) {
     console.error("[public/reservations] POST", err);

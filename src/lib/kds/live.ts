@@ -4,13 +4,23 @@
 type Controller = ReadableStreamDefaultController<Uint8Array>;
 
 export interface KdsUpdatePayload {
-  type: "order_new" | "order_updated" | "order_removed" | "reservations_changed";
+  type:
+    | "order_new"
+    | "order_updated"
+    | "order_removed"
+    | "reservations_changed"
+    // Nueva reservación PRÓXIMA confirmada (campana del KDS).
+    | "reservation_confirmed";
   orderId?: string;
   orderNumber?: string | number;
   status?: string;
   locationId?: string | null;
   table?: { id: string; number: number; name: string | null } | null;
   elapsedSeconds?: number;
+  /** Solo reservation_confirmed: datos del aviso de llegada. */
+  startsAt?: string;
+  guests?: number;
+  guestName?: string | null;
   items?: {
     id: string;
     productName: string;

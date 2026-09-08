@@ -81,7 +81,7 @@ export function PosHeader({
         role={sessionUser?.role}
         className="hidden sm:inline-flex"
       />
-      <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline">v{packageJson.version}</span>
+      <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline">v{packageJson.version}</span>
 
       <div className="ml-auto flex items-center gap-1.5">
         {canOperateCash && (

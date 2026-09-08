@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: light)", color: "#0f172a" },
     { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
   ],
   width: "device-width",
@@ -58,6 +58,12 @@ export default function RootLayout({
       className={`${montserrat.variable} ${poppins.variable} ${spaceMono.variable}`}
     >
       <body className="font-sans antialiased" suppressHydrationWarning>
+        {/* Prevent white flash on PWA cold start */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var c="#0f172a";if(window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches)c="#0a0a0a";document.documentElement.style.background=c;var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",c)})()`,
+          }}
+        />
         <Providers>
           <SplashScreen />
           <HttpErrorToast />

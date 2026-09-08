@@ -181,7 +181,7 @@ export function CatalogPanel({
             }}
             whileTap={{ scale: 0.95 }}
             className={cn(
-              "h-8 shrink-0 rounded-full border px-3 text-xs font-medium transition",
+              "h-9 shrink-0 rounded-full border px-3 text-xs font-medium transition",
               activeCategory === (c.id || null)
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-background text-muted-foreground hover:bg-muted"

@@ -1,5 +1,4 @@
-import { $Enums } from "@prisma/client"
-import { randomBytes } from "node:crypto"
+import { $Enums, Prisma } from "@prisma/client"
 import { prisma } from "../../src/lib/db/client"
 import { seedProduction, SYSTEM_UNITS } from "./production"
 import { emptySchedule } from "../../src/lib/schedule"
@@ -1134,6 +1133,7 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
   const variantByProduct = new Map<string, string>()
   for (let i = 0; i < REST_PRODUCTS.length; i++) {
     const def = REST_PRODUCTS[i]
+    const markNew = i === 0 || i === 4
     const product = await d.product.create({
       data: {
         organizationId: org.id,
@@ -1145,6 +1145,7 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
         trackInventory: true,
         productType: "standard",
         allowSplit: false,
+        isNew: markNew,
       },
     })
     productIdByName.set(def.name, product.id)
@@ -1627,27 +1628,69 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
       },
     ],
   })
-  await d.publication.createMany({
-    data: [
-      {
+  const restPubs: {
+    organizationId: string
+    title: string
+    content?: string
+    imageUrl?: string | null
+    type: $Enums.PublicationType
+    isActive: boolean
+    publishedAt: Date
+    metadata?: Prisma.InputJsonValue
+  }[] = [
+    {
+      organizationId: org.id,
+      title: "Combo Familiar por $349",
+      content:
+        "2 hamburguesas, 2 refrescos y nachos con queso por solo $349.",
+      type: "promotion",
+      isActive: true,
+      publishedAt: new Date(now - 3 * 86400000),
+    },
+    {
+      organizationId: org.id,
+      title: "Aviso: horario extendido",
+      content: "Los fines de semana abrimos hasta la 1:00 am.",
+      type: "notice",
+      isActive: true,
+      publishedAt: new Date(now - 7 * 86400000),
+    },
+  ]
+  for (const def of REST_PRODUCTS.filter((_, i) => i === 0 || i === 4)) {
+    const pid = productIdByName.get(def.name)
+    if (pid) {
+      restPubs.push({
         organizationId: org.id,
-        title: "Combo Familiar por $349",
-        content:
-          "2 hamburguesas, 2 refrescos y nachos con queso por solo $349.",
-        type: "promotion",
+        title: `Nuevo: ${def.name}`,
+        content: `¡Llegó ${def.name} a nuestro menú! ${def.desc}`,
+        imageUrl: productImageUrl(def.emoji, def.category),
+        type: "product_new",
         isActive: true,
-        publishedAt: new Date(now - 3 * 86400000),
-      },
-      {
-        organizationId: org.id,
-        title: "Aviso: horario extendido",
-        content: "Los fines de semana abrimos hasta la 1:00 am.",
-        type: "notice",
-        isActive: true,
-        publishedAt: new Date(now - 7 * 86400000),
-      },
-    ],
-  })
+        publishedAt: new Date(now - 1 * 86400000),
+        metadata: { productId: pid, price: def.price },
+      })
+    }
+  }
+  await d.publication.createMany({ data: restPubs })
+  const restPubCustomerIds = restCustomers.map((c) => c.userId)
+  if (restPubCustomerIds.length > 0) {
+    const newPubs = restPubs.filter((p) => p.type === "product_new")
+    if (newPubs.length > 0) {
+      await d.notification.createMany({
+        data: newPubs.flatMap((p) =>
+          restPubCustomerIds.map((userId) => ({
+            organizationId: org.id,
+            userId,
+            kind: "publication",
+            title: p.title,
+            body: p.content?.substring(0, 200) ?? null,
+            severity: "info" as const,
+            metadata: { title: p.title, type: p.type } as Prisma.InputJsonValue,
+          }))
+        ),
+      })
+    }
+  }
 
   return {
     org,
@@ -2107,8 +2150,10 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
   }[] = []
   const productIdByName = new Map<string, string>()
   const variantByProduct = new Map<string, string>()
+  const hybNewProducts: { id: string; name: string; desc: string; emoji: string; category: string; price: number }[] = []
   for (let i = 0; i < HYB_PRODUCTS.length; i++) {
     const def = HYB_PRODUCTS[i]
+    const markNew = i === 0 || i === 5
     const product = await d.product.create({
       data: {
         organizationId: org.id,
@@ -2120,9 +2165,13 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
         trackInventory: true,
         productType: "standard",
         allowSplit: false,
+        isNew: markNew,
       },
     })
     productIdByName.set(def.name, product.id)
+    if (markNew) {
+      hybNewProducts.push({ id: product.id, name: def.name, desc: def.desc, emoji: def.emoji, category: def.category, price: def.price })
+    }
     const variant = await d.productVariant.create({
       data: {
         productId: product.id,
@@ -2599,27 +2648,63 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
       },
     ],
   })
-  await d.publication.createMany({
-    data: [
-      {
-        organizationId: org.id,
-        title: "Combo Familiar por $229",
-        content:
-          "2 tortas de milanesa, 2 refrescos y gelatina por solo $229.",
-        type: "promotion",
-        isActive: true,
-        publishedAt: new Date(now - 3 * 86400000),
-      },
-      {
-        organizationId: org.id,
-        title: "Aviso: guisos del día",
-        content: "Pregunta por el guisado del día, cambia todos los días.",
-        type: "notice",
-        isActive: true,
-        publishedAt: new Date(now - 8 * 86400000),
-      },
-    ],
-  })
+  const hybPubs: {
+    organizationId: string
+    title: string
+    content?: string
+    imageUrl?: string | null
+    type: $Enums.PublicationType
+    isActive: boolean
+    publishedAt: Date
+    metadata?: Prisma.InputJsonValue
+  }[] = [
+    {
+      organizationId: org.id,
+      title: "Combo Familiar por $229",
+      content:
+        "2 tortas de milanesa, 2 refrescos y gelatina por solo $229.",
+      type: "promotion",
+      isActive: true,
+      publishedAt: new Date(now - 3 * 86400000),
+    },
+    {
+      organizationId: org.id,
+      title: "Aviso: guisos del día",
+      content: "Pregunta por el guisado del día, cambia todos los días.",
+      type: "notice",
+      isActive: true,
+      publishedAt: new Date(now - 8 * 86400000),
+    },
+  ]
+  for (const p of hybNewProducts) {
+    hybPubs.push({
+      organizationId: org.id,
+      title: `Nuevo: ${p.name}`,
+      content: `¡Llegó ${p.name} a nuestro menú! ${p.desc}`,
+      imageUrl: productImageUrl(p.emoji, p.category),
+      type: "product_new",
+      isActive: true,
+      publishedAt: new Date(now - 1 * 86400000),
+      metadata: { productId: p.id, price: p.price },
+    })
+  }
+  await d.publication.createMany({ data: hybPubs })
+  const hybCustomerUserIds = hybCustomers.map((c) => c.userId)
+  if (hybCustomerUserIds.length > 0 && hybNewProducts.length > 0) {
+    await d.notification.createMany({
+      data: hybNewProducts.flatMap((p) =>
+        hybCustomerUserIds.map((userId) => ({
+          organizationId: org.id,
+          userId,
+          kind: "publication",
+          title: `Nuevo: ${p.name}`,
+          body: `¡Llegó ${p.name} a nuestro menú!`.substring(0, 200),
+          severity: "info" as const,
+          metadata: { productId: p.id, type: "product_new" },
+        }))
+      ),
+    })
+  }
 
   return {
     org,
@@ -3244,9 +3329,11 @@ async function seedVerticalOrgDemo(
     productName: string
     price: number
   }[] = []
+  const verticalNewProducts: { id: string; name: string; desc: string; emoji: string; category: string; price: number }[] = []
   for (let i = 0; i < cfg.products.length; i++) {
     const def = cfg.products[i]
     const trackInventory = def.trackInventory ?? true
+    const markNew = i === 0 || i === Math.min(4, cfg.products.length - 1)
     const product = await d.product.create({
       data: {
         organizationId: org.id,
@@ -3258,8 +3345,12 @@ async function seedVerticalOrgDemo(
         trackInventory,
         productType: "standard",
         allowSplit: false,
+        isNew: markNew,
       },
     })
+    if (markNew) {
+      verticalNewProducts.push({ id: product.id, name: def.name, desc: def.desc, emoji: def.emoji, category: def.category, price: def.price })
+    }
     const variant = await d.productVariant.create({
       data: {
         productId: product.id,
@@ -3454,15 +3545,43 @@ async function seedVerticalOrgDemo(
     ],
   })
   await d.publication.createMany({
-    data: cfg.publications.map((p) => ({
-      organizationId: org.id,
-      title: p.title,
-      content: p.content,
-      type: p.type,
-      isActive: true,
-      publishedAt: new Date(now - p.daysAgo * 86400000),
-    })),
+    data: [
+      ...cfg.publications.map((p) => ({
+        organizationId: org.id,
+        title: p.title,
+        content: p.content,
+        type: p.type as $Enums.PublicationType,
+        isActive: true,
+        publishedAt: new Date(now - p.daysAgo * 86400000),
+      })),
+      ...verticalNewProducts.map((p) => ({
+        organizationId: org.id,
+        title: `Nuevo: ${p.name}`,
+        content: `¡Llegó ${p.name} a nuestro catálogo! ${p.desc}`,
+        imageUrl: productImageUrl(p.emoji, p.category),
+        type: "product_new" as $Enums.PublicationType,
+        isActive: true,
+        publishedAt: new Date(now - 1 * 86400000),
+        metadata: { productId: p.id, price: p.price },
+      })),
+    ],
   })
+  const verticalCustomerUserIds = customers.map((c) => c.userId)
+  if (verticalCustomerUserIds.length > 0 && verticalNewProducts.length > 0) {
+    await d.notification.createMany({
+      data: verticalNewProducts.flatMap((p) =>
+        verticalCustomerUserIds.map((userId) => ({
+          organizationId: org.id,
+          userId,
+          kind: "publication",
+          title: `Nuevo: ${p.name}`,
+          body: `¡Llegó ${p.name} a nuestro catálogo!`.substring(0, 200),
+          severity: "info" as const,
+          metadata: { productId: p.id, type: "product_new" },
+        }))
+      ),
+    })
+  }
 
   // ── Agenda de citas (services; solo si el config asigna personal) ─────────
   if (cfg.staffServices?.length) {
@@ -4256,6 +4375,7 @@ export async function seedDemo() {
     bulk: boolean
   }[] = []
   const bulkProducts: { id: string; name: string; price: number }[] = []
+  const retailNewProductIds: { id: string; name: string; desc: string; emoji: string; category: string; price: number }[] = []
 
   for (let i = 0; i < PRODUCTS.length; i++) {
     const def = PRODUCTS[i]
@@ -4277,12 +4397,17 @@ export async function seedDemo() {
         bulkStep: def.bulk ? 0.05 : undefined,
         bulkMaxQuantity: def.bulk ? 0 : undefined,
         allowSplit: false,
+        isNew: i === 0 || i === 10,
       },
     })
 
     if (def.bulk) {
       bulkProducts.push({ id: product.id, name: def.name, price: def.price })
       continue
+    }
+
+    if (i === 0 || i === 10) {
+      retailNewProductIds.push({ id: product.id, name: def.name, desc: def.desc, emoji: def.emoji, category: def.category, price: def.price })
     }
 
     const variantDefs = def.variants ?? [{ name: "Default", price: def.price }]
@@ -4797,35 +4922,65 @@ export async function seedDemo() {
   })
 
   // ── Publicaciones de ejemplo ─────────────────────────────────────────────
-  await prisma.publication.createMany({
-    data: [
-      {
-        organizationId: org.id,
-        title: "¡Nueva llegada! Bocina bluetooth",
-        content:
-          "Ya está disponible la bocina bluetooth a un precio increíble.",
-        type: "product_new",
-        isActive: true,
-        publishedAt: new Date(now - 2 * 86400000),
-      },
-      {
-        organizationId: org.id,
-        title: "Promoción de frutas y verduras",
-        content: "15% de descuento en toda la sección de frutas y verduras.",
-        type: "promotion",
-        isActive: true,
-        publishedAt: new Date(now - 5 * 86400000),
-      },
-      {
-        organizationId: org.id,
-        title: "Aviso: horario de temporada",
-        content: "Extendemos el horario los fines de semana.",
-        type: "notice",
-        isActive: true,
-        publishedAt: new Date(now - 10 * 86400000),
-      },
-    ],
-  })
+  const retailPubs: {
+    organizationId: string
+    title: string
+    content?: string
+    imageUrl?: string | null
+    type: $Enums.PublicationType
+    isActive: boolean
+    publishedAt: Date
+    metadata?: Prisma.InputJsonValue
+  }[] = [
+    {
+      organizationId: org.id,
+      title: "Promoción de frutas y verduras",
+      content: "15% de descuento en toda la sección de frutas y verduras.",
+      type: "promotion",
+      isActive: true,
+      publishedAt: new Date(now - 5 * 86400000),
+    },
+    {
+      organizationId: org.id,
+      title: "Aviso: horario de temporada",
+      content: "Extendemos el horario los fines de semana.",
+      type: "notice",
+      isActive: true,
+      publishedAt: new Date(now - 10 * 86400000),
+    },
+  ]
+  for (const p of retailNewProductIds) {
+    retailPubs.push({
+      organizationId: org.id,
+      title: `Nuevo: ${p.name}`,
+      content: `¡Llegó ${p.name} a nuestro catálogo! ${p.desc}`,
+      imageUrl: productImageUrl(p.emoji, p.category),
+      type: "product_new",
+      isActive: true,
+      publishedAt: new Date(now - 1 * 86400000),
+      metadata: { productId: p.id, price: p.price },
+    })
+  }
+  await prisma.publication.createMany({ data: retailPubs })
+  const retailCustomerUserIds = customers.map((c) => c.userId)
+  if (retailCustomerUserIds.length > 0) {
+    const newPubs = retailPubs.filter((p) => p.type === "product_new")
+    if (newPubs.length > 0) {
+      await prisma.notification.createMany({
+        data: newPubs.flatMap((p) =>
+          retailCustomerUserIds.map((userId) => ({
+            organizationId: org.id,
+            userId,
+            kind: "publication",
+            title: p.title,
+            body: p.content?.substring(0, 200) ?? null,
+            severity: "info" as const,
+            metadata: { title: p.title, type: p.type } as Prisma.InputJsonValue,
+          }))
+        ),
+      })
+    }
+  }
 
   // ── Restaurante Demo (food_service) ─────────────────────────────────────
   // Equipo con roles del modo por roleId (mesero/cocina), combos, mesas,

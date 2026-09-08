@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils"
 import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 import { EmptyState } from "@/components/shared/empty-state"
 import { SwipeableRow } from "@/components/shared/swipeable-row"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -33,6 +32,7 @@ const KIND_ICONS: Record<string, typeof Bell> = {
   delivery: Truck,
   low_stock: AlertTriangle,
   promotion: CheckCircle2,
+  publication: BellRing,
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -47,6 +47,10 @@ function getPortalLink(n: PortalNotification): string | null {
     const orderId = (n.metadata as Record<string, unknown>)?.orderId
     if (typeof orderId === "string") return `/portal/orders/${orderId}`
     return "/portal/orders"
+  }
+  if (n.kind === "publication" || n.kind === "promotion") {
+    // Publications are shown on the portal home; link there
+    return "/portal"
   }
   if (n.link) {
     return n.link.replace(/^\/admin\//, "/portal/")

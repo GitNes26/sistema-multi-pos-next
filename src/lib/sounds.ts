@@ -9,7 +9,9 @@ export type SoundName =
   | "cash-close"
   | "order-received"
   | "order-ready"
-  | "low-stock";
+  | "low-stock"
+  // Campana del KDS: nueva reservación próxima confirmada.
+  | "reservation-bell";
 
 export interface PlaySoundOptions {
   volume?: number

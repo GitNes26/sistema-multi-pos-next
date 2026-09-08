@@ -36,7 +36,7 @@ export const ComboCard = memo(function ComboCard({ combo, onSelect }: ComboCardP
       onClick={handleClick}
       whileTap={{ scale: 0.96 }}
       className={cn(
-        "group relative flex h-full flex-col gap-2 rounded-2xl border-2 border-dashed bg-card p-2.5 text-left shadow-sm transition",
+        "group relative flex h-full w-full flex-col gap-2 rounded-2xl border-2 border-dashed bg-card p-2.5 text-left shadow-sm transition",
         "hover:border-emerald-500/70 hover:shadow-md hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20",
         added && "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
       )}

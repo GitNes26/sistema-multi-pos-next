@@ -15,6 +15,16 @@ export async function GET() {
   if ("response" in guard) return guard.response;
 
   try {
+    // Los combos son exclusivos de restaurantes; en retail el portal no los
+    // ofrece.
+    const org = await prisma.organization.findUnique({
+      where: { id: guard.organizationId },
+      select: { businessMode: true },
+    })
+    if (org?.businessMode !== "food_service" && org?.businessMode !== "hybrid") {
+      return NextResponse.json({ ok: true, combos: [] })
+    }
+
     const combosRaw = await prisma.productCombo.findMany({
       where: { organizationId: guard.organizationId, isActive: true },
       include: {

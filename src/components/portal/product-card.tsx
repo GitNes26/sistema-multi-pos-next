@@ -10,7 +10,10 @@ import { portalApi } from "@/lib/portal/client"
 import { swalError, swalToast } from "@/lib/swal"
 import { Button } from "@/components/ui/button"
 import { BottomSheet } from "@/components/portal/bottom-sheet"
-import { ProductBuilder } from "@/components/pos/product-builder"
+import {
+  ProductBuilder,
+  selectedOptionsKey,
+} from "@/components/pos/product-builder"
 import { cn } from "@/lib/utils"
 import { SPRING_BOUNCE, SPRING_DEFAULT } from "@/lib/animation-tokens"
 import { haptic } from "@/lib/haptics"
@@ -287,8 +290,17 @@ export function ProductCard({ product, layoutId }: { product: PortalProduct; lay
           onAdd={(config) => {
             const variant = product.variants[0]
             if (!variant) return
-            // For portal, we add with default variant and extra price as modifier
-            const res = addStandard(product, variant, config.quantity)
+            // Agregar la variante base + los extras elegidos (opciones/notas)
+            // como una configuración propia, para que el precio y la línea
+            // reflejen exactamente lo que construyó el cliente.
+            const res = addStandard(
+              product,
+              variant,
+              config.quantity,
+              config.totalExtraPrice,
+              selectedOptionsKey(config.selectedOptions),
+              config.notes
+            )
             if (res.added <= 0) {
               swalToast("Sin stock disponible", "info")
               return

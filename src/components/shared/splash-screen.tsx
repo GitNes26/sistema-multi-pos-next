@@ -1,46 +1,112 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Logo } from "@/components/layout/logo";
+import { HeroBackground } from "@/components/landing/hero-background";
 
 /**
  * ═══════════════════════════════════════════════════════════════════════
  *  SplashScreen — Animated entry for the app
  * ═══════════════════════════════════════════════════════════════════════
  *
- *  Renders a full-screen overlay with the logo that scales in and fades,
- *  then fades out after a short delay. Used as the first thing users see
- *  when opening the PWA or navigating to the app.
+ *  Full-screen overlay con el mismo fondo del hero de la landing. Los puntos
+ *  de avance reflejan etapas reales del arranque, no un timer fijo:
+ *    1. React hidrató la app (primer effect tras el hidratado).
+ *    2. Recursos del documento cargados (document.readyState "complete").
+ *    3. Tiempo mínimo en pantalla cumplido → salida.
  *
- *  - Respects prefers-reduced-motion (instant show/hide)
- *  - Auto-dismisses after 1.5s (or 0.8s for reduced motion)
- *  - Uses a flag in sessionStorage so it only shows once per session
+ *  Salida: el logo vuela a la esquina superior izquierda (donde queda el
+ *  logo del header de la app) mientras el resto se desvanece — el splash
+ *  "entrega" la marca a la interfaz en lugar de desaparecer.
+ *
+ *  - Techo duro (MAX_WAIT) por si `load` tarda: nadie queda atrapado.
+ *  - Respects prefers-reduced-motion (sin pulsos ni vuelo, tiempos cortos).
+ *  - Flag en sessionStorage: solo se muestra una vez por sesión.
  */
 
-const SPLASH_DURATION = 1500; // 1.5s visible
-const REDUCED_DURATION = 800; // 0.8s for reduced motion
+const MIN_VISIBLE = 900; // ms mínimos en pantalla (reduced: 400)
+const MAX_WAIT = 4000; // techo aunque `load` no llegue (reduced: 1500)
+const REDUCED_MIN_VISIBLE = 400;
+const REDUCED_MAX_WAIT = 1500;
 const SESSION_KEY = "multi-pos-splash-seen";
+
+/** Esquina donde vive el logo del header (≈ padding 24 + tile 32 → centro 40). */
+const HEADER_X = 40;
+const HEADER_Y = 40;
+const EXIT_SCALE = 0.5;
 
 export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
   const [visible, setVisible] = useState(true);
+  // Etapas reales del arranque (en orden; cada punto se enciende al cumplirse).
+  const [hydrated, setHydrated] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [minDone, setMinDone] = useState(false);
+  const [maxHit, setMaxHit] = useState(false);
+  // Destino del logo al salir (centro del viewport → esquina del header).
+  const [exitTo, setExitTo] = useState({ x: 0, y: 0, scale: 1 });
   const prefersReduced = useReducedMotion();
 
+  // Declarado primero: si ya se vio en la sesión, los efectos siguientes no
+  // programan nada (skipRef se consulta sincrónicamente dentro de cada uno).
+  const skipRef = useRef(false);
   useEffect(() => {
-    // Skip splash if already seen this session
     if (typeof window !== "undefined" && sessionStorage.getItem(SESSION_KEY)) {
+      skipRef.current = true;
       setVisible(false);
-      return;
     }
+  }, []);
 
-    const duration = prefersReduced ? REDUCED_DURATION : SPLASH_DURATION;
-    const timer = setTimeout(() => {
-      setVisible(false);
-      sessionStorage.setItem(SESSION_KEY, "1");
-    }, duration);
+  // Etapa 1: este effect corre después del hidratado de React.
+  useEffect(() => {
+    if (skipRef.current) return;
+    setHydrated(true);
+  }, []);
 
-    return () => clearTimeout(timer);
+  // Etapa 2: recursos del documento listos.
+  useEffect(() => {
+    if (skipRef.current) return;
+    const check = () => {
+      if (document.readyState === "complete") setLoaded(true);
+    };
+    check();
+    document.addEventListener("readystatechange", check);
+    window.addEventListener("load", check);
+    return () => {
+      document.removeEventListener("readystatechange", check);
+      window.removeEventListener("load", check);
+    };
+  }, []);
+
+  // Etapa 3 + techo: tiempo mínimo en pantalla; cierre forzado si `load` tarda.
+  useEffect(() => {
+    if (skipRef.current) return;
+    const minVisible = prefersReduced ? REDUCED_MIN_VISIBLE : MIN_VISIBLE;
+    const maxWait = prefersReduced ? REDUCED_MAX_WAIT : MAX_WAIT;
+    const minTimer = setTimeout(() => setMinDone(true), minVisible);
+    const maxTimer = setTimeout(() => setMaxHit(true), maxWait);
+    return () => {
+      clearTimeout(minTimer);
+      clearTimeout(maxTimer);
+    };
   }, [prefersReduced]);
+
+  // Listo = (hidratado ∧ recursos ∧ mínimo) o techo. Al iniciar la salida se
+  // calcula el destino del logo (esquina del header) y se retira el splash.
+  const ready = (hydrated && loaded && minDone) || maxHit;
+  useEffect(() => {
+    if (!ready || skipRef.current) return;
+    if (typeof window !== "undefined" && !prefersReduced) {
+      setExitTo({
+        x: -(window.innerWidth / 2 - HEADER_X),
+        y: -(window.innerHeight / 2 - HEADER_Y),
+        scale: EXIT_SCALE,
+      });
+    }
+    sessionStorage.setItem(SESSION_KEY, "1");
+    const timer = setTimeout(() => setVisible(false), prefersReduced ? 0 : 200);
+    return () => clearTimeout(timer);
+  }, [ready, prefersReduced]);
 
   return (
     <AnimatePresence>
@@ -48,25 +114,18 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
         <motion.div
           key="splash"
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{
-            duration: prefersReduced ? 0.15 : 0.4,
-            ease: "easeOut",
-          }}
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, oklch(0.985 0 0) 0%, oklch(1 0 0) 100%)",
-          }}
+          className="fixed inset-0 z-[9999] overflow-hidden bg-slate-950 text-slate-50"
         >
-          {/* Dark mode support */}
-          <style
-            dangerouslySetInnerHTML={{
-              __html: `.dark #splash-root { background: radial-gradient(ellipse at center, oklch(0.205 0 0) 0%, oklch(0.145 0 0) 100%); }`,
-            }}
-          />
-          <div id="splash-root" className="flex flex-col items-center gap-6">
-            {/* Logo with entrance animation */}
+          {/* Fondo: se desvanece mientras el logo vuela al header */}
+          <motion.div
+            className="absolute inset-0"
+            exit={{ opacity: 0, transition: { duration: prefersReduced ? 0.15 : 0.45 } }}
+          >
+            <HeroBackground />
+          </motion.div>
+
+          <div className="relative flex h-full flex-col items-center justify-center gap-6 px-6">
+            {/* Logo: vuela a la esquina del header al salir */}
             <motion.div
               initial={
                 prefersReduced
@@ -74,6 +133,17 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
                   : { opacity: 0, scale: 0.6 }
               }
               animate={{ opacity: 1, scale: 1 }}
+              exit={
+                prefersReduced
+                  ? { opacity: 0, transition: { duration: 0.15 } }
+                  : {
+                      x: exitTo.x,
+                      y: exitTo.y,
+                      scale: exitTo.scale,
+                      opacity: [1, 1, 0],
+                      transition: { duration: 0.55, times: [0, 0.75, 1], ease: "easeInOut" },
+                    }
+              }
               transition={
                 prefersReduced
                   ? { duration: 0.15 }
@@ -84,14 +154,12 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
                       delay: 0.1,
                     }
               }
+              className="drop-shadow-[0_0_2.5rem_rgba(16,185,129,0.35)]"
             >
-              <Logo
-                logoUrl={logoUrl}
-                className="h-16 w-auto drop-shadow-lg"
-              />
+              <Logo logoUrl={logoUrl} className="h-20 w-auto" size={48} />
             </motion.div>
 
-            {/* Brand name */}
+            {/* Brand name — mismo tratamiento de gradiente que el hero */}
             <motion.div
               initial={
                 prefersReduced
@@ -99,48 +167,59 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
                   : { opacity: 0, y: 12 }
               }
               animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8, transition: { duration: 0.3 } }}
               transition={{
                 duration: prefersReduced ? 0.15 : 0.5,
-                delay: prefersReduced ? 0.1 : 0.4,
+                delay: prefersReduced ? 0.1 : 0.35,
                 ease: [0.22, 1, 0.36, 1],
               }}
               className="text-center"
             >
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              <h1 className="bg-gradient-to-r from-emerald-300 via-teal-300 to-sky-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent">
                 Multi-POS
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1.5 text-sm text-slate-400">
                 Punto de venta multi-sucursal
               </p>
             </motion.div>
 
-            {/* Loading dots */}
+            {/* Progreso real: hidratado → recursos → listo */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: prefersReduced ? 0.2 : 0.7 }}
+              exit={{ opacity: 0, transition: { duration: 0.3 } }}
+              transition={{ delay: prefersReduced ? 0.1 : 0.4 }}
               className="flex items-center gap-1.5"
+              aria-hidden
             >
-              {[0, 1, 2].map((i) => (
-                <motion.span
-                  key={i}
-                  className="size-1.5 rounded-full bg-primary/40"
-                  animate={
-                    prefersReduced
-                      ? { opacity: 0.4 }
-                      : {
-                          opacity: [0.3, 1, 0.3],
-                          scale: [0.8, 1.1, 0.8],
-                        }
-                  }
-                  transition={{
-                    duration: 1,
-                    repeat: Infinity,
-                    delay: i * 0.15,
-                    ease: "easeInOut",
-                  }}
-                />
-              ))}
+              {[hydrated, loaded, ready].map((done, i) => {
+                // El punto de la etapa en curso late; los cumplidos quedan fijos.
+                const active = !done && (i === 0 || (i === 1 && hydrated) || (i === 2 && hydrated && loaded));
+                return (
+                  <motion.span
+                    key={i}
+                    className={
+                      done
+                        ? "size-1.5 rounded-full bg-emerald-400"
+                        : active
+                          ? "size-1.5 rounded-full bg-emerald-400/50"
+                          : "size-1.5 rounded-full bg-slate-700"
+                    }
+                    animate={
+                      prefersReduced
+                        ? undefined
+                        : active
+                          ? { opacity: [0.35, 1, 0.35], scale: [0.9, 1.15, 0.9] }
+                          : { opacity: done ? 1 : 0.5 }
+                    }
+                    transition={
+                      active
+                        ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" }
+                        : { duration: 0.2 }
+                    }
+                  />
+                );
+              })}
             </motion.div>
           </div>
         </motion.div>

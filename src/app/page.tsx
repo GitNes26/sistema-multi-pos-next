@@ -20,7 +20,10 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { HeroBackground } from "@/components/landing/hero-background"
+import { HeroParallax } from "@/components/landing/parallax"
 import { Reveal } from "@/components/landing/reveal"
+import { ScrollCue } from "@/components/landing/scroll-cue"
+import { AnimatedStats } from "@/components/landing/animated-stats"
 import packageJson from "../../package.json"
 
 export const metadata: Metadata = {
@@ -93,13 +96,6 @@ const CAPABILITIES = [
   { icon: Bell, label: "Alertas de stock" },
 ]
 
-const STATS = [
-  { value: "3 en 1", label: "POS · Panel · Portal" },
-  { value: "Real-time", label: "Datos al instante" },
-  { value: "Multi", label: "Sucursales + CEDIS" },
-  { value: "QR/PIN", label: "Entregas seguras" },
-]
-
 function Logo() {
   return (
     <div className="flex items-center gap-2.5 font-semibold">
@@ -113,6 +109,47 @@ function Logo() {
         Multi<span className="text-emerald-500">-POS</span>
       </span>
     </div>
+  )
+}
+
+/** CTA section con parallax y fondo animado */
+function CtaSection({ whatsappUrl }: { whatsappUrl: string }) {
+  return (
+    <section className="relative overflow-hidden bg-slate-950 text-slate-50">
+      <HeroBackground />
+      <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-4 py-20 text-center sm:px-6">
+        <Reveal>
+          <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+            Empieza a vender mejor hoy
+          </h2>
+        </Reveal>
+        <Reveal delay={0.1}>
+          <p className="mx-auto max-w-xl text-slate-300">
+            Únete a negocios que ya operan sus ventas, pedidos y clientes en
+            una sola plataforma.
+          </p>
+        </Reveal>
+        <Reveal delay={0.18}>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 hover:opacity-90">
+              <Link href="/portal/auth/login">
+                Crear mi pedido <ArrowRight />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-white/20 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white dark:bg-white/5"
+            >
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                <MessageCircle /> Escríbenos por WhatsApp
+              </a>
+            </Button>
+          </div>
+        </Reveal>
+      </div>
+    </section>
   )
 }
 
@@ -137,7 +174,7 @@ export default function LandingPage() {
       {/* ── Hero ──────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-slate-950 text-slate-50">
         <HeroBackground />
-        <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-4 py-20 text-center sm:px-6 sm:py-28">
+        <HeroParallax className="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-4 py-20 text-center sm:px-6 sm:py-28">
           <div className="space-y-6">
             <Reveal>
               <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-medium text-emerald-300">
@@ -184,20 +221,13 @@ export default function LandingPage() {
             </Reveal>
 
             <Reveal delay={0.32}>
-              <div className="mx-auto grid max-w-3xl grid-cols-2 gap-4 pt-6 sm:grid-cols-4">
-                {STATS.map((s) => (
-                  <div
-                    key={s.label}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
-                  >
-                    <p className="text-lg font-bold text-white">{s.value}</p>
-                    <p className="text-xs text-slate-400">{s.label}</p>
-                  </div>
-                ))}
-              </div>
+              <AnimatedStats />
             </Reveal>
           </div>
-        </div>
+        </HeroParallax>
+
+        {/* Scroll-down cue */}
+        <ScrollCue />
 
         {/* Degradado de transición al fondo claro */}
         <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-b from-transparent to-background" />
@@ -281,40 +311,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA final ─────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-slate-950 text-slate-50">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-4 py-20 text-center sm:px-6">
-          <Reveal>
-            <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-              Empieza a vender mejor hoy
-            </h2>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <p className="mx-auto max-w-xl text-slate-300">
-              Únete a negocios que ya operan sus ventas, pedidos y clientes en
-              una sola plataforma.
-            </p>
-          </Reveal>
-          <Reveal delay={0.18}>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 hover:opacity-90">
-                <Link href="/portal/auth/login">
-                  Crear mi pedido <ArrowRight />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="border-white/20 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white dark:bg-white/5"
-              >
-                <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle /> Escríbenos por WhatsApp
-                </a>
-              </Button>
-            </div>
-          </Reveal>
-        </div>
-      </section>
+      <CtaSection whatsappUrl={WHATSAPP_URL} />
 
       {/* ── Footer ────────────────────────────────────────────── */}
       <footer className="border-t bg-background">

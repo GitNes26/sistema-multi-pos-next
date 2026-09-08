@@ -39,7 +39,7 @@ export default async function AgendaPage() {
   return (
     <>
       <AppearanceSync tenant={tenant} />
-      <Splash />
+      <Splash orgName={org.name} />
       <AgendaApp orgName={org.name} orgMode={org.businessMode} canManage={canManage} />
     </>
   );

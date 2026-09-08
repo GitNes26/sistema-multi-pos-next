@@ -72,6 +72,17 @@ const SIDEBAR_LABELS: Record<SidebarStyle, string> = {
   icon: "Iconos",
 }
 
+const COLOR_PRESETS = [
+  { label: "Esmeralda", primary: 160, accent: 210 },
+  { label: "Azul", primary: 220, accent: 280 },
+  { label: "Violeta", primary: 270, accent: 330 },
+  { label: "Rosa", primary: 330, accent: 20 },
+  { label: "Naranja", primary: 25, accent: 200 },
+  { label: "Ámbar", primary: 45, accent: 260 },
+  { label: "Rojo", primary: 0, accent: 220 },
+  { label: "Gris", primary: 210, accent: 150 },
+]
+
 function Swatch({ hue }: { hue: number }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -240,6 +251,30 @@ export function AppearanceSettingsForm() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label3 helper="Selección rápida de paleta">Preestablecidos</Label3>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => applyLocal({ primaryHue: preset.primary, accentHue: preset.accent })}
+                  className="group flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors hover:border-primary/40"
+                  title={preset.label}
+                >
+                  <span
+                    className="size-4 rounded-full border"
+                    style={{ background: `oklch(0.55 0.14 ${preset.primary})` }}
+                  />
+                  <span
+                    className="size-4 rounded-full border"
+                    style={{ background: `oklch(0.55 0.10 ${preset.accent})` }}
+                  />
+                  <span className="hidden sm:inline text-muted-foreground group-hover:text-foreground">{preset.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label3 helper="Verde, azul, naranja…">Color primario</Label3>

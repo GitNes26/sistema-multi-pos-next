@@ -1,20 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Armchair, CalendarCheck2, Loader2, MapPin, User, Phone } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { CalendarCheck2, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { swalError, swalToast } from "@/lib/swal";
-import { ReservationFloorPlan, type PlanTable } from "@/components/portal/reservation-floor-plan";
+import { ReservationWizard } from "@/components/reservations/reservation-wizard";
 
-// Reservación de mesa SIN cuenta: nombre y teléfono bastan. La organización se
-// resuelve en el servidor desde `?org=` o desde el QR de mesa (`?table=&token=`),
-// así que el componente solo propaga esos parámetros a la API pública.
+// Reservación de mesa SIN cuenta: wizard a pasos (sucursal → calendario según
+// políticas → hora/asientos → sala en el plano → nombre y teléfono). La
+// organización se resuelve en el servidor desde `?org=` o el QR de mesa.
 
-interface Room {
+interface LocationRow {
   id: string;
   name: string;
-  tables: PlanTable[];
+}
+
+interface WaitlistEntry {
+  id: string;
+  guests: number;
+  status: string;
+  position: number;
+  availableTable: { id: string; number: number; room: { name: string } | null } | null;
 }
 
 export function GuestReservation({
@@ -26,29 +33,6 @@ export function GuestReservation({
   tableId?: string;
   tableToken?: string;
 }) {
-  const [date, setDate] = useState(() => {
-    const d = new Date(Date.now() + 24 * 3600 * 1000);
-    return d.toISOString().slice(0, 10);
-  });
-  const [time, setTime] = useState("13:00");
-  const [guests, setGuests] = useState("2");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loose, setLoose] = useState<PlanTable[]>([]);
-  const [takenIds, setTakenIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{
-    table: { id: string; number: number } | null;
-    room: { id: string; name: string } | null;
-    guests: number;
-    startsAt: string;
-    status: string;
-  } | null>(null);
-
   const params = new URLSearchParams();
   if (orgId) params.set("org", orgId);
   if (tableId) {
@@ -57,244 +41,166 @@ export function GuestReservation({
   }
   const orgQuery = params.toString();
 
-  const load = useCallback(async () => {
+  const [locations, setLocations] = useState<LocationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Lista de espera (sin cuenta): si no hay mesa que quepa, el invitado se
+  // anota con nombre+teléfono y recibe el aviso de mesa libre por WhatsApp/SMS.
+  const [waitlisted, setWaitlisted] = useState<WaitlistEntry | null>(null);
+  const [waitlisting, setWaitlisting] = useState(false);
+  const [waitlistPhone, setWaitlistPhone] = useState("");
+
+  const loadLocations = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch(
-        `/api/public/reservations?${orgQuery}&date=${date}&guests=${Number(guests) || 2}`,
-        { cache: "no-store" }
-      );
+      const res = await fetch(`/api/public/locations?${orgQuery}`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo cargar");
-      setRooms(data.rooms ?? []);
-      setLoose(data.looseTables ?? []);
-      setTakenIds(data.takenTableIds ?? []);
-      setSelectedTable((prev) =>
-        prev && !(data.takenTableIds ?? []).includes(prev) ? prev : null
-      );
+      setLocations(data.locations ?? []);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "No se pudo cargar");
-      swalError("No se pudo cargar", err instanceof Error ? err.message : undefined);
     } finally {
       setLoading(false);
     }
-  }, [orgQuery, date, guests]);
+  }, [orgQuery]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadLocations();
+  }, [loadLocations]);
 
-  const available = useMemo(() => {
-    const party = Number(guests) || 2;
-    const ok = (t: PlanTable) =>
-      t.status !== "occupied" && !takenIds.includes(t.id) && t.capacity >= party;
-    return { rooms, loose: loose.filter(ok), party };
-  }, [rooms, loose, takenIds, guests]);
-
-  const submit = async () => {
-    if (name.trim().length < 2) {
-      swalError("Ingresa tu nombre");
-      return;
-    }
-    if (phone.trim().length < 7) {
+  const joinWaitlist = async () => {
+    if (waitlistPhone.trim().length < 7) {
       swalError("Ingresa un teléfono válido");
       return;
     }
-    if (!date || !time) {
-      swalError("Elige fecha y hora");
-      return;
-    }
-    setSubmitting(true);
+    setWaitlisting(true);
     try {
-      const startsAt = new Date(`${date}T${time}:00`);
-      const table = [...rooms.flatMap((r) => r.tables), ...loose].find((t) => t.id === selectedTable);
-      const res = await fetch(`/api/public/reservations?${orgQuery}`, {
+      const res = await fetch(`/api/public/waitlist?${orgQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          startsAt: startsAt.toISOString(),
-          guests: Number(guests) || 2,
-          name: name.trim(),
-          phone: phone.trim(),
-          roomId: table
-            ? rooms.find((r) => r.tables.some((t) => t.id === table.id))?.id ?? null
-            : null,
-          tableId: table?.id ?? null,
-        }),
+        body: JSON.stringify({ phone: waitlistPhone.trim(), guests: 2 }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo reservar");
-      setDone(data.reservation ?? null);
-      swalToast(
-        table
-          ? `Solicitaste la mesa #${table.number} — la confirmará el anfitrión`
-          : "Solicitud enviada — el anfitrión asignará mesa"
-      );
-      setSelectedTable(null);
-      void load();
+      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo anotar");
+      setWaitlisted(data.entry ?? null);
+      swalToast("Estás en la lista de espera — te avisamos en cuanto se libere una mesa");
     } catch (err) {
-      swalError("No se pudo reservar", err instanceof Error ? err.message : undefined);
+      swalError("No se pudo anotar", err instanceof Error ? err.message : undefined);
     } finally {
-      setSubmitting(false);
+      setWaitlisting(false);
     }
   };
 
-  if (done) {
+  const leaveWaitlist = async () => {
+    setWaitlisting(true);
+    try {
+      await fetch(`/api/public/waitlist?${orgQuery}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: waitlistPhone.trim() }),
+      });
+      setWaitlisted(null);
+      swalToast("Saliste de la lista de espera");
+    } catch {
+      swalError("No se pudo salir de la lista");
+    } finally {
+      setWaitlisting(false);
+    }
+  };
+
+  if (loadError) {
     return (
-      <div className="space-y-4">
-        <div className="rounded-2xl border border-emerald-300/60 bg-emerald-50 p-5 text-center dark:border-emerald-500/30 dark:bg-emerald-500/10">
-          <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-emerald-500 text-white">
-            <CalendarCheck2 className="size-6" />
-          </div>
-          <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
-            ¡Solicitud enviada, {done.guests === 1 ? "comensal" : "comensales"}!
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {new Date(done.startsAt).toLocaleString("es-MX", {
-              weekday: "short",
-              day: "numeric",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}{" "}
-            · {done.guests} {done.guests === 1 ? "persona" : "personas"}
-            {done.table ? ` · Mesa ${done.table.number}` : done.room ? ` · ${done.room.name}` : ""}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            El anfitrión confirmará tu mesa — lleguen unos minutos antes.
-          </p>
-          <Button className="mt-4" variant="outline" onClick={() => setDone(null)}>
-            Hacer otra reservación
-          </Button>
-        </div>
+      <p className="rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-center text-sm text-destructive">
+        {loadError}
+      </p>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="size-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      {/* Datos del comensal: nombre y teléfono bastan, sin cuenta. */}
-      <div className="rounded-2xl border bg-muted/30 p-3.5">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Tus datos (sin cuenta)
-        </p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div className="relative">
-            <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Tu nombre"
-              className="h-11 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm"
-            />
+      {/* Lista de espera: entrada activa del invitado (si la hay). */}
+      {waitlisted && (
+        <div
+          className={
+            waitlisted.availableTable
+              ? "rounded-2xl border border-emerald-300/60 bg-emerald-50 p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+              : "rounded-2xl border border-amber-300/60 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10"
+          }
+        >
+          <div className="flex items-center gap-2">
+            <Clock className="size-4 text-amber-600" />
+            <p className="text-sm font-bold">
+              {waitlisted.availableTable
+                ? `¡Mesa lista! Mesa #${waitlisted.availableTable.number}${
+                    waitlisted.availableTable.room?.name ? ` (${waitlisted.availableTable.room.name})` : ""
+                  }`
+                : `En lista de espera · posición #${waitlisted.position}`}
+            </p>
           </div>
-          <div className="relative">
-            <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Teléfono (para confirmarte)"
-              inputMode="tel"
-              className="h-11 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Selectores */}
-      <div className="grid grid-cols-3 gap-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Fecha</label>
-          <input
-            type="date"
-            value={date}
-            min={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => setDate(e.target.value)}
-            className="h-10 w-full rounded-lg border border-input bg-background px-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Hora</label>
-          <input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className="h-10 w-full rounded-lg border border-input bg-background px-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Comensales</label>
-          <input
-            type="number"
-            min={1}
-            max={50}
-            value={guests}
-            onChange={(e) => setGuests(e.target.value)}
-            className="h-10 w-full rounded-lg border border-input bg-background px-2 text-sm"
-          />
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-10 text-muted-foreground">
-          <Loader2 className="size-5 animate-spin" />
-        </div>
-      ) : loadError ? (
-        <p className="rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-center text-sm text-destructive">
-          {loadError}
-        </p>
-      ) : (
-        <>
-          {/* Plano por sala */}
-          <div className="space-y-4">
-            {available.rooms.map((room) => (
-              <div key={room.id}>
-                <div className="mb-1.5 flex items-center gap-2">
-                  <MapPin className="size-3.5 text-muted-foreground" />
-                  <p className="text-sm font-semibold">{room.name}</p>
-                  <Badge variant="outline" className="text-[10px]">
-                    {room.tables.filter((t) => !takenIds.includes(t.id) && t.status !== "occupied" && t.capacity >= available.party).length} disponibles
-                  </Badge>
-                </div>
-                {room.tables.length > 0 ? (
-                  <ReservationFloorPlan
-                    tables={room.tables}
-                    party={available.party}
-                    takenIds={takenIds}
-                    selectedId={selectedTable}
-                    onSelect={setSelectedTable}
-                  />
-                ) : (
-                  <p className="text-xs text-muted-foreground">Sin mesas en esta sala.</p>
-                )}
-              </div>
-            ))}
-            {available.loose.length > 0 && (
-              <div>
-                <p className="mb-1.5 text-sm font-semibold">Otras mesas</p>
-                <ReservationFloorPlan
-                  tables={available.loose}
-                  party={available.party}
-                  takenIds={takenIds}
-                  selectedId={selectedTable}
-                  onSelect={setSelectedTable}
-                />
-              </div>
-            )}
-            {available.rooms.length === 0 && available.loose.length === 0 && (
-              <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-                No hay mesas configuradas para reservar.
-              </p>
-            )}
-          </div>
-
-          <Button className="h-11 w-full" onClick={submit} disabled={submitting}>
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <Armchair className="size-4" />}
-            {selectedTable ? "Solicitar esta mesa" : "Solicitar mesa (asignación libre)"}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {waitlisted.availableTable
+              ? "Te avisamos por WhatsApp/SMS — preséntate y el anfitrión te sentará."
+              : `Te avisaremos por WhatsApp/SMS al ${waitlistPhone} cuando se libere una mesa para ${waitlisted.guests}.`}
+          </p>
+          <Button
+            className="mt-3 h-8 px-3 text-xs"
+            variant="outline"
+            onClick={leaveWaitlist}
+            disabled={waitlisting}
+          >
+            Salir de la lista
           </Button>
-        </>
+        </div>
       )}
+
+      <ReservationWizard
+        locations={locations}
+        createUrl={`/api/public/reservations?${orgQuery}`}
+        availabilityUrl={`/api/public/reservations/availability?${orgQuery}&`}
+        onDone={() => undefined}
+      />
+
+      {/* ¿Nada disponible? Lista de espera rápida (teléfono basta). */}
+      <details className="rounded-xl border border-dashed bg-muted/30 p-3.5">
+        <summary className="cursor-pointer text-sm font-medium">
+          ¿Nada te conviene? Anótate en la lista de espera
+        </summary>
+        {!waitlisted && (
+          <div className="mt-3 flex gap-2">
+            <input
+              value={waitlistPhone}
+              onChange={(e) => setWaitlistPhone(e.target.value)}
+              placeholder="Teléfono para avisarte"
+              inputMode="tel"
+              className="h-10 flex-1 rounded-lg border border-input bg-background px-3 text-sm"
+            />
+            <Button onClick={joinWaitlist} disabled={waitlisting}>
+              {waitlisting ? <Loader2 className="size-4 animate-spin" /> : <Clock className="size-4" />}
+              Anotarme
+            </Button>
+          </div>
+        )}
+      </details>
+
+      <p className="text-center text-xs text-muted-foreground">
+        ¿Ya tienes reservación?{" "}
+        <Link
+          href="/reservar/verificar"
+          className="font-medium text-primary underline-offset-2 hover:underline"
+        >
+          Confírmala o cancela con tu código
+        </Link>
+      </p>
     </div>
   );
 }

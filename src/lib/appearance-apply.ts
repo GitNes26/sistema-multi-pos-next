@@ -50,8 +50,8 @@ export function applyAppearanceToDom(
     css.setProperty("--primary", oklch(0.68, 0.14, hue));
     css.setProperty("--primary-foreground", "oklch(0.16 0 0)");
     css.setProperty("--ring", oklch(0.68, 0.14, hue, 0.4));
-    css.setProperty("--accent", oklch(0.3, 0.06, acc));
-    css.setProperty("--accent-foreground", oklch(0.95, 0.04, acc));
+    css.setProperty("--accent", oklch(0.3, 0.1, acc));
+    css.setProperty("--accent-foreground", oklch(0.95, 0.08, acc));
     css.setProperty("--sidebar-primary", oklch(0.68, 0.14, hue));
     css.setProperty("--sidebar-primary-foreground", "oklch(0.16 0 0)");
     css.setProperty("--sidebar-ring", oklch(0.68, 0.14, hue, 0.4));
@@ -59,8 +59,8 @@ export function applyAppearanceToDom(
     css.setProperty("--primary", oklch(0.55, 0.14, hue));
     css.setProperty("--primary-foreground", "oklch(0.99 0 0)");
     css.setProperty("--ring", oklch(0.55, 0.14, hue, 0.4));
-    css.setProperty("--accent", oklch(0.95, 0.04, acc));
-    css.setProperty("--accent-foreground", oklch(0.3, 0.08, acc));
+    css.setProperty("--accent", oklch(0.95, 0.08, acc));
+    css.setProperty("--accent-foreground", oklch(0.3, 0.1, acc));
     css.setProperty("--sidebar-primary", oklch(0.55, 0.14, hue));
     css.setProperty("--sidebar-primary-foreground", "oklch(0.99 0 0)");
     css.setProperty("--sidebar-ring", oklch(0.55, 0.14, hue, 0.4));

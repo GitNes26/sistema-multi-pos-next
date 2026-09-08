@@ -42,6 +42,14 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // KDS (pantalla de cocina) — misma auth que /pos
+  if (pathname.startsWith("/kds")) {
+    if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    if (token!.scope === "portal")
+      return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    return NextResponse.next();
+  }
+
   // Agenda de citas (services / hybrid)
   if (pathname.startsWith("/agenda")) {
     if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
@@ -104,6 +112,7 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/pos/:path*",
+    "/kds/:path*",
     "/agenda/:path*",
     "/reservaciones/:path*",
     "/admin/:path*",

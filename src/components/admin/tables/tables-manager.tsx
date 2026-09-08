@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Armchair,
   CalendarCheck2,
+  CalendarPlus,
   Check,
   Clock,
   DoorOpen,
@@ -15,6 +16,7 @@ import {
   Plus,
   QrCode,
   RefreshCcw,
+  Settings2,
   Trash2,
   Users,
 } from "lucide-react";
@@ -28,7 +30,10 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { cn } from "@/lib/utils";
 import { TableHistoryDialog } from "./table-history";
-import { FloorPlan, type PlanTable } from "./floor-plan";
+import { FloorPlanEditor } from "./floor-plan-editor";
+import type { PlanNode, PlanTable } from "./plan-elements";
+import { ReservationPolicyDialog } from "./reservation-policy-dialog";
+import { ReservationWizardDialog } from "./reservation-wizard-dialog";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -48,6 +53,8 @@ interface TableData {
   posY: number | null;
   room: { id: string; name: string } | null;
   location: { id: string; name: string } | null;
+  // Aviso de llegada: reservación confirmada próxima (la manda /api/tables).
+  upcomingReservation?: { guests: number; startsAt: string } | null;
   _count: { orders: number; sessions: number };
 }
 
@@ -98,7 +105,9 @@ const SHAPE_OPTIONS = [
 ];
 
 /** Convierte TableData → PlanTable para el editor de plano. */
-const planOf = (t: TableData): PlanTable => ({
+const planOf = (t: TableData): PlanTable & {
+  upcomingReservation?: { guests: number; startsAt: string } | null;
+} => ({
   id: t.id,
   number: t.number,
   name: t.name,
@@ -109,6 +118,7 @@ const planOf = (t: TableData): PlanTable => ({
   posX: t.posX,
   posY: t.posY,
   status: t.status,
+  upcomingReservation: t.upcomingReservation ?? null,
 });
 
 /* ------------------------------------------------------------------ */
@@ -130,6 +140,10 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
   const [historyTable, setHistoryTable] = useState<TableData | null>(null);
   const [exporting, setExporting] = useState(false);
   // Dialogo de salas
+  // Nodos del plano (entrada/salida/baños/cocina…) y diálogos de reservación.
+  const [planNodes, setPlanNodes] = useState<PlanNode[]>([]);
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [roomDialogOpen, setRoomDialogOpen] = useState(false);
   const [roomEditing, setRoomEditing] = useState<RoomData | null>(null);
   const [formRoomName, setFormRoomName] = useState("");
@@ -142,10 +156,16 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
       guests: number;
       status: string;
       position: number;
+      // Invitado (sin cuenta): nombre y teléfono van en la fila.
+      name: string | null;
+      phone: string | null;
       customer: { id: string; fullName: string | null; phone: string | null } | null;
       availableTable: { id: string; number: number; capacity: number; room: { name: string } | null } | null;
     }[]
   >([]);
+
+  // Ventana del aviso de llegada (horas de anticipación, por organización).
+  const [upcomingHours, setUpcomingHours] = useState("3");
 
   // Form
   const [formNumber, setFormNumber] = useState("");
@@ -161,18 +181,20 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
       const params = new URLSearchParams();
       if (locationFilter) params.set("locationId", locationFilter);
       if (statusFilter) params.set("status", statusFilter);
-      const [tablesRes, locsRes, roomsRes, reservationsRes, waitlistRes] = await Promise.all([
+      const [tablesRes, locsRes, roomsRes, reservationsRes, waitlistRes, nodesRes] = await Promise.all([
         fetch(`/api/tables?${params}`).then((r) => r.json()),
         fetch("/api/crud/locations?pageSize=200").then((r) => r.json()),
         fetch(`/api/tables/rooms?${params}`).then((r) => r.json()),
         fetch("/api/table-reservations").then((r) => r.json()),
         fetch("/api/table-waitlist").then((r) => r.json()),
+        fetch("/api/tables/plan-nodes").then((r) => r.json()),
       ]);
       if (tablesRes.ok) setTables(tablesRes.tables);
       if (locsRes.ok) setLocations(locsRes.rows || []);
       if (roomsRes.ok) setRooms(roomsRes.rooms);
       if (reservationsRes.ok) setReservations(reservationsRes.reservations);
       if (waitlistRes.ok) setWaitlistEntries(waitlistRes.entries);
+      if (nodesRes.ok) setPlanNodes(nodesRes.nodes);
     } catch {
       swalError("Error al cargar mesas");
     } finally {
@@ -181,6 +203,37 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
   }, [locationFilter, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Cargar la ventana configurada del aviso de llegada (una sola vez).
+  useEffect(() => {
+    fetch("/api/table-reservations/settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok && d.upcomingWindowHours) setUpcomingHours(String(d.upcomingWindowHours));
+      })
+      .catch(() => undefined);
+  }, []);
+
+  /** Guarda las horas de anticipación del aviso de llegada. */
+  const saveUpcomingHours = async () => {
+    const hours = Math.round(Number(upcomingHours));
+    if (!hours || hours < 1 || hours > 24) {
+      swalError("Horas de anticipación inválidas (1–24)");
+      return;
+    }
+    try {
+      const res = await fetch("/api/table-reservations/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ upcomingWindowHours: hours }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.ok) throw new Error(body.error || "No se pudo guardar");
+      swalToast(`Aviso de llegada: ${hours} h antes`);
+    } catch (err) {
+      swalError(err instanceof Error ? err.message : "No se pudo guardar");
+    }
+  };
 
   /**
    * Exportación masiva de QRs: abre una ventana de impresión con un QR por
@@ -486,11 +539,12 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
                     {e.availableTable ? ` · Mesa #${e.availableTable.number} libre` : " · en espera"}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {e.customer?.fullName ?? "Cliente del portal"}
-                    {e.customer?.phone ? ` · ${e.customer.phone}` : ""}
+                    {e.customer?.fullName ?? e.name ?? "Invitado"}
+                    {(e.customer?.phone ?? e.phone) ? ` · ${e.customer?.phone ?? e.phone}` : ""}
                     {e.availableTable?.room?.name ? ` · ${e.availableTable.room.name}` : ""}
                   </p>
                 </div>
+                {!e.customer && <Badge variant="outline" className="text-[10px]">Invitado</Badge>}
                 <Badge variant="outline" className={cn("text-[10px]", e.status === "available" ? "text-emerald-600" : "text-amber-600")}>
                   {e.status === "available" ? "Mesa lista" : "Esperando"}
                 </Badge>
@@ -623,14 +677,36 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
             Descargar QRs
           </Button>
         )}
+        {/* Ventana del aviso de llegada (por organización). */}
+        <div className="flex items-center gap-1.5">
+          <Clock className="size-3.5 text-muted-foreground" />
+          <input
+            type="number"
+            min={1}
+            max={24}
+            value={upcomingHours}
+            onChange={(e) => setUpcomingHours(e.target.value.replace(/\D/g, "").slice(0, 2))}
+            onBlur={saveUpcomingHours}
+            title="Horas de anticipación con las que una reservación confirmada aparece como próxima (POS/KDS)"
+            className="h-8 w-14 rounded-md border border-input bg-background px-2 text-center text-xs"
+          />
+          <span className="text-xs text-muted-foreground">h antes</span>
+        </div>
+
         <Button variant="outline" size="sm" onClick={load}>
           <RefreshCcw className="w-4 h-4 mr-1" />
           Actualizar
         </Button>
         {canManage && (
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-1" />
-            Nueva mesa
+          <Button variant="outline" size="sm" onClick={() => setPolicyOpen(true)} title="Reglas que se aplican al reservar (portal, invitado y panel)">
+            <Settings2 className="w-4 h-4 mr-1" />
+            Política de reservación
+          </Button>
+        )}
+        {canManage && (
+          <Button size="sm" onClick={() => setWizardOpen(true)}>
+            <CalendarPlus className="w-4 h-4 mr-1" />
+            Nueva reservación
           </Button>
         )}
       </div>
@@ -704,17 +780,20 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
           <Spinner />
         </div>
       ) : view === "plan" ? (
-        <FloorPlan
+        <FloorPlanEditor
           key={selectedRoomId || "no-room"}
           tables={
             selectedRoomId
               ? tables.filter((t) => t.room?.id === selectedRoomId).map(planOf)
               : tables.filter((t) => !t.room).map(planOf)
           }
+          nodes={planNodes.filter((n) => (selectedRoomId ? n.roomId === selectedRoomId : !n.roomId))}
           roomName={
             selectedRoomId ? rooms.find((r) => r.id === selectedRoomId)?.name ?? null : null
           }
           canManage={canManage}
+          locationId={locationFilter || null}
+          roomId={selectedRoomId || null}
           onChanged={load}
         />
       ) : tables.length === 0 ? (
@@ -950,6 +1029,10 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         tableNumber={historyTable?.number ?? null}
         onClose={() => setHistoryTable(null)}
       />
+
+      {/* Política de reservación + wizard a pasos */}
+      <ReservationPolicyDialog open={policyOpen} onOpenChange={setPolicyOpen} />
+      <ReservationWizardDialog open={wizardOpen} onOpenChange={setWizardOpen} locations={locations} />
     </div>
   );
 }
