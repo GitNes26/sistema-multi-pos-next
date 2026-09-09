@@ -207,11 +207,18 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         id: "productType",
         header: "Tipo",
         accessorKey: "productType",
-        cell: ({ row }) => (
-          <Badge variant={row.original.productType === "bulk" ? "outline" : "secondary"}>
-            {row.original.productType === "bulk" ? "Granel" : "Estándar"}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const t = row.original.productType
+          const label = t === "bulk" ? "Granel" : t === "custom" ? "Personalizado" : "Estándar"
+          return (
+            <Badge
+              variant={t === "bulk" ? "outline" : t === "custom" ? "default" : "secondary"}
+              className={t === "custom" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : undefined}
+            >
+              {label}
+            </Badge>
+          )
+        },
       },
       {
         id: "price",
@@ -425,7 +432,8 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                   <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(row.original)}>
                     <Pencil className="size-4" />
                   </Button>
-                  {isProducts(moduleKey) && row.original.productType === "standard" && (
+                  {(row.original.productType === "standard" ||
+                    row.original.productType === "custom") && (
                     <Button variant="ghost" size="icon" className="size-8" title="Variantes" onClick={() => setVariantsProduct(row.original)}>
                       <Layers className="size-4" />
                     </Button>

@@ -1,0 +1,38 @@
+# 10. Glosario general
+
+- **Adeudo:** dinero que un cliente debe por ventas a crédito pendientes.
+- **Agenda:** calendario de citas por empleado (negocios de servicios).
+- **A granel:** producto que se vende por peso o medida (kg, litro) en lugar de por pieza.
+- **Apartado:** unidades de renta comprometidas para unas fechas.
+- **Caja (sesión):** el turno de una caja registradora: se abre con fondo y se cierra con conteo.
+- **CEDIS:** almacén central que surte a las sucursales.
+- **Comanda:** pedido de una mesa enviado a cocina.
+- **Combo:** paquete de productos con precio especial.
+- **Constructor de producto:** panel para armar productos personalizados (tamaño + tópicos).
+- **Contrato:** documento de la renta (en preparación en el sistema).
+- **Crédito:** venta fiada con límite y fecha límite de pago.
+- **Cupón:** promoción que el cliente canjea con un código.
+- **Devolución:** retorno de productos de una venta ya hecha.
+- **KDS (pantalla de cocina):** monitor donde la cocina ve y marca comandas.
+- **Lealtad:** programa de puntos (1 punto por $1; 100 puntos = $1).
+- **Límite de crédito:** máximo que un cliente puede deber.
+- **Método de pago:** efectivo, tarjeta, monedero, puntos, crédito u otro.
+- **Monedero:** saldo a favor del cliente para pagar compras.
+- **No asistió:** cita a la que el cliente no llegó.
+- **Panel:** oficina del sistema en la computadora (reportes, catálogos, ajustes).
+- **PIN de supervisor:** código de autorización para descuentos grandes y acciones delicadas.
+- **Portal:** app del cliente (comprar, seguir pedidos, puntos, crédito).
+- **POS:** punto de venta, la caja.
+- **Promoción:** descuento automático por reglas (%, $, 2x1, precio fijo, producto gratis).
+- **Publicación:** aviso que ve el cliente en la app (novedades, horarios).
+- **QR de mesa:** código que el cliente escanea para pedir desde su mesa.
+- **Reservación (renta):** apartado de artículos por período con fecha de inicio y fin.
+- **Reserva de mesa:** apartado de mesa en restaurante con día, hora y personas.
+- **Repartidor:** quien entrega a domicilio; usa el tablero de Entregas.
+- **Revisión de inventario:** conteo físico para cuadrar con el sistema.
+- **Sala:** ambiente del local donde hay mesas (comedor, terraza).
+- **Stock mínimo:** cantidad que dispara la alerta de reposición.
+- **Tópico:** grupo de opciones de un producto personalizado (ej. "Tipo de leche").
+- **Transferencia:** movimiento de stock entre CEDIS y sucursales.
+- **Ticket:** venta en curso en la caja; también el comprobante impreso.
+- **Variante:** versión de un producto con precio/stock propio (talla, tamaño, presentación).

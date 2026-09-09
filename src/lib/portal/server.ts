@@ -107,7 +107,7 @@ export interface PortalProductOption {
 export interface PortalProduct {
   id: string;
   productId: string;
-  kind: "standard" | "bulk";
+  kind: "standard" | "bulk" | "custom";
   name: string;
   taxRate: number;
   categoryId: string | null;
@@ -177,8 +177,12 @@ export async function getStorefront(
   ]);
 
   const favoriteIds = new Set(favorites.map((f) => f.variantId));
-  const optionsEnabled =
+  // El constructor de producto es de restaurantes Y solo se abre para
+  // productos tipo "custom": un estándar (o a granel) nunca lleva tópicos.
+  const builderMode =
     orgRow?.businessMode === "food_service" || orgRow?.businessMode === "hybrid";
+  const optionsEnabled = (productType: string) =>
+    builderMode && productType === "custom";
 
   // Stock total de la org (suma de todas las sucursales activas).
   const locationIds = (
@@ -209,7 +213,7 @@ export async function getStorefront(
       entry = {
         id: p.id,
         productId: p.id,
-        kind: "standard",
+        kind: p.productType === "custom" ? "custom" : "standard",
         name: p.name,
         taxRate: toNum(p.taxRate),
         categoryId: p.categoryId,
@@ -220,7 +224,7 @@ export async function getStorefront(
         stock: 0,
         variants: [],
         bulk: null,
-        options: optionsEnabled
+        options: optionsEnabled(p.productType)
           ? (p.options ?? []).map((o) => ({
               id: o.id,
               name: o.name,

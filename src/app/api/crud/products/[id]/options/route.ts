@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardCrud, crudErrorResponse } from "../../../guard";
-import { getProductOptions, saveProductOptions } from "@/lib/crud/modules/products";
+import {
+  getProductOptions,
+  saveProductOptions,
+  type SaveOptionInput,
+} from "@/lib/crud/modules/products";
 
 // FASE 7.1 — Opciones de variante (talla, color, contenido): GET + PUT.
 
@@ -25,7 +29,7 @@ export async function PUT(req: NextRequest) {
   if ("response" in guard) return guard.response;
 
   try {
-    const body = (await req.json()) as { options?: { id?: string; name: string; values: { id?: string; value: string }[] }[] };
+    const body = (await req.json()) as { options?: SaveOptionInput[] };
     const options = await saveProductOptions(guard.organizationId, id, body.options ?? []);
     return NextResponse.json({ ok: true, rows: options });
   } catch (err) {

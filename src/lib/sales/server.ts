@@ -41,7 +41,7 @@ export interface SaleItemDetail {
   id: string;
   productName: string;
   variantName: string | null;
-  productType: "standard" | "bulk";
+  productType: "standard" | "bulk" | "custom";
   quantity: number;
   unitAbbrev: string | null;
   unitPrice: number;

@@ -115,6 +115,7 @@ enum RevisionStatus {
 enum ProductType {
   standard
   bulk
+  custom // Personalizado (food_service): variantes + tópicos configurables
 }
 
 enum LocationType {

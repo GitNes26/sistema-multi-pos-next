@@ -1,657 +1,478 @@
-
-> sistema-multi-pos-react-node-chadcnui@0.16.1.0 dev
-> next dev --turbopack
-
 [32m✔[0m [33mConsole Ninja[0m extension is connected to [33mNext.js[0m, see [36mhttps://tinyurl.com/2vt8jxzw[0m
-⚠ Console Ninja Turbopack support is a PRO feature, [33mcurrently available to community users while in preview[0m
-   ▲ Next.js 15.5.23 (Turbopack)
-   - Local:        http://localhost:59446
-   - Network:      http://192.168.252.12:59446
+   ▲ Next.js 15.5.23
+   - Local:        http://localhost:59204
+   - Network:      http://192.168.252.12:59204
    - Environments: .env.local, .env
 
  ✓ Starting...
- ✓ Compiled middleware in 253ms
- ✓ Ready in 5.9s
- ○ Compiling /reservar ...
- ✓ Compiled /reservar in 6.3s
- GET /reservar?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 7187ms
- GET /reservar?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 290ms
- GET /reservar?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 404ms
- ○ Compiling /api/auth/[...nextauth] ...
- ✓ Compiled /api/auth/[...nextauth] in 649ms
- GET /api/public/locations?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 1280ms
- ✓ Compiled /api/public/reservations/availability in 226ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 728ms
-prisma:error 
-Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2f$client$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].reservationPolicy.create()` invocation in
-C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\chunks\[root-of-the-server]__27d60662._.js:359:165
-
-  356     }
-  357 });
-  358 if (existing) return existing;
-→ 359 return __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2f$client$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].reservationPolicy.create(
-Unique constraint failed on the constraint: `reservation_policies_organizationId_key`
-[public/reservations/availability] GET Error: Error [PrismaClientKnownRequestError]: 
-Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2f$client$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].reservationPolicy.create()` invocation in
-C:\Users\Usuario\Desktop\Otros\NESTOR\NESSIK\SISTEMA-MULTI-POS\sistema-multi-pos-react-node-chadcnui\.next\server\chunks\[root-of-the-server]__27d60662._.js:359:165
-
-  356     }
-  357 });
-  358 if (existing) return existing;
-→ 359 return __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2f$client$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].reservationPolicy.create(
-Unique constraint failed on the constraint: `reservation_policies_organizationId_key`
-    at <unknown> (src\lib\tables\reservations-policy.ts:18:35)
-    at async computeAvailability (src\lib\tables\availability.ts:65:18)
-    at async GET (src\app\api\public\reservations\availability\route.ts:24:20)
-  16 |   });
-  17 |   if (existing) return existing;
-> 18 |   return prisma.reservationPolicy.create({ data: { organizationId } });
-     |                                   ^
-  19 | }
-  20 |
-  21 | export type PolicyViolation = { field: string; message: string }; {
-  code: 'P2002',
-  meta: [Object],
-  clientVersion: '6.19.3'
-}
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 500 in 1039ms
- GET /api/auth/session 200 in 2470ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&guests=2 200 in 401ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&date=2026-09-09&guests=2 200 in 517ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&date=2026-09-09&time=13:00&guests=2 200 in 482ms
- ✓ Compiled /api/public/reservations in 193ms
-[messaging] Twilio no configurado — se omite el aviso al invitado
- POST /api/public/reservations?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 652ms
- GET /api/auth/csrf 200 in 383ms
- POST /api/auth/callback/credentials 401 in 1587ms
- GET /api/auth/session 200 in 3263ms
- GET /api/auth/csrf 200 in 367ms
- POST /api/auth/callback/credentials 200 in 500ms
- GET /api/auth/session 200 in 421ms
- ✓ Compiled /api/table-reservations/policy in 173ms
- GET /api/table-reservations/policy 401 in 542ms
- ✓ Compiled /api/table-reservations/availability in 158ms
- GET /api/table-reservations/availability?guests=2 401 in 498ms
- ✓ Compiled /api/tables/plan-nodes in 160ms
- GET /api/tables/plan-nodes 401 in 523ms
- GET /api/auth/csrf 200 in 407ms
- GET /api/auth/csrf 200 in 389ms
- POST /api/auth/callback/credentials 200 in 474ms
- GET /api/table-reservations/policy 200 in 428ms
- GET /api/table-reservations/availability?guests=2 200 in 391ms
- POST /api/tables/plan-nodes 200 in 379ms
- POST /api/tables/plan-nodes 200 in 372ms
- POST /api/tables/plan-nodes 200 in 366ms
- GET /api/tables/plan-nodes 200 in 335ms
- ✓ Compiled /api/table-reservations in 328ms
- POST /api/table-reservations 200 in 695ms
- PATCH /api/table-reservations/policy 200 in 391ms
- POST /api/table-reservations 200 in 388ms
- PATCH /api/table-reservations/policy 200 in 452ms
- GET /api/auth/csrf 200 in 378ms
- POST /api/auth/callback/credentials 200 in 461ms
- GET /api/table-reservations/policy 200 in 375ms
- GET /api/table-reservations/availability?guests=2 200 in 379ms
- POST /api/tables/plan-nodes 200 in 412ms
- POST /api/tables/plan-nodes 200 in 385ms
- POST /api/tables/plan-nodes 200 in 417ms
- GET /api/tables/plan-nodes 200 in 368ms
- POST /api/table-reservations 200 in 453ms
- PATCH /api/table-reservations/policy 200 in 363ms
- POST /api/table-reservations 400 in 396ms
- PATCH /api/table-reservations/policy 200 in 393ms
+ ✓ Ready in 3.4s
  ○ Compiling /auth/login ...
- ✓ Compiled /auth/login in 1544ms
- GET /auth/login 200 in 1945ms
- GET /api/auth/csrf 200 in 369ms
- POST /api/auth/callback/credentials 200 in 497ms
- GET /api/table-reservations/policy 200 in 417ms
- GET /api/table-reservations/availability?guests=2 200 in 367ms
- POST /api/tables/plan-nodes 200 in 374ms
- POST /api/tables/plan-nodes 200 in 372ms
- POST /api/tables/plan-nodes 200 in 387ms
- GET /api/tables/plan-nodes 200 in 382ms
- POST /api/table-reservations 200 in 411ms
- PATCH /api/table-reservations/policy 200 in 397ms
- POST /api/table-reservations 400 in 385ms
- PATCH /api/table-reservations/policy 200 in 408ms
- GET /api/auth/csrf 200 in 414ms
- POST /api/auth/callback/credentials 200 in 523ms
- PATCH /api/table-reservations/policy 200 in 536ms
- POST /api/table-reservations 400 in 470ms
- POST /api/table-reservations 400 in 385ms
- PATCH /api/table-reservations/policy 200 in 423ms
- GET /api/auth/csrf 200 in 382ms
- POST /api/auth/callback/credentials 200 in 474ms
- GET /api/auth/session 200 in 384ms
- ○ Compiling /portal/reservations ...
- ✓ Compiled /portal/reservations in 1060ms
- ⨯ ReferenceError: window is not defined
-    at <unknown> (src\components\appearance\splash.tsx:31:12)
-    at Splash (src\components\appearance\splash.tsx:29:31)
-  29 |   const exitTo = React.useMemo(
-  30 |     () => ({
-> 31 |       x: -(window.innerWidth / 2 - HEADER_X),
-     |            ^
-  32 |       y: -(window.innerHeight / 2 - HEADER_Y),
-  33 |       scale: 0.5,
-  34 |     }), {
-  digest: '228558792'
-}
- GET /portal/reservations 500 in 1780ms
- ✓ Compiled /api/portal/locations in 200ms
- GET /api/portal/locations 200 in 616ms
- GET /api/table-reservations/availability?guests=2 200 in 405ms
- ✓ Compiled /api/portal/reservations in 260ms
- POST /api/portal/reservations 200 in 688ms
- GET /api/auth/csrf 200 in 469ms
- POST /api/auth/callback/credentials 200 in 522ms
- GET /api/auth/session 200 in 465ms
- GET /portal/reservations 200 in 1270ms
- GET /api/portal/locations 200 in 413ms
- GET /api/table-reservations/availability?guests=2 200 in 456ms
- POST /api/portal/reservations 200 in 502ms
- GET /api/auth/csrf 200 in 472ms
- POST /api/auth/callback/credentials 200 in 524ms
- GET /portal/reservations 200 in 421ms
- GET /api/table-reservations/availability?guests=2 200 in 419ms
- POST /api/portal/reservations 200 in 400ms
- POST /api/portal/reservations 400 in 377ms
- GET /auth/login 307 in 332ms
- ○ Compiling /admin ...
- ✓ Compiled /admin in 3.1s
- GET /admin 200 in 3817ms
- POST /api/auth/_log 200 in 587ms
- ○ Compiling /api/settings/organizations/mine ...
- GET /api/auth/session 200 in 708ms
- ✓ Compiled /api/settings/organizations/mine in 755ms
- GET /api/reports?type=dashboard 200 in 1241ms
- GET /api/settings/organizations/mine 200 in 1309ms
- GET /api/menus 200 in 1330ms
- GET /api/settings/organizations/mine 200 in 529ms
- ✓ Compiled in 951ms
+ ✓ Compiled /auth/login in 5.9s (2164 modules)
+ GET /auth/login 200 in 7069ms
+ ✓ Compiled /middleware in 302ms (220 modules)
  ○ Compiling /pos ...
- ✓ Compiled /pos in 2.8s
- GET /api/notifications/stream 200 in 718230ms
- GET /pos 200 in 7135ms
- ○ Compiling /api/pos/orders ...
- ✓ Compiled /api/pos/orders in 15.2s
- GET /api/placeholder/image?e=%F0%9F%A5%A4&c=Bebidas 200 in 14807ms
- GET /api/placeholder/image?e=%F0%9F%8D%B3&c=Desayunos 200 in 14760ms
- GET /api/placeholder/image?e=%F0%9F%A5%97&c=Entradas 200 in 14776ms
- POST /api/auth/_log 200 in 17413ms
- GET /api/auth/session 200 in 16004ms
- GET /api/pos/orders 200 in 16147ms
- GET /api/placeholder/image?e=%F0%9F%8D%BD%EF%B8%8F&c=Platos+fuertes 200 in 1237ms
- GET /api/placeholder/image?e=%F0%9F%92%A7&c=Bebidas 200 in 1210ms
- GET /api/placeholder/image?e=%F0%9F%8D%B0&c=Postres 200 in 1248ms
- GET /api/pos/orders 200 in 1315ms
- GET /api/placeholder/image?e=%E2%98%95&c=Bebidas 200 in 648ms
- GET /api/placeholder/image?e=%F0%9F%8D%8B&c=Bebidas 200 in 650ms
- GET /api/placeholder/image?e=%F0%9F%8D%BA&c=Bebidas 200 in 663ms
- GET /api/placeholder/image?e=%F0%9F%8C%AE&c=Desayunos 200 in 572ms
- GET /api/placeholder/image?e=%F0%9F%A5%9E&c=Desayunos 200 in 579ms
- GET /api/placeholder/image?e=%F0%9F%A7%80&c=Desayunos 200 in 585ms
- GET /api/placeholder/image?e=%F0%9F%A5%91&c=Entradas 200 in 619ms
- GET /api/placeholder/image?e=%F0%9F%A7%80&c=Entradas 200 in 628ms
- GET /api/placeholder/image?e=%F0%9F%8D%B2&c=Entradas 200 in 627ms
- GET /api/placeholder/image?e=%F0%9F%8D%97&c=Platos+fuertes 200 in 666ms
- GET /api/placeholder/image?e=%F0%9F%8D%96&c=Platos+fuertes 200 in 670ms
- GET /api/placeholder/image?e=%F0%9F%90%9F&c=Platos+fuertes 200 in 670ms
- GET /api/placeholder/image?e=%F0%9F%8D%94&c=Platos+fuertes 200 in 569ms
- GET /api/placeholder/image?e=%F0%9F%8D%9F&c=Platos+fuertes 200 in 575ms
- GET /api/placeholder/image?e=%F0%9F%8D%9D&c=Platos+fuertes 200 in 581ms
- GET /api/placeholder/image?e=%F0%9F%8C%AE&c=Platos+fuertes 200 in 592ms
- GET /api/placeholder/image?e=%F0%9F%8D%AE&c=Postres 200 in 599ms
- GET /api/placeholder/image?e=%F0%9F%8D%A8&c=Postres 200 in 598ms
- GET /api/pos/orders 200 in 5793ms
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error {
-  method: 'error',
-  version: '1.0.0',
-  args: [
-    {
-      ts: 1788888728998,
-      session: [Object],
-      message: 'connect ECONNREFUSED 127.0.0.1:59290',
-      stack: 'Error: connect ECONNREFUSED 127.0.0.1:59290\n' +
-        '    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1864:16)',
-      generatedStack: undefined,
-      stackTraceLimit: 20
-    }
-  ]
-}
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Error: connect ECONNREFUSED 127.0.0.1:59290
-    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:59290) {
-  errno: -4078,
-  code: 'ECONNREFUSED',
-  syscall: 'connect',
-  address: '127.0.0.1',
-  port: 59290
-}
- ⨯ unhandledRejection: Error: connect ECONNREFUSED 127.0.0.1:59290
-    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:59290) {
-  errno: -4078,
-  code: 'ECONNREFUSED',
-  syscall: 'connect',
-  address: '127.0.0.1',
-  port: 59290
-}
- ⨯ unhandledRejection:  Error: connect ECONNREFUSED 127.0.0.1:59290
-    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:59290) {
-  errno: -4078,
-  code: 'ECONNREFUSED',
-  syscall: 'connect',
-  address: '127.0.0.1',
-  port: 59290
-}
-Error: connect ECONNREFUSED 127.0.0.1:59290
-    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:59290) {
-  errno: -4078,
-  code: 'ECONNREFUSED',
-  syscall: 'connect',
-  address: '127.0.0.1',
-  port: 59290
-}
- ⨯ unhandledRejection: Error: connect ECONNREFUSED 127.0.0.1:59290
-    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:59290) {
-  errno: -4078,
-  code: 'ECONNREFUSED',
-  syscall: 'connect',
-  address: '127.0.0.1',
-  port: 59290
-}
- ⨯ unhandledRejection:  Error: connect ECONNREFUSED 127.0.0.1:59290
-    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:59290) {
-  errno: -4078,
-  code: 'ECONNREFUSED',
-  syscall: 'connect',
-  address: '127.0.0.1',
-  port: 59290
-}
-Error: connect ECONNREFUSED 127.0.0.1:59290
-    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:59290) {
-  errno: -4078,
-  code: 'ECONNREFUSED',
-  syscall: 'connect',
-  address: '127.0.0.1',
-  port: 59290
-}
- ⨯ unhandledRejection: Error: connect ECONNREFUSED 127.0.0.1:59290
-    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:59290) {
-  errno: -4078,
-  code: 'ECONNREFUSED',
-  syscall: 'connect',
-  address: '127.0.0.1',
-  port: 59290
-}
- ⨯ unhandledRejection:  Error: connect ECONNREFUSED 127.0.0.1:59290
-    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:59290) {
-  errno: -4078,
-  code: 'ECONNREFUSED',
-  syscall: 'connect',
-  address: '127.0.0.1',
-  port: 59290
-}
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error {
-  method: 'error',
-  version: '1.0.0',
-  args: [
-    {
-      ts: 1788888729005,
-      session: [Object],
-      message: 'connect ECONNREFUSED 127.0.0.1:59290',
-      stack: 'Error: connect ECONNREFUSED 127.0.0.1:59290\n' +
-        '    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1864:16)\n' +
-        '    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)',
-      generatedStack: undefined,
-      stackTraceLimit: 56
-    }
-  ]
-}
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
-Console Ninja failed to send logs, restarting the process may help; also see https://tinyurl.com/37x8b79t: logger websocket error
- GET /api/auth/session 200 in 9659ms
- GET /api/pos/orders 200 in 33037ms
- GET /api/pos/orders 200 in 18069ms
- GET /api/pos/orders 200 in 3596ms
- GET /api/auth/session 200 in 415ms
- GET /api/auth/session 200 in 387ms
- GET /api/pos/orders 200 in 349ms
- GET /api/pos/orders 200 in 452ms
- GET /api/auth/session 200 in 349ms
- GET /api/pos/orders 200 in 446ms
- GET /api/pos/orders 200 in 452ms
- GET /api/pos/orders 200 in 379ms
- GET /api/pos/orders 200 in 471ms
- GET /api/pos/orders 200 in 358ms
- GET /api/auth/session 200 in 495ms
- GET /api/pos/orders 200 in 529ms
- GET /api/pos/orders 200 in 350ms
- ✓ Compiled in 660ms
- GET /api/pos/orders 200 in 347ms
- GET /api/pos/orders 200 in 384ms
- ✓ Compiled in 351ms
- GET /api/pos/orders 200 in 342ms
- GET /reservar?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 374ms
- GET /api/public/locations?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 613ms
- GET /api/auth/session 200 in 659ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 509ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 513ms
- GET /pos 200 in 1008ms
- POST /api/auth/_log 200 in 646ms
- GET /api/auth/session 200 in 473ms
- GET /api/pos/orders 200 in 522ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 361ms
- GET /api/pos/orders 200 in 364ms
- GET /api/pos/orders 200 in 392ms
- GET /api/pos/orders 200 in 366ms
- GET /api/pos/orders 200 in 365ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 375ms
- GET /api/pos/orders 200 in 382ms
- GET /api/pos/orders 200 in 382ms
- GET /api/pos/orders 200 in 402ms
- GET /api/pos/orders 200 in 561ms
- GET /api/pos/orders 200 in 400ms
- GET /api/pos/orders 200 in 454ms
- GET /api/pos/orders 200 in 375ms
- GET /api/pos/orders 200 in 386ms
- GET /api/pos/orders 200 in 360ms
- GET /api/pos/orders 200 in 358ms
- GET /api/pos/orders 200 in 381ms
- ✓ Compiled in 437ms
- GET /api/pos/orders 200 in 377ms
- GET /reservar?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 438ms
- GET /api/public/locations?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 504ms
- GET /api/auth/session 200 in 542ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 587ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 588ms
- GET /pos 200 in 904ms
- POST /api/auth/_log 200 in 556ms
- GET /api/auth/session 200 in 517ms
- GET /api/pos/orders 200 in 563ms
- GET /api/pos/orders 200 in 364ms
- GET /api/pos/orders 200 in 373ms
- GET /api/pos/orders 200 in 350ms
- GET /api/pos/orders 200 in 353ms
- GET /api/pos/orders 200 in 366ms
- GET /api/pos/orders 200 in 340ms
- GET /api/pos/orders 200 in 335ms
- GET /api/pos/orders 200 in 344ms
- GET /api/pos/orders 200 in 381ms
- GET /api/pos/orders 200 in 348ms
- GET /api/pos/orders 200 in 389ms
- GET /api/pos/orders 200 in 365ms
- GET /api/pos/orders 200 in 340ms
- GET /api/pos/orders 200 in 384ms
- GET /api/pos/orders 200 in 362ms
- ✓ Compiled in 349ms
- GET /api/pos/orders 200 in 365ms
- ✓ Compiled in 460ms
- GET /api/pos/orders 200 in 339ms
- ✓ Compiled in 349ms
- GET /api/pos/orders 200 in 340ms
- GET /reservar?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 278ms
- GET /api/auth/session 200 in 561ms
- GET /api/public/locations?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 501ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 528ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 527ms
- GET /pos 200 in 834ms
- POST /api/auth/_log 200 in 518ms
- GET /api/auth/session 200 in 445ms
- GET /api/pos/orders 200 in 479ms
- GET /api/pos/orders 200 in 354ms
- GET /api/pos/orders 200 in 346ms
- GET /api/pos/orders 200 in 366ms
- GET /api/pos/orders 200 in 354ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 351ms
- GET /api/pos/orders 200 in 393ms
- GET /api/pos/orders 200 in 348ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 345ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 348ms
- GET /api/pos/orders 200 in 333ms
- GET /api/pos/orders 200 in 371ms
- GET /api/pos/orders 200 in 345ms
- GET /api/pos/orders 200 in 348ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 356ms
- GET /api/pos/orders 200 in 350ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 420ms
- GET /api/pos/orders 200 in 332ms
- GET /api/pos/orders 200 in 365ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 348ms
- ✓ Compiled in 565ms
- GET /api/pos/orders 200 in 362ms
- ✓ Compiled in 424ms
- GET /api/pos/orders 200 in 329ms
- GET /api/pos/orders 200 in 401ms
- GET /api/pos/orders 200 in 366ms
- GET /api/pos/orders 200 in 350ms
- GET /api/pos/orders 200 in 349ms
- GET /api/pos/orders 200 in 424ms
- GET /api/pos/orders 200 in 367ms
- GET /api/pos/orders 200 in 378ms
- GET /api/pos/orders 200 in 354ms
- GET /api/pos/orders 200 in 357ms
- GET /api/pos/orders 200 in 361ms
- GET /api/pos/orders 200 in 363ms
- GET /reservar?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 258ms
- GET /api/public/locations?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 490ms
- GET /api/auth/session 200 in 543ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 557ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 558ms
- GET /pos 200 in 857ms
- POST /api/auth/_log 200 in 674ms
- GET /api/auth/session 200 in 476ms
- GET /api/pos/orders 200 in 509ms
- GET /api/pos/orders 200 in 349ms
- GET /api/pos/orders 200 in 364ms
- GET /api/pos/orders 200 in 361ms
- GET /api/pos/orders 200 in 355ms
- GET /api/pos/orders 200 in 356ms
- GET /api/pos/orders 200 in 355ms
- GET /api/pos/orders 200 in 356ms
- GET /api/pos/orders 200 in 382ms
- GET /api/pos/orders 200 in 361ms
- GET /api/pos/orders 200 in 341ms
- GET /pos 200 in 424ms
- POST /api/auth/_log 200 in 636ms
- GET /api/auth/session 200 in 402ms
- GET /api/pos/orders 200 in 434ms
- GET /api/pos/orders 200 in 337ms
- GET /reservar?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 245ms
- GET /api/public/locations?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 449ms
- GET /api/auth/session 200 in 497ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 489ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 491ms
- GET /pos 200 in 381ms
- POST /api/auth/_log 200 in 659ms
- GET /api/auth/session 200 in 396ms
- GET /api/pos/orders 200 in 424ms
- GET /api/pos/orders 200 in 332ms
- GET /api/pos/orders 200 in 383ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 226ms
- GET /reservar?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 277ms
- GET /api/public/locations?org=cmtqilyxc01x4yjpg5kx8wmet 200 in 536ms
- GET /api/auth/session 200 in 600ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 455ms
- GET /api/public/reservations/availability?org=cmtqilyxc01x4yjpg5kx8wmet&&locationId=cmtqilyyo01y6yjpg3be59pgu&guests=2 200 in 455ms
- GET /pos 200 in 377ms
- POST /api/auth/_log 200 in 572ms
- GET /api/auth/session 200 in 430ms
- GET /api/pos/orders 200 in 472ms
- GET /api/pos/orders 200 in 365ms
- GET /api/pos/orders 200 in 367ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 348ms
- GET /api/pos/orders 200 in 396ms
- GET /api/pos/orders 200 in 376ms
- GET /api/pos/orders 200 in 383ms
- GET /api/pos/orders 200 in 457ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 394ms
- GET /api/pos/orders 200 in 358ms
- GET /api/pos/orders 200 in 414ms
- GET /api/pos/orders 200 in 366ms
- GET /api/pos/orders 200 in 393ms
- GET /api/pos/orders 200 in 383ms
- GET /api/pos/orders 200 in 375ms
- GET /api/pos/orders 200 in 348ms
- GET /api/pos/orders 200 in 406ms
- GET /api/pos/orders 200 in 352ms
- GET /api/pos/orders 200 in 404ms
- GET /api/pos/orders 200 in 365ms
- GET /api/pos/orders 200 in 398ms
- GET /api/pos/orders 200 in 489ms
- GET /api/pos/orders 200 in 384ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 385ms
- GET /api/pos/orders 200 in 366ms
- GET /api/pos/orders 200 in 359ms
- GET /api/pos/orders 200 in 348ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 350ms
- GET /api/pos/orders 200 in 380ms
- GET /api/pos/orders 200 in 353ms
- GET /api/pos/orders 200 in 390ms
- GET /api/pos/orders 200 in 350ms
- GET /api/pos/orders 200 in 380ms
- GET /api/pos/orders 200 in 348ms
- GET /api/pos/orders 200 in 469ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 379ms
- GET /api/pos/orders 200 in 377ms
- GET /api/pos/orders 200 in 380ms
- GET /api/pos/orders 200 in 360ms
- GET /api/pos/orders 200 in 380ms
- GET /api/pos/orders 200 in 349ms
- GET /api/pos/orders 200 in 378ms
- GET /api/pos/orders 200 in 333ms
- GET /api/pos/orders 200 in 380ms
- GET /api/pos/orders 200 in 337ms
- GET /api/pos/orders 200 in 393ms
- GET /api/pos/orders 200 in 358ms
- GET /api/pos/orders 200 in 427ms
- GET /api/pos/orders 200 in 346ms
- GET /api/pos/orders 200 in 380ms
- GET /api/pos/orders 200 in 349ms
- GET /api/pos/orders 200 in 378ms
- GET /api/pos/orders 200 in 347ms
- GET /api/pos/orders 200 in 381ms
- GET /api/pos/orders 200 in 364ms
- GET /api/pos/orders 200 in 364ms
- GET /api/pos/orders 200 in 364ms
- GET /api/pos/orders 200 in 374ms
- GET /api/pos/orders 200 in 350ms
- GET /api/pos/orders 200 in 369ms
- GET /api/pos/orders 200 in 334ms
- GET /api/pos/orders 200 in 364ms
- GET /api/pos/orders 200 in 366ms
- GET /api/pos/orders 200 in 541ms
- GET /api/pos/orders 200 in 366ms
- GET /api/pos/orders 200 in 375ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 364ms
- GET /api/pos/orders 200 in 343ms
- GET /api/pos/orders 200 in 382ms
- GET /api/pos/orders 200 in 350ms
- GET /api/pos/orders 200 in 377ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 360ms
- GET /api/pos/orders 200 in 332ms
- GET /api/pos/orders 200 in 382ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 381ms
- GET /api/pos/orders 200 in 366ms
- GET /api/pos/orders 200 in 395ms
- GET /api/pos/orders 200 in 343ms
- GET /api/pos/orders 200 in 369ms
- GET /api/pos/orders 200 in 363ms
- GET /api/pos/orders 200 in 369ms
- GET /api/pos/orders 200 in 355ms
- GET /api/pos/orders 200 in 361ms
- GET /api/pos/orders 200 in 355ms
- GET /api/pos/orders 200 in 382ms
- GET /api/pos/orders 200 in 353ms
- GET /api/pos/orders 200 in 378ms
- GET /api/pos/orders 200 in 356ms
- GET /api/pos/orders 200 in 383ms
- GET /api/pos/orders 200 in 368ms
- GET /api/pos/orders 200 in 368ms
- GET /api/pos/orders 200 in 343ms
- GET /api/pos/orders 200 in 373ms
- GET /api/pos/orders 200 in 347ms
- GET /api/pos/orders 200 in 378ms
- GET /api/pos/orders 200 in 355ms
- GET /api/pos/orders 200 in 361ms
- GET /api/pos/orders 200 in 347ms
- ✓ Compiled in 422ms
- ✓ Compiled /pos in 72ms
- GET /pos 200 in 420ms
- GET /api/pos/orders 200 in 603ms
- GET /api/pos/orders 200 in 340ms
- GET /api/pos/orders 200 in 457ms
- GET /api/pos/orders 200 in 354ms
- GET /api/pos/orders 200 in 369ms
- ✓ Compiled in 405ms
- ✓ Compiled in 398ms
- GET /api/pos/orders 200 in 408ms
- GET /api/pos/orders 200 in 354ms
- GET /api/pos/orders 200 in 376ms
- GET /api/pos/orders 200 in 363ms
- ✓ Compiled in 377ms
- GET /api/pos/orders 200 in 361ms
- GET /api/pos/orders 200 in 361ms
- GET /api/pos/orders 200 in 360ms
- GET /api/pos/orders 200 in 344ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 374ms
- GET /api/pos/orders 200 in 380ms
- GET /api/pos/orders 200 in 376ms
- GET /api/pos/orders 200 in 391ms
- GET /api/pos/orders 200 in 396ms
- GET /api/pos/orders 200 in 373ms
- GET /api/pos/orders 200 in 348ms
- GET /api/pos/orders 200 in 362ms
- GET /api/pos/orders 200 in 391ms
- GET /api/pos/orders 200 in 351ms
- GET /api/pos/orders 200 in 360ms
- GET /api/pos/orders 200 in 376ms
- GET /api/pos/orders 200 in 354ms
- GET /api/pos/orders 200 in 373ms
- GET /api/pos/orders 200 in 357ms
- GET /api/pos/orders 200 in 360ms
- GET /pos 200 in 1156ms
- POST /api/auth/_log 200 in 596ms
- GET /api/auth/session 200 in 410ms
- GET /api/pos/orders 200 in 449ms
- GET /api/pos/orders 200 in 360ms
- GET /api/pos/orders 200 in 361ms
- GET /api/pos/orders 200 in 351ms
- GET /api/pos/orders 200 in 345ms
- GET /api/pos/orders 200 in 504ms
- GET /api/pos/orders 200 in 347ms
- GET /api/pos/orders 200 in 445ms
+ ✓ Compiled /pos in 4.8s (4658 modules)
+ GET /pos 200 in 6639ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 1589ms (4670 modules)
+ GET /api/pos/orders 200 in 1974ms
+ GET /api/auth/session 200 in 2394ms
+ GET /api/pos/orders 200 in 65ms
+ GET /api/pos/orders 200 in 84ms
+ GET /api/pos/orders 200 in 101ms
+ GET /api/pos/orders 200 in 94ms
+ GET /api/pos/orders 200 in 94ms
+ GET /api/pos/orders 200 in 85ms
+ GET /api/pos/orders 200 in 83ms
+ GET /api/pos/orders 200 in 94ms
+ GET /api/pos/orders 200 in 79ms
+ GET /api/pos/orders 200 in 90ms
+ GET /api/pos/orders 200 in 85ms
+ GET /api/pos/orders 200 in 101ms
+ GET /pos 200 in 907ms
+ POST /api/auth/_log 200 in 223ms
+ GET /api/pos/orders 200 in 144ms
+ GET /api/auth/session 200 in 109ms
+ GET /api/pos/orders 200 in 89ms
+ GET /api/pos/orders 200 in 82ms
+ GET /api/pos/orders 200 in 92ms
+ GET /api/pos/orders 200 in 91ms
+ GET /api/pos/orders 200 in 66ms
+ GET /api/pos/orders 200 in 96ms
+ GET /api/auth/csrf 200 in 104ms
+ POST /api/auth/signout 200 in 87ms
+ GET /auth/login 200 in 244ms
+ GET /api/auth/session 200 in 108ms
+ GET /api/auth/providers 200 in 91ms
+ GET /api/auth/csrf 200 in 87ms
+ POST /api/auth/callback/credentials 200 in 181ms
+ GET /api/auth/session 200 in 71ms
+ ○ Compiling / ...
+ ✓ Compiled / in 4.8s (4756 modules)
+ GET / 200 in 5478ms
+ GET /api/auth/session 200 in 187ms
+ ○ Compiling /portal/auth/login ...
+ ✓ Compiled /portal/auth/login in 1265ms (4747 modules)
+ GET /portal/auth/login 307 in 1770ms
+ ○ Compiling /portal ...
+ ✓ Compiled /portal in 1945ms (4873 modules)
+ GET /portal 200 in 2447ms
+ POST /api/auth/_log 200 in 91ms
+ ○ Compiling /api/portal/home ...
+ ✓ Compiled /api/portal/home in 1671ms (4882 modules)
+ GET /api/auth/session 200 in 1849ms
+ GET /api/portal/notifications 200 in 1901ms
+[portal/home] org=cmtqilx8a00bwyjpgvl50toec promos=10 orders=2 products=8 pubs=3 combos=4
+ GET /api/portal/home 200 in 1922ms
+ ○ Compiling /api/placeholder/image ...
+ ✓ Compiled /api/placeholder/image in 982ms (4885 modules)
+ GET /api/placeholder/image?e=%F0%9F%AA%A5&c=Salud+y+Cuidado 200 in 1112ms
+ GET /api/placeholder/image?e=%F0%9F%A7%BC&c=Salud+y+Cuidado 200 in 1111ms
+ GET /api/placeholder/image?e=%F0%9F%A6%B7&c=Salud+y+Cuidado 200 in 1111ms
+ GET /api/placeholder/image?e=%F0%9F%AA%A2&c=Ropa 200 in 1111ms
+ GET /api/placeholder/image?e=%F0%9F%A7%A2&c=Ropa 200 in 1111ms
+ GET /api/placeholder/image?e=%F0%9F%A7%B4&c=Salud+y+Cuidado 200 in 1113ms
+ GET /api/placeholder/image?e=%F0%9F%91%96&c=Ropa 200 in 59ms
+ ○ Compiling /portal/store ...
+ ✓ Compiled /portal/store in 1232ms (4909 modules)
+ GET /portal/store 200 in 1698ms
+ POST /api/auth/_log 200 in 86ms
+ GET /api/portal/notifications 200 in 239ms
+ ○ Compiling /api/portal/favorites ...
+ ✓ Compiled /api/portal/favorites in 1548ms (4913 modules)
+ GET /api/auth/session 200 in 1821ms
+ GET /api/portal/favorites 200 in 1871ms
+ GET /api/portal/storefront 200 in 1895ms
+ GET /api/placeholder/image?e=%F0%9F%AB%92&c=Abarrotes 200 in 100ms
+ GET /api/placeholder/image?e=%F0%9F%8D%9A&c=Abarrotes 200 in 155ms
+ GET /api/placeholder/image?e=%F0%9F%90%9F&c=Abarrotes 200 in 155ms
+ GET /api/placeholder/image?e=%F0%9F%AB%98&c=Abarrotes 200 in 154ms
+ GET /api/placeholder/image?e=%F0%9F%8D%9D&c=Abarrotes 200 in 153ms
+ GET /api/placeholder/image?e=%F0%9F%A7%83&c=Bebidas 200 in 148ms
+ GET /api/placeholder/image?e=%F0%9F%A7%8B&c=Bebidas 200 in 125ms
+ GET /api/placeholder/image?e=%F0%9F%8D%96&c=Carnes+y+Pescados 200 in 113ms
+ GET /api/placeholder/image?e=%F0%9F%8D%97&c=Carnes+y+Pescados 200 in 113ms
+ GET /api/placeholder/image?e=%F0%9F%A5%A9&c=Carnes+y+Pescados 200 in 113ms
+ GET /api/placeholder/image?e=%F0%9F%90%A0&c=Carnes+y+Pescados 200 in 112ms
+ GET /api/placeholder/image?e=%F0%9F%A5%93&c=Carnes+y+Pescados 200 in 167ms
+ GET /api/placeholder/image?e=%F0%9F%8E%A7&c=Electr%C3%B3nica 200 in 139ms
+ GET /api/placeholder/image?e=%F0%9F%94%8B&c=Electr%C3%B3nica 200 in 176ms
+ GET /api/placeholder/image?e=%F0%9F%94%8A&c=Electr%C3%B3nica 200 in 169ms
+ GET /api/placeholder/image?e=%F0%9F%94%8C&c=Electr%C3%B3nica 200 in 169ms
+ GET /api/placeholder/image?e=%F0%9F%92%BE&c=Electr%C3%B3nica 200 in 169ms
+ GET /api/placeholder/image?e=%F0%9F%A7%85&c=Frutas+y+Verduras 200 in 158ms
+ GET /api/placeholder/image?e=%F0%9F%8D%8E&c=Frutas+y+Verduras 200 in 164ms
+ GET /api/placeholder/image?e=%F0%9F%A5%94&c=Frutas+y+Verduras 200 in 107ms
+ GET /api/placeholder/image?e=%F0%9F%8D%8C&c=Frutas+y+Verduras 200 in 106ms
+ GET /api/portal/notifications 200 in 70ms
+ GET /api/portal/notifications 200 in 71ms
+ GET /api/portal/notifications 200 in 78ms
+ GET /api/portal/notifications 200 in 71ms
+ GET /api/portal/notifications 200 in 82ms
+ GET /api/portal/notifications 200 in 84ms
+ GET /api/portal/notifications 200 in 81ms
+ GET /api/portal/notifications 200 in 87ms
+ GET /api/portal/notifications 200 in 90ms
+ GET /api/portal/notifications 200 in 76ms
+ GET /api/portal/notifications 200 in 86ms
+ GET /api/portal/notifications 200 in 87ms
+ ○ Compiling /portal/profile ...
+ ✓ Compiled /portal/profile in 5.4s (4939 modules)
+ GET /portal/profile 200 in 6234ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 688ms (2765 modules)
+ POST /api/auth/_log 200 in 906ms
+ GET /api/portal/notifications 200 in 192ms
+ ○ Compiling /api/portal/loyalty ...
+ ✓ Compiled /api/portal/loyalty in 2s (4940 modules)
+ GET /api/portal/profile 200 in 2358ms
+ GET /api/auth/session 200 in 2310ms
+ GET /api/portal/favorites 200 in 2334ms
+ GET /api/portal/orders 200 in 2361ms
+ GET /api/portal/loyalty 200 in 2358ms
+ GET /api/auth/csrf 200 in 105ms
+ POST /api/auth/signout 200 in 104ms
+ ○ Compiling /portal/auth/login ...
+ ✓ Compiled /portal/auth/login in 847ms (1621 modules)
+ GET /portal/auth/login 200 in 1392ms
+ GET /api/auth/session 200 in 121ms
+ ○ Compiling /api/auth/org-hint ...
+ ✓ Compiled /api/auth/org-hint in 1158ms (3708 modules)
+ POST /api/auth/org-hint 200 in 1271ms
+ GET /api/auth/providers 200 in 260ms
+ GET /api/auth/csrf 200 in 210ms
+ POST /api/auth/callback/credentials 200 in 276ms
+ GET /api/auth/session 200 in 158ms
+ GET /portal 200 in 906ms
+ ○ Compiling /api/portal/home ...
+ ✓ Compiled /api/portal/home in 1044ms (1548 modules)
+ ✓ Compiled (1613 modules)
+ GET /api/auth/session 200 in 3480ms
+ GET /api/portal/notifications 200 in 3533ms
+[portal/home] org=cmtqilyxc01x4yjpg5kx8wmet promos=0 orders=0 products=8 pubs=2 combos=4
+ GET /api/portal/home 200 in 3520ms
+ GET /api/portal/notifications 200 in 77ms
+ GET /portal/store 200 in 576ms
+ POST /api/auth/_log 200 in 101ms
+ GET /api/portal/notifications 200 in 211ms
+ ○ Compiling /api/portal/favorites ...
+ ✓ Compiled /api/portal/favorites in 1114ms (1613 modules)
+ ✓ Compiled (1615 modules)
+ GET /api/auth/session 200 in 1936ms
+ GET /api/portal/favorites 200 in 1968ms
+ GET /api/portal/storefront 200 in 2004ms
+ GET /api/portal/notifications 200 in 84ms
+ GET /api/portal/notifications 200 in 80ms
+ GET /api/portal/notifications 200 in 77ms
+ GET /api/portal/notifications 200 in 81ms
+ GET /api/portal/notifications 200 in 83ms
+ GET /api/portal/notifications 200 in 99ms
+ ○ Compiling /portal/store/[id] ...
+ ✓ Compiled /portal/store/[id] in 5.7s (3719 modules)
+ GET /portal/store/cmtu9wgy0000zyjisap3fmbt7 200 in 7260ms
+ GET /api/portal/notifications 200 in 114ms
+ GET /api/portal/notifications 200 in 101ms
+ GET /api/portal/notifications 200 in 91ms
+ GET /api/portal/notifications 200 in 102ms
+ GET /api/portal/notifications 200 in 86ms
+ ✓ Compiled in 2.6s (3656 modules)
+ GET /portal/store/cmtu9wgy0000zyjisap3fmbt7 200 in 323ms
+ GET /api/portal/notifications 200 in 96ms
+ GET /api/portal/notifications 200 in 97ms
+ GET /portal/store 200 in 557ms
+ ✓ Compiled /api/auth/[...nextauth] in 458ms (1478 modules)
+ POST /api/auth/_log 200 in 599ms
+ GET /api/portal/notifications 200 in 185ms
+ ○ Compiling /api/portal/favorites ...
+ ✓ Compiled /api/portal/favorites in 524ms (1543 modules)
+ ✓ Compiled (1545 modules)
+ GET /api/auth/session 200 in 1560ms
+ GET /api/portal/favorites 200 in 1603ms
+ GET /api/portal/storefront 200 in 1626ms
+ GET /api/portal/notifications 200 in 98ms
+ GET /api/portal/notifications 200 in 76ms
+ GET /api/portal/notifications 200 in 79ms
+ GET /api/portal/notifications 200 in 75ms
+ GET /api/portal/notifications 200 in 85ms
+ GET /api/portal/notifications 200 in 73ms
+ GET /api/portal/notifications 200 in 95ms
+ GET /api/portal/notifications 200 in 94ms
+ ○ Compiling /_not-found ...
+ GET /api/portal/notifications 200 in 135ms
+ ✓ Compiled /_not-found in 5.8s (3661 modules)
+ GET /portal/cart 404 in 6221ms
+ ✓ Compiled /api/auth/[...nextauth] in 389ms (1479 modules)
+ POST /api/auth/_log 200 in 571ms
+ GET /api/auth/session 200 in 86ms
+ GET /portal/store 200 in 612ms
+ POST /api/auth/_log 200 in 82ms
+ ○ Compiling /api/portal/favorites ...
+ ✓ Compiled /api/portal/favorites in 1463ms (1543 modules)
+ ✓ Compiled (1545 modules)
+ GET /api/portal/notifications 200 in 2151ms
+ GET /api/auth/session 200 in 2188ms
+ GET /api/portal/favorites 200 in 2221ms
+ GET /api/portal/storefront 200 in 2239ms
+ GET /api/portal/notifications 200 in 73ms
+ GET /api/portal/notifications 200 in 79ms
+ GET /api/portal/notifications 200 in 79ms
+ GET /api/portal/notifications 200 in 75ms
+ GET /api/portal/notifications 200 in 70ms
+ GET /api/portal/notifications 200 in 72ms
+ GET /api/portal/notifications 200 in 92ms
+ GET /api/portal/notifications 200 in 66ms
+ GET /api/portal/notifications 200 in 74ms
+ GET /api/portal/notifications 200 in 77ms
+ GET /api/portal/notifications 200 in 94ms
+ GET /api/portal/notifications 200 in 78ms
+ GET /api/portal/notifications 200 in 80ms
+ GET /api/portal/notifications 200 in 73ms
+ GET /api/portal/notifications 200 in 76ms
+ GET /api/portal/notifications 200 in 68ms
+ ✓ Compiled in 3.7s (3656 modules)
+ GET /portal/store 200 in 196ms
+ GET /api/portal/notifications 200 in 84ms
+ GET /api/portal/notifications 200 in 65ms
+ GET /api/portal/notifications 200 in 71ms
+ GET /portal/store 200 in 491ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 863ms (1478 modules)
+ POST /api/auth/_log 200 in 983ms
+ GET /api/portal/notifications 200 in 182ms
+ ○ Compiling /api/portal/favorites ...
+ ✓ Compiled /api/portal/favorites in 591ms (1543 modules)
+ ✓ Compiled (1545 modules)
+ GET /api/auth/session 200 in 1234ms
+ GET /api/portal/favorites 200 in 1286ms
+ GET /api/portal/storefront 200 in 1309ms
+ GET /api/portal/notifications 200 in 76ms
+ GET /api/portal/notifications 200 in 76ms
+ GET /api/portal/notifications 200 in 87ms
+ GET /api/portal/notifications 200 in 69ms
+ GET /api/portal/notifications 200 in 73ms
+ GET /api/portal/notifications 200 in 86ms
+ GET /api/portal/notifications 200 in 69ms
+ GET /api/portal/notifications 200 in 72ms
+ ✓ Compiled in 3.2s (3656 modules)
+ GET /portal/store 200 in 371ms
+ GET /api/portal/notifications 200 in 80ms
+ GET /api/portal/notifications 200 in 69ms
+ GET /api/portal/notifications 200 in 192ms
+ GET /portal/store 200 in 483ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 895ms (1478 modules)
+ POST /api/auth/_log 200 in 1025ms
+ GET /api/portal/notifications 200 in 190ms
+ ✓ Compiled /api/portal/favorites in 494ms (1543 modules)
+ ✓ Compiled (1545 modules)
+ GET /api/auth/session 200 in 1111ms
+ GET /api/portal/favorites 200 in 1134ms
+ GET /api/portal/storefront 200 in 1154ms
+ GET /api/portal/notifications 200 in 65ms
+ GET /api/portal/notifications 200 in 84ms
+ GET /api/portal/notifications 200 in 72ms
+ GET /api/portal/notifications 200 in 65ms
+ GET /api/portal/notifications 200 in 74ms
+ GET /api/portal/notifications 200 in 77ms
+ GET /api/portal/notifications 200 in 83ms
+ GET /api/portal/notifications 200 in 90ms
+ GET /api/portal/notifications 200 in 73ms
+ GET /api/portal/notifications 200 in 86ms
+ GET /api/portal/notifications 200 in 85ms
+ GET /api/portal/notifications 200 in 61ms
+ GET /api/portal/notifications 200 in 89ms
+ GET /api/portal/notifications 200 in 74ms
+ GET /api/portal/notifications 200 in 90ms
+ GET /api/portal/notifications 200 in 78ms
+ GET /api/portal/notifications 200 in 85ms
+ GET /api/portal/notifications 200 in 83ms
+ GET /api/portal/notifications 200 in 85ms
+ GET /api/portal/notifications 200 in 78ms
+ GET /api/portal/notifications 200 in 90ms
+ GET /api/portal/notifications 200 in 72ms
+ GET /api/portal/notifications 200 in 138ms
+ GET /api/portal/notifications 200 in 94ms
+ GET /api/portal/notifications 200 in 71ms
+ GET /api/portal/notifications 200 in 83ms
+ ✓ Compiled in 2.7s (3656 modules)
+ GET /portal/store 200 in 187ms
+ GET /api/portal/notifications 200 in 97ms
+ GET /api/portal/notifications 200 in 285ms
+ GET /api/portal/notifications 200 in 86ms
+ GET /api/portal/notifications 200 in 125ms
+ GET /api/portal/notifications 200 in 92ms
+ GET /api/portal/notifications 200 in 95ms
+ GET /api/portal/notifications 200 in 97ms
+ GET /api/portal/notifications 200 in 94ms
+ GET /api/portal/notifications 200 in 89ms
+ GET /api/portal/notifications 200 in 90ms
+ GET /api/portal/notifications 200 in 96ms
+ GET /api/portal/notifications 200 in 80ms
+ GET /api/portal/notifications 200 in 97ms
+ GET /api/portal/notifications 200 in 102ms
+ GET /api/portal/notifications 200 in 87ms
+ GET /api/portal/notifications 200 in 85ms
+ GET /api/portal/notifications 200 in 88ms
+ GET /api/portal/notifications 200 in 95ms
+ ✓ Compiled in 2.3s (3656 modules)
+ GET /portal/store 200 in 218ms
+ ✓ Compiled /api/portal/favorites in 1375ms (3656 modules)
+ ✓ Compiled in 0ms (1543 modules)
+ GET /api/portal/favorites 200 in 2206ms
+ GET /portal/store 200 in 1439ms
+ GET /api/portal/storefront 200 in 2236ms
+ ✓ Compiled in 1488ms (3723 modules)
+ GET /portal/store 200 in 159ms
+ GET /api/portal/notifications 200 in 104ms
+ ✓ Compiled in 1631ms (3723 modules)
+ GET /portal/store 200 in 155ms
+ GET /api/portal/notifications 200 in 1545ms
+ ✓ Compiled in 3.6s (3723 modules)
+ GET /portal/store 200 in 156ms
+ ✓ Compiled in 1526ms (3723 modules)
+ GET /portal/store 200 in 151ms
+ GET /api/portal/notifications 200 in 86ms
+ ✓ Compiled in 1565ms (3656 modules)
+ GET /portal/store 200 in 246ms
+ ✓ Compiled in 1599ms (3656 modules)
+ GET /portal/store 200 in 244ms
+ GET /api/portal/notifications 200 in 97ms
+ ✓ Compiled in 2.2s (3656 modules)
+ GET /portal/store 200 in 210ms
+ ✓ Compiled in 1215ms (3656 modules)
+ GET /portal/store 200 in 296ms
+ GET /api/portal/notifications 200 in 100ms
+ ✓ Compiled in 1907ms (3656 modules)
+ GET /portal/store 200 in 191ms
+ ✓ Compiled in 1142ms (3656 modules)
+ GET /portal/store 200 in 174ms
+ GET /api/portal/notifications 200 in 168ms
+ GET /api/portal/notifications 200 in 99ms
+ GET /api/portal/notifications 200 in 128ms
+ GET /api/portal/notifications 200 in 100ms
+ GET /api/portal/notifications 200 in 99ms
+ GET /api/portal/notifications 200 in 82ms
+ GET /api/portal/notifications 200 in 89ms
+ GET /api/portal/notifications 200 in 91ms
+ GET /api/portal/notifications 200 in 330ms
+ GET /api/portal/notifications 200 in 105ms
+ GET /api/portal/notifications 200 in 90ms
+ GET /api/portal/notifications 200 in 98ms
+ GET /api/portal/notifications 200 in 100ms
+ GET /api/portal/notifications 200 in 94ms
+ GET /api/portal/notifications 200 in 76ms
+ GET /api/portal/notifications 200 in 87ms
+ GET /api/portal/notifications 200 in 98ms
+ GET /api/portal/notifications 200 in 80ms
+ GET /api/portal/notifications 200 in 99ms
+ GET /api/portal/notifications 200 in 96ms
+ GET /api/portal/notifications 200 in 100ms
+ GET /api/portal/notifications 200 in 100ms
+ GET /api/portal/notifications 200 in 111ms
+ GET /api/portal/notifications 200 in 86ms
+ GET /api/portal/notifications 200 in 122ms
+ GET /api/portal/notifications 200 in 80ms
+ GET /api/portal/notifications 200 in 112ms
+ GET /api/portal/notifications 200 in 79ms
+ GET /api/portal/notifications 200 in 98ms
+ ✓ Compiled in 1676ms (2180 modules)
+ GET /portal/store 200 in 125ms
+ GET /api/portal/notifications 200 in 78ms
+ GET /api/portal/notifications 200 in 74ms
+ ✓ Compiled in 609ms (2180 modules)
+ GET /portal/store 200 in 99ms
+ GET /api/portal/notifications 200 in 81ms
+ GET /api/portal/notifications 200 in 89ms
+ ✓ Compiled in 599ms (2180 modules)
+ GET /portal/store 200 in 1115ms
+ ✓ Compiled in 1245ms (2180 modules)
+ GET /portal/store 200 in 114ms
+ GET /api/portal/notifications 200 in 83ms
+ GET /api/portal/notifications 200 in 79ms
+ GET /api/portal/notifications 200 in 105ms
+ ✓ Compiled in 1577ms (2180 modules)
+ GET /portal/store 200 in 688ms
+ ✓ Compiled in 772ms (2180 modules)
+ GET /portal/store 200 in 115ms
+ GET /api/portal/notifications 200 in 95ms
+ GET /api/portal/notifications 200 in 86ms
+ GET /api/portal/notifications 200 in 103ms
+ ✓ Compiled in 1453ms (2180 modules)
+ GET /portal/store 200 in 595ms
+ ✓ Compiled in 670ms (2180 modules)
+ GET /portal/store 200 in 91ms
+ GET /api/portal/notifications 200 in 99ms
+ ✓ Compiled in 544ms (2180 modules)
+ GET /portal/store 200 in 884ms
+ ✓ Compiled in 1179ms (2180 modules)
+ GET /portal/store 200 in 114ms
+ GET /api/portal/notifications 200 in 60ms
+ ✓ Compiled in 580ms (2180 modules)
+ GET /portal/store 200 in 538ms
+ ✓ Compiled in 607ms (2180 modules)
+ GET /portal/store 200 in 107ms
+ GET /api/portal/notifications 200 in 82ms
+ ✓ Compiled in 546ms (2180 modules)
+ GET /portal/store 200 in 1137ms
+ ✓ Compiled in 1201ms (2180 modules)
+ GET /portal/store 200 in 121ms
+ GET /api/portal/notifications 200 in 111ms
+ ✓ Compiled in 902ms (2180 modules)
+ GET /portal/store 200 in 652ms
+ ✓ Compiled in 731ms (2180 modules)
+ GET /portal/store 200 in 129ms
+ GET /api/portal/notifications 200 in 97ms
+ GET /api/portal/notifications 200 in 127ms
+ ✓ Compiled in 1207ms (2180 modules)
+ GET /portal/store 200 in 588ms
+ ✓ Compiled in 662ms (2180 modules)
+ GET /portal/store 200 in 108ms
+ GET /api/portal/notifications 200 in 93ms
+ GET /api/portal/notifications 200 in 87ms
+ ✓ Compiled in 1323ms (2180 modules)
+ GET /portal/store 200 in 97ms
+ GET /api/portal/notifications 200 in 105ms
+ ✓ Compiled in 597ms (2180 modules)
+ GET /portal/store 200 in 307ms
+ ✓ Compiled in 598ms (2180 modules)
+ GET /portal/store 200 in 98ms
+ GET /api/portal/notifications 200 in 77ms
+ GET /api/portal/notifications 200 in 95ms
+ GET /api/portal/notifications 200 in 96ms
+ GET /api/portal/notifications 200 in 64ms
+ GET /api/portal/notifications 200 in 84ms
+ GET /api/portal/notifications 200 in 76ms
+ ✓ Compiled in 1323ms (2180 modules)
+ GET /portal/store 200 in 105ms
+ GET /api/portal/notifications 200 in 65ms
+ ✓ Compiled in 618ms (2180 modules)
+ GET /portal/store 200 in 93ms
+ GET /api/portal/notifications 200 in 67ms
+ ✓ Compiled in 663ms (2180 modules)
+ GET /portal/store 200 in 114ms
+ GET /api/portal/notifications 200 in 104ms
+ GET /api/portal/notifications 200 in 102ms
+ ✓ Compiled in 1225ms (2180 modules)
+ GET /portal/store 200 in 113ms
+ GET /api/portal/notifications 200 in 76ms
+ GET /api/portal/notifications 200 in 85ms
+ GET /api/portal/notifications 200 in 105ms
+ ✓ Compiled in 1217ms (2180 modules)
+ GET /portal/store 200 in 99ms
+ GET /api/portal/notifications 200 in 83ms
+ GET /api/portal/notifications 200 in 80ms
+ ✓ Compiled in 1485ms (2180 modules)
+ GET /portal/store 200 in 107ms
+ GET /api/portal/notifications 200 in 88ms
+ GET /api/portal/notifications 200 in 95ms
+ GET /api/portal/notifications 200 in 114ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 1641ms (1478 modules)
+ GET /api/auth/session 200 in 2300ms
+ GET /api/portal/notifications 200 in 102ms
+ ✓ Compiled in 1006ms (2180 modules)
+ GET /portal/store 200 in 477ms
+ ✓ Compiled in 827ms (2180 modules)
+ GET /portal/store 200 in 106ms
+ GET /api/portal/notifications 200 in 93ms
+[?25h

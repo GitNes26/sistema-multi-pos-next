@@ -1180,6 +1180,219 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
     })
   }
 
+  // ── Productos Personalizados (constructor de producto) ─────────────────
+  // Tienen variantes (tamaños/sabores con su precio) y tópicos configurables
+  // (min/máx de selección y +$ por valor): el constructor se abre en POS y
+  // portal solo para estos productos.
+  const REST_CUSTOM_PRODUCTS: {
+    category: string
+    name: string
+    emoji: string
+    desc: string
+    variants: { name: string; price: number }[]
+    options: {
+      name: string
+      required: boolean
+      minSelect: number
+      maxSelect: number
+      values: { value: string; extraPrice: number }[]
+    }[]
+  }[] = [
+    {
+      category: "Postres",
+      name: "Nieve de garrafa",
+      emoji: "🍧",
+      desc: "Elige tu tamaño y hasta 2 sabores combinados; agrégale toppings a tu gusto.",
+      variants: [
+        { name: "Chico", price: 35 },
+        { name: "Mediano", price: 45 },
+        { name: "Grande", price: 55 },
+      ],
+      options: [
+        {
+          name: "Sabores (combinables)",
+          required: true,
+          minSelect: 1,
+          maxSelect: 2,
+          values: [
+            { value: "Fresa", extraPrice: 0 },
+            { value: "Limón", extraPrice: 0 },
+            { value: "Vainilla", extraPrice: 0 },
+            { value: "Chocolate", extraPrice: 0 },
+          ],
+        },
+        {
+          name: "Toppings",
+          required: false,
+          minSelect: 0,
+          maxSelect: 3,
+          values: [
+            { value: "Chispas de chocolate", extraPrice: 10 },
+            { value: "Mermelada", extraPrice: 10 },
+            { value: "Nutella", extraPrice: 15 },
+            { value: "Granillo", extraPrice: 8 },
+          ],
+        },
+      ],
+    },
+    {
+      category: "Bebidas",
+      name: "Café de especialidad",
+      emoji: "☕",
+      desc: "Tamaño a tu medida, elige tu tipo de leche y decóralo como más te guste.",
+      variants: [
+        { name: "Chico 250ml", price: 38 },
+        { name: "Grande 400ml", price: 48 },
+      ],
+      options: [
+        {
+          name: "Tipo de leche",
+          required: true,
+          minSelect: 1,
+          maxSelect: 1,
+          values: [
+            { value: "Entera", extraPrice: 0 },
+            { value: "Deslactosada", extraPrice: 5 },
+            { value: "Almendra", extraPrice: 10 },
+            { value: "Avena", extraPrice: 8 },
+          ],
+        },
+        {
+          name: "Decoraciones",
+          required: false,
+          minSelect: 0,
+          maxSelect: 3,
+          values: [
+            { value: "Canela", extraPrice: 0 },
+            { value: "Chispas de chocolate", extraPrice: 8 },
+            { value: "Crema batida", extraPrice: 10 },
+            { value: "Caramelo", extraPrice: 5 },
+          ],
+        },
+      ],
+    },
+    {
+      category: "Platos fuertes",
+      name: "Papas estilo Papa Brothers",
+      emoji: "🍟",
+      desc: "Elige tu tamaño; cada una lleva especialidades al gusto y elige tus aderezos.",
+      variants: [
+        { name: "Chico", price: 55 },
+        { name: "Mediano", price: 70 },
+        { name: "Grande", price: 85 },
+      ],
+      options: [
+        {
+          name: "Especialidades",
+          required: true,
+          minSelect: 1,
+          maxSelect: 3,
+          values: [
+            { value: "Boneless", extraPrice: 15 },
+            { value: "Fajitas", extraPrice: 15 },
+            { value: "Pollo teriyaki", extraPrice: 15 },
+            { value: "Pastor", extraPrice: 15 },
+            { value: "Choriqueso", extraPrice: 18 },
+          ],
+        },
+        {
+          name: "Aderezos",
+          required: false,
+          minSelect: 0,
+          maxSelect: 4,
+          values: [
+            { value: "Cilantro", extraPrice: 0 },
+            { value: "BBQ", extraPrice: 8 },
+            { value: "Búfalo", extraPrice: 8 },
+            { value: "Queso amarillo", extraPrice: 12 },
+            { value: "Queso parmesano", extraPrice: 12 },
+          ],
+        },
+      ],
+    },
+  ]
+
+  let customSku = 900
+  for (const def of REST_CUSTOM_PRODUCTS) {
+    const product = await d.product.create({
+      data: {
+        organizationId: org.id,
+        categoryId: catIds[def.category],
+        name: def.name,
+        description: def.desc,
+        imageUrl: productImageUrl(def.emoji, def.category),
+        taxRate: 0.16,
+        trackInventory: true,
+        productType: "custom",
+        isNew: false,
+      },
+    })
+    productIdByName.set(def.name, product.id)
+
+    // Variantes (tamaños/sabores) — cada una con su precio e inventario.
+    let vIdx = 0
+    for (const v of def.variants) {
+      vIdx += 1
+      const variant = await d.productVariant.create({
+        data: {
+          productId: product.id,
+          organizationId: org.id,
+          sku: `R-${String(customSku + vIdx).padStart(3, "0")}`,
+          name: v.name,
+          price: v.price,
+          cost: round2(v.price * 0.35),
+        },
+      })
+      variantByProduct.set(def.name, variant.id)
+      menuVariants.push({
+        id: variant.id,
+        productId: product.id,
+        productName: def.name,
+        price: v.price,
+      })
+      await d.inventory.create({
+        data: {
+          organizationId: org.id,
+          variantId: variant.id,
+          locationId: location.id,
+          locationType: "location",
+          quantity: round2(40 + rnd() * 120),
+          unitId: unitPza?.id,
+          minThreshold: 5,
+        },
+      })
+    }
+    customSku += 20
+
+    // Tópicos (personalización) — el constructor del POS/portal los usa.
+    let optPos = 0
+    for (const opt of def.options) {
+      optPos += 1
+      const option = await d.productOption.create({
+        data: {
+          productId: product.id,
+          name: opt.name,
+          position: optPos,
+          required: opt.required,
+          minSelect: opt.minSelect,
+          maxSelect: opt.maxSelect,
+        },
+      })
+      let valPos = 0
+      for (const val of opt.values) {
+        valPos += 1
+        await d.productOptionValue.create({
+          data: {
+            optionId: option.id,
+            value: val.value,
+            extraPrice: val.extraPrice,
+            position: valPos,
+          },
+        })
+      }
+    }
+  }
+
   // Combos (constructor de producto)
   for (const comboDef of REST_COMBOS) {
     const combo = await d.productCombo.create({

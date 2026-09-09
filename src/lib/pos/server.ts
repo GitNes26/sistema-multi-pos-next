@@ -302,10 +302,16 @@ export async function getPosCatalog(
       }
     : null;
 
-  // Add options to each product (only if productBuilder feature is enabled)
+  // Add options to each product (only if productBuilder feature is enabled
+  // AND the product is tipo "custom": los productos estándar/granel nunca
+  // llevan tópicos en el POS, solo los personalizados abren el constructor).
   for (const p of products) {
     const raw = productsRaw.find((v) => v.productId === p.productId);
-    if (features.productBuilder && raw?.product?.options) {
+    if (
+      features.productBuilder &&
+      raw?.product?.productType === "custom" &&
+      raw?.product?.options
+    ) {
       p.options = raw.product.options.map((o) => ({
         id: o.id,
         name: o.name,

@@ -12,6 +12,8 @@ import { DatePicker } from "@/components/base/date-picker"
 import { FormCombobox } from "@/components/base/form-combobox"
 import { SwitchField } from "@/components/base/switch-field"
 import { DataTable } from "@/components/base/data-table"
+import { ResizableSplit } from "@/components/ui/resizable-split"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { swalError } from "@/lib/swal"
 import { money } from "@/lib/pos/money"
 import { cn } from "@/lib/utils"
@@ -40,6 +42,8 @@ export function OrdersPage({
   icon?: React.ReactNode
 }) {
   const router = useRouter()
+  // Mismo patrón de persistencia que el POS: reparto por sucursal y eje.
+  const isWide = useMediaQuery("(min-width: 1024px)")
 
   const [status, setStatus] = useState("all")
   const [method, setMethod] = useState("all")
@@ -221,91 +225,106 @@ export function OrdersPage({
         }
       />
 
-      <Card>
-        <CardContent className="space-y-3 pt-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <InputGroupField
-              placeholder="Buscar # o cliente"
-              leftIcon={<Search className="size-4" />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-8 w-56"
-            />
-            <DatePicker
-              value={from ? new Date(from + "T00:00:00") : null}
-              onChange={(d) => setFrom(d ? d.toISOString().split("T")[0] : "")}
-              placeholder="Desde"
-              clearable
-              className="w-40"
-            />
-            <DatePicker
-              value={to ? new Date(to + "T00:00:00") : null}
-              onChange={(d) => setTo(d ? d.toISOString().split("T")[0] : "")}
-              placeholder="Hasta"
-              clearable
-              className="w-40"
-            />
-            <FormCombobox
-              value={method}
-              onChange={(v) => setMethod(v)}
-              options={[
-                { value: "all", label: "Todas las entregas" },
-                { value: "pickup", label: "Recoger" },
-                { value: "delivery", label: "A domicilio" },
-              ]}
-              clearable={false}
-              searchable={false}
-              className="w-44"
-            />
-            <FormCombobox
-              value={locationId}
-              onChange={(v) => setLocationId(v)}
-              options={[
-                { value: "all", label: "Todas las sucursales" },
-                ...locations.map((l) => ({ value: l.id, label: l.name })),
-              ]}
-              clearable={false}
-              searchable={locations.length > 5}
-              className="w-44"
-            />
-            <SwitchField
-              label="Activos"
-              checked={activeOnly}
-              onCheckedChange={setActiveOnly}
-              border={false}
-              className="w-auto"
-            />
-          </div>
+      <ResizableSplit
+        prefix="orders"
+        locationId={locationId === "all" ? "all" : locationId}
+        wide={isWide}
+        defaultSizes={isWide ? [28, 72] : [42, 58]}
+        minSizes={isWide ? [20, 45] : [30, 35]}
+        maxSizes={isWide ? [50, 80] : [65, 70]}
+        first={
+          <Card className="h-full overflow-y-auto overscroll-contain">
+            <CardContent className="space-y-3 pt-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <InputGroupField
+                  placeholder="Buscar # o cliente"
+                  leftIcon={<Search className="size-4" />}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-8 w-56"
+                />
+                <DatePicker
+                  value={from ? new Date(from + "T00:00:00") : null}
+                  onChange={(d) => setFrom(d ? d.toISOString().split("T")[0] : "")}
+                  placeholder="Desde"
+                  clearable
+                  className="w-40"
+                />
+                <DatePicker
+                  value={to ? new Date(to + "T00:00:00") : null}
+                  onChange={(d) => setTo(d ? d.toISOString().split("T")[0] : "")}
+                  placeholder="Hasta"
+                  clearable
+                  className="w-40"
+                />
+                <FormCombobox
+                  value={method}
+                  onChange={(v) => setMethod(v)}
+                  options={[
+                    { value: "all", label: "Todas las entregas" },
+                    { value: "pickup", label: "Recoger" },
+                    { value: "delivery", label: "A domicilio" },
+                  ]}
+                  clearable={false}
+                  searchable={false}
+                  className="w-44"
+                />
+                <FormCombobox
+                  value={locationId}
+                  onChange={(v) => setLocationId(v)}
+                  options={[
+                    { value: "all", label: "Todas las sucursales" },
+                    ...locations.map((l) => ({ value: l.id, label: l.name })),
+                  ]}
+                  clearable={false}
+                  searchable={locations.length > 5}
+                  className="w-44"
+                />
+                <SwitchField
+                  label="Activos"
+                  checked={activeOnly}
+                  onCheckedChange={setActiveOnly}
+                  border={false}
+                  className="w-auto"
+                />
+              </div>
 
-          <div className="flex flex-wrap items-center gap-1.5 border rounded-lg bg-muted/50 px-2 py-1 text-xs font-semibold ">
-            {STATUS_TABS.map((t) => {
-              const count = t.value === "all" ? total : (counts[t.value] ?? 0)
-              return (
-                <Badge
-                  key={t.value}
-                  variant={status === t.value ? "default" : "secondary"}
-                  className="cursor-pointer select-none"
-                  onClick={() => setStatus(t.value)}
-                >
-                  {t.label}{" "}
-                  <span className="ml-1 tabular-nums opacity-80">{count}</span>
-                </Badge>
-              )
-            })}
-          </div>
-
-          <DataTable
-            columns={columns}
-            data={rows}
-            searchable={false}
-            showColumnVisibility={false}
-            showPagination={false}
-            loading={loading}
-            emptyMessage="Sin pedidos para los filtros"
-            rowKey={(r) => r.id}
-          />
-        </CardContent>
-      </Card>
+              <div className="flex flex-wrap items-center gap-1.5 border rounded-lg bg-muted/50 px-2 py-1 text-xs font-semibold ">
+                {STATUS_TABS.map((t) => {
+                  const count = t.value === "all" ? total : (counts[t.value] ?? 0)
+                  return (
+                    <Badge
+                      key={t.value}
+                      variant={status === t.value ? "default" : "secondary"}
+                      className="cursor-pointer select-none"
+                      onClick={() => setStatus(t.value)}
+                    >
+                      {t.label}{" "}
+                      <span className="ml-1 tabular-nums opacity-80">{count}</span>
+                    </Badge>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        }
+        second={
+          <Card className="h-full overflow-y-auto overscroll-contain">
+            <CardContent className="space-y-3 pt-5">
+              <DataTable
+                columns={columns}
+                data={rows}
+                searchable={false}
+                showColumnVisibility={false}
+                showPagination={false}
+                loading={loading}
+                emptyMessage="Sin pedidos para los filtros"
+                rowKey={(r) => r.id}
+              />
+            </CardContent>
+          </Card>
+        }
+      />
 
       {detailId && (
         <OrderDetailDialog

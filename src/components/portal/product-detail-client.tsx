@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
 import { portalApi } from "@/lib/portal/client"
-import type { PortalProduct } from "@/lib/portal/server"
+import type { PortalProduct, PortalVariantOption as PortalVariant } from "@/lib/portal/server"
 import { usePortalStore } from "@/stores/portal-store"
 import { money } from "@/lib/pos/money"
 import { ProductCard } from "@/components/portal/product-card"
@@ -598,7 +598,12 @@ export function ProductDetailClient({ productId }: { productId: string }) {
           open={builderOpen}
           onClose={() => setBuilderOpen(false)}
           onAdd={(config) => {
-            const variant = p.variants[0]
+            // El builder devuelve la variante recortada; tomo la completa del producto
+            let variant: PortalVariant = p.variants[0]
+            if (config.variant) {
+              const found = p.variants.find((v) => v.id === config.variant!.id)
+              if (found) variant = found
+            }
             if (!variant) return
             // Agregar la variante base + los extras elegidos (opciones/notas)
             // como una configuración propia, con su precio y su línea.

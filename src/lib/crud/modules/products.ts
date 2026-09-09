@@ -18,7 +18,10 @@ export interface ProductOptionDto {
   id: string;
   name: string;
   position: number;
-  values: { id: string; value: string; position: number }[];
+  required: boolean;
+  minSelect: number;
+  maxSelect: number;
+  values: { id: string; value: string; position: number; extraPrice: number; isActive: boolean }[];
 }
 
 export interface ProductDto {
@@ -32,7 +35,7 @@ export interface ProductDto {
   isActive: boolean;
   trackInventory: boolean;
   isNew: boolean;
-  productType: "standard" | "bulk";
+  productType: "standard" | "bulk" | "custom";
   bulkUnitId: string | null;
   bulkUnitAbbrev: string | null;
   bulkUnitName: string | null;
@@ -60,7 +63,7 @@ type ProductRow = {
   isActive: boolean;
   trackInventory: boolean;
   isNew: boolean;
-  productType: "standard" | "bulk";
+  productType: "standard" | "bulk" | "custom";
   bulkUnitId: string | null;
   bulkPricePerUnit: { toNumber(): number } | number;
   bulkMinQuantity: { toNumber(): number } | number;
@@ -77,7 +80,10 @@ type ProductRow = {
     id: string;
     name: string;
     position: number;
-    values: { id: string; value: string; position: number }[];
+    required: boolean;
+    minSelect: number;
+    maxSelect: number;
+    values: { id: string; value: string; position: number; extraPrice: { toNumber(): number } | number; isActive: boolean }[];
   }[];
   variants: {
     id: string;
@@ -105,8 +111,11 @@ const include = {
       id: true,
       name: true,
       position: true,
+      required: true,
+      minSelect: true,
+      maxSelect: true,
       values: {
-        select: { id: true, value: true, position: true },
+        select: { id: true, value: true, position: true, extraPrice: true, isActive: true },
         orderBy: { position: "asc" },
       },
     },
@@ -179,7 +188,16 @@ function serialize(p: ProductRow): ProductDto {
       id: o.id,
       name: o.name,
       position: o.position,
-      values: o.values.map((v) => ({ id: v.id, value: v.value, position: v.position })),
+      required: o.required,
+      minSelect: o.minSelect,
+      maxSelect: o.maxSelect,
+      values: o.values.map((v) => ({
+        id: v.id,
+        value: v.value,
+        position: v.position,
+        extraPrice: num(v.extraPrice),
+        isActive: v.isActive,
+      })),
     })),
     createdAt: p.createdAt.toISOString(),
   };
@@ -202,7 +220,7 @@ export const productsModule: CrudModule<ProductDto> = {
     const pageSize = Math.min(200, params.pageSize ?? 20);
     const q = params.q?.trim() ?? "";
     const categoryId = (params.categoryId as string) || undefined;
-    const productType = (params.productType as "standard" | "bulk") || undefined;
+    const productType = (params.productType as "standard" | "bulk" | "custom") || undefined;
 
     const where: Prisma.ProductWhereInput = {
       organizationId,
@@ -245,7 +263,12 @@ export const productsModule: CrudModule<ProductDto> = {
     if (!data.name || String(data.name).trim() === "") {
       throw new CrudError("El nombre es obligatorio", 400, "name");
     }
-    const productType = data.productType === "bulk" ? "bulk" : "standard";
+    const productType =
+      data.productType === "bulk"
+        ? "bulk"
+        : data.productType === "custom"
+          ? "custom"
+          : "standard";
     const isNew = data.isNew === true;
 
     const product = await prisma.product.create({
@@ -272,10 +295,13 @@ export const productsModule: CrudModule<ProductDto> = {
       include,
     });
 
-    // Variante inicial "Default" para productos estándar (así aparecen en el POS).
-    if (productType === "standard") {
+    // Variante inicial "Default" para productos estándar y personalizados (así
+    // aparecen en el POS). En estándar con opciones, las opciones generan las
+    // combinaciones de variantes; en custom las opciones son tópicos y NUNCA
+    // generan variantes (se crean manualmente vía Variantes).
+    if (productType === "standard" || productType === "custom") {
       const options = parseOptions(data.options);
-      if (options.length > 0) {
+      if (productType === "standard" && options.length > 0) {
         // Opciones definidas → generar combinaciones de variantes automáticamente.
         const base = data.initialVariant as Record<string, unknown> | undefined;
         await createOptionsWithVariants(organizationId, product.id, options, {
@@ -328,7 +354,11 @@ export const productsModule: CrudModule<ProductDto> = {
     if (!existing) throw new CrudError("Producto no encontrado", 404);
 
     const productType =
-      data.productType === "bulk" || data.productType === "standard" ? data.productType : existing.productType;
+      data.productType === "bulk" ||
+      data.productType === "standard" ||
+      data.productType === "custom"
+        ? data.productType
+        : existing.productType;
 
     // Detect if isNew changed from false to true
     const newIsNew = data.isNew !== undefined ? data.isNew === true : existing.isNew;
@@ -364,7 +394,7 @@ export const productsModule: CrudModule<ProductDto> = {
     });
 
     // Actualizar variante default si se proporcionaron datos
-    if (data.initialVariant && productType === "standard") {
+    if (data.initialVariant && (productType === "standard" || productType === "custom")) {
       const v = data.initialVariant as Record<string, unknown>;
       const defaultVariant = await prisma.productVariant.findFirst({
         where: { productId: id, name: "Default" },
@@ -515,8 +545,10 @@ async function syncVariantInventory(organizationId: string, productId: string, v
 }
 
 export async function createVariant(organizationId: string, productId: string, input: Record<string, unknown>) {
-  const product = await prisma.product.findFirst({ where: { id: productId, organizationId, productType: "standard" } });
-  if (!product) throw new CrudError("Producto no encontrado o no es estándar", 400);
+  const product = await prisma.product.findFirst({
+    where: { id: productId, organizationId, productType: { in: ["standard", "custom"] } },
+  });
+  if (!product) throw new CrudError("Producto no encontrado o no es estándar/personalizado", 400);
 
   const name = input.name ? String(input.name).trim() : "Default";
   const sku = input.sku ? String(input.sku) : null;
@@ -676,7 +708,13 @@ const optionsInclude = {
       id: true,
       name: true,
       position: true,
-      values: { select: { id: true, value: true, position: true }, orderBy: { position: "asc" } },
+      required: true,
+      minSelect: true,
+      maxSelect: true,
+      values: {
+        select: { id: true, value: true, position: true, extraPrice: true, isActive: true },
+        orderBy: { position: "asc" },
+      },
     },
     orderBy: { position: "asc" },
   },
@@ -692,7 +730,16 @@ export async function getProductOptions(organizationId: string, productId: strin
     id: o.id,
     name: o.name,
     position: o.position,
-    values: o.values.map((v) => ({ id: v.id, value: v.value, position: v.position })),
+    required: o.required,
+    minSelect: o.minSelect,
+    maxSelect: o.maxSelect,
+    values: o.values.map((v) => ({
+      id: v.id,
+      value: v.value,
+      position: v.position,
+      extraPrice: num(v.extraPrice),
+      isActive: v.isActive,
+    })),
   }));
 }
 
@@ -827,16 +874,26 @@ async function regenerateVariantsFromOptions(organizationId: string, productId: 
   }
 }
 
+export interface SaveOptionInput {
+  id?: string;
+  name: string;
+  required?: boolean;
+  minSelect?: number;
+  maxSelect?: number;
+  values: { id?: string; value: string; extraPrice?: number; isActive?: boolean }[];
+}
+
 export async function saveProductOptions(
   organizationId: string,
   productId: string,
-  options: { id?: string; name: string; values: { id?: string; value: string }[] }[]
+  options: SaveOptionInput[]
 ): Promise<ProductOptionDto[]> {
   const product = await prisma.product.findFirst({
-    where: { id: productId, organizationId, productType: "standard" },
-    select: { id: true },
+    where: { id: productId, organizationId, productType: { in: ["standard", "custom"] } },
+    select: { id: true, productType: true },
   });
-  if (!product) throw new CrudError("Producto no encontrado o no es estándar", 400);
+  if (!product) throw new CrudError("Producto no encontrado o no es estándar/personalizado", 400);
+  const isCustom = product.productType === "custom";
 
   const existing = await prisma.productOption.findMany({
     where: { productId },
@@ -862,9 +919,29 @@ export async function saveProductOptions(
   for (const opt of options ?? []) {
     pos += 1;
     const optId = opt.id && keepIds.has(opt.id) ? opt.id : undefined;
+    const minSelect = Math.max(0, Math.floor(Number(opt.minSelect) || (opt.required !== false ? 1 : 0)));
+    const maxSelect = Math.max(minSelect, Math.floor(Number(opt.maxSelect) || 1));
     const option = optId
-      ? await prisma.productOption.update({ where: { id: optId }, data: { name: opt.name.trim(), position: pos } })
-      : await prisma.productOption.create({ data: { productId, name: opt.name.trim(), position: pos } });
+      ? await prisma.productOption.update({
+          where: { id: optId },
+          data: {
+            name: opt.name.trim(),
+            position: pos,
+            required: opt.required !== false,
+            minSelect,
+            maxSelect,
+          },
+        })
+      : await prisma.productOption.create({
+          data: {
+            productId,
+            name: opt.name.trim(),
+            position: pos,
+            required: opt.required !== false,
+            minSelect,
+            maxSelect,
+          },
+        });
 
     const existingValues = await prisma.productOptionValue.findMany({
       where: { optionId: option.id },
@@ -877,11 +954,23 @@ export async function saveProductOptions(
       const value = raw.value.trim();
       if (!value) continue;
       const existingId = existingValueMap.get(value.toLowerCase());
+      const extraPrice = Math.max(0, Number(raw.extraPrice) || 0);
       if (existingId) {
-        await prisma.productOptionValue.update({ where: { id: existingId }, data: { value, position: vpos } });
+        await prisma.productOptionValue.update({
+          where: { id: existingId },
+          data: { value, position: vpos, extraPrice, isActive: raw.isActive !== false },
+        });
         existingValueMap.delete(value.toLowerCase());
       } else {
-        await prisma.productOptionValue.create({ data: { optionId: option.id, value, position: vpos } });
+        await prisma.productOptionValue.create({
+          data: {
+            optionId: option.id,
+            value,
+            position: vpos,
+            extraPrice,
+            isActive: raw.isActive !== false,
+          },
+        });
       }
     }
     // Remover valores que ya no estén en la lista.
@@ -894,8 +983,12 @@ export async function saveProductOptions(
     }
   }
 
-  // ── Regenerar variantes según las nuevas combinaciones de opciones ──
-  await regenerateVariantsFromOptions(organizationId, productId);
+  // ── Regenerar variantes solo en productos estándar: en productos
+  // personalizados las opciones son tópicos del constructor y NO generan
+  // combinaciones de variantes (estas se crean manualmente).
+  if (!isCustom) {
+    await regenerateVariantsFromOptions(organizationId, productId);
+  }
 
   return getProductOptions(organizationId, productId);
 }

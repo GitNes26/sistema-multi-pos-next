@@ -16,6 +16,8 @@ import { ExpandableFAB } from "@/components/shared/expandable-fab"
 import { SwipeableProductCard } from "@/components/shared/swipeable-product-card"
 import { ScanBarcode, Heart, ListChecks } from "lucide-react"
 import { swalToast } from "@/lib/swal"
+import { ProductBuilder, selectedOptionsKey } from "@/components/pos/product-builder"
+import type { PortalProduct, PortalVariantOption as PortalVariant } from "@/lib/portal/server"
 
 export function StoreClient() {
   const categories = usePortalStore((s) => s.categories);
@@ -33,6 +35,7 @@ export function StoreClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [builderProduct, setBuilderProduct] = useState<PortalProduct | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -163,11 +166,18 @@ export function StoreClient() {
             {filtered.map((p) => {
               const defaultVariant = p.variants[0]
               const isFav = defaultVariant ? Array.from(favorites).includes(defaultVariant.id) : false
+              const hasOptions = (p.options?.length ?? 0) > 0
               return (
                 <motion.div key={p.id} variants={STAGGER_FADE_UP.item} layout>
                   <SwipeableProductCard
                     onSwipeLeft={() => {
                       if (!defaultVariant) return
+                      // Productos personalizados: el swipe abre el constructor
+                      // (nunca agregan la variante base sin configuración).
+                      if (hasOptions) {
+                        setBuilderProduct(p)
+                        return
+                      }
                       const res = addStandard(p, defaultVariant)
                       if (res.added <= 0) {
                         swalToast("Sin stock disponible", "info")
@@ -183,7 +193,11 @@ export function StoreClient() {
                   >
                     <TapScale className="h-full">
                       <Link href={`/portal/store/${p.id}`}>
-                        <ProductCard product={p} layoutId={p.id} />
+                        <ProductCard
+                          product={p}
+                          layoutId={p.id}
+                          onConfigure={hasOptions ? setBuilderProduct : undefined}
+                        />
                       </Link>
                     </TapScale>
                   </SwipeableProductCard>
@@ -203,6 +217,45 @@ export function StoreClient() {
           { icon: <ListChecks className="size-5" />, label: "Mi lista", onClick: () => window.location.href = "/portal/lists" },
         ]}
       />
+
+      {/* Constructor de producto (solo productos personalizados) */}
+      {builderProduct && (
+        <ProductBuilder
+          portalProduct={builderProduct}
+          open={!!builderProduct}
+          onClose={() => setBuilderProduct(null)}
+          onAdd={(config) => {
+            // El builder devuelve la variante recortada; tomo la completa del producto
+            let variant: PortalVariant = builderProduct.variants[0]
+            if (config.variant) {
+              const found = builderProduct.variants.find((v) => v.id === config.variant!.id)
+              if (found) variant = found
+            }
+            if (!variant) return
+            // Resumen legible de la configuración (mismo criterio que el POS):
+            // «Tipo de leche: Almendra · Decoraciones: Canela» + notas libres.
+            const optionSummary = config.selectedOptions
+              .filter((o) => o.values.length > 0)
+              .map((o) => `${o.optionName}: ${o.values.map((v) => v.value).join(", ")}`)
+              .join(" · ")
+            const comment = [optionSummary, config.notes.trim()].filter(Boolean).join(" — ")
+            const res = addStandard(
+              builderProduct,
+              variant,
+              config.quantity,
+              config.totalExtraPrice,
+              selectedOptionsKey(config.selectedOptions),
+              comment || undefined
+            )
+            if (res.added <= 0) {
+              swalToast("Sin stock disponible", "info")
+              return
+            }
+            setBuilderProduct(null)
+            swalToast("Producto agregado al carrito", "success")
+          }}
+        />
+      )}
     </div>
   );
 }

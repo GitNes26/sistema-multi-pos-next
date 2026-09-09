@@ -43,7 +43,18 @@ function StockBadge({ stock, track }: { stock: number; track: boolean }) {
   return <span className="rounded-full bg-emerald-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white">{Math.floor(stock)} u</span>
 }
 
-export function ProductCard({ product, layoutId }: { product: PortalProduct; layoutId?: string }) {
+export function ProductCard({
+  product,
+  layoutId,
+  onConfigure,
+}: {
+  product: PortalProduct
+  layoutId?: string
+  /** Cuando se proporciona, los productos con opciones delegan la apertura del
+   *  constructor al padre (p. ej. la tienda con swipe) en lugar de abrir uno
+   *  interno. */
+  onConfigure?: (product: PortalProduct) => void
+}) {
   const setBulkProduct = usePortalStore((s) => s.setBulkProduct)
   const addStandard = usePortalStore((s) => s.addStandard)
   const favorites = usePortalStore((s) => s.favorites)
@@ -109,14 +120,22 @@ export function ProductCard({ product, layoutId }: { product: PortalProduct; lay
     setTimeout(() => setJustAdded(false), 1200)
   }
 
-  const handleAdd = () => {
+  const handleAdd = (e?: React.MouseEvent) => {
+    // El botón vive dentro de un <Link> a la ficha del producto: sin esto, el
+    // clic en «Agregar» también navegaría al detalle en lugar de agregar.
+    e?.preventDefault()
+    e?.stopPropagation()
     haptic.light()
     if (isBulk) {
       setBulkProduct(product)
       return
     }
     if (hasOptions) {
-      setBuilderOpen(true)
+      if (onConfigure) {
+        onConfigure(product)
+      } else {
+        setBuilderOpen(true)
+      }
       return
     }
     if (hasVariants) {

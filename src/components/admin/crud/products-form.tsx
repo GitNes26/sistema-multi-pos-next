@@ -26,6 +26,7 @@ import { Attachment } from "@/components/base/attachment"
 import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads"
 import type { CrudField } from "./crud-config"
 import { InfoTooltip, SwitchField } from "@/components/base"
+import { useBusinessMode } from "@/hooks/use-business-mode"
 
 interface ProductFormProps {
   initial: Record<string, unknown> | null
@@ -81,14 +82,19 @@ function TypeToggle({
   value,
   onChange,
   disabled,
+  showCustom,
 }: {
-  value: "standard" | "bulk"
-  onChange: (v: "standard" | "bulk") => void
+  value: "standard" | "bulk" | "custom"
+  onChange: (v: "standard" | "bulk" | "custom") => void
   disabled?: boolean
+  showCustom?: boolean
 }) {
   const options = [
     { value: "standard" as const, label: "Estándar" },
     { value: "bulk" as const, label: "Granel / Medida" },
+    ...(showCustom
+      ? [{ value: "custom" as const, label: "Personalizado" }]
+      : []),
   ]
   return (
     <div className="flex rounded-lg border bg-muted/40 p-1">
@@ -123,8 +129,17 @@ export function ProductsForm({
   onSavingChange,
 }: ProductFormProps) {
   const isEdit = Boolean(initial)
-  const [productType, setProductType] = useState<"standard" | "bulk">(
-    initial?.productType === "bulk" ? "bulk" : "standard"
+  const businessMode = useBusinessMode()
+  const isFoodService =
+    businessMode === "food_service" || businessMode === "hybrid"
+  const [productType, setProductType] = useState<
+    "standard" | "bulk" | "custom"
+  >(
+    initial?.productType === "bulk"
+      ? "bulk"
+      : initial?.productType === "custom"
+        ? "custom"
+        : "standard"
   )
 
   const [name, setName] = useState((initial?.name as string) ?? "")
@@ -284,6 +299,17 @@ export function ProductsForm({
         splitUnitId: allowSplit ? splitUnitId || null : null,
         splitPricePerUnit: allowSplit ? numOrEmpty(splitPricePerUnit) : 0,
       })
+    } else if (productType === "custom") {
+      // Personalizado: la variante base (precio/costo) se crea aquí; los
+      // tópicos se guardan con el botón «Guardar tópicos» y nunca generan
+      // combinaciones de variantes (cada tamaño/sabor se agrega en Variantes).
+      payload.initialVariant = {
+        name: "Default",
+        sku: variantSku.trim() || null,
+        barcode: variantBarcode.trim() || null,
+        price: numOrEmpty(variantPrice),
+        cost: numOrEmpty(variantCost),
+      }
     } else {
       const hasOptions = options.some(
         (o) => o.name.trim() && o.values.some((v) => v.value.trim())
@@ -332,16 +358,27 @@ export function ProductsForm({
         .map((o) => ({
           id: o.id,
           name: o.name.trim(),
+          required: o.required !== false,
+          minSelect: Math.max(0, Number(o.minSelect) || 0),
+          maxSelect: Math.max(
+            Math.max(0, Number(o.minSelect) || 0),
+            Number(o.maxSelect) || 1
+          ),
           values: o.values
             .filter((v) => v.value.trim())
-            .map((v) => ({ id: v.id, value: v.value.trim() })),
+            .map((v) => ({
+              id: v.id,
+              value: v.value.trim(),
+              extraPrice: Math.max(0, Number(v.extraPrice) || 0),
+              isActive: v.isActive !== false,
+            })),
         }))
       const res = await optionsApi.save(String(initial.id), cleaned)
       setOptions(res.rows)
-      swalToast("Opciones guardadas")
+      swalToast("Tópicos guardados")
     } catch (err) {
       swalError(
-        "No se pudieron guardar las opciones",
+        "No se pudieron guardar los tópicos",
         err instanceof Error ? err.message : undefined
       )
     } finally {
@@ -350,7 +387,16 @@ export function ProductsForm({
   }
 
   const addOption = () => {
-    setOptions((prev) => [...prev, { name: "", values: [] }])
+    setOptions((prev) => [
+      ...prev,
+      {
+        name: "",
+        required: true,
+        minSelect: 1,
+        maxSelect: 1,
+        values: [],
+      },
+    ])
   }
   const updateOption = (i: number, patch: Partial<ProductOption>) => {
     setOptions((prev) =>
@@ -361,7 +407,9 @@ export function ProductsForm({
     setOptions((prev) => prev.filter((_, idx) => idx !== i))
   }
   const addOptionValue = (i: number) => {
-    updateOption(i, { values: [...options[i].values, { value: "" }] })
+    updateOption(i, {
+      values: [...options[i].values, { value: "", extraPrice: 0 }],
+    })
   }
   const updateValue = (i: number, vi: number, value: string) => {
     setOptions((prev) =>
@@ -371,6 +419,22 @@ export function ProductsForm({
               ...o,
               values: o.values.map((v, vdx) =>
                 vdx === vi ? { ...v, value } : v
+              ),
+            }
+          : o
+      )
+    )
+  }
+  const updateValuePrice = (i: number, vi: number, extraPrice: string) => {
+    setOptions((prev) =>
+      prev.map((o, idx) =>
+        idx === i
+          ? {
+              ...o,
+              values: o.values.map((v, vdx) =>
+                vdx === vi
+                  ? { ...v, extraPrice: Math.max(0, Number(extraPrice) || 0) }
+                  : v
               ),
             }
           : o
@@ -398,7 +462,17 @@ export function ProductsForm({
       className="grid gap-4 sm:grid-cols-2"
     >
       <FieldRow label="Tipo de producto" full>
-        <TypeToggle value={productType} onChange={setProductType} />
+        <TypeToggle
+          value={productType}
+          onChange={setProductType}
+          showCustom={isFoodService}
+        />
+        {!isFoodService && (
+          <p className="text-xs text-muted-foreground">
+            El tipo «Personalizado» (variantes + tópicos) está disponible en
+            restaurantes y negocios híbridos.
+          </p>
+        )}
       </FieldRow>
 
       <InputField
@@ -582,6 +656,203 @@ export function ProductsForm({
               />
             </>
           )}
+        </>
+      ) : productType === "custom" ? (
+        <>
+          {/* Variante base — precio, costo, SKU, código de barras */}
+          <FieldRow label="Precio y costo base" full>
+            <p className="text-xs text-muted-foreground">
+              Precio y costo del tamaño estándar. Agrega tamaños o sabores como
+              variantes desde el botón «Variantes» de la tabla; el cliente
+              elegirá cuál al pedir.
+            </p>
+          </FieldRow>
+          <InputField
+            label="Precio de venta ($)"
+            icon={<DollarSign className="size-4" />}
+            type="number"
+            step="0.01"
+            value={variantPrice}
+            onChange={(e) => setVariantPrice(e.target.value)}
+          />
+          <InputField
+            label="Costo ($)"
+            icon={<DollarSign className="size-4" />}
+            type="number"
+            step="0.01"
+            value={variantCost}
+            onChange={(e) => setVariantCost(e.target.value)}
+          />
+          <InputField
+            label="SKU"
+            icon={<Hash className="size-4" />}
+            value={variantSku}
+            onChange={(e) => setVariantSku(e.target.value)}
+          />
+          <InputField
+            label="Código de barras"
+            icon={<Barcode className="size-4" />}
+            value={variantBarcode}
+            onChange={(e) => setVariantBarcode(e.target.value)}
+          />
+
+          {/* Tópicos — personalización del producto */}
+          <FieldRow label="Personalízalo — tópicos" full>
+            <p className="text-xs text-muted-foreground">
+              Define lo que el cliente puede elegir: «Tipo de leche» (elige 1),
+              «Toppings» (+$ por unidad), «Sabores» (combinables con mínimo y
+              máximo)… Los tópicos aparecen en el constructor del POS y del
+              portal.
+            </p>
+            <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+              {options.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Sin tópicos todavía. Agrega el primero para que el producto
+                  abra su constructor al pedirse.
+                </p>
+              )}
+              {options.map((opt, i) => (
+                <div
+                  key={i}
+                  className="space-y-2 rounded-md border bg-background/60 p-2.5"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      value={opt.name}
+                      onChange={(e) =>
+                        updateOption(i, { name: e.target.value })
+                      }
+                      placeholder="Ej. Tipo de leche"
+                      aria-label="Nombre del tópico"
+                      className="h-7 flex-1 min-w-32"
+                    />
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        className="size-3.5 accent-emerald-600"
+                        checked={opt.required !== false}
+                        onChange={(e) =>
+                          updateOption(i, { required: e.target.checked })
+                        }
+                      />
+                      Obligatorio
+                    </label>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      Mín{" "}
+                      <Input
+                        type="number"
+                        min={0}
+                        value={String(opt.minSelect ?? 0)}
+                        onChange={(e) =>
+                          updateOption(i, {
+                            minSelect: Math.max(0, Number(e.target.value) || 0),
+                          })
+                        }
+                        aria-label="Mínimo de selección"
+                        className="h-7 w-14 text-xs"
+                      />{" "}
+                      Máx{" "}
+                      <Input
+                        type="number"
+                        min={1}
+                        value={String(opt.maxSelect ?? 1)}
+                        onChange={(e) =>
+                          updateOption(i, {
+                            maxSelect: Math.max(1, Number(e.target.value) || 1),
+                          })
+                        }
+                        aria-label="Máximo de selección"
+                        className="h-7 w-14 text-xs"
+                      />
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-destructive"
+                      onClick={() => removeOption(i)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {opt.values.map((v, vi) => (
+                      <div
+                        key={vi}
+                        className="flex items-center gap-1.5 rounded-md border bg-muted/40 px-1.5 py-1"
+                      >
+                        <Input
+                          value={v.value}
+                          onChange={(e) => updateValue(i, vi, e.target.value)}
+                          placeholder="Valor"
+                          aria-label="Valor del tópico"
+                          className="h-6 flex-1 border-0 bg-transparent px-1 text-xs focus-visible:ring-0"
+                        />
+                        <span className="text-[10px] text-muted-foreground">
+                          +$
+                        </span>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={String(v.extraPrice ?? 0)}
+                          onChange={(e) =>
+                            updateValuePrice(i, vi, e.target.value)
+                          }
+                          aria-label="Precio extra"
+                          className="h-6 w-16 border-0 bg-transparent px-1 text-xs tabular-nums focus-visible:ring-0"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-5 text-muted-foreground"
+                          onClick={() => removeValue(i, vi)}
+                        >
+                          <X className="size-3" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => addOptionValue(i)}
+                    >
+                      <Plus className="size-3" /> Valor
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addOption}
+                >
+                  <Plus className="size-4" /> Agregar tópico
+                </Button>
+                {isEdit && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    onClick={saveOptions}
+                    disabled={optionsBusy}
+                  >
+                    {optionsBusy ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Check className="size-4" />
+                    )}
+                    Guardar tópicos
+                  </Button>
+                )}
+              </div>
+            </div>
+          </FieldRow>
         </>
       ) : (
         <>

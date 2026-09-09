@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   FileDown,
   FileSpreadsheet,
@@ -20,6 +20,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable } from "@/components/base/data-table";
+import { ResizableSplit } from "@/components/ui/resizable-split";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { FormCombobox } from "@/components/base/form-combobox";
 import { DatePicker } from "@/components/base/date-picker";
 import { CrudCreateDialog } from "@/components/admin/crud/crud-create-dialog";
@@ -89,6 +91,8 @@ function toISODate(d: Date): string {
 }
 
 export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
+  // Mismo patrón de persistencia que el POS: reparto por sucursal y eje.
+  const isWide = useMediaQuery("(min-width: 1024px)");
   const [tab, setTab] = useState<ReportTab>("sales");
   const [filters, setFilters] = useState<ReportsFilters>(EMPTY_FILTERS);
   const [options, setOptions] = useState<{ locations: FilterOption[]; employees: FilterOption[]; registers: FilterOption[] }>({
@@ -292,225 +296,285 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
               )}
             </div>
 
-            <TabsContent value="sales" className="mt-4 space-y-4">
-              <SummaryCards
-                items={[
-                  { label: "Total ventas", value: money(salesTotals.total), accent: true },
-                  { label: "Nº de ventas", value: String(sales.length) },
-                  { label: "Subtotal", value: money(salesTotals.subtotal) },
-                  { label: "Descuentos", value: money(salesTotals.discount) },
-                  { label: "Impuestos", value: money(salesTotals.tax) },
-                  { label: "Puntos ganados", value: String(Math.round(salesTotals.pointsEarned)) },
-                ]}
-              />
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Ventas por día</CardTitle>
-                  <CardDescription>Total vendido por fecha</CardDescription>
-                </CardHeader>
-                <CardContent className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={salesTrendData(sales)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                      <XAxis dataKey="date" fontSize={11} tickLine={false} axisLine={false} />
-                      <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
-                      <Tooltip formatter={(v) => money(Number(v ?? 0))} />
-                      <Area type="monotone" dataKey="total" name="Ventas" stroke="#6366f1" strokeWidth={2} fill="url(#salesFill)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-              <DataTable
-                columns={salesColumns}
-                data={sales}
-                searchable={false}
-                showColumnVisibility={false}
-                showPagination={true}
-                pageSize={20}
-                loading={loading}
-                emptyMessage="Sin ventas para los filtros"
-                rowKey={(r) => r.id}
-              />
-            </TabsContent>
-
-            <TabsContent value="cash" className="mt-4 space-y-4">
-              <SummaryCards
-                items={[
-                  { label: "Ventas en sesiones", value: money(cashTotals.totalSales), accent: true },
-                  { label: "Sesiones", value: String(cashTotals.salesCount) },
-                  { label: "Efectivo registrado", value: money(cashTotals.cashPayments) },
-                  { label: "Esperado total", value: money(cashTotals.expectedCash) },
-                ]}
-              />
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Ventas por caja</CardTitle>
-                  <CardDescription>Total por sesión de caja</CardDescription>
-                </CardHeader>
-                <CardContent className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={cashChartData(cash)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
-                      <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
-                      <Tooltip formatter={(v) => money(Number(v ?? 0))} />
-                      <Bar dataKey="totalSales" name="Ventas" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-              <DataTable
-                columns={cashColumns}
-                data={cash}
-                searchable={false}
-                showColumnVisibility={false}
-                showPagination={true}
-                pageSize={20}
-                loading={loading}
-                emptyMessage="Sin cortes de caja para los filtros"
-                rowKey={(r) => r.id}
+            <TabsContent value="sales" className="mt-4">
+              <ReportSplit
+                locationId={filters.locationId || "all"}
+                wide={isWide}
+                first={
+                  <div className="h-full space-y-4 overflow-y-auto overscroll-contain">
+                    <SummaryCards
+                      items={[
+                        { label: "Total ventas", value: money(salesTotals.total), accent: true },
+                        { label: "Nº de ventas", value: String(sales.length) },
+                        { label: "Subtotal", value: money(salesTotals.subtotal) },
+                        { label: "Descuentos", value: money(salesTotals.discount) },
+                        { label: "Impuestos", value: money(salesTotals.tax) },
+                        { label: "Puntos ganados", value: String(Math.round(salesTotals.pointsEarned)) },
+                      ]}
+                    />
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Ventas por día</CardTitle>
+                        <CardDescription>Total vendido por fecha</CardDescription>
+                      </CardHeader>
+                      <CardContent className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={salesTrendData(sales)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                            <XAxis dataKey="date" fontSize={11} tickLine={false} axisLine={false} />
+                            <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
+                            <Tooltip formatter={(v) => money(Number(v ?? 0))} />
+                            <Area type="monotone" dataKey="total" name="Ventas" stroke="#6366f1" strokeWidth={2} fill="url(#salesFill)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </div>
+                }
+                second={
+                  <div className="h-full overflow-y-auto overscroll-contain">
+                    <DataTable
+                      columns={salesColumns}
+                      data={sales}
+                      searchable={false}
+                      showColumnVisibility={false}
+                      showPagination={true}
+                      pageSize={20}
+                      loading={loading}
+                      emptyMessage="Sin ventas para los filtros"
+                      rowKey={(r) => r.id}
+                    />
+                  </div>
+                }
               />
             </TabsContent>
 
-            <TabsContent value="orders" className="mt-4 space-y-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                <SummaryCards
-                  items={[
-                    { label: "Total pedidos", value: String(orders.length), accent: true },
-                    { label: "Importe", value: money(ordersTotals.total) },
-                    { label: "A domicilio", value: String(ordersTotals.delivery) },
-                    { label: "Para recoger", value: String(ordersTotals.pickup) },
-                  ]}
-                />
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Pedidos por estado</CardTitle>
-                    <CardDescription>Distribución actual</CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={ordersByStatus.map((s) => ({ name: statusLabel(s.status), value: s.count }))}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={45}
-                          outerRadius={80}
-                          paddingAngle={2}
-                        >
-                          {ordersByStatus.map((s, i) => (
-                            <Cell key={i} fill={STATUS_COLORS[s.status] ?? "#94a3b8"} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
-              <DataTable
-                columns={ordersColumns}
-                data={orders}
-                searchable={false}
-                showColumnVisibility={false}
-                showPagination={true}
-                pageSize={20}
-                loading={loading}
-                emptyMessage="Sin pedidos para los filtros"
-                rowKey={(r) => r.id}
+            <TabsContent value="cash" className="mt-4">
+              <ReportSplit
+                locationId={filters.locationId || "all"}
+                wide={isWide}
+                first={
+                  <div className="h-full space-y-4 overflow-y-auto overscroll-contain">
+                    <SummaryCards
+                      items={[
+                        { label: "Ventas en sesiones", value: money(cashTotals.totalSales), accent: true },
+                        { label: "Sesiones", value: String(cashTotals.salesCount) },
+                        { label: "Efectivo registrado", value: money(cashTotals.cashPayments) },
+                        { label: "Esperado total", value: money(cashTotals.expectedCash) },
+                      ]}
+                    />
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Ventas por caja</CardTitle>
+                        <CardDescription>Total por sesión de caja</CardDescription>
+                      </CardHeader>
+                      <CardContent className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={cashChartData(cash)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                            <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                            <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
+                            <Tooltip formatter={(v) => money(Number(v ?? 0))} />
+                            <Bar dataKey="totalSales" name="Ventas" fill="#10b981" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </div>
+                }
+                second={
+                  <div className="h-full overflow-y-auto overscroll-contain">
+                    <DataTable
+                      columns={cashColumns}
+                      data={cash}
+                      searchable={false}
+                      showColumnVisibility={false}
+                      showPagination={true}
+                      pageSize={20}
+                      loading={loading}
+                      emptyMessage="Sin cortes de caja para los filtros"
+                      rowKey={(r) => r.id}
+                    />
+                  </div>
+                }
               />
             </TabsContent>
 
-            <TabsContent value="credit" className="mt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <SummaryCards
-                  items={[
-                    { label: "Cartera total", value: money(creditTotals.totalDebt), accent: true },
-                    { label: "Clientes con deuda", value: String(credit.length) },
-                    { label: "Vencidos", value: String(creditTotals.overdueCount), },
-                    { label: "Total cobrado", value: money(creditTotals.totalPayments) },
-                  ]}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    const res = await fetch("/api/credit/reminder", { method: "POST", credentials: "include" });
-                    const data = await res.json();
-                    if (data.ok) toast.success(data.message);
-                    else toast.error(data.error);
-                  }}
-                >
-                  <Bell className="size-4" /> Enviar recordatorios
-                </Button>
-              </div>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Cartera de crédito</CardTitle>
-                  <CardDescription>Clientes con saldo pendiente y estado de vencimiento</CardDescription>
-                </CardHeader>
-                <CardContent className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={creditChartData(credit)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
-                      <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
-                      <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
-                      <Bar dataKey="balance" name="Deuda" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-              <DataTable
-                columns={creditColumns}
-                data={credit}
-                searchable={false}
-                showColumnVisibility={false}
-                showPagination={true}
-                pageSize={20}
-                loading={loading}
-                emptyMessage="Sin clientes con deuda"
-                rowKey={(r) => r.id}
+            <TabsContent value="orders" className="mt-4">
+              <ReportSplit
+                locationId={filters.locationId || "all"}
+                wide={isWide}
+                first={
+                  <div className="h-full space-y-4 overflow-y-auto overscroll-contain">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <SummaryCards
+                        items={[
+                          { label: "Total pedidos", value: String(orders.length), accent: true },
+                          { label: "Importe", value: money(ordersTotals.total) },
+                          { label: "A domicilio", value: String(ordersTotals.delivery) },
+                          { label: "Para recoger", value: String(ordersTotals.pickup) },
+                        ]}
+                      />
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Pedidos por estado</CardTitle>
+                          <CardDescription>Distribución actual</CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={ordersByStatus.map((s) => ({ name: statusLabel(s.status), value: s.count }))}
+                                dataKey="value"
+                                nameKey="name"
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={45}
+                                outerRadius={80}
+                                paddingAngle={2}
+                              >
+                                {ordersByStatus.map((s, i) => (
+                                  <Cell key={i} fill={STATUS_COLORS[s.status] ?? "#94a3b8"} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                              <Legend />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                }
+                second={
+                  <div className="h-full overflow-y-auto overscroll-contain">
+                    <DataTable
+                      columns={ordersColumns}
+                      data={orders}
+                      searchable={false}
+                      showColumnVisibility={false}
+                      showPagination={true}
+                      pageSize={20}
+                      loading={loading}
+                      emptyMessage="Sin pedidos para los filtros"
+                      rowKey={(r) => r.id}
+                    />
+                  </div>
+                }
               />
             </TabsContent>
 
-            <TabsContent value="customers" className="mt-4 space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Clientes con más compras</CardTitle>
-                  <CardDescription>Top 10 por total gastado</CardDescription>
-                </CardHeader>
-                <CardContent className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topCustomersChartData(customers)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                      <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
-                      <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
-                      <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
-                      <Bar dataKey="totalSpent" name="Total" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-              <DataTable
-                columns={customersColumns}
-                data={customers}
-                searchable={false}
-                showColumnVisibility={false}
-                showPagination={true}
-                pageSize={20}
-                loading={loading}
-                emptyMessage="Sin clientes para los filtros"
-                rowKey={(r) => r.id}
+            <TabsContent value="credit" className="mt-4">
+              <ReportSplit
+                locationId={filters.locationId || "all"}
+                wide={isWide}
+                first={
+                  <div className="h-full space-y-4 overflow-y-auto overscroll-contain">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <SummaryCards
+                        items={[
+                          { label: "Cartera total", value: money(creditTotals.totalDebt), accent: true },
+                          { label: "Clientes con deuda", value: String(credit.length) },
+                          { label: "Vencidos", value: String(creditTotals.overdueCount), },
+                          { label: "Total cobrado", value: money(creditTotals.totalPayments) },
+                        ]}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          const res = await fetch("/api/credit/reminder", { method: "POST", credentials: "include" });
+                          const data = await res.json();
+                          if (data.ok) toast.success(data.message);
+                          else toast.error(data.error);
+                        }}
+                      >
+                        <Bell className="size-4" /> Enviar recordatorios
+                      </Button>
+                    </div>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Cartera de crédito</CardTitle>
+                        <CardDescription>Clientes con saldo pendiente y estado de vencimiento</CardDescription>
+                      </CardHeader>
+                      <CardContent className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={creditChartData(credit)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                            <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                            <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
+                            <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
+                            <Bar dataKey="balance" name="Deuda" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </div>
+                }
+                second={
+                  <div className="h-full overflow-y-auto overscroll-contain">
+                    <DataTable
+                      columns={creditColumns}
+                      data={credit}
+                      searchable={false}
+                      showColumnVisibility={false}
+                      showPagination={true}
+                      pageSize={20}
+                      loading={loading}
+                      emptyMessage="Sin clientes con deuda"
+                      rowKey={(r) => r.id}
+                    />
+                  </div>
+                }
+              />
+            </TabsContent>
+
+            <TabsContent value="customers" className="mt-4">
+              <ReportSplit
+                locationId={filters.locationId || "all"}
+                wide={isWide}
+                first={
+                  <div className="h-full space-y-4 overflow-y-auto overscroll-contain">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Clientes con más compras</CardTitle>
+                        <CardDescription>Top 10 por total gastado</CardDescription>
+                      </CardHeader>
+                      <CardContent className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={topCustomersChartData(customers)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                            <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
+                            <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
+                            <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
+                            <Bar dataKey="totalSpent" name="Total" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  </div>
+                }
+                second={
+                  <div className="h-full overflow-y-auto overscroll-contain">
+                    <DataTable
+                      columns={customersColumns}
+                      data={customers}
+                      searchable={false}
+                      showColumnVisibility={false}
+                      showPagination={true}
+                      pageSize={20}
+                      loading={loading}
+                      emptyMessage="Sin clientes para los filtros"
+                      rowKey={(r) => r.id}
+                    />
+                  </div>
+                }
               />
             </TabsContent>
 
@@ -549,6 +613,36 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
         />
       )}
     </>
+  );
+}
+
+/**
+ * Split «gráficas/resumen | tabla» con la misma persistencia que el POS
+ * (por sucursal y eje). El resumen y la gráfica quedan a la izquierda (ancho)
+ * o arriba (estrecho); la tabla a la derecha/abajo, cada panel con scroll.
+ */
+function ReportSplit({
+  locationId,
+  wide,
+  first,
+  second,
+}: {
+  locationId: string;
+  wide: boolean;
+  first: ReactNode;
+  second: ReactNode;
+}) {
+  return (
+    <ResizableSplit
+      prefix="reports"
+      locationId={locationId}
+      wide={wide}
+      defaultSizes={wide ? [45, 55] : [50, 50]}
+      minSizes={wide ? [30, 35] : [35, 35]}
+      maxSizes={wide ? [65, 70] : [72, 65]}
+      first={first}
+      second={second}
+    />
   );
 }
 

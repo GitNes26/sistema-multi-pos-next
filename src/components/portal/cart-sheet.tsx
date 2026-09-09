@@ -101,6 +101,9 @@ function SwipeableCartItem({
           {item.variantName && (
             <p className="truncate text-xs text-zinc-400">{item.variantName}</p>
           )}
+          {item.comment && (
+            <p className="line-clamp-2 text-xs text-zinc-400">{item.comment}</p>
+          )}
           <div className="mt-1.5 flex items-center gap-3">
             <p className="text-sm font-bold text-white">{money(item.unitPrice * item.qty)}</p>
             <div className="flex items-center gap-1">

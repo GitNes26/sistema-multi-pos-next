@@ -19,7 +19,7 @@ export interface InventorySnapshotRow {
   variantName: string | null;
   sku: string | null;
   barcode: string | null;
-  productType: "standard" | "bulk";
+  productType: "standard" | "bulk" | "custom";
   quantity: number;
   unit: string | null;
   minThreshold: number;
@@ -148,7 +148,7 @@ export async function inventorySnapshot(
       variantName: r.variant?.name ?? null,
       sku: r.variant?.sku ?? null,
       barcode: r.variant?.barcode ?? null,
-      productType: (r.product?.productType ?? "standard") as "standard" | "bulk",
+      productType: (r.product?.productType ?? "standard") as "standard" | "bulk" | "custom",
       quantity,
       unit: r.unit?.abbreviation ?? null,
       minThreshold: min,
@@ -623,7 +623,7 @@ export interface RevisionItemRow {
   variantName: string | null;
   sku: string | null;
   barcode: string | null;
-  productType: "standard" | "bulk";
+  productType: "standard" | "bulk" | "custom";
   unit: string | null;
   expectedQuantity: number;
   countedQuantity: number | null;
@@ -725,7 +725,7 @@ export async function getRevision(organizationId: string, revisionId: string): P
       variantName: i.variant?.name ?? null,
       sku: i.variant?.sku ?? null,
       barcode: i.variant?.barcode ?? null,
-      productType: (i.product?.productType ?? "standard") as "standard" | "bulk",
+      productType: (i.product?.productType ?? "standard") as "standard" | "bulk" | "custom",
       unit: i.product?.bulkUnit?.abbreviation ?? null,
       expectedQuantity: i.expectedQuantity != null ? num(i.expectedQuantity) : 0,
       countedQuantity: i.countedQuantity != null ? num(i.countedQuantity) : null,

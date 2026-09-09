@@ -70,6 +70,8 @@ interface ProductBuilderProps {
   onClose: () => void
   onAdd: (config: {
     product: PosProduct | PortalProductLike
+    /** Variante elegida (tamaño) — null cuando el producto no tiene variantes. */
+    variant: PortalProductLike["variants"][number] | null
     selectedOptions: SelectedOption[]
     totalExtraPrice: number
     notes: string
@@ -378,12 +380,20 @@ export function ProductBuilder({
   const [selections, setSelections] = useState<Map<string, Set<string>>>(
     new Map(),
   )
+  // Tamaño (variante) elegido — solo relevante en el portal, donde el builder
+  // es la única pantalla y la variante no se eligió antes de abrir el panel.
+  const [variantId, setVariantId] = useState<string | null>(null)
   const [notes, setNotes] = useState("")
   const [quantity, setQuantity] = useState(1)
   const [showValidation, setShowValidation] = useState(false)
 
+  const portalVariants = portalProduct?.variants ?? []
+  const selectedVariant =
+    portalVariants.find((v) => v.id === variantId) ?? portalVariants[0] ?? null
+
   const resetSelections = useCallback(() => {
     setSelections(new Map())
+    setVariantId(null)
     setNotes("")
     setQuantity(1)
     setShowValidation(false)
@@ -470,13 +480,18 @@ export function ProductBuilder({
     return result
   }, [activeProduct, selections])
 
-  const handleAdd = useCallback(() => {
+  const handleAdd = useCallback((e?: React.MouseEvent) => {
+    // En el portal el panel puede montarse dentro del <Link> de la card:
+    // sin esto, el clic en «Agregar» burbujea y navega al detalle.
+    e?.preventDefault()
+    e?.stopPropagation()
     if (!activeProduct || !isValid) {
       setShowValidation(true)
       return
     }
     onAdd({
       product: activeProduct,
+      variant: portalProduct ? selectedVariant : null,
       selectedOptions: buildSelectedOptions(),
       totalExtraPrice,
       notes,
@@ -500,9 +515,9 @@ export function ProductBuilder({
 
   if (!activeProduct || activeProduct.options.length === 0) return null
 
-  // Base price: POS product has .price, portal product has variants[0].price
+  // Base price: portal usa la variante elegida; POS ya trae su precio propio
   const basePrice = portalProduct
-    ? (portalProduct.variants[0]?.price ?? 0)
+    ? (selectedVariant?.price ?? portalProduct.variants[0]?.price ?? 0)
     : (product?.price ?? 0)
   const finalPrice = basePrice + totalExtraPrice
 
@@ -602,6 +617,42 @@ export function ProductBuilder({
                 />
               )
             })}
+
+            {/* Tamaño (variante) — solo portal: el builder es la única pantalla
+                de configuración y la variante no se eligió antes de abrirlo. */}
+            {portalProduct && portalVariants.length > 1 && (
+              <div>
+                <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                  Tamaño
+                </h4>
+                <div className="flex flex-wrap items-center gap-2">
+                  {portalVariants.map((v) => {
+                    const active = selectedVariant?.id === v.id
+                    const diff = v.price - (portalVariants[0]?.price ?? 0)
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setVariantId(v.id)}
+                        className={cn(
+                          "inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                          active
+                            ? "border-stone-900 bg-stone-900 text-white dark:border-white dark:bg-white dark:text-stone-900"
+                            : "border-stone-200 bg-white text-stone-700 hover:border-stone-400 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300",
+                        )}
+                      >
+                        {v.name ?? "Regular"}
+                        {diff !== 0 && (
+                          <span className="ml-1 text-xs opacity-70">
+                            {diff > 0 ? `+$${diff.toFixed(2)}` : `-$${Math.abs(diff).toFixed(2)}`}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Notes */}
             <NotesInput value={notes} onChange={setNotes} />

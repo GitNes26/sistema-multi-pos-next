@@ -88,7 +88,7 @@ export interface InventoryRow {
   variantName: string | null;
   sku: string | null;
   barcode: string | null;
-  productType: "standard" | "bulk";
+  productType: "standard" | "bulk" | "custom";
   quantity: number;
   unit: string | null;
   minThreshold: number;
@@ -181,7 +181,7 @@ export interface RevisionItem {
   variantName: string | null;
   sku: string | null;
   barcode: string | null;
-  productType: "standard" | "bulk";
+  productType: "standard" | "bulk" | "custom";
   unit: string | null;
   expectedQuantity: number;
   countedQuantity: number | null;
@@ -358,7 +358,7 @@ export interface SaleItemDetail {
   id: string;
   productName: string;
   variantName: string | null;
-  productType: "standard" | "bulk";
+  productType: "standard" | "bulk" | "custom";
   quantity: number;
   unitAbbrev: string | null;
   unitPrice: number;
@@ -755,11 +755,18 @@ export const variantApi = {
 export interface ProductOptionValue {
   id?: string;
   value: string;
+  /** Recargo por unidad (solo tópicos de productos personalizados). */
+  extraPrice?: number;
+  isActive?: boolean;
 }
 
 export interface ProductOption {
   id?: string;
   name: string;
+  /** Reglas de selección (solo tópicos de productos personalizados). */
+  required?: boolean;
+  minSelect?: number;
+  maxSelect?: number;
   values: ProductOptionValue[];
 }
 

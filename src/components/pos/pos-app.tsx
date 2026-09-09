@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, Printer } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { useGroupRef } from "react-resizable-panels";
-import type { Layout, LayoutChangedMeta } from "react-resizable-panels";
+import { usePersistedSplit } from "@/hooks/use-persisted-split";
 
 interface PosAppProps {
   catalog: PosCatalog;
@@ -74,38 +73,11 @@ function PosSplit({
   locationId,
   ...handlers
 }: PosSplitProps & { variant: "stacked" | "wide"; locationId: string }) {
-  const groupRef = useGroupRef();
   const axis = variant === "stacked" ? "v" : "h";
-  const storageKey = `fb.pos-split.${axis}:${locationId}`;
-
-  // Cargar el reparto guardado de esta sucursal en esta orientación tras el
-  // montaje (no durante el render, para no romper la hidratación SSR).
-  useEffect(() => {
-    const group = groupRef.current;
-    if (!group) return;
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) return;
-      const saved = JSON.parse(raw) as Layout;
-      if (saved && typeof saved === "object") group.setLayout(saved);
-    } catch {
-      // Almacenamiento no disponible o dato corrupto: se mantiene el default.
-    }
-  }, [groupRef, storageKey]);
-
-  // Guardar solo cuando el usuario arrastra el separador (ignora resizes y
-  // el propio setLayout de carga), para no pisar la preferencia con defaults.
-  const onLayoutChanged = useCallback(
-    (layout: Layout, meta: LayoutChangedMeta) => {
-      if (!meta.isUserInteraction) return;
-      try {
-        window.localStorage.setItem(storageKey, JSON.stringify(layout));
-      } catch {
-        // Sin almacenamiento (incógnito / bloqueado): se ignora.
-      }
-    },
-    [storageKey]
-  );
+  // Mismo patrón compartido con pedidos/mesas/reportes: reparto por sucursal
+  // y eje. La clave `fb.pos-split.{eje}:{locationId}` se conserva para no
+  // perder las preferencias guardadas antes de la extracción.
+  const { groupRef, onLayoutChanged } = usePersistedSplit("pos-split", axis, locationId);
 
   if (variant === "stacked") {
     return (
@@ -234,15 +206,39 @@ export function PosApp({
       setBulkTarget({ product });
       return;
     }
+    // Producto personalizado: el constructor (tópicos) es obligatorio. Si tiene
+    // varios tamaños, primero se elige la variante y luego se abre el constructor
+    // con el precio de ese tamaño.
+    if (product.hasOptions && product.options.length > 0) {
+      if (product.variantCount > 1) {
+        setVariantTarget(product);
+      } else {
+        setBuilderTarget(product);
+      }
+      return;
+    }
     if (product.variantCount > 1) {
       setVariantTarget(product);
       return;
     }
-    if (product.hasOptions && product.options.length > 0) {
+    addProduct(product);
+  };
+
+  /** Abre el constructor con el tamaño elegido (variante) ya aplicado. */
+  const openBuilderWithVariant = (product: PosProduct, variantId?: string) => {
+    const variant = variantId
+      ? product.variants.find((v) => v.id === variantId)
+      : null;
+    if (!variant) {
       setBuilderTarget(product);
       return;
     }
-    addProduct(product);
+    setBuilderTarget({
+      ...product,
+      variantId: variant.id,
+      price: variant.price,
+      name: `${product.name} · ${variant.name}`,
+    });
   };
 
   const openBulkEdit = (line: PosLineItem) => {
@@ -374,7 +370,14 @@ export function PosApp({
         product={variantTarget}
         onClose={() => setVariantTarget(null)}
         onSelect={(variant) => {
-          if (variantTarget) addProduct(variantTarget, { variant });
+          if (!variantTarget) return;
+          setVariantTarget(null);
+          if (variantTarget.hasOptions && variantTarget.options.length > 0) {
+            // Personalizado: tras elegir el tamaño, sigue el constructor.
+            openBuilderWithVariant(variantTarget, variant.id);
+          } else {
+            addProduct(variantTarget, { variant });
+          }
         }}
       />
 

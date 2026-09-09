@@ -27,6 +27,8 @@ import { DialogComponent } from "@/components/ui/dialog";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { Spinner } from "@/components/base/spinner";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ResizableSplit } from "@/components/ui/resizable-split";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { cn } from "@/lib/utils";
 import { TableHistoryDialog } from "./table-history";
@@ -126,6 +128,8 @@ const planOf = (t: TableData): PlanTable & {
 /* ------------------------------------------------------------------ */
 
 export function TablesManager({ canManage = false }: { canManage?: boolean }) {
+  // Mismo patrón de persistencia que el POS: reparto por sucursal y eje.
+  const isWide = useMediaQuery("(min-width: 1024px)");
   const [tables, setTables] = useState<TableData[]>([]);
   const [rooms, setRooms] = useState<RoomData[]>([]);
   const [locations, setLocations] = useState<LocationData[]>([]);
@@ -517,6 +521,17 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         </Card>
       </div>
 
+      {/* Monitoreo (espera + reservaciones) | mesas: split arrastrable con la
+          misma persistencia por sucursal y eje que el POS. */}
+      <ResizableSplit
+        prefix="tables"
+        locationId={locationFilter || "all"}
+        wide={isWide}
+        defaultSizes={isWide ? [34, 66] : [42, 58]}
+        minSizes={isWide ? [24, 40] : [30, 38]}
+        maxSizes={isWide ? [55, 76] : [68, 70]}
+        first={
+          <div className="h-full space-y-3 overflow-y-auto overscroll-contain pr-1">
       {/* Lista de espera (anfitrión) */}
       {waitlistEntries.length > 0 && (
         <div className="rounded-xl border bg-card">
@@ -615,6 +630,17 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         </div>
       )}
 
+            {/* Estado vacío del monitoreo: invita en vez de dejar el panel en blanco. */}
+            {waitlistEntries.length === 0 &&
+              reservations.filter((r) => r.status === "pending" || r.status === "confirmed").length === 0 && (
+                <div className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+                  Sin espera ni reservaciones activas hoy.
+                </div>
+              )}
+          </div>
+        }
+        second={
+          <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain">
       {/* Filters + Actions */}
       <div className="flex flex-wrap items-center gap-3">
         <select
@@ -885,6 +911,9 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
           })}
         </div>
       )}
+          </div>
+        }
+      />
 
       {/* Create/Edit Dialog */}
       <DialogComponent
