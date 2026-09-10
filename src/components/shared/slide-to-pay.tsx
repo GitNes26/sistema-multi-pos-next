@@ -1,7 +1,7 @@
 "use client"
 
-import { motion, useMotionValue, useTransform, animate } from "framer-motion"
-import { ArrowRight, Check, Lock } from "lucide-react"
+import { motion, useMotionValue, useTransform, animate, useAnimation } from "framer-motion"
+import { ArrowRight, Check, Lock, CreditCard, ShoppingBag } from "lucide-react"
 import { haptic } from "@/lib/haptics"
 import { cn } from "@/lib/utils"
 
@@ -10,85 +10,130 @@ interface SlideToPayProps {
   label?: string
   className?: string
   disabled?: boolean
+  empty?: boolean
 }
 
-/**
- * SlideToPay — A draggable slider that confirms an action when swiped right.
- *
- * The thumb must be dragged from left to right past 80% to trigger onConfirm.
- * If released before the threshold, it springs back.
- */
+const THRESHOLD = 0.78
+
 export function SlideToPay({
   onConfirm,
   label = "Desliza para pagar",
   className,
   disabled = false,
+  empty = false,
 }: SlideToPayProps) {
   const x = useMotionValue(0)
-  const trackRef = { current: 0 }
 
-  // Visual transforms based on drag progress
-  const bg = useTransform(x, [0, 140], ["hsl(var(--muted))", "hsl(340 80% 55%)"])
-  const iconOpacity = useTransform(x, [0, 60, 120], [0, 0.5, 1])
-  const labelOpacity = useTransform(x, [0, 40, 80], [1, 0.5, 0])
-  const thumbScale = useTransform(x, [0, 140], [1, 1.05])
+  // Ancho del track en píxeles, medido en client durante el montaje.
+  const trackWidth = useMotionValue(0)
+
+  // Progreso 0..1 calculado sobre el ancho real para que no dependa de
+  // constantes de píxeles en pantallas de alta densidad.
+  const progress = useTransform(x, [0, trackWidth.get()], [0, 1])
+
+  const conf = useAnimation()
+
+  const trackRefInner = { current: null as HTMLDivElement | null }
 
   const handleDragEnd = (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
-    const threshold = 120
-    const velocityThreshold = 400
+    if (disabled || empty) {
+      animate(x, 0, { type: "spring", stiffness: 420, damping: 28 })
+      return
+    }
 
-    if (
-      !disabled &&
-      (info.offset.x > threshold || info.velocity.x > velocityThreshold)
-    ) {
-      haptic.heavy()
+    const width = trackWidth.get()
+    const dragged = (info.offset.x ?? 0) / width
+    const fast = (info.velocity.x ?? 0) > 420
+
+    if (dragged > THRESHOLD || fast) {
+      haptic.success()
+      conf.start({ opacity: 1, scale: 1 })
       onConfirm()
     } else {
-      // Spring back
-      animate(x, 0, { type: "spring", stiffness: 400, damping: 30 })
+      haptic.medium()
+      animate(x, 0, { type: "spring", stiffness: 340, damping: 28 })
     }
   }
 
+  const handleDragStart = () => {
+    if (!disabled && !empty) haptic.light()
+  }
+
+  const measuredWidth = trackWidth.get()
+
   return (
-    <div className={cn("relative h-14 w-full select-none", className)}>
-      {/* Track background — changes color as you drag */}
+    <div
+      className={cn("relative h-14 w-full overflow-hidden rounded-full select-none", className)}
+      ref={(node) => {
+        const div = node as HTMLDivElement | null
+        trackRefInner.current = div
+        if (div) trackWidth.set(div.getBoundingClientRect().width)
+      }}
+    >
+      {/* Track background */}
       <motion.div
-        style={{ backgroundColor: bg }}
-        className="absolute inset-0 rounded-full overflow-hidden"
+        className="absolute inset-0 flex items-center justify-center rounded-full"
+        style={{
+          background: empty
+            ? "hsl(var(--muted)/0.18)"
+            : `linear-gradient(to right, hsl(var(--muted)/0.45) 0%, hsl(340 80% 52%) ${(THRESHOLD * 100).toFixed(0)}%, hsl(340 80% 52%/0.9) 100%)`,
+        }}
       >
-        {/* Checkmark that fades in as you drag */}
+        {/* Thumb */}
         <motion.div
-          style={{ opacity: iconOpacity }}
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-white"
+          style={{ x }}
+          drag="x"
+          dragConstraints={{ left: 0, right: measuredWidth }}
+          dragElastic={0.08}
+          dragMomentum={false}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          animate={conf}
+          whileDrag={{ scale: 1.06 }}
+          whileTap={{ scale: 1.05 }}
+          className={cn(
+            "absolute top-1/2 z-10 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_6px_14px_rgba(0,0,0,0.35)] transition-shadow",
+            !empty && "cursor-grab active:cursor-grabbing",
+            disabled && "cursor-not-allowed",
+            empty && "cursor-default"
+          )}
         >
-          <Check className="size-5" strokeWidth={3} />
+          {empty ? (
+            <ShoppingBag className="size-5 text-muted-foreground/60" />
+          ) : disabled ? (
+            <Lock className="size-5 text-muted-foreground/70" />
+          ) : (
+            <ArrowRight className="size-5 text-white" />
+          )}
         </motion.div>
 
-        {/* Label that fades out as you drag */}
+        {/* Etiqueta central */}
         <motion.div
-          style={{ opacity: labelOpacity }}
-          className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground pointer-events-none"
+          className="absolute inset-0 flex items-center justify-center px-4 pointer-events-none"
         >
-          <Lock className="size-4" />
-          <span>{label}</span>
+          {empty ? (
+            <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">
+              Carrito vacío
+            </span>
+          ) : disabled ? (
+            <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70">
+              Bloqueado
+            </span>
+          ) : (
+            <span className="text-sm font-semibold text-white tracking-tight">{label}</span>
+          )}
         </motion.div>
-      </motion.div>
 
-      {/* Draggable thumb */}
-      <motion.div
-        style={{ x, scale: thumbScale }}
-        drag="x"
-        dragConstraints={{ left: 0, right: 160 }}
-        dragElastic={0.1}
-        dragMomentum={false}
-        onDragEnd={handleDragEnd}
-        whileTap={{ scale: 1.08 }}
-        className={cn(
-          "absolute left-1 top-1 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg cursor-grab active:cursor-grabbing",
-          disabled && "opacity-50 cursor-not-allowed"
+        {/* Mini badge de acción */}
+        {!empty && !disabled && (
+          <motion.div
+            className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white"
+            style={{ opacity: 0.6 + 0.4 * Math.min(1, progress.get() ?? 0) }}
+          >
+            <CreditCard className="size-3" />
+            <span>Paga</span>
+          </motion.div>
         )}
-      >
-        <ArrowRight className="size-5 text-foreground" />
       </motion.div>
     </div>
   )

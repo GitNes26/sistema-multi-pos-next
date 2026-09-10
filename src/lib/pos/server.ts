@@ -705,7 +705,7 @@ export async function createSale(
           locationId,
           locationType: "location",
           type: "sale",
-          quantity: item.quantity,
+          quantity: -item.quantity,
           unitId: item.unitId,
           reason: "Venta POS",
           referenceId: sale.id,

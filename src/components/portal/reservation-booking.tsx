@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Armchair, CalendarCheck2, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { swalError, swalToast } from "@/lib/swal";
 import { ReservationWizard } from "@/components/reservations/reservation-wizard";
+import { STAGGER_FADE_UP } from "@/lib/animation-tokens";
 
 // Reservación de mesa desde el portal: wizard a pasos (sucursal → calendario
 // según políticas → hora/asientos → sala en el plano → datos). La lista de
@@ -179,26 +181,33 @@ export function ReservationBooking() {
   };
 
   return (
-    <div className="space-y-5 p-4">
+    <motion.div
+      className="space-y-5 p-4"
+      variants={STAGGER_FADE_UP.container}
+      initial="hidden"
+      animate="show"
+    >
       {loading ? (
         <div className="flex justify-center py-10 text-muted-foreground">
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
         <>
-          <ReservationWizard
-            key={reloadKey}
-            locations={locations}
-            customerName={customerName}
-            customerPhone={customerPhone}
-            createUrl="/api/portal/reservations"
-            availabilityUrl="/api/table-reservations/availability?"
-            doneMessage="Reservación registrada"
-            onDone={() => setReloadKey((k) => k + 1)}
-          />
+          <motion.div variants={STAGGER_FADE_UP.item}>
+            <ReservationWizard
+              key={reloadKey}
+              locations={locations}
+              customerName={customerName}
+              customerPhone={customerPhone}
+              createUrl="/api/portal/reservations"
+              availabilityUrl="/api/table-reservations/availability?"
+              doneMessage="Reservación registrada"
+              onDone={() => setReloadKey((k) => k + 1)}
+            />
+          </motion.div>
 
           {/* Lista de espera: anotarse y recibir aviso en vivo cuando se libera una mesa */}
-          <div className="rounded-xl border bg-muted/30 p-3.5">
+          <motion.div variants={STAGGER_FADE_UP.item} className="rounded-xl border bg-muted/30 p-3.5">
             {waitlist ? (
               waitlist.status === "available" && waitlist.availableTable ? (
                 <div className="space-y-2.5">
@@ -260,11 +269,11 @@ export function ReservationBooking() {
                 </Button>
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Mis reservaciones */}
           {mine.length > 0 && (
-            <div className="space-y-2 border-t pt-4">
+            <motion.div variants={STAGGER_FADE_UP.item} className="space-y-2 border-t pt-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Mis reservaciones
               </p>
@@ -281,10 +290,10 @@ export function ReservationBooking() {
                   </Badge>
                 </div>
               ))}
-            </div>
+            </motion.div>
           )}
         </>
       )}
-    </div>
+    </motion.div>
   );
 }

@@ -9,7 +9,6 @@ import {
   Hash,
   ImageIcon,
   Loader2,
-  Plus,
   Tag,
   Trash2,
   X,
@@ -183,7 +182,6 @@ function VariantRowEditor({
             if (v && v !== variant.name) saveField("name", v)
           }}
           className="h-8 w-full min-w-[250px] text-sm"
-          disabled={true}
         />
       </td>
       <td className="px-1 py-1.5">
@@ -309,7 +307,6 @@ export function VariantsDialog({
 }) {
   const [variants, setVariants] = useState<VariantRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
 
   const refresh = useCallback(async () => {
     try {
@@ -340,26 +337,6 @@ export function VariantsDialog({
       active = false
     }
   }, [productId, refresh])
-
-  const createVariant = async () => {
-    setCreating(true)
-    try {
-      await variantApi.create(productId, {
-        name: "Nueva variante",
-        price: defaults.price,
-        cost: defaults.cost,
-        isActive: true,
-      })
-      await refresh()
-    } catch (err) {
-      swalError(
-        "No se pudo crear la variante",
-        err instanceof Error ? err.message : undefined
-      )
-    } finally {
-      setCreating(false)
-    }
-  }
 
   const removeVariant = async (v: VariantRow) => {
     const ok = await swalConfirm(
@@ -392,15 +369,43 @@ export function VariantsDialog({
       size="full"
       bodyClassName="space-y-4"
       footer={
-        <>
+        <div className="flex w-full items-center justify-between">
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={variants.length === 0}
+              onClick={async () => {
+                if (!variants.length) return
+                const ok = await swalConfirm(
+                  "Copiar precio del producto",
+                  `Se asignará ${money(defaults.price)} de precio y ${money(defaults.cost)} de costo a todas las variantes.`
+                )
+                if (!ok) return
+                try {
+                  await Promise.all(
+                    variants.map((v) =>
+                      variantApi.update(productId, v.id, {
+                        price: defaults.price,
+                        cost: defaults.cost,
+                      })
+                    )
+                  )
+                  swalToast("Precios actualizados en todas las variantes")
+                  await refresh()
+                } catch (err) {
+                  swalError("Error", err instanceof Error ? err.message : undefined)
+                }
+              }}
+            >
+              <Copy className="size-3.5 mr-1" />
+              Copiar precios del producto
+            </Button>
+          </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cerrar
           </Button>
-          <Button size="sm" disabled={creating} onClick={() => void createVariant()}>
-            {creating ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-            Agregar variante
-          </Button>
-        </>
+        </div>
       }
     >
       {/* Cabecera del producto */}
@@ -519,8 +524,7 @@ export function VariantsDialog({
                     colSpan={8}
                     className="px-3 py-8 text-center text-muted-foreground"
                   >
-                    Aún no hay variantes. Agrega la primera con el botón
-                    inferior.
+                    No hay variantes registradas para este producto.
                   </td>
                 </tr>
               )}

@@ -649,6 +649,8 @@ export function CombosManager() {
           searchable
           pageSize={10}
           rowKey={(row) => row.id}
+          onRefresh={() => fetchCombos()}
+          refreshing={loading}
           renderCard={(combo) => (
             <div
               className="rounded-xl border p-4 space-y-3 cursor-pointer hover:bg-muted/50 transition-colors"

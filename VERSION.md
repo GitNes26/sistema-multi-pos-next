@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.17.2.0] — 2026-09-10
+- **Tipo:** `fix` (Patch)
+- fix: corrigiendo las interfaces moviles y que agarre bien la devolucion
+
 ### [0.17.1.0] — 2026-09-09
 - **Tipo:** `fix` (Patch)
 - fix:se modifico el producto custom y el boton toPay

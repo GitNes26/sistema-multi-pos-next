@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { CrudError } from "@/lib/crud/types";
 import { registerMovement } from "@/lib/inventory/server";
+import { persistNotification } from "@/lib/notifications/helpers";
 
 // FASE — Sistema de devoluciones/cambios.
 
@@ -131,6 +132,19 @@ export async function createReturn(
     },
     include: { items: true },
   });
+
+  // Notificar a la organización sobre la nueva devolución
+  const saleNum = String(sale.locationSaleNumber ?? sale.saleNumber);
+  const typeName = { refund: "Reembolso", coupon: "Cupón", points: "Puntos", exchange: "Cambio" }[input.returnType];
+  persistNotification({
+    organizationId,
+    locationId: sale.locationId,
+    kind: "info",
+    title: `Nueva devolución — Venta #${saleNum}`,
+    body: `${typeName} por ${total.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}${sale.customer?.fullName ? ` · ${sale.customer.fullName}` : ""}`,
+    severity: "warning",
+    metadata: { returnType: input.returnType, saleNumber: saleNum, total },
+  }).catch((err) => console.error("[returns] notification failed:", err));
 
   return ret;
 }

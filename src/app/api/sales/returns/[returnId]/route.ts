@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { salesGuard, salesErrorResponse } from "../../guard";
 import { getReturnDetail } from "@/lib/returns/server";
+import { jsonResponse } from "@/lib/api-helpers";
 
 // GET /api/sales/returns/[returnId] — Detalle de devolución
 export async function GET(req: NextRequest, { params }: { params: Promise<{ returnId: string }> }) {
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ retu
   try {
     const { returnId } = await params;
     const ret = await getReturnDetail(guard.organizationId, returnId);
-    return NextResponse.json({ ok: true, return: ret });
+    return jsonResponse({ ok: true, return: ret });
   } catch (err) {
     return salesErrorResponse(err);
   }

@@ -349,6 +349,8 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                       loading={loading}
                       emptyMessage="Sin ventas para los filtros"
                       rowKey={(r) => r.id}
+                      onRefresh={() => load()}
+                      refreshing={loading}
                     />
                   </div>
                 }
@@ -400,6 +402,8 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                       loading={loading}
                       emptyMessage="Sin cortes de caja para los filtros"
                       rowKey={(r) => r.id}
+                      onRefresh={() => load()}
+                      refreshing={loading}
                     />
                   </div>
                 }
@@ -464,6 +468,8 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                       loading={loading}
                       emptyMessage="Sin pedidos para los filtros"
                       rowKey={(r) => r.id}
+                      onRefresh={() => load()}
+                      refreshing={loading}
                     />
                   </div>
                 }
@@ -529,6 +535,8 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                       loading={loading}
                       emptyMessage="Sin clientes con deuda"
                       rowKey={(r) => r.id}
+                      onRefresh={() => load()}
+                      refreshing={loading}
                     />
                   </div>
                 }
@@ -572,6 +580,8 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                       loading={loading}
                       emptyMessage="Sin clientes para los filtros"
                       rowKey={(r) => r.id}
+                      onRefresh={() => load()}
+                      refreshing={loading}
                     />
                   </div>
                 }

@@ -5,6 +5,7 @@ import {
   CheckCircle,
   Eye,
   Loader2,
+  RefreshCw,
   Search,
   Tag,
   Ticket,
@@ -205,6 +206,15 @@ export function ReturnsTab({ canView, canManage }: Props) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => load()}
+          disabled={loading}
+          className="h-8"
+        >
+          {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+        </Button>
         <FormCombobox
           label="Estatus"
           options={[

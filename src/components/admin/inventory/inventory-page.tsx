@@ -945,6 +945,8 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                   pageSizeOptions={[10, 20, 50, 100]}
                   searchable={false}
                   showColumnVisibility={false}
+                  onRefresh={() => load()}
+                  refreshing={loading}
                   toolbarSlot={
                     canManage && rows.filter((r) => r.status !== "ok").length > 0 ? (
                       <Badge variant="outline" className="text-xs">
@@ -1048,6 +1050,8 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                   pageSize={20}
                   pageSizeOptions={[10, 20, 50, 100]}
                   searchable={false}
+                  onRefresh={() => load()}
+                  refreshing={loading}
                   renderCard={(m) => (
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -1144,6 +1148,8 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                   pageSize={20}
                   pageSizeOptions={[10, 20, 50, 100]}
                   searchable={false}
+                  onRefresh={() => load()}
+                  refreshing={loading}
                   onRowClick={(r) => {
                     inventoryApi.getRevision(r.id).then((res) => setActiveRevision(res.revision)).catch((err) => swalError("Error", err instanceof Error ? err.message : undefined));
                   }}

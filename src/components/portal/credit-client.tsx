@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { motion } from "framer-motion"
 import { Landmark, ArrowDownCircle, ArrowUpCircle, Clock, AlertTriangle, CreditCard, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -8,9 +9,11 @@ import { InputGroupField } from "@/components/base/input-group-field"
 import { AnimatedNumber } from "@/components/base/animated-number"
 import { Spinner } from "@/components/base/spinner"
 import { EmptyState } from "@/components/shared/empty-state"
+import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 import { money } from "@/lib/pos/money"
 import { playSound } from "@/lib/sounds"
 import { cn } from "@/lib/utils"
+import { STAGGER_FADE_UP } from "@/lib/animation-tokens"
 
 interface CreditInfo {
   creditLimit: number | null
@@ -98,9 +101,15 @@ export function CreditClient() {
   const hasDebt = credit && credit.currentBalance > 0
 
   return (
-    <div className="space-y-4 p-4">
-      {/* Credit Summary Card */}
-      <div className="rounded-2xl border bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-5">
+    <PullToRefresh onRefresh={load}>
+      <motion.div
+        className="space-y-4 p-4"
+        variants={STAGGER_FADE_UP.container}
+        initial="hidden"
+        animate="show"
+      >
+        {/* Credit Summary Card */}
+        <motion.div variants={STAGGER_FADE_UP.item} className="rounded-2xl border bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-5">
         <div className="flex items-center gap-2 mb-3">
           <Landmark className="size-5 text-amber-600" />
           <h2 className="text-lg font-bold">Mi Crédito</h2>
@@ -129,9 +138,10 @@ export function CreditClient() {
             Tu cuenta de crédito está suspendida. Contacta soporte.
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Tabs — reutiliza componente Tabs */}
+      <motion.div variants={STAGGER_FADE_UP.item}>
       <Tabs defaultValue="summary">
         <TabsList className="w-full">
           <TabsTrigger value="summary" className="flex-1">
@@ -255,7 +265,9 @@ export function CreditClient() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+      </motion.div>
+      </motion.div>
+    </PullToRefresh>
   )
 }
 

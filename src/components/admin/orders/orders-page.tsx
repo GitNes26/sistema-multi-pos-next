@@ -320,6 +320,8 @@ export function OrdersPage({
                 loading={loading}
                 emptyMessage="Sin pedidos para los filtros"
                 rowKey={(r) => r.id}
+                onRefresh={() => load()}
+                refreshing={loading}
               />
             </CardContent>
           </Card>

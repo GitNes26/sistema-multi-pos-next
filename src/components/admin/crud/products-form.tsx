@@ -229,24 +229,6 @@ export function ProductsForm({
   )
   const [optionsBusy, setOptionsBusy] = useState(false)
 
-  // Default variants del producto (para el botón "Variantes" en la tabla)
-  const _defaultVariant = useMemo(() => {
-    if (!isEdit) return null
-    const variants =
-      (initial?.variants as {
-        name?: string
-        sku?: string | null
-        barcode?: string | null
-        price?: number
-        cost?: number
-      }[]) ?? []
-    return (
-      variants.find((v) => v.name?.toLowerCase() === "default") ??
-      variants[0] ??
-      null
-    )
-  }, [isEdit, initial])
-
   const categoryField = useMemo<CrudField>(
     () => ({
       key: "categoryId",

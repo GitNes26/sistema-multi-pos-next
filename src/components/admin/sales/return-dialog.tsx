@@ -127,7 +127,19 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
         items,
       })
       if (res.ok) {
-        toast.success("Devolución creada correctamente")
+        const retId = res.return?.id
+        toast.success("Devolución creada correctamente", {
+          description: "Puedes revisar el estado en el tab de Devoluciones.",
+          action: retId
+            ? {
+                label: "Ver devolución",
+                onClick: () => {
+                  onOpenChange(false)
+                  onCreated?.()
+                },
+              }
+            : undefined,
+        })
         onOpenChange(false)
         setSelectedItems({})
         setReason("")

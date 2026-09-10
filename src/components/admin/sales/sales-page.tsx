@@ -79,6 +79,7 @@ export function SalesPage({
   const [detail, setDetail] = useState<SaleDetail | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [busy, setBusy] = useState<"xlsx" | "pdf" | null>(null)
+  const [tab, setTab] = useState("ventas")
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 350)
@@ -268,7 +269,7 @@ export function SalesPage({
         description="Historial de ventas y devoluciones del punto de venta."
       />
 
-      <Tabs defaultValue="ventas">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="ventas">Ventas</TabsTrigger>
           <TabsTrigger value="devoluciones">Devoluciones</TabsTrigger>
@@ -422,6 +423,8 @@ export function SalesPage({
                 renderCard={(r) => (
                   <SaleCard row={r} onOpen={() => openDetail(r)} />
                 )}
+                onRefresh={() => load()}
+                refreshing={loading}
               />
 
               {!loading && total > 0 && (
@@ -470,6 +473,10 @@ export function SalesPage({
           sale={detail}
           open={detailOpen}
           onClose={() => setDetailOpen(false)}
+          onReturnCreated={() => {
+            setDetailOpen(false)
+            setTab("devoluciones")
+          }}
         />
       )}
     </>
@@ -500,10 +507,12 @@ function SaleDetailDialog({
   sale,
   open,
   onClose,
+  onReturnCreated,
 }: {
   sale: SaleDetail
   open: boolean
   onClose: () => void
+  onReturnCreated?: () => void
 }) {
   const [printing, setPrinting] = useState(false)
   const [showReturn, setShowReturn] = useState(false)
@@ -678,6 +687,7 @@ function SaleDetailDialog({
         open={showReturn}
         onOpenChange={setShowReturn}
         sale={sale}
+        onCreated={onReturnCreated}
       />
     </DialogComponent>
   )
