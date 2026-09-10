@@ -1,6 +1,6 @@
 "use client"
 
-import { Plus, Trash2 } from "lucide-react"
+import { Copy, Plus, Trash2 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { TimePicker } from "@/components/base/time-picker"
@@ -115,15 +115,50 @@ export function ScheduleEditor({
 
   const legend = buildLegend(schedule)
 
+  // Replicar la configuración del lunes (o del primer día con horario) en el resto de la semana.
+  const replicateMonday = () => {
+    const monday = schedule.find((d) => d.day === 1)
+    const source = monday && monday.slots.length > 0 ? monday : schedule.find((d) => d.enabled && d.slots.length > 0)
+    if (!source) return
+    onChange(
+      schedule.map((d) =>
+        d.day === source.day
+          ? d
+          : { day: d.day, enabled: true, slots: source.slots.map((s) => ({ ...s })) }
+      )
+    )
+  }
+
+  const hasSource = schedule.some((d) => d.enabled && d.slots.length > 0)
+
   return (
     <div className="space-y-3">
-      {/* Leyenda en tiempo real */}
-      <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">Horario: </span>
-        {legend}
+      {/* Leyenda en tiempo real + replicar lunes */}
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1 rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Horario: </span>
+          {legend}
+          {!hasSource && (
+            <p className="mt-0.5 text-xs text-muted-foreground/80">
+              Tip: configura el Lunes y replica en el resto de la semana con un toque.
+            </p>
+          )}
+        </div>
+        {hasSource && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0 gap-1.5 whitespace-nowrap"
+            onClick={replicateMonday}
+            disabled={disabled}
+            title="Copia el horario del lunes a los demás días"
+          >
+            <Copy className="size-3.5" />
+            Replicar Lun
+          </Button>
+        )}
       </div>
-
-      {/* Editor por día */}
       {schedule.map((s, dayIdx) => (
         <div key={dayIdx} className="space-y-1.5">
           <div className="flex items-center gap-2">

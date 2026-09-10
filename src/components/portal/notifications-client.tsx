@@ -89,7 +89,7 @@ export function NotificationsClient() {
 
   useEffect(() => {
     load(tab === "unread" ? "unread" : undefined, false)
-  }, [load])
+  }, [load, tab])
 
   // Polling cada 30 segundos con sonido
   useEffect(() => {
@@ -97,7 +97,7 @@ export function NotificationsClient() {
       load(tab === "unread" ? "unread" : undefined, true)
     }, 30_000)
     return () => clearInterval(interval)
-  }, [load])
+  }, [load, tab])
 
   const markAsRead = async (id: string) => {
     try {

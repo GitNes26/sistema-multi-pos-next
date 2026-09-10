@@ -233,6 +233,8 @@ type DialogComponentProps = {
   footer?: React.ReactNode
   showCloseButton?: boolean
   children?: React.ReactNode
+  /** Selector estable para guías inmersivas (data-guide). */
+  dataGuide?: string
 }
 
 function DialogComponent({
@@ -248,6 +250,7 @@ function DialogComponent({
   footer,
   showCloseButton,
   children,
+  dataGuide,
 }: DialogComponentProps) {
   useCloseAllDialogs(() => onOpenChange(false))
 
@@ -255,7 +258,11 @@ function DialogComponent({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(sizeClass, className)} showCloseButton={showCloseButton}>
+      <DialogContent
+        className={cn(sizeClass, className)}
+        showCloseButton={showCloseButton}
+        data-guide={dataGuide}
+      >
         {title || description ? (
           <DialogHeader>
             {title ? (

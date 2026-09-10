@@ -11,6 +11,7 @@ import {
   Loader2,
   Tag,
   Trash2,
+  Wand2,
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -290,6 +291,118 @@ function VariantRowEditor({
 
 // ── Diálogo principal de variantes ───────────────────────────────────────────
 
+// ── Autogeneración de SKU / códigos de barras ────────────────────────────────
+// Llena en serie los códigos de todas las variantes con un prefijo + secuencia,
+// evitando teclear SKU y código de barras uno por uno.
+
+function AutoCodesDialog({
+  count,
+  hasEmpty,
+  prefix,
+  start,
+  onlyEmpty,
+  barcode,
+  busy,
+  onPrefix,
+  onStart,
+  onOnlyEmpty,
+  onBarcode,
+  onClose,
+  onApply,
+}: {
+  count: number
+  hasEmpty: boolean
+  prefix: string
+  start: number
+  onlyEmpty: boolean
+  barcode: boolean
+  busy: boolean
+  onPrefix: (v: string) => void
+  onStart: (v: number) => void
+  onOnlyEmpty: (v: boolean) => void
+  onBarcode: (v: boolean) => void
+  onClose: () => void
+  onApply: () => void
+}) {
+  const preview = (n: number) =>
+    `${prefix.trim() || "SKU"}${String(Math.max(0, Math.floor(start) || 0) + n).padStart(3, "0")}`
+
+  return (
+    <DialogComponent
+      open
+      onOpenChange={(o) => !o && !busy && onClose()}
+      title="Autogenerar códigos"
+      description={`Se llenará la secuencia en ${count} variante(s) de una sola vez.`}
+      className="sm:max-w-md"
+      bodyClassName="space-y-4"
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={busy}>
+            Cancelar
+          </Button>
+          <Button size="sm" onClick={onApply} disabled={busy}>
+            {busy && <Loader2 className="size-4 animate-spin" />}
+            {busy ? "Generando…" : "Generar códigos"}
+          </Button>
+        </>
+      }
+    >
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium">Prefijo</p>
+              <Input
+                value={prefix}
+                onChange={(e) => onPrefix(e.target.value)}
+                placeholder="SKU"
+                className="h-9 font-mono text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium">Inicia en el número</p>
+              <Input
+                type="number"
+                min={0}
+                value={start}
+                onChange={(e) => onStart(Number(e.target.value))}
+                className="h-9 font-mono text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 rounded-lg border bg-muted/30 p-3 text-xs">
+            <p className="font-medium text-foreground">Vista previa</p>
+            <div className="flex flex-wrap gap-1.5">
+              {[0, 1, 2].map((n) => (
+                <code key={n} className="rounded bg-background px-1.5 py-0.5 ring-1 ring-border">
+                  {preview(n)}
+                </code>
+              ))}
+              <span className="text-muted-foreground">…</span>
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                Solo las que están vacías{" "}
+                {hasEmpty && (
+                  <span className="text-xs text-muted-foreground">(hay algunas sin código)</span>
+                )}
+              </span>
+              <Switch checked={onlyEmpty} onCheckedChange={onOnlyEmpty} />
+            </label>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span className="flex items-center gap-1.5">
+                <Barcode className="size-3.5 text-muted-foreground" />
+                Generar también códigos de barras (13 dígitos)
+              </span>
+              <Switch checked={barcode} onCheckedChange={onBarcode} />
+            </label>
+          </div>
+    </DialogComponent>
+  )
+}
+
 export function VariantsDialog({
   productId,
   productName,
@@ -307,6 +420,12 @@ export function VariantsDialog({
 }) {
   const [variants, setVariants] = useState<VariantRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [autoOpen, setAutoOpen] = useState(false)
+  const [autoPrefix, setAutoPrefix] = useState("")
+  const [autoStart, setAutoStart] = useState(1)
+  const [autoOnlyEmpty, setAutoOnlyEmpty] = useState(true)
+  const [autoBarcode, setAutoBarcode] = useState(false)
+  const [autoBusy, setAutoBusy] = useState(false)
 
   const refresh = useCallback(async () => {
     try {
@@ -370,7 +489,25 @@ export function VariantsDialog({
       bodyClassName="space-y-4"
       footer={
         <div className="flex w-full items-center justify-between">
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={variants.length === 0}
+              onClick={() => {
+                setAutoPrefix(
+                  productName.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase() || "SKU"
+                )
+                setAutoStart(1)
+                setAutoOnlyEmpty(true)
+                setAutoBarcode(false)
+                setAutoOpen(true)
+              }}
+              title="Genera SKU y códigos de barras en serie para todas las variantes (ahorra teclear uno por uno)"
+            >
+              <Wand2 className="size-3.5 mr-1" />
+              Autogenerar SKU / códigos
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -496,6 +633,55 @@ export function VariantsDialog({
           </div>
         </div>
       </div>
+
+      {/* Diálogo de autogeneración de SKU / códigos de barras */}
+      {autoOpen && (
+        <AutoCodesDialog
+          count={variants.length}
+          hasEmpty={variants.some((v) => !v.sku || !v.barcode)}
+          prefix={autoPrefix}
+          start={autoStart}
+          onlyEmpty={autoOnlyEmpty}
+          barcode={autoBarcode}
+          busy={autoBusy}
+          onPrefix={setAutoPrefix}
+          onStart={setAutoStart}
+          onOnlyEmpty={setAutoOnlyEmpty}
+          onBarcode={setAutoBarcode}
+          onClose={() => setAutoOpen(false)}
+          onApply={async () => {
+            setAutoBusy(true)
+            try {
+              const prefix = autoPrefix.trim() || "SKU"
+              const start = Math.max(0, Math.floor(autoStart) || 0)
+              const targets = variants
+                .map((v, i) => ({
+                  v,
+                  sku: autoOnlyEmpty && v.sku ? undefined : `${prefix}${String(start + i).padStart(3, "0")}`,
+                  barcode: autoBarcode ? String(7500000000000 + start + i) : undefined,
+                }))
+                .filter((t) => t.sku !== undefined || t.barcode !== undefined)
+              if (targets.length === 0) {
+                swalToast("Nada que actualizar")
+                setAutoOpen(false)
+                return
+              }
+              await Promise.all(
+                targets.map((t) =>
+                  variantApi.update(productId, t.v.id, { sku: t.sku, barcode: t.barcode })
+                )
+              )
+              swalToast(`Códigos generados en ${targets.length} variante(s)`)
+              setAutoOpen(false)
+              await refresh()
+            } catch (err) {
+              swalError("No se pudieron generar", err instanceof Error ? err.message : undefined)
+            } finally {
+              setAutoBusy(false)
+            }
+          }}
+        />
+      )}
 
       {/* Tabla de variantes con edición inline */}
       {loading ? (

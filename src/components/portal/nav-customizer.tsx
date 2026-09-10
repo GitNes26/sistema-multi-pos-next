@@ -14,7 +14,6 @@ import {
   ALL_NAV_ITEMS,
   type NavItemIdIncludingCombos,
   HIDDEN_FROM_BAR,
-  NAV_LAYOUT,
 } from "@/components/portal/portal-shell";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -53,8 +52,8 @@ export function NavCustomizer() {
   };
 
   const addItem = (id: NavItemIdIncludingCombos) => {
-    if (navOrder.length >= 7) {
-      swalToast("Máximo 7 ítems configurables");
+    if (navOrder.length >= ALL_NAV_ITEMS.length) {
+      swalToast("Ya agregaste todas las vistas disponibles");
       return;
     }
     setNavOrder([...navOrder, id]);
@@ -81,7 +80,7 @@ export function NavCustomizer() {
           <Settings className="size-4 text-primary" />
           <p className="text-sm font-medium">Barra de navegación</p>
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
-            {barCount}/{NAV_LAYOUT} visibles
+            {barCount} en barra + Menú
           </span>
         </div>
         <Button

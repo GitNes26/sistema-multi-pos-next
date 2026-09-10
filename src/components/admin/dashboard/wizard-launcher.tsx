@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   Package,
@@ -31,6 +31,7 @@ import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { DialogComponent } from "@/components/ui/dialog";
 import { FirstOrderWizard } from "@/components/shared/wizards/first-order-wizard";
+import { useGuideStore } from "@/stores/guide-store";
 import { useBusinessMode } from "@/hooks/use-business-mode";
 import { usePermission } from "@/hooks/use-permission";
 import {
@@ -85,6 +86,7 @@ interface WizardLauncherProps {
 
 export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLauncherProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session } = useSession();
   const orgId =
     (session?.user as { activeOrganizationId?: string; organizationId?: string } | undefined)
@@ -186,15 +188,15 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
           eyebrow: "Tu negocio en marcha",
           title: "¡Bienvenido a tu negocio!",
           description:
-            "Estás a unos minutos de tu primera venta. Sigue la guía: cada tarjeta te lleva al apartado exacto donde se configura cada cosa.",
+            "Estás a unos minutos de tu primera venta. Toca una tarjeta: te llevará al apartado exacto y te guiará paso a paso, resaltando cada botón y campo hasta completar el flujo.",
         }
       : catalogReady
         ? {
             emoji: "🚀",
             eyebrow: "Casi en el aire",
             title: "¡Tu catálogo está listo!",
-            description:
-              "Ya puedes vender en tu caja. Cuando quieras crecer: prueba tu portal como cliente, configura envíos o lanza una promoción.",
+          description:
+            "Ya puedes vender en tu caja. Para crecer: toca una tarjeta y sigue la guía paso a paso — prueba tu portal, configura envíos o lanza una promoción.",
           }
         : {
             emoji: "✨",
@@ -204,9 +206,10 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
               "Pasos guiados hacia tu catálogo, promociones, envíos y más.",
           };
 
-  const go = (href: string) => {
-    // A la sección real: ahí está el formulario que ya existe.
-    router.push(href);
+  const go = (kind: WizardActionKind) => {
+    // Lanza la guía inmersiva: navega a la sección real, resalta el elemento a
+    // tocar y explica cada paso del flujo (spotlight + tooltip).
+    useGuideStore.getState().start(kind, pathname ?? "/admin");
   };
 
   return (
@@ -297,7 +300,7 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
                 <button
                   key={a.kind}
                   type="button"
-                  onClick={() => (a.kind === "portal" ? setPortalOpen(true) : go(a.href))}
+                  onClick={() => (a.kind === "portal" ? setPortalOpen(true) : go(a.kind))}
                   className="group relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border bg-background/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.99]"
                 >
                   <span className="absolute top-2.5 right-3 flex size-6 items-center justify-center rounded-full bg-primary/10 text-[11px] font-black text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">

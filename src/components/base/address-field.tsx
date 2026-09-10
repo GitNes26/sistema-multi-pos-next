@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 import { LocationSearch } from "@/components/shared/location-search"
-import { useLocation, type LocationResult } from "@/hooks/use-location"
+import type { LocationResult } from "@/hooks/use-location"
 
 export interface AddressGpsValue {
   lat: number
@@ -39,8 +39,6 @@ export function AddressField({
   showMap = true,
   placeholder = "Calle, número, colonia, ciudad…",
 }: AddressFieldProps) {
-  const { hasGoogleMaps } = useLocation()
-
   function handleChange(newAddress: string, coords: { lat: number; lon: number } | null) {
     onAddressChange(newAddress)
     if (coords) {

@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.18.0.0] — 2026-09-10
+- **Tipo:** `feat` (Minor)
+- feat:se mejoraron las interfaces de usuario poniendo un drawer y corrigiendo la cuestion del mapa y notificaciones, se mejoro el wizard, no se si todos o solo el de producto ya debe de haber notificaciones push
+
 ### [0.17.2.0] — 2026-09-10
 - **Tipo:** `fix` (Patch)
 - fix: corrigiendo las interfaces moviles y que agarre bien la devolucion

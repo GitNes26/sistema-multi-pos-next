@@ -661,6 +661,12 @@ export interface PortalOrderDetail {
   paymentReference: string | null;
   deliveryPin: string | null;
   deliveryQrToken: string | null;
+  /** Destino del pedido a domicilio. */
+  latitude: number | null;
+  longitude: number | null;
+  /** Coordenadas de la sucursal que surte (para el mapa de seguimiento). */
+  locationLatitude: number | null;
+  locationLongitude: number | null;
   createdAt: string;
   updatedAt: string;
   items: {
@@ -689,7 +695,7 @@ export async function getPortalOrder(
   const order = await prisma.order.findFirst({
     where: { id: orderId, organizationId, customerId },
     include: {
-      location: { select: { name: true } },
+      location: { select: { name: true, latitude: true, longitude: true } },
       items: { include: { unit: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
       statusHistory: { orderBy: { createdAt: "asc" } },
     },
@@ -719,6 +725,12 @@ export async function getPortalOrder(
       (order.status === "ready" && order.deliveryMethod === "pickup")
         ? order.deliveryQrToken
         : null,
+    latitude: order.latitude != null ? toNum(order.latitude) : null,
+    longitude: order.longitude != null ? toNum(order.longitude) : null,
+    locationLatitude:
+      order.location?.latitude != null ? toNum(order.location.latitude) : null,
+    locationLongitude:
+      order.location?.longitude != null ? toNum(order.location.longitude) : null,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     items: order.items.map((i) => ({

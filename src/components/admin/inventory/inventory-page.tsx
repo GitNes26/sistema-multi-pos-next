@@ -322,6 +322,15 @@ function MovementDialog({
     }
   };
 
+  // Cantidad rápida: botones que suman al valor actual (o lo reemplazan si está vacío).
+  const bump = (n: number) =>
+    setQuantity((prev) => String(Math.max(0, (Number(prev) || 0) + n)))
+  const negate = () =>
+    setQuantity((prev) => {
+      const v = Number(prev) || 0
+      return v === 0 ? "" : String(-v)
+    })
+
   return (
     <DialogComponent
       open
@@ -329,6 +338,7 @@ function MovementDialog({
       title="Registrar movimiento"
       description={`${row.variantName ?? row.productName} · stock actual: ${row.quantity} ${row.unit ?? ""}`}
       className="sm:max-w-md"
+      dataGuide="movement-dialog"
       bodyClassName="space-y-3"
       footer={
         <>
@@ -356,16 +366,42 @@ function MovementDialog({
               </SelectContent>
             </Select>
           </div>
-          <InputGroupField
-            label={`Cantidad (${type === "adjustment" ? "puede ser negativa" : row.unit ?? "pza"})`}
-            type="number"
-            step="any"
-            min={0}
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="0"
-            leftIcon={<Hash className="size-4" />}
-          />
+          <div className="space-y-1.5">
+            <InputGroupField
+              label={`Cantidad (${type === "adjustment" ? "puede ser negativa" : row.unit ?? "pza"})`}
+              type="number"
+              step="any"
+              min={0}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder="0"
+              leftIcon={<Hash className="size-4" />}
+              autoFocus
+            />
+            {/* Cantidad rápida: evita teclear (común en tablets / mostrador). */}
+            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+              {[1, 5, 10, 25, 50, 100].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => bump(n)}
+                  className="h-7 rounded-md border bg-muted/40 px-2.5 text-xs font-semibold tabular-nums transition hover:bg-accent hover:text-foreground"
+                >
+                  +{n}
+                </button>
+              ))}
+              {type === "adjustment" && (
+                <button
+                  type="button"
+                  onClick={negate}
+                  title="Cambiar signo (±) para ajustar en negativo"
+                  className="h-7 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 text-xs font-semibold text-amber-600 transition hover:bg-amber-500/20"
+                >
+                  ± signo
+                </button>
+              )}
+            </div>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="movementReason">Motivo (opcional)</Label>
             <Textarea id="movementReason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. reposición de inventario" />
@@ -717,6 +753,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
               value={q}
               onChange={(e) => setQ(e.target.value)}
               className="h-8 w-56"
+              data-guide="inv-search"
             />
             <FormCombobox
               value={productType}
@@ -901,6 +938,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                                   <Button
                                     variant="ghost"
                                     size="sm"
+                                    data-guide="inv-movement"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActive(r);
@@ -912,6 +950,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                                   <Button
                                     variant="ghost"
                                     size="sm"
+                                    data-guide="inv-threshold"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActive(r);

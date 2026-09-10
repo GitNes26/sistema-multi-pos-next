@@ -434,7 +434,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                   </Button>
                   {(row.original.productType === "standard" ||
                     row.original.productType === "custom") && (
-                    <Button variant="ghost" size="icon" className="size-8" title="Variantes" onClick={() => setVariantsProduct(row.original)}>
+                    <Button variant="ghost" size="icon" className="size-8" title="Variantes" data-guide="variants-btn" onClick={() => setVariantsProduct(row.original)}>
                       <Layers className="size-4" />
                     </Button>
                   )}
@@ -530,7 +530,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                   />
                 </>
               )}
-              <Button onClick={openCreate}>
+              <Button onClick={openCreate} data-guide="crud-new">
                 <Plus className="size-4" /> Nuevo
               </Button>
             </div>
@@ -560,6 +560,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                     onChange={(e) => setQ(e.target.value)}
                     placeholder={searchPlaceholder}
                     className="h-8 pl-9 md:pl-9 pr-8 md:pr-8"
+                    data-guide="crud-search"
                   />
                   {(isDebouncing || loading) && (
                     <Loader2 className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 animate-spin text-muted-foreground" />

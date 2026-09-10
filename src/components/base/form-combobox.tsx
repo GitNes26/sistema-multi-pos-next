@@ -144,7 +144,11 @@ export function FormCombobox({
                   )}
                   onClick={(e) => {
                     e.stopPropagation()
-                    onClear?.()
+                    if (onClear) {
+                      onClear()
+                    } else {
+                      onChange?.("")
+                    }
                     setSearch("")
                   }}
                 >

@@ -10,11 +10,15 @@ export interface DriverLocation {
   updatedAt: string;
 }
 
-const locations = new Map<string, DriverLocation>();
-// Singleton en globalThis (misma razón que lib/kds/live.ts en dev).
+// Ambos mapas viven en globalThis: en dev cada ruta compila su propia instancia
+// del módulo, y un Map a nivel de módulo haría que el POST del repartidor
+// escriba en una copia y el SSE del cliente lea de otra (replay vacío).
 const globalForDriverLive = globalThis as unknown as {
+  driverLocations: Map<string, DriverLocation> | undefined;
   driverChannels: Map<string, Set<Controller>> | undefined;
 };
+const locations = globalForDriverLive.driverLocations ?? new Map<string, DriverLocation>();
+if (process.env.NODE_ENV !== "production") globalForDriverLive.driverLocations = locations;
 const channels = globalForDriverLive.driverChannels ?? new Map<string, Set<Controller>>();
 if (process.env.NODE_ENV !== "production") globalForDriverLive.driverChannels = channels;
 const encoder = new TextEncoder();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { salesGuard, salesErrorResponse } from "../../../guard";
 import { rejectReturn } from "@/lib/returns/server";
+import { jsonResponse } from "@/lib/api-helpers";
 
 // PUT /api/sales/returns/[returnId]/reject — Rechazar devolución
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ returnId: string }> }) {
@@ -10,7 +11,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ retu
   try {
     const { returnId } = await params;
     const ret = await rejectReturn(guard.organizationId, returnId);
-    return NextResponse.json({ ok: true, return: ret });
+    return jsonResponse({ ok: true, return: ret });
   } catch (err) {
     return salesErrorResponse(err);
   }

@@ -91,8 +91,25 @@ export function SlideToPay({
           animate={conf}
           whileDrag={{ scale: 1.06 }}
           whileTap={{ scale: 1.05 }}
+          role="slider"
+          aria-label={empty ? "Carrito vacío, no se puede pagar" : disabled ? "Pago bloqueado" : label}
+          aria-disabled={disabled || empty}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round((progress.get() ?? 0) * 100)}
+          tabIndex={disabled || empty ? -1 : 0}
+          onKeyDown={(e) => {
+            if (disabled || empty) return
+            // Accesibilidad por teclado: Enter/Espacio confirma (equivalente a deslizar).
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              haptic.success()
+              conf.start({ opacity: 1, scale: 1 })
+              onConfirm()
+            }
+          }}
           className={cn(
-            "absolute top-1/2 z-10 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_6px_14px_rgba(0,0,0,0.35)] transition-shadow",
+            "absolute top-1/2 z-10 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_6px_14px_rgba(0,0,0,0.35)] transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
             !empty && "cursor-grab active:cursor-grabbing",
             disabled && "cursor-not-allowed",
             empty && "cursor-default"

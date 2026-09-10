@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CalendarRange,
@@ -52,6 +52,7 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<ReservationsData["reservations"][number] | null>(null);
+  const router = useRouter();
 
   const reload = useCallback(async (month: Date) => {
     const from = new Date(month.getFullYear(), month.getMonth(), 1);
@@ -108,10 +109,20 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
       <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-card/85 px-3 backdrop-blur lg:px-4">
-        <Button variant="ghost" size="icon" asChild className="shrink-0" aria-label="Volver al POS">
-          <Link href="/pos">
-            <ArrowLeft className="size-5" />
-          </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          aria-label="Volver al POS"
+          onClick={() => {
+            if (window.history.length > 1) {
+              router.back();
+            } else {
+              router.push("/pos");
+            }
+          }}
+        >
+          <ArrowLeft className="size-5" />
         </Button>
         <span className="flex size-9 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
           <CalendarRange className="size-5" />

@@ -32,6 +32,7 @@ import { usePortalStore } from "@/stores/portal-store"
 import { cn } from "@/lib/utils"
 import { StepIllustration } from "@/components/shared/step-illustration"
 import { DeliveryConfirmPanel } from "@/components/portal/delivery-confirm-panel"
+import { DeliveryTrackingMap } from "@/components/portal/delivery-tracking-map-lazy"
 import { swalConfirm, swalError, swalToast } from "@/lib/swal"
 import { STAGGER_SLOW } from "@/lib/animation-tokens"
 
@@ -201,6 +202,16 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
   const rawIdx = visibleFlow.indexOf(order.status as OrderStatusKey)
   const visibleCurrentIdx = rawIdx >= 0 ? rawIdx : 0
 
+  // Puntos reales para el mapa de seguimiento
+  const destination =
+    order.latitude != null && order.longitude != null
+      ? { lat: order.latitude, lng: order.longitude }
+      : null
+  const origin =
+    order.locationLatitude != null && order.locationLongitude != null
+      ? { lat: order.locationLatitude, lng: order.locationLongitude }
+      : null
+
   return (
     <motion.div
       className="space-y-4 p-4 pb-24"
@@ -355,177 +366,34 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
 
       {/* Delivery map — real-time driver location */}
       <AnimatePresence>
-        {isTransit && isDelivery && (
+        {isTransit && isDelivery && (destination || origin) && (
           <motion.div
             variants={fadeUp}
             initial="hidden"
             animate="show"
             exit={{ opacity: 0, height: 0 }}
-            className="rounded-2xl border bg-card shadow-sm overflow-hidden"
+            className="overflow-hidden rounded-2xl border bg-card shadow-sm"
           >
-            <div className="relative h-52 bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30">
-              <svg
-                className="absolute inset-0 h-full w-full"
-                viewBox="0 0 400 200"
-                fill="none"
-              >
-                {/* Grid */}
-                <line
-                  x1="0"
-                  y1="50"
-                  x2="400"
-                  y2="50"
-                  stroke="currentColor"
-                  strokeOpacity="0.05"
-                />
-                <line
-                  x1="0"
-                  y1="100"
-                  x2="400"
-                  y2="100"
-                  stroke="currentColor"
-                  strokeOpacity="0.05"
-                />
-                <line
-                  x1="0"
-                  y1="150"
-                  x2="400"
-                  y2="150"
-                  stroke="currentColor"
-                  strokeOpacity="0.05"
-                />
-                <line
-                  x1="100"
-                  y1="0"
-                  x2="100"
-                  y2="200"
-                  stroke="currentColor"
-                  strokeOpacity="0.05"
-                />
-                <line
-                  x1="200"
-                  y1="0"
-                  x2="200"
-                  y2="200"
-                  stroke="currentColor"
-                  strokeOpacity="0.05"
-                />
-                <line
-                  x1="300"
-                  y1="0"
-                  x2="300"
-                  y2="200"
-                  stroke="currentColor"
-                  strokeOpacity="0.05"
-                />
-                {/* Route line */}
-                <path
-                  d="M50 150 Q200 80 350 120"
-                  stroke="#8b5cf6"
-                  strokeWidth="2"
-                  fill="none"
-                  strokeDasharray="6 4"
-                  opacity="0.4"
-                />
-                {/* Origin — sucursal */}
-                <circle cx="50" cy="150" r="6" fill="#10b981" opacity="0.2" />
-                <circle cx="50" cy="150" r="3" fill="#10b981" />
-                <text
-                  x="50"
-                  y="168"
-                  textAnchor="middle"
-                  fontSize="8"
-                  fill="#10b981"
-                  fontWeight="600"
-                >
-                  Sucursal
-                </text>
-                {/* Destination — cliente */}
-                <circle cx="350" cy="120" r="6" fill="#2563eb" opacity="0.2" />
-                <circle cx="350" cy="120" r="3" fill="#2563eb" />
-                <text
-                  x="350"
-                  y="138"
-                  textAnchor="middle"
-                  fontSize="8"
-                  fill="#2563eb"
-                  fontWeight="600"
-                >
-                  Tu dirección
-                </text>
-                {/* Driver position — real data or fallback animation */}
-                {driverLoc ? (
-                  <motion.g
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
-                    {/* Pulse ring */}
-                    <motion.circle
-                      cx={120}
-                      cy={135}
-                      r="14"
-                      fill="#8b5cf6"
-                      opacity="0.1"
-                      animate={{ r: [14, 20, 14], opacity: [0.15, 0.05, 0.15] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    />
-                    <circle cx={120} cy={135} r="8" fill="#8b5cf6" />
-                    <rect
-                      x={114}
-                      y={129}
-                      width="12"
-                      height="8"
-                      rx="2"
-                      fill="#fff"
-                    />
-                    <circle cx={117} cy={139} r="1.5" fill="#4c1d95" />
-                    <circle cx={123} cy={139} r="1.5" fill="#4c1d95" />
-                  </motion.g>
-                ) : (
-                  <motion.g
-                    animate={{ x: [0, 260], y: [0, -25] }}
-                    transition={{
-                      duration: 5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  >
-                    <circle
-                      cx={120}
-                      cy={140}
-                      r="8"
-                      fill="#8b5cf6"
-                      opacity="0.15"
-                    />
-                    <rect
-                      x={114}
-                      y={134}
-                      width="12"
-                      height="8"
-                      rx="2"
-                      fill="#8b5cf6"
-                    />
-                    <circle cx={117} cy={144} r="1.5" fill="#6d28d9" />
-                    <circle cx={123} cy={144} r="1.5" fill="#6d28d9" />
-                  </motion.g>
-                )}
-              </svg>
-              {/* Overlay */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card/95 to-transparent p-3">
-                <div className="flex items-center gap-2">
-                  <Navigation className="size-4 text-violet-600" />
-                  <span className="text-xs font-medium">
-                    {driverLoc
-                      ? "Repartidor en camino — ubicación en tiempo real"
-                      : "Tu repartidor va en camino"}
+            <DeliveryTrackingMap
+              driver={driverLoc}
+              destination={destination}
+              origin={origin}
+              height={230}
+            />
+            {/* Overlay */}
+            <div className="border-t p-3">
+              <div className="flex items-center gap-2">
+                <Navigation className="size-4 text-violet-600" />
+                <span className="text-xs font-medium">
+                  {driverLoc
+                    ? "Repartidor en camino — ubicación en tiempo real"
+                    : "Tu repartidor va en camino"}
+                </span>
+                {driverLoc && (
+                  <span className="ml-auto flex size-2 rounded-full bg-emerald-500">
+                    <span className="size-2 animate-ping rounded-full bg-emerald-400" />
                   </span>
-                  {driverLoc && (
-                    <span className="ml-auto flex size-2 rounded-full bg-emerald-500">
-                      <span className="size-2 animate-ping rounded-full bg-emerald-400" />
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </motion.div>

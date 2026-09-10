@@ -54,6 +54,7 @@ export function LocationSearch({
   const [suggestions, setSuggestions] = useState<Array<{ description: string; placeId?: string; lat?: number; lon?: number }>>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [searching, setSearching] = useState(false)
+  const [searchedEmpty, setSearchedEmpty] = useState(false)
   const [showMapState, setShowMapState] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -84,9 +85,11 @@ export function LocationSearch({
       }
       debounceRef.current = setTimeout(async () => {
         setSearching(true)
+        setSearchedEmpty(false)
         const results = await searchAddress(q)
         setSuggestions(results)
-        setShowSuggestions(results.length > 0)
+        setShowSuggestions(true)
+        setSearchedEmpty(results.length === 0)
         setSearching(false)
       }, 300)
     },
@@ -105,11 +108,10 @@ export function LocationSearch({
         onLocationSelect?.(result)
       }
     } else if (s.lat != null && s.lon != null) {
-      // Nominatim result — reverse geocode for full details
-      const result = await searchAddress(s.description)
-      // Use the coordinates directly
+      // Nominatim result — use the coordinates directly
       onChange(s.description, { lat: s.lat, lon: s.lon })
     }
+    setShowMapState(true)
     inputRef.current?.blur()
   }
 
@@ -119,11 +121,23 @@ export function LocationSearch({
     if (result) {
       onChange(result.address, result.coords)
       onLocationSelect?.(result)
+      setShowMapState(true)
     }
   }
 
   // Keyboard navigation
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && activeIndex < 0) {
+      // Sin sugerencia activa: comprometer el texto escrito como dirección manual.
+      e.preventDefault()
+      if (query.trim()) {
+        onChange(query.trim(), null)
+        setShowSuggestions(false)
+        setQuery("")
+        inputRef.current?.blur()
+      }
+      return
+    }
     if (!showSuggestions) return
     if (e.key === "ArrowDown") {
       e.preventDefault()
@@ -227,11 +241,16 @@ export function LocationSearch({
                 </button>
               ))}
             </div>
-            {!hasGoogleMaps && (
-              <div className="border-t px-3 py-1.5 text-[10px] text-muted-foreground">
-                Powered by OpenStreetMap
-              </div>
-            )}
+            <div className="border-t px-3 py-1.5 text-[10px] text-muted-foreground">
+              {hasGoogleMaps ? "Búsqueda de Google Maps" : "Powered by OpenStreetMap"}
+            </div>
+          </div>
+        )}
+
+        {/* No results */}
+        {showSuggestions && !searching && searchedEmpty && (
+          <div className="absolute z-50 mt-1 w-full rounded-xl border bg-popover px-3 py-3 text-sm text-muted-foreground shadow-lg">
+            Sin resultados para «{query}». Puedes escribir tu dirección completa y presionar Enter.
           </div>
         )}
 

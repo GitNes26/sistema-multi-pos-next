@@ -2,6 +2,7 @@
 
 import { ArrowLeft, CalendarDays, CalendarRange, ClipboardList, LogOut, Sparkles, Unlock, LockKeyhole } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { usePosStore } from "@/stores/pos-store";
 import { logout } from "@/lib/auth/logout";
@@ -53,13 +54,24 @@ export function PosHeader({
     | undefined;
   const orgName = sessionUser?.organizationName ?? company?.name ?? null;
   const orgMode = sessionUser?.businessMode ?? null;
+  const router = useRouter();
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card/80 px-3 backdrop-blur lg:px-4">
-      <Button variant="ghost" size="icon" asChild className="shrink-0" aria-label="Volver al panel">
-        <Link href="/admin">
-          <ArrowLeft className="size-5" />
-        </Link>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="shrink-0"
+        aria-label="Volver al panel"
+        onClick={() => {
+          if (window.history.length > 1) {
+            router.back();
+          } else {
+            router.push("/admin");
+          }
+        }}
+      >
+        <ArrowLeft className="size-5" />
       </Button>
       <Logo logoUrl={logoUrl} className="h-8 w-auto" />
       <div className="hidden min-w-0 sm:block">

@@ -740,16 +740,33 @@ export async function createSale(
     }
 
     // Loyalty: ganar y/o canjear puntos (6.7 / 6.10).
+    // Si la venta es a crédito y la política indica que el crédito NO genera puntos, suprimir.
+    let effectivePointsEarned = payload.pointsEarned;
+    if (effectivePointsEarned > 0 && payload.payments?.some((p) => p.method === "credit")) {
+      const creditPolicy = await tx.creditPolicy.findUnique({
+        where: { organizationId },
+        select: { creditEarnsPoints: true },
+      });
+      if (creditPolicy && !creditPolicy.creditEarnsPoints) {
+        effectivePointsEarned = 0;
+        // Actualizar el registro de venta con los puntos efectivos
+        await tx.sale.update({
+          where: { id: sale.id },
+          data: { pointsEarned: 0 },
+        });
+      }
+    }
+
     if (payload.customerId) {
       const customer = await tx.customer.findUnique({
         where: { id: payload.customerId, organizationId },
         select: { id: true },
       });
       if (customer) {
-        if (payload.pointsEarned > 0) {
+        if (effectivePointsEarned > 0) {
           await tx.customer.update({
             where: { id: customer.id },
-            data: { points: { increment: payload.pointsEarned } },
+            data: { points: { increment: effectivePointsEarned } },
           });
           await tx.loyaltyTransaction.create({
             data: {
@@ -757,7 +774,7 @@ export async function createSale(
               customerId: customer.id,
               saleId: sale.id,
               kind: "earn",
-              points: payload.pointsEarned,
+              points: effectivePointsEarned,
               note: "Venta POS",
             },
           });

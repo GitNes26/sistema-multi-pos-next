@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CalendarDays,
@@ -69,6 +69,7 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
     time: "10:00",
   });
   const [selected, setSelected] = useState<AgendaCita | null>(null);
+  const router = useRouter();
 
   const reload = useCallback(async (target: Date = day) => {
     const { from, to } = dayRange(target);
@@ -125,10 +126,20 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
       {/* Encabezado */}
       <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-card/85 px-3 backdrop-blur lg:px-4">
-        <Button variant="ghost" size="icon" asChild className="shrink-0" aria-label="Volver al POS">
-          <Link href="/pos">
-            <ArrowLeft className="size-5" />
-          </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          aria-label="Volver al POS"
+          onClick={() => {
+            if (window.history.length > 1) {
+              router.back();
+            } else {
+              router.push("/pos");
+            }
+          }}
+        >
+          <ArrowLeft className="size-5" />
         </Button>
         <span className="flex size-9 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">
           <CalendarDays className="size-5" />

@@ -13,13 +13,18 @@ FROM node:22-bookworm-slim AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# NEXT_PUBLIC_* se inyectan en build time
+# NEXT_PUBLIC_* se inyectan en build time.
+# NEXT_PUBLIC_VAPID_PUBLIC_KEY es OBLIGATORIA para web push: se embebe en el
+# bundle del cliente y sin ella el navegador nunca pide permiso de notificación.
+# Genera el par con: npx web-push generate-vapid-keys
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_WHATSAPP_NUMBER
 ARG NEXT_PUBLIC_WHATSAPP_MESSAGE
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_WHATSAPP_NUMBER=$NEXT_PUBLIC_WHATSAPP_NUMBER
 ENV NEXT_PUBLIC_WHATSAPP_MESSAGE=$NEXT_PUBLIC_WHATSAPP_MESSAGE
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

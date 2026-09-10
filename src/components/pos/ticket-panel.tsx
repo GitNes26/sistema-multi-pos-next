@@ -88,7 +88,7 @@ export function TicketPanel({
     }
   }, [customerId])
 
-  // Promociones casi logradas (50%-99%)
+  // Promociones casi logradas (50%-99%) — progreso por ticket actual
   const nearPromos = promotions.filter((p) => {
     if (p.minAmount <= 0 || p.couponCode) return false
     if (p.startsAt && new Date(p.startsAt) > new Date()) return false

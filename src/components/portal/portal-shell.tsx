@@ -13,14 +13,16 @@ import {
   CreditCard,
   Landmark,
   CalendarCheck2,
-  MoreHorizontal,
+  Menu,
 } from "lucide-react";
 import { usePortalStore } from "@/stores/portal-store";
 import { cn } from "@/lib/utils";
 import { PortalHeader } from "@/components/portal/portal-header";
 import { CartSheet } from "@/components/portal/cart-sheet";
 import { BulkModal } from "@/components/portal/bulk-modal";
+import { NavDrawer } from "@/components/portal/nav-drawer";
 import { TapScale } from "@/components/shared/tap-scale";
+import { haptic } from "@/lib/haptics";
 
 export const ALL_NAV_ITEMS = [
   { id: "home", href: "/portal", label: "Inicio", icon: Home, match: /^\/portal$/ },
@@ -49,7 +51,15 @@ const DEFAULT_NAV_ORDER: NavItemIdIncludingCombos[] = [
 ];
 
 export const HIDDEN_FROM_BAR: NavItemIdIncludingCombos[] = ["combos"]; // Sin botón propio; acceden desde otra ruta.
-export const NAV_LAYOUT = 5; // Botones visibles en la barra inferior; el resto va a menú.
+export const NAV_LAYOUT = 5; // Columnas de la barra: 4 activities + botón "Menú" cuando hay más vistas.
+
+const GRID_COLS: Record<number, string> = {
+  1: "grid-cols-1",
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+  5: "grid-cols-5",
+};
 
 export function PortalShell({
   storeName,
@@ -67,40 +77,26 @@ export function PortalShell({
   const orderedIds: NavItemIdIncludingCombos[] =
     navOrder && navOrder.length >= 3 ? navOrder : DEFAULT_NAV_ORDER;
 
-  // Barra: máximo NAV_LAYOUT botones + ítems ocultos en menú (movilidad).
-  const barItems: NavItemIdIncludingCombos[] = orderedIds.filter(
-    (id) => !HIDDEN_FROM_BAR.includes(id)
-  ).slice(0, NAV_LAYOUT);
-  const hiddenItems: NavItemIdIncludingCombos[] = orderedIds.filter((id) =>
-    HIDDEN_FROM_BAR.includes(id)
-  );
-  const barIds = new Set(barItems);
-  const menuItems = ALL_NAV_ITEMS.filter((item) =>
-    !orderedIds.includes(item.id) && !barIds.has(item.id)
-  );
+  // Vistas fuera de la barra (ocultas por diseño o que no alcanzaron cupo).
+  const hiddenSet = new Set(orderedIds.filter((id) => HIDDEN_FROM_BAR.includes(id)));
+  const capacity = NAV_LAYOUT - 1; // 1 slot reservado para "Menú"
+  const barItems = orderedIds
+    .filter((id) => !HIDDEN_FROM_BAR.includes(id))
+    .slice(0, capacity)
+    .map((id) => ALL_NAV_ITEMS.find((item) => item.id === id))
+    .filter((item): item is (typeof ALL_NAV_ITEMS)[number] => Boolean(item));
 
-  const bar: {
-    id: string;
-    href: string;
-    icon: typeof Home;
-    active: boolean;
-  }[] = [];
-  for (const id of barItems) {
-    const found = ALL_NAV_ITEMS.find((item) => item.id === id);
-    if (!found) continue;
-    bar.push({
-      id: found.id,
-      href: found.href,
-      icon: found.icon,
-      active:
-        found.match
-          ? found.match.test(pathname)
-          : pathname === found.href || pathname.startsWith(`${found.href}/`),
-    });
-  }
+  const hasMore =
+    hiddenSet.size > 0 || orderedIds.filter((id) => !HIDDEN_FROM_BAR.includes(id)).length > capacity;
 
-  const colsClass =
-    bar.length <= 3 ? `grid-cols-${bar.length}` : "grid-cols-5";
+  const isActive = (item: (typeof ALL_NAV_ITEMS)[number]) =>
+    item.match
+      ? item.match.test(pathname)
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+  // Si la página actual no corresponde a ningún botón de la barra (p. ej.
+  // Favoritos desde el menú), resaltar "Menú" para indicar dónde estás.
+  const currentInBar = barItems.some((item) => isActive(item));
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col">
@@ -109,46 +105,49 @@ export function PortalShell({
       <main className="flex-1 pb-20">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md border-t bg-background/95 backdrop-blur safe-area-bottom">
-        {bar.length > 0 ? (
-          <div className={cn("grid", colsClass)}>
-            {bar.map((item) => {
-              const Icon = item.icon;
-              const label =
-                ALL_NAV_ITEMS.find((it) => it.id === item.id)?.label ??
-                "";
-              return (
-                <TapScale key={item.id}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium text-muted-foreground transition-colors",
-                      item.active && "text-primary"
-                    )}
-                  >
-                    <Icon
-                      className="size-5"
-                      strokeWidth={item.active ? 2.5 : 2}
-                    />
-                    <span className="leading-none">{label}</span>
-                  </Link>
-                </TapScale>
-              );
-            })}
-          </div>
-        ) : null}
+        <div className={cn("grid", GRID_COLS[barItems.length + (hasMore ? 1 : 0)] ?? "grid-cols-5")}>
+          {barItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item);
+            return (
+              <TapScale key={item.id}>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium text-muted-foreground transition-colors",
+                    active && "text-primary"
+                  )}
+                >
+                  <Icon className="size-5" strokeWidth={active ? 2.5 : 2} />
+                  <span className="leading-none">{item.label}</span>
+                </Link>
+              </TapScale>
+            );
+          })}
 
-        {(hiddenItems.length > 0 || menuItems.length > 0) && (
-          <button
-            type="button"
-            onClick={() => usePortalStore.getState().setNavOpen(true)}
-            className="flex items-center justify-center py-2.5 text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors"
-            aria-label="Más opciones de navegación"
-          >
-            <MoreHorizontal className="size-5" />
-          </button>
-        )}
+          {hasMore && (
+            <TapScale>
+              <button
+                type="button"
+                onClick={() => {
+                  haptic.light();
+                  usePortalStore.getState().setNavOpen(true);
+                }}
+                className={cn(
+                  "flex w-full flex-col items-center gap-0.5 py-2 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground",
+                  !currentInBar && "text-primary"
+                )}
+                aria-label="Abrir menú de navegación"
+              >
+                <Menu className="size-5" strokeWidth={2} />
+                <span className="leading-none">Menú</span>
+              </button>
+            </TapScale>
+          )}
+        </div>
       </nav>
 
+      <NavDrawer storeName={storeName} logoUrl={logoUrl} user={user} />
       <CartSheet />
       <BulkModal />
     </div>

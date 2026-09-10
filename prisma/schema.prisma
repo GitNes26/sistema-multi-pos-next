@@ -446,6 +446,8 @@ model CreditPolicy {
   allowPartialPayments Boolean  @default(true)
   interestRate         Decimal? @db.Decimal(5, 4)
   notifyBeforeDays     Int      @default(3)
+  /** Si es true, las ventas a crédito generan puntos de lealtad. Si es false, no generan. */
+  creditEarnsPoints    Boolean  @default(true)
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
