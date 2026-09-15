@@ -22,6 +22,7 @@ import type { CrudField, CrudUiConfig } from "./crud-config"
 import { cn } from "@/lib/utils"
 import { InfoTooltip } from "@/components/base/info-tooltip"
 import { useFocusInvalid } from "@/hooks/use-focus-invalid"
+import { ApiError } from "@/lib/api"
 
 interface CrudFormProps {
   config: CrudUiConfig
@@ -187,6 +188,11 @@ function FieldWrapper({
     <div data-form-field={field.key} className={cn(field.full ? "sm:col-span-2" : "")}>
       <div className="space-y-1.5">
         {children}
+        {field.note && !error && (
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {field.note}
+          </p>
+        )}
         {error && showError && (
           <p id={id ? `${id}-error` : undefined} role="alert" className="flex items-center gap-1 text-xs text-destructive">
             <AlertCircle className="size-3 shrink-0" />
@@ -365,7 +371,19 @@ export function CrudForm({
     try {
       await onSubmit(payload)
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : "No se pudo guardar. Revisa los datos e inténtalo de nuevo.")
+      if (err instanceof ApiError && err.field) {
+        const nextErrors = { [err.field]: err.message }
+        setErrors((current) => ({ ...current, ...nextErrors }))
+        window.requestAnimationFrame(() =>
+          focusFirstInvalid(nextErrors, formId)
+        )
+      } else {
+        setServerError(
+          err instanceof Error
+            ? err.message
+            : "No se pudo guardar. Revisa los datos e inténtalo de nuevo."
+        )
+      }
     } finally {
       onSavingChange?.(false)
     }

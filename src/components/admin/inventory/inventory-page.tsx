@@ -628,6 +628,11 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
   const [productType, setProductType] = useState("");
   const [lowOnly, setLowOnly] = useState(false);
 
+  useEffect(() => {
+    const productName = new URLSearchParams(window.location.search).get("q")?.trim();
+    if (productName) setQ(productName);
+  }, []);
+
   const [mType, setMType] = useState("");
   const [mFrom, setMFrom] = useState("");
   const [mTo, setMTo] = useState("");

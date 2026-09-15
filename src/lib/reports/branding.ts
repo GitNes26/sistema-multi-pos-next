@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { ExecutivePdfBranding } from "@/lib/reports/pdf";
+import { resolveUploadedUrlPath } from "@/lib/uploads/storage";
 
 export async function getExecutivePdfBranding(organizationId: string, locationId?: string): Promise<ExecutivePdfBranding> {
   const [organization, profile, location, appearance] = await Promise.all([
@@ -11,7 +12,11 @@ export async function getExecutivePdfBranding(organizationId: string, locationId
   let logo: Buffer | null = null;
   const logoUrl = location?.imageUrl || profile?.logoUrl;
   if (logoUrl) try {
-    if (logoUrl.startsWith("/")) {
+    const uploadedPath = resolveUploadedUrlPath(logoUrl);
+    if (uploadedPath) {
+      const fs = await import("node:fs/promises");
+      logo = await fs.readFile(uploadedPath);
+    } else if (logoUrl.startsWith("/")) {
       const fs = await import("node:fs/promises"); const path = await import("node:path");
       logo = await fs.readFile(path.join(process.cwd(), "public", logoUrl.replace(/^\/+/, "")));
     } else { const response = await fetch(logoUrl); if (response.ok) logo = Buffer.from(await response.arrayBuffer()); }

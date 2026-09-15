@@ -34,6 +34,7 @@ services:
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: cambia-esto-por-un-secreto-largo
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      UPLOADS_DIR: /app/public/uploads
       # Seed de producción (idempotente). SEED_DEMO=true siembra además datos demo.
       # El schema se sincroniza automáticamente al iniciar (prisma db push).
       SEED_DEMO: "false"

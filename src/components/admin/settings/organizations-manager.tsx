@@ -1,9 +1,9 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import * as yup from "yup";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import * as React from "react"
+import * as yup from "yup"
+import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import {
   ArrowRight,
   Building2,
@@ -15,54 +15,67 @@ import {
   UserRound,
   Users,
   AlertCircle,
-} from "lucide-react";
+} from "lucide-react"
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { DialogComponent } from "@/components/ui/dialog";
-import { InputGroupField } from "@/components/base/input-group-field";
-import { FormCombobox, type ComboboxOption } from "@/components/base/form-combobox";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { swalConfirm, swalError, swalToast } from "@/lib/swal";
-import { businessModeInfo } from "@/lib/business-modes";
-import type { BusinessMode } from "@/lib/auth/options";
-import { useFocusInvalid } from "@/hooks/use-focus-invalid";
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { DialogComponent } from "@/components/ui/dialog"
+import { InputGroupField } from "@/components/base/input-group-field"
+import {
+  FormCombobox,
+  type ComboboxOption,
+} from "@/components/base/form-combobox"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { swalConfirm, swalError, swalToast } from "@/lib/swal"
+import { businessModeInfo } from "@/lib/business-modes"
+import type { BusinessMode } from "@/lib/auth/options"
+import { useFocusInvalid } from "@/hooks/use-focus-invalid"
 
 // FASE 15.9 — Gestión de organizaciones y asignación de admins (superAdmin).
 
 type OrgRow = {
-  id: string;
-  name: string;
-  businessMode: BusinessMode;
-  currency: string;
-  ownerName: string | null;
-  ownerEmail: string | null;
-  memberCount: number;
-  adminCount: number;
-  createdAt: string;
-  assignableRoles: { id: string; name: string; description: string | null; permissionCount: number }[];
-};
+  id: string
+  name: string
+  businessMode: BusinessMode
+  currency: string
+  ownerName: string | null
+  ownerEmail: string | null
+  memberCount: number
+  adminCount: number
+  createdAt: string
+  assignableRoles: {
+    id: string
+    name: string
+    description: string | null
+    permissionCount: number
+  }[]
+}
 
 type MembershipRow = {
-  membershipId: string;
-  organizationId: string;
-  organizationName: string;
-  businessMode: BusinessMode;
-  role: string;
-  roleId: string | null;
-  roleName: string | null;
-};
+  membershipId: string
+  organizationId: string
+  organizationName: string
+  businessMode: BusinessMode
+  role: string
+  roleId: string | null
+  roleName: string | null
+}
 
 type UserRow = {
-  id: string;
-  fullName: string;
-  email: string;
-  isActive: boolean;
-  isSuperadmin: boolean;
-  memberships: MembershipRow[];
-};
+  id: string
+  fullName: string
+  email: string
+  isActive: boolean
+  isSuperadmin: boolean
+  memberships: MembershipRow[]
+}
 
 // Las membresías legacy guardan solo el enum (owner/admin/manager/cashier);
 // para el diálogo se normaliza al id del rol de sistema equivalente.
@@ -71,12 +84,13 @@ const ENUM_TO_SYSTEM: Record<string, string> = {
   admin: "system-admin",
   manager: "system-manager",
   cashier: "system-cashier",
-};
+}
 
 /** Valor del rol para el combobox: el roleId si existe, si no el id de sistema del enum. */
-const roleValue = (m: MembershipRow) => m.roleId ?? ENUM_TO_SYSTEM[m.role] ?? m.role;
+const roleValue = (m: MembershipRow) =>
+  m.roleId ?? ENUM_TO_SYSTEM[m.role] ?? m.role
 
-const displayRole = (m: MembershipRow) => m.roleName ?? m.role;
+const displayRole = (m: MembershipRow) => m.roleName ?? m.role
 
 /** Opción del combobox con tooltip de resumen de permisos al pasar el mouse. */
 function RoleOption({ option }: { option: ComboboxOption }) {
@@ -87,7 +101,9 @@ function RoleOption({ option }: { option: ComboboxOption }) {
           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
             <span className="truncate">{option.label}</span>
             {typeof option.permissionCount === "number" && (
-              <span className="shrink-0 text-xs text-muted-foreground">{option.permissionCount}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {option.permissionCount}
+              </span>
             )}
           </span>
         </TooltipTrigger>
@@ -96,46 +112,53 @@ function RoleOption({ option }: { option: ComboboxOption }) {
             <p className="font-medium">{option.label}</p>
             {option.description && <p>{option.description}</p>}
             <p className="text-muted-foreground">
-              {option.permissionCount ?? 0} {option.permissionCount === 1 ? "permiso" : "permisos"}
+              {option.permissionCount ?? 0}{" "}
+              {option.permissionCount === 1 ? "permiso" : "permisos"}
             </p>
           </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  );
+  )
 }
 
 /** Punto de color con el gradiente del modo (para badges y listas). */
-function ModeDot({ mode, className }: { mode: BusinessMode; className?: string }) {
-  const info = businessModeInfo(mode);
+function ModeDot({
+  mode,
+  className,
+}: {
+  mode: BusinessMode
+  className?: string
+}) {
+  const info = businessModeInfo(mode)
   return (
     <span
       className={`inline-block size-2 shrink-0 rounded-full bg-gradient-to-br ${info.gradient} ${className ?? ""}`}
     />
-  );
+  )
 }
 
 /** Badge del modo de negocio con tooltip de descripción. */
 function ModeBadge({ mode }: { mode: BusinessMode }) {
-  const info = businessModeInfo(mode);
+  const info = businessModeInfo(mode)
   return (
     <Badge variant="secondary" title={info.description} className="gap-1.5">
       <ModeDot mode={mode} />
       {info.label}
     </Badge>
-  );
+  )
 }
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     headers: { "Content-Type": "application/json" },
     ...init,
-  });
-  const data = await res.json().catch(() => ({}));
+  })
+  const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error((data as { error?: string }).error ?? "Error del servidor");
+    throw new Error((data as { error?: string }).error ?? "Error del servidor")
   }
-  return data as T;
+  return data as T
 }
 
 export function OrganizationsManager() {
@@ -152,54 +175,57 @@ export function OrganizationsManager() {
         <UsersTab />
       </TabsContent>
     </Tabs>
-  );
+  )
 }
 
 // ── Tab: Organizaciones ──────────────────────────────────────────────────────
 
 function OrganizationsTab() {
-  const router = useRouter();
-  const { update } = useSession();
-  const [orgs, setOrgs] = React.useState<OrgRow[] | null>(null);
+  const router = useRouter()
+  const { update } = useSession()
+  const [orgs, setOrgs] = React.useState<OrgRow[] | null>(null)
 
-  const [createOpen, setCreateOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState<OrgRow | null>(null);
+  const [createOpen, setCreateOpen] = React.useState(false)
+  const [editing, setEditing] = React.useState<OrgRow | null>(null)
 
   const load = React.useCallback(() => {
     api<{ organizations: OrgRow[] }>("/api/settings/organizations")
       .then((d) => setOrgs(d.organizations))
-      .catch(() => undefined);
-  }, []);
+      .catch(() => undefined)
+  }, [])
 
   React.useEffect(() => {
-    load();
-  }, [load]);
+    load()
+  }, [load])
 
   const enter = async (org: OrgRow) => {
     try {
-      await update({ activeOrganizationId: org.id });
-      router.push("/admin");
-      router.refresh();
+      await update({ activeOrganizationId: org.id })
+      router.push("/admin")
+      router.refresh()
     } catch {
-      swalError("No se pudo entrar a la organización");
+      swalError("No se pudo entrar a la organización")
     }
-  };
+  }
 
   const remove = async (org: OrgRow) => {
     const ok = await swalConfirm(
       "Eliminar organización",
       `¿Eliminar "${org.name}" y todos sus datos? Esta acción no se puede deshacer.`,
       { danger: true, confirmText: "Eliminar" }
-    );
-    if (!ok) return;
+    )
+    if (!ok) return
     try {
-      await api(`/api/settings/organizations/${org.id}`, { method: "DELETE" });
-      load();
-      swalToast("Organización eliminada");
+      await api(`/api/settings/organizations/${org.id}`, { method: "DELETE" })
+      load()
+      swalToast("Organización eliminada")
     } catch (err) {
-      swalError("No se pudo eliminar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo eliminar",
+        err instanceof Error ? err.message : undefined
+      )
     }
-  };
+  }
 
   if (!orgs) {
     return (
@@ -208,7 +234,7 @@ function OrganizationsTab() {
           <Skeleton key={i} className="h-16 w-full rounded-lg" />
         ))}
       </div>
-    );
+    )
   }
 
   return (
@@ -232,7 +258,9 @@ function OrganizationsTab() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <Building2 className="size-4 text-muted-foreground" />
-                  <span className="truncate text-sm font-semibold">{org.name}</span>
+                  <span className="truncate text-sm font-semibold">
+                    {org.name}
+                  </span>
                 </div>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground">
                   {org.ownerName ?? "—"} · {org.ownerEmail ?? ""}
@@ -247,13 +275,28 @@ function OrganizationsTab() {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
-                <Button size="icon-sm" variant="ghost" aria-label="Entrar" onClick={() => enter(org)}>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="Entrar"
+                  onClick={() => enter(org)}
+                >
                   <LogIn className="size-4" />
                 </Button>
-                <Button size="icon-sm" variant="ghost" aria-label="Editar" onClick={() => setEditing(org)}>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="Editar"
+                  onClick={() => setEditing(org)}
+                >
                   <Pencil className="size-4" />
                 </Button>
-                <Button size="icon-sm" variant="ghost" aria-label="Eliminar" onClick={() => void remove(org)}>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="Eliminar"
+                  onClick={() => void remove(org)}
+                >
                   <Trash2 className="size-4 text-destructive" />
                 </Button>
               </div>
@@ -262,10 +305,18 @@ function OrganizationsTab() {
         ))}
       </div>
 
-      <CreateOrgDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={load} />
-      <EditOrgDialog org={editing} onClose={() => setEditing(null)} onSaved={load} />
+      <CreateOrgDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={load}
+      />
+      <EditOrgDialog
+        org={editing}
+        onClose={() => setEditing(null)}
+        onSaved={load}
+      />
     </div>
-  );
+  )
 }
 
 function CreateOrgDialog({
@@ -273,73 +324,117 @@ function CreateOrgDialog({
   onOpenChange,
   onCreated,
 }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onCreated: () => void;
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onCreated: () => void
 }) {
-  const [name, setName] = React.useState("");
-  const [currency, setCurrency] = React.useState("MXN");
-  const [ownerName, setOwnerName] = React.useState("");
-  const [ownerEmail, setOwnerEmail] = React.useState("");
-  const [ownerPassword, setOwnerPassword] = React.useState("");
-  const [saving, setSaving] = React.useState(false);
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [formError, setFormError] = React.useState<string>();
-  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
+  const [name, setName] = React.useState("")
+  const [currency, setCurrency] = React.useState("MXN")
+  const [ownerName, setOwnerName] = React.useState("")
+  const [ownerEmail, setOwnerEmail] = React.useState("")
+  const [ownerPassword, setOwnerPassword] = React.useState("")
+  const [saving, setSaving] = React.useState(false)
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const [formError, setFormError] = React.useState<string>()
+  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid()
 
   React.useEffect(() => {
-    if (!open) return;
-    const frame = window.requestAnimationFrame(() => focusFirstEnabled("create-org-form"));
-    return () => window.cancelAnimationFrame(frame);
-  }, [focusFirstEnabled, open]);
+    if (!open) return
+    const frame = window.requestAnimationFrame(() =>
+      focusFirstEnabled("create-org-form")
+    )
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusFirstEnabled, open])
 
   const reset = () => {
-    setName("");
-    setCurrency("MXN");
-    setOwnerName("");
-    setOwnerEmail("");
-    setOwnerPassword("");
-    setErrors({});
-    setFormError(undefined);
-  };
+    setName("")
+    setCurrency("MXN")
+    setOwnerName("")
+    setOwnerEmail("")
+    setOwnerPassword("")
+    setErrors({})
+    setFormError(undefined)
+  }
 
   const save = async () => {
     try {
-      await yup.object({
-        name: yup.string().trim().required("El nombre es obligatorio").max(160, "Máximo 160 caracteres"),
-        currency: yup.string().trim().uppercase().matches(/^[A-Z]{3}$/, "Usa el código ISO de 3 letras, por ejemplo MXN").required("La moneda es obligatoria"),
-        ownerName: yup.string().trim().max(160, "Máximo 160 caracteres"),
-        ownerEmail: yup.string().trim().lowercase().email("Ingresa un correo válido").required("El correo es obligatorio"),
-        ownerPassword: yup.string().min(6, "La contraseña debe tener al menos 6 caracteres").required("La contraseña es obligatoria"),
-      }).validate({ name, currency, ownerName, ownerEmail, ownerPassword }, { abortEarly: false });
-      setErrors({});
+      await yup
+        .object({
+          name: yup
+            .string()
+            .trim()
+            .required("El nombre es obligatorio")
+            .max(160, "Máximo 160 caracteres"),
+          currency: yup
+            .string()
+            .trim()
+            .uppercase()
+            .matches(
+              /^[A-Z]{3}$/,
+              "Usa el código ISO de 3 letras, por ejemplo MXN"
+            )
+            .required("La moneda es obligatoria"),
+          ownerName: yup.string().trim().max(160, "Máximo 160 caracteres"),
+          ownerEmail: yup
+            .string()
+            .trim()
+            .lowercase()
+            .email("Ingresa un correo válido")
+            .required("El correo es obligatorio"),
+          ownerPassword: yup
+            .string()
+            .min(8, "La contraseña debe tener al menos 8 caracteres")
+            .required("La contraseña es obligatoria"),
+        })
+        .validate(
+          { name, currency, ownerName, ownerEmail, ownerPassword },
+          { abortEarly: false }
+        )
+      setErrors({})
     } catch (error) {
       if (error instanceof yup.ValidationError) {
-        const next: Record<string, string> = {};
-        for (const failure of error.inner) if (failure.path && !next[failure.path]) next[failure.path] = failure.message;
-        setErrors(next);
-        const focusErrors = Object.fromEntries(Object.entries(next).map(([key, message]) => [`create-org-${key}`, message]));
-        window.requestAnimationFrame(() => focusFirstInvalid(focusErrors, "create-org-form"));
+        const next: Record<string, string> = {}
+        for (const failure of error.inner)
+          if (failure.path && !next[failure.path])
+            next[failure.path] = failure.message
+        setErrors(next)
+        const focusErrors = Object.fromEntries(
+          Object.entries(next).map(([key, message]) => [
+            `create-org-${key}`,
+            message,
+          ])
+        )
+        window.requestAnimationFrame(() =>
+          focusFirstInvalid(focusErrors, "create-org-form")
+        )
       }
-      return;
+      return
     }
-    setSaving(true);
-    setFormError(undefined);
+    setSaving(true)
+    setFormError(undefined)
     try {
       await api("/api/settings/organizations", {
         method: "POST",
-        body: JSON.stringify({ name, currency, ownerName, ownerEmail, ownerPassword }),
-      });
-      reset();
-      onOpenChange(false);
-      onCreated();
-      swalToast("Organización creada");
+        body: JSON.stringify({
+          name,
+          currency,
+          ownerName,
+          ownerEmail,
+          ownerPassword,
+        }),
+      })
+      reset()
+      onOpenChange(false)
+      onCreated()
+      swalToast("Organización creada")
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "No se pudo crear la organización");
+      setFormError(
+        err instanceof Error ? err.message : "No se pudo crear la organización"
+      )
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <DialogComponent
@@ -350,15 +445,33 @@ function CreateOrgDialog({
       icon={<Building2 className="size-4" />}
       footer={
         <>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
           <Button type="submit" form="create-org-form" disabled={saving}>
             {saving ? "Creando…" : "Crear organización"}
           </Button>
         </>
       }
     >
-      <form id="create-org-form" noValidate onSubmit={(event) => { event.preventDefault(); void save(); }} className="space-y-3">
-        {formError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
+      <form
+        id="create-org-form"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          void save()
+        }}
+        className="space-y-3"
+      >
+        {formError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            {formError}
+          </div>
+        )}
         <InputGroupField
           id="create-org-name"
           label="Nombre de la organización"
@@ -373,11 +486,15 @@ function CreateOrgDialog({
           label="Moneda"
           placeholder="MXN"
           value={currency}
-          onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
+          onChange={(e) =>
+            setCurrency(e.target.value.toUpperCase().slice(0, 3))
+          }
           required
           error={errors.currency}
         />
-        <p className="text-xs font-semibold text-muted-foreground">Cuenta del owner</p>
+        <p className="text-xs font-semibold text-muted-foreground">
+          Cuenta del owner
+        </p>
         <InputGroupField
           id="create-org-ownerName"
           label="Nombre"
@@ -403,7 +520,7 @@ function CreateOrgDialog({
           label="Contraseña"
           type="password"
           required
-          placeholder="Mínimo 6 caracteres"
+          placeholder="Mínimo 8 caracteres"
           leftIcon={<KeyRound className="size-4" />}
           value={ownerPassword}
           onChange={(e) => setOwnerPassword(e.target.value)}
@@ -411,7 +528,7 @@ function CreateOrgDialog({
         />
       </form>
     </DialogComponent>
-  );
+  )
 }
 
 function EditOrgDialog({
@@ -419,62 +536,88 @@ function EditOrgDialog({
   onClose,
   onSaved,
 }: {
-  org: OrgRow | null;
-  onClose: () => void;
-  onSaved: () => void;
+  org: OrgRow | null
+  onClose: () => void
+  onSaved: () => void
 }) {
-  const [name, setName] = React.useState("");
-  const [currency, setCurrency] = React.useState("");
-  const [saving, setSaving] = React.useState(false);
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [formError, setFormError] = React.useState<string>();
-  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
+  const [name, setName] = React.useState("")
+  const [currency, setCurrency] = React.useState("")
+  const [saving, setSaving] = React.useState(false)
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const [formError, setFormError] = React.useState<string>()
+  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid()
 
   React.useEffect(() => {
     if (org) {
-      setName(org.name);
-      setCurrency(org.currency);
-      setErrors({});
-      setFormError(undefined);
-      const frame = window.requestAnimationFrame(() => focusFirstEnabled("edit-org-form"));
-      return () => window.cancelAnimationFrame(frame);
+      setName(org.name)
+      setCurrency(org.currency)
+      setErrors({})
+      setFormError(undefined)
+      const frame = window.requestAnimationFrame(() =>
+        focusFirstEnabled("edit-org-form")
+      )
+      return () => window.cancelAnimationFrame(frame)
     }
-  }, [focusFirstEnabled, org]);
+  }, [focusFirstEnabled, org])
 
   const save = async () => {
-    if (!org) return;
+    if (!org) return
     try {
-      await yup.object({
-        name: yup.string().trim().required("El nombre es obligatorio").max(160, "Máximo 160 caracteres"),
-        currency: yup.string().trim().uppercase().matches(/^[A-Z]{3}$/, "Usa un código ISO de 3 letras").required("La moneda es obligatoria"),
-      }).validate({ name, currency }, { abortEarly: false });
-      setErrors({});
+      await yup
+        .object({
+          name: yup
+            .string()
+            .trim()
+            .required("El nombre es obligatorio")
+            .max(160, "Máximo 160 caracteres"),
+          currency: yup
+            .string()
+            .trim()
+            .uppercase()
+            .matches(/^[A-Z]{3}$/, "Usa un código ISO de 3 letras")
+            .required("La moneda es obligatoria"),
+        })
+        .validate({ name, currency }, { abortEarly: false })
+      setErrors({})
     } catch (error) {
       if (error instanceof yup.ValidationError) {
-        const next: Record<string, string> = {};
-        for (const failure of error.inner) if (failure.path && !next[failure.path]) next[failure.path] = failure.message;
-        setErrors(next);
-        const focusErrors = Object.fromEntries(Object.entries(next).map(([key, message]) => [`edit-org-${key}`, message]));
-        window.requestAnimationFrame(() => focusFirstInvalid(focusErrors, "edit-org-form"));
+        const next: Record<string, string> = {}
+        for (const failure of error.inner)
+          if (failure.path && !next[failure.path])
+            next[failure.path] = failure.message
+        setErrors(next)
+        const focusErrors = Object.fromEntries(
+          Object.entries(next).map(([key, message]) => [
+            `edit-org-${key}`,
+            message,
+          ])
+        )
+        window.requestAnimationFrame(() =>
+          focusFirstInvalid(focusErrors, "edit-org-form")
+        )
       }
-      return;
+      return
     }
-    setSaving(true);
-    setFormError(undefined);
+    setSaving(true)
+    setFormError(undefined)
     try {
       await api(`/api/settings/organizations/${org.id}`, {
         method: "PATCH",
         body: JSON.stringify({ name, currency }),
-      });
-      onClose();
-      onSaved();
-      swalToast("Organización actualizada");
+      })
+      onClose()
+      onSaved()
+      swalToast("Organización actualizada")
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "No se pudo actualizar la organización");
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo actualizar la organización"
+      )
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <DialogComponent
@@ -484,15 +627,33 @@ function EditOrgDialog({
       icon={<Building2 className="size-4" />}
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
           <Button type="submit" form="edit-org-form" disabled={saving}>
             {saving ? "Guardando…" : "Guardar"}
           </Button>
         </>
       }
     >
-      <form id="edit-org-form" noValidate onSubmit={(event) => { event.preventDefault(); void save(); }} className="space-y-3">
-        {formError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
+      <form
+        id="edit-org-form"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          void save()
+        }}
+        className="space-y-3"
+      >
+        {formError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            {formError}
+          </div>
+        )}
         <InputGroupField
           id="edit-org-name"
           label="Nombre"
@@ -505,35 +666,37 @@ function EditOrgDialog({
           id="edit-org-currency"
           label="Moneda"
           value={currency}
-          onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
+          onChange={(e) =>
+            setCurrency(e.target.value.toUpperCase().slice(0, 3))
+          }
           required
           error={errors.currency}
         />
       </form>
     </DialogComponent>
-  );
+  )
 }
 
 // ── Tab: Usuarios y admins ───────────────────────────────────────────────────
 
 function UsersTab() {
-  const [users, setUsers] = React.useState<UserRow[] | null>(null);
-  const [orgs, setOrgs] = React.useState<OrgRow[]>([]);
-  const [createOpen, setCreateOpen] = React.useState(false);
-  const [assigning, setAssigning] = React.useState<UserRow | null>(null);
+  const [users, setUsers] = React.useState<UserRow[] | null>(null)
+  const [orgs, setOrgs] = React.useState<OrgRow[]>([])
+  const [createOpen, setCreateOpen] = React.useState(false)
+  const [assigning, setAssigning] = React.useState<UserRow | null>(null)
 
   const load = React.useCallback(() => {
     api<{ users: UserRow[] }>("/api/settings/organizations/users")
       .then((d) => setUsers(d.users))
-      .catch(() => undefined);
+      .catch(() => undefined)
     api<{ organizations: OrgRow[] }>("/api/settings/organizations")
       .then((d) => setOrgs(d.organizations))
-      .catch(() => undefined);
-  }, []);
+      .catch(() => undefined)
+  }, [])
 
   React.useEffect(() => {
-    load();
-  }, [load]);
+    load()
+  }, [load])
 
   if (!users) {
     return (
@@ -542,7 +705,7 @@ function UsersTab() {
           <Skeleton key={i} className="h-16 w-full rounded-lg" />
         ))}
       </div>
-    );
+    )
   }
 
   return (
@@ -555,17 +718,28 @@ function UsersTab() {
 
       <div className="space-y-2">
         {users.map((u) => (
-          <div key={u.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
+          <div
+            key={u.id}
+            className="flex flex-wrap items-center gap-3 rounded-lg border p-3"
+          >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-medium">{u.fullName}</span>
-                {u.isSuperadmin && <Badge variant="secondary">Super admin</Badge>}
+                <span className="truncate text-sm font-medium">
+                  {u.fullName}
+                </span>
+                {u.isSuperadmin && (
+                  <Badge variant="secondary">Super admin</Badge>
+                )}
                 {!u.isActive && <Badge variant="outline">Inactivo</Badge>}
               </div>
-              <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {u.email}
+              </p>
               <div className="mt-1.5 flex flex-wrap gap-1">
                 {u.memberships.length === 0 && (
-                  <span className="text-xs text-muted-foreground">Sin organizaciones asignadas</span>
+                  <span className="text-xs text-muted-foreground">
+                    Sin organizaciones asignadas
+                  </span>
                 )}
                 {u.memberships.map((m) => (
                   <Badge
@@ -587,10 +761,19 @@ function UsersTab() {
         ))}
       </div>
 
-      <CreateUserDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={load} />
-      <AssignOrgDialog user={assigning} orgs={orgs} onClose={() => setAssigning(null)} onSaved={load} />
+      <CreateUserDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={load}
+      />
+      <AssignOrgDialog
+        user={assigning}
+        orgs={orgs}
+        onClose={() => setAssigning(null)}
+        onSaved={load}
+      />
     </div>
-  );
+  )
 }
 
 function CreateUserDialog({
@@ -598,62 +781,89 @@ function CreateUserDialog({
   onOpenChange,
   onCreated,
 }: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onCreated: () => void;
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onCreated: () => void
 }) {
-  const [fullName, setFullName] = React.useState("");
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [saving, setSaving] = React.useState(false);
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [formError, setFormError] = React.useState<string>();
-  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
+  const [fullName, setFullName] = React.useState("")
+  const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
+  const [saving, setSaving] = React.useState(false)
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const [formError, setFormError] = React.useState<string>()
+  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid()
 
   React.useEffect(() => {
-    if (!open) return;
-    const frame = window.requestAnimationFrame(() => focusFirstEnabled("create-user-form"));
-    return () => window.cancelAnimationFrame(frame);
-  }, [focusFirstEnabled, open]);
+    if (!open) return
+    const frame = window.requestAnimationFrame(() =>
+      focusFirstEnabled("create-user-form")
+    )
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusFirstEnabled, open])
 
   const save = async () => {
     try {
-      await yup.object({
-        fullName: yup.string().trim().required("El nombre es obligatorio").max(160, "Máximo 160 caracteres"),
-        email: yup.string().trim().lowercase().email("Ingresa un correo válido").required("El correo es obligatorio"),
-        password: yup.string().min(6, "La contraseña debe tener al menos 6 caracteres").required("La contraseña es obligatoria"),
-      }).validate({ fullName, email, password }, { abortEarly: false });
-      setErrors({});
+      await yup
+        .object({
+          fullName: yup
+            .string()
+            .trim()
+            .required("El nombre es obligatorio")
+            .max(160, "Máximo 160 caracteres"),
+          email: yup
+            .string()
+            .trim()
+            .lowercase()
+            .email("Ingresa un correo válido")
+            .required("El correo es obligatorio"),
+          password: yup
+            .string()
+            .min(8, "La contraseña debe tener al menos 8 caracteres")
+            .required("La contraseña es obligatoria"),
+        })
+        .validate({ fullName, email, password }, { abortEarly: false })
+      setErrors({})
     } catch (error) {
       if (error instanceof yup.ValidationError) {
-        const next: Record<string, string> = {};
-        for (const failure of error.inner) if (failure.path && !next[failure.path]) next[failure.path] = failure.message;
-        setErrors(next);
-        const focusErrors = Object.fromEntries(Object.entries(next).map(([key, message]) => [`create-user-${key}`, message]));
-        window.requestAnimationFrame(() => focusFirstInvalid(focusErrors, "create-user-form"));
+        const next: Record<string, string> = {}
+        for (const failure of error.inner)
+          if (failure.path && !next[failure.path])
+            next[failure.path] = failure.message
+        setErrors(next)
+        const focusErrors = Object.fromEntries(
+          Object.entries(next).map(([key, message]) => [
+            `create-user-${key}`,
+            message,
+          ])
+        )
+        window.requestAnimationFrame(() =>
+          focusFirstInvalid(focusErrors, "create-user-form")
+        )
       }
-      return;
+      return
     }
-    setSaving(true);
-    setFormError(undefined);
+    setSaving(true)
+    setFormError(undefined)
     try {
       await api("/api/settings/organizations/users", {
         method: "POST",
         body: JSON.stringify({ fullName, email, password }),
-      });
-      onOpenChange(false);
-      onCreated();
-      setFullName("");
-      setEmail("");
-      setPassword("");
-      setErrors({});
-      swalToast("Usuario creado");
+      })
+      onOpenChange(false)
+      onCreated()
+      setFullName("")
+      setEmail("")
+      setPassword("")
+      setErrors({})
+      swalToast("Usuario creado")
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "No se pudo crear el usuario");
+      setFormError(
+        err instanceof Error ? err.message : "No se pudo crear el usuario"
+      )
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <DialogComponent
@@ -664,15 +874,33 @@ function CreateUserDialog({
       icon={<UserRound className="size-4" />}
       footer={
         <>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
           <Button type="submit" form="create-user-form" disabled={saving}>
             {saving ? "Creando…" : "Crear usuario"}
           </Button>
         </>
       }
     >
-      <form id="create-user-form" noValidate onSubmit={(event) => { event.preventDefault(); void save(); }} className="space-y-3">
-        {formError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
+      <form
+        id="create-user-form"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          void save()
+        }}
+        className="space-y-3"
+      >
+        {formError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            {formError}
+          </div>
+        )}
         <InputGroupField
           id="create-user-fullName"
           label="Nombre completo"
@@ -695,14 +923,14 @@ function CreateUserDialog({
           label="Contraseña"
           type="password"
           required
-          placeholder="Mínimo 6 caracteres"
+          placeholder="Mínimo 8 caracteres"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={errors.password}
         />
       </form>
     </DialogComponent>
-  );
+  )
 }
 
 function AssignOrgDialog({
@@ -711,59 +939,68 @@ function AssignOrgDialog({
   onClose,
   onSaved,
 }: {
-  user: UserRow | null;
-  orgs: OrgRow[];
-  onClose: () => void;
-  onSaved: () => void;
+  user: UserRow | null
+  orgs: OrgRow[]
+  onClose: () => void
+  onSaved: () => void
 }) {
-  const [roles, setRoles] = React.useState<Record<string, string>>({});
-  const [saving, setSaving] = React.useState(false);
-  const [formError, setFormError] = React.useState<string>();
-  const { focusFirstEnabled } = useFocusInvalid();
+  const [roles, setRoles] = React.useState<Record<string, string>>({})
+  const [saving, setSaving] = React.useState(false)
+  const [formError, setFormError] = React.useState<string>()
+  const { focusFirstEnabled } = useFocusInvalid()
 
   React.useEffect(() => {
-    if (!user) return;
-    const next: Record<string, string> = {};
+    if (!user) return
+    const next: Record<string, string> = {}
     for (const o of orgs) {
-      const current = user.memberships.find((m) => m.organizationId === o.id);
-      next[o.id] = current ? roleValue(current) : "";
+      const current = user.memberships.find((m) => m.organizationId === o.id)
+      next[o.id] = current ? roleValue(current) : ""
     }
-    setRoles(next);
-    setFormError(undefined);
-    const frame = window.requestAnimationFrame(() => focusFirstEnabled("assign-org-form"));
-    return () => window.cancelAnimationFrame(frame);
-  }, [focusFirstEnabled, user, orgs]);
+    setRoles(next)
+    setFormError(undefined)
+    const frame = window.requestAnimationFrame(() =>
+      focusFirstEnabled("assign-org-form")
+    )
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusFirstEnabled, user, orgs])
 
-  if (!user) return null;
+  if (!user) return null
 
   const save = async () => {
-    setSaving(true);
-    setFormError(undefined);
+    setSaving(true)
+    setFormError(undefined)
     try {
       for (const o of orgs) {
-        const value = roles[o.id] ?? "";
-        const current = user.memberships.find((m) => m.organizationId === o.id);
-        const currentValue = current ? roleValue(current) : "";
+        const value = roles[o.id] ?? ""
+        const current = user.memberships.find((m) => m.organizationId === o.id)
+        const currentValue = current ? roleValue(current) : ""
         if (!value && current) {
-          await api(`/api/settings/organizations/${o.id}/members/${current.membershipId}`, {
-            method: "DELETE",
-          });
+          await api(
+            `/api/settings/organizations/${o.id}/members/${current.membershipId}`,
+            {
+              method: "DELETE",
+            }
+          )
         } else if (value && value !== currentValue) {
           await api(`/api/settings/organizations/${o.id}/members`, {
             method: "POST",
             body: JSON.stringify({ userId: user.id, roleId: value }),
-          });
+          })
         }
       }
-      onClose();
-      onSaved();
-      swalToast("Asignaciones actualizadas");
+      onClose()
+      onSaved()
+      swalToast("Asignaciones actualizadas")
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "No se pudieron guardar las asignaciones");
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : "No se pudieron guardar las asignaciones"
+      )
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <DialogComponent
@@ -775,15 +1012,33 @@ function AssignOrgDialog({
       className="sm:max-w-lg"
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
           <Button type="submit" form="assign-org-form" disabled={saving}>
             {saving ? "Guardando…" : "Guardar asignaciones"}
           </Button>
         </>
       }
     >
-      <form id="assign-org-form" noValidate onSubmit={(event) => { event.preventDefault(); void save(); }} className="space-y-3">
-        {formError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
+      <form
+        id="assign-org-form"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          void save()
+        }}
+        className="space-y-3"
+      >
+        {formError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            {formError}
+          </div>
+        )}
         {orgs.length === 0 && (
           <p className="text-sm text-muted-foreground">
             No hay organizaciones registradas. Crea una primero.
@@ -795,9 +1050,12 @@ function AssignOrgDialog({
             label: r.name,
             description: r.description,
             permissionCount: r.permissionCount,
-          }));
+          }))
           return (
-            <div key={o.id} className="flex items-center justify-between gap-2 rounded-lg border p-2.5">
+            <div
+              key={o.id}
+              className="flex items-center justify-between gap-2 rounded-lg border p-2.5"
+            >
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="truncate text-sm font-medium">{o.name}</span>
@@ -826,9 +1084,9 @@ function AssignOrgDialog({
                 renderOption={(opt) => <RoleOption option={opt} />}
               />
             </div>
-          );
+          )
         })}
       </form>
     </DialogComponent>
-  );
+  )
 }

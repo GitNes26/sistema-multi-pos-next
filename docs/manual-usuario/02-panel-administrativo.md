@@ -54,8 +54,10 @@ Aquí se da de alta todo lo que vendes. Por producto eliges:
     se pueden elegir (mínimo y máximo) y cuánto cuesta extra cada una.
 - **Stock por sucursal, código interno y código de barras** (para escáner).
 - **Combo** (menú Combos, restaurantes e híbridos): paquete de productos con precio especial.
-- **Receta e insumos:** en la tabla de productos, pulsa el botón de la olla. Agrega cada
-  materia prima, cuánto se consume por venta y la merma prevista. Puedes aplicar un
+- **Receta e insumos:** en la tabla de productos, pulsa el botón de la olla. Este botón
+  aparece únicamente en productos **Personalizados**, que son los que se construyen con
+  opciones y consumos variables. Agrega cada materia prima, cuánto se consume por venta
+  y la merma prevista. Puedes aplicar un
   consumo siempre, solo a una variante o solo cuando el cliente elige una opción, por
   ejemplo “Chicharrón prensado”. La venta descuenta automáticamente esos insumos.
 - **Venta disponible / Ya no hay:** usa el interruptor **Venta** para detener de inmediato
@@ -67,6 +69,8 @@ Aquí se da de alta todo lo que vendes. Por producto eliges:
   Cada categoría pertenece a una empresa. Si un producto queda sin una categoría válida,
   sigue disponible en el POS dentro de **Sin categoría** para que puedas reasignarlo.
 - **Medidas:** piezas, kilos, litros y sus conversiones.
+  Los tipos aparecen en español. Si un dato no es válido, el formulario marca el campo
+  exacto y lleva el foco hasta él para que puedas corregirlo.
 - **Promociones:** `% de descuento`, `Descuento en $`, `Precio fijo`, `Lleva X y paga Y`
   (2x1…) y `Producto gratis`. Cada promoción se limita por días, horarios, categoría o
   producto, y se activa sola en caja y en la app del cliente.
@@ -75,6 +79,8 @@ Aquí se da de alta todo lo que vendes. Por producto eliges:
 ### Clientes, Empleados y Puestos
 - **Clientes:** nombre, teléfono, correo, dirección, puntos y número de cliente generado automáticamente. El cliente también ve ese número en su perfil del Portal. Desde aquí se ve su crédito.
 - **Empleados y Puestos:** tu personal, su número de nómina generado automáticamente, puesto (cajero, mesero, estilista) y sucursal.
+  El correo es opcional: si lo dejas vacío, el sistema genera el acceso y lo utiliza
+  también como contraseña inicial; comunícaselo al empleado para que la cambie.
 
 ## 2.3 Inventario (Operación → Inventario)
 
@@ -89,6 +95,8 @@ Para tiendas, restaurantes e híbridos. En una sola pantalla manejas:
   **Plantilla**, lee la hoja **Instrucciones**, copia los identificadores desde
   **Catálogo**, escribe la existencia final y después pulsa **Importar**. Descarga una
   plantilla nueva cada vez para incluir los productos actuales.
+- Desde **Productos**, el botón de inventario de cada registro abre esta pantalla con
+  el nombre del producto ya buscado, listo para registrar su entrada o mínimo.
 
 [IMAGEN: pantalla de inventario con el botón "Registrar movimiento"]
 
@@ -158,9 +166,14 @@ La política general del crédito se configura en **Ajustes → Crédito** (ver 
 
 ## 2.9 Ajustes
 
-- **Empresa:** datos, logo y colores (la apariencia se refleja en POS y app).
-- **Sucursales:** cada local con su horario y dirección.
+- **Empresa:** solo **Nombre de la empresa** es obligatorio. Los datos fiscales,
+  dirección, contacto y logotipo pueden completarse después. El asterisco rojo identifica
+  cada campo obligatorio.
+- **Organización y empresa:** la organización controla acceso, usuarios y aislamiento de
+  datos; la ficha Empresa guarda la identidad comercial y fiscal. Al crear una organización,
+  su nombre se copia a la ficha Empresa y a la sucursal inicial para evitar capturarlo tres veces.
 - **Sucursales:** al crear una sucursal se precargan los datos disponibles de la empresa y se crea su **Caja principal**. Si no eliges otra imagen, usa el logotipo de la empresa.
+  El teléfono es opcional; la herencia del logotipo se explica siempre debajo del campo Imagen.
 - **Cajas:** las cajas registradoras por sucursal. El prefijo se forma y actualiza con el código de sucursal y la abreviación del nombre de caja, por ejemplo `CTR-CP`.
 - **Lealtad:** reglas de puntos.
 - **Supervisor:** PIN de autorización para descuentos grandes y cortes.

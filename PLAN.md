@@ -1,3 +1,22 @@
+# ESTADO VIGENTE — 15 DE SEPTIEMBRE DE 2026
+
+Este archivo conserva el plan histórico de construcción. Varias rutas, cantidades,
+versiones y estados descritos debajo ya no son fuente de verdad.
+
+Para replicar, mantener o extender el proyecto usa:
+
+1. [Contexto vigente](docs/contexto-actual.md).
+2. [Manuales HTML imprimibles](docs/manuales/index.html).
+3. [Auditoría de estabilización](docs/estabilizacion/README.md).
+4. [Auditoría de seguridad](docs/seguridad/auditoria-2026-09-15.md).
+5. Código real: `src/lib/features.ts`, `src/lib/nav.ts`, `prisma/schema.prisma`
+   y rutas bajo `src/app`.
+
+Los cinco modos, panel, POS, KDS, agenda, reservaciones, portal, BI, recetas, crédito por
+cliente, exportaciones y wizards están implementados. Impresora, escáner, tacto físico,
+pasarelas en sandbox, mensajería e infraestructura permanecen como validaciones externas.
+La lista histórica siguiente no garantiza que cada afirmación antigua siga vigente.
+
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # PLAN MAESTRO DE DESARROLLO — SISTEMA MULTI-POS

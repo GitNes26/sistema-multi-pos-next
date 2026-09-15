@@ -32,15 +32,46 @@ export interface CompanyProfileInput {
 }
 
 export async function getCompanyProfile(organizationId: string) {
-  return prisma.companyProfile.findUnique({ where: { organizationId } });
+  const [profile, organization] = await Promise.all([
+    prisma.companyProfile.findUnique({ where: { organizationId } }),
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { name: true },
+    }),
+  ]);
+  return (
+    profile ?? {
+      id: "",
+      organizationId,
+      legalName: null,
+      tradeName: organization?.name ?? "",
+      taxId: null,
+      logoUrl: null,
+      address: null,
+      city: null,
+      state: null,
+      postalCode: null,
+      country: null,
+      phone: null,
+      email: null,
+      website: null,
+      ticketFooter: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    }
+  );
 }
 
 export async function upsertCompanyProfile(organizationId: string, input: CompanyProfileInput) {
+  if (!input.tradeName?.trim()) {
+    throw new Error("El nombre de la empresa es obligatorio");
+  }
+  const data = { ...input, tradeName: input.tradeName.trim() };
   const existing = await prisma.companyProfile.findUnique({ where: { organizationId } });
   if (existing) {
-    return prisma.companyProfile.update({ where: { id: existing.id }, data: input });
+    return prisma.companyProfile.update({ where: { id: existing.id }, data });
   }
-  return prisma.companyProfile.create({ data: { organizationId, ...input } });
+  return prisma.companyProfile.create({ data: { organizationId, ...data } });
 }
 
 // ── Perfil de usuario (15.1) ────────────────────────────────────────────────

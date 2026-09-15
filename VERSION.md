@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.18.2.0] — 2026-09-15
+- **Tipo:** `fix` (Patch)
+- fix:correccion de detalles de registro
+
 ### [0.18.1.0] — 2026-09-15
 - **Tipo:** `fix` (Patch)
 - fix:mejoras en interascción

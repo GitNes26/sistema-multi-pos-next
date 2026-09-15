@@ -12,6 +12,7 @@ import {
   Layers,
   Loader2,
   Package,
+  PackagePlus,
   CookingPot,
   Plus,
   Pencil,
@@ -20,6 +21,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -130,6 +132,7 @@ export function CrudPage({
   canDelete,
   icon,
 }: CrudPageProps) {
+  const router = useRouter()
   const config = useMemo<CrudUiConfig | null>(
     () => (isProducts(moduleKey) ? null : (getCrudUi(moduleKey) ?? null)),
     [moduleKey]
@@ -688,6 +691,8 @@ export function CrudPage({
                     size="icon"
                     className="size-8"
                     onClick={() => openEdit(row.original)}
+                    title="Editar"
+                    aria-label={`Editar ${String(row.original.name ?? "registro")}`}
                   >
                     <Pencil className="size-4" />
                   </Button>
@@ -705,6 +710,23 @@ export function CrudPage({
                     </Button>
                   )}
                   {moduleKey === "products" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      title="Consultar y llenar inventario"
+                      aria-label={`Consultar inventario de ${String(row.original.name ?? "producto")}`}
+                      onClick={() =>
+                        router.push(
+                          `/admin/inventory?q=${encodeURIComponent(String(row.original.name ?? ""))}`
+                        )
+                      }
+                    >
+                      <PackagePlus className="size-4" />
+                    </Button>
+                  )}
+                  {moduleKey === "products" &&
+                    row.original.productType === "custom" && (
                     <Button
                       variant="ghost"
                       size="icon"

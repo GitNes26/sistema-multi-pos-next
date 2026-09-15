@@ -23,6 +23,23 @@ const select = {
   organizationId: true,
 } as const;
 
+const UNIT_TYPES = new Set(["unit", "weight", "volume", "length", "area", "custom"]);
+
+function conversionFactor(value: unknown, fallback?: number) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new CrudError("El factor de conversión debe ser mayor que cero", 400, "conversionFactor");
+  }
+  return parsed;
+}
+
+function unitType(value: unknown, fallback = "custom") {
+  const type = typeof value === "string" && value ? value : fallback;
+  if (!UNIT_TYPES.has(type)) throw new CrudError("Selecciona un tipo de medida válido", 400, "type");
+  return type;
+}
+
 function serialize(u: {
   id: string;
   name: string;
@@ -54,15 +71,12 @@ export const unitsModule: CrudModule<UnitDto> = {
     const q = params.q?.trim() ?? "";
 
     const where = {
-      OR: [{ organizationId }, { organizationId: null }],
-      ...(q
-        ? {
-            OR: [
-              { name: { contains: q } },
-              { abbreviation: { contains: q.toUpperCase() } },
-            ],
-          }
-        : {}),
+      AND: [
+        { OR: [{ organizationId }, { organizationId: null }] },
+        ...(q
+          ? [{ OR: [{ name: { contains: q } }, { abbreviation: { contains: q.toLowerCase() } }] }]
+          : []),
+      ],
     };
 
     const [rows, total] = await Promise.all([
@@ -89,7 +103,7 @@ export const unitsModule: CrudModule<UnitDto> = {
   },
 
   async create(organizationId, input) {
-    const data = input as { name?: string; abbreviation?: string; type?: string; baseUnit?: string | null; conversionFactor?: number; isActive?: boolean };
+    const data = input as { name?: string; abbreviation?: string; type?: string; baseUnit?: string | null; conversionFactor?: number | string; isActive?: boolean };
     if (!data.name?.trim()) throw new CrudError("El nombre es obligatorio", 400, "name");
     if (!data.abbreviation?.trim()) throw new CrudError("La abreviatura es obligatoria", 400, "abbreviation");
     const abbreviation = data.abbreviation.trim().toLowerCase();
@@ -104,9 +118,9 @@ export const unitsModule: CrudModule<UnitDto> = {
         organizationId,
         name: data.name.trim(),
         abbreviation,
-        type: data.type ?? "custom",
+        type: unitType(data.type),
         baseUnit: data.baseUnit ?? null,
-        conversionFactor: data.conversionFactor ?? 1,
+        conversionFactor: conversionFactor(data.conversionFactor, 1),
         isActive: data.isActive ?? true,
       },
       select,
@@ -115,7 +129,7 @@ export const unitsModule: CrudModule<UnitDto> = {
   },
 
   async update(organizationId, id, input) {
-    const data = input as { name?: string; abbreviation?: string; type?: string; baseUnit?: string | null; conversionFactor?: number; isActive?: boolean };
+    const data = input as { name?: string; abbreviation?: string; type?: string; baseUnit?: string | null; conversionFactor?: number | string; isActive?: boolean };
     const existing = await prisma.unitOfMeasure.findFirst({
       where: { id, OR: [{ organizationId }, { organizationId: null }] },
       select: { id: true, organizationId: true },
@@ -135,9 +149,11 @@ export const unitsModule: CrudModule<UnitDto> = {
       data: {
         ...(data.name !== undefined ? { name: data.name.trim() } : {}),
         ...(data.abbreviation !== undefined ? { abbreviation: abbreviation! } : {}),
-        ...(data.type !== undefined ? { type: data.type } : {}),
+        ...(data.type !== undefined ? { type: unitType(data.type) } : {}),
         ...(data.baseUnit !== undefined ? { baseUnit: data.baseUnit } : {}),
-        ...(data.conversionFactor !== undefined ? { conversionFactor: data.conversionFactor } : {}),
+        ...(data.conversionFactor !== undefined && data.conversionFactor !== ""
+          ? { conversionFactor: conversionFactor(data.conversionFactor) }
+          : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
       },
       select,

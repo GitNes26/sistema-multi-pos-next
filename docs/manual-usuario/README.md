@@ -1,5 +1,9 @@
 # Manual de Usuario — Multi-POS
 
+La edición navegable e imprimible de los cuatro manuales está en
+[`docs/manuales/index.html`](../manuales/index.html). Selecciona un manual y usa
+**Exportar PDF** para guardarlo con el diálogo de impresión.
+
 > Manual para usuarios finales (sin conocimientos técnicos). Redactado desde el
 > contexto validado en `00-contexto-sistema.md`. Se revalida con la skill
 > `manual-usuario` cada vez que el sistema cambia.

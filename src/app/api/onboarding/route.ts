@@ -99,6 +99,7 @@ export async function POST(req: Request) {
         where: { id: orgId },
         data: {
           businessMode: businessMode as "retail" | "food_service" | "services" | "rental" | "hybrid",
+          ...(companyName?.trim() ? { name: companyName.trim() } : {}),
           ...(currency?.trim() ? { currency: currency.trim() } : {}),
         },
       });
@@ -146,7 +147,7 @@ export async function POST(req: Request) {
       const matriz = await prisma.location.create({
         data: {
           organizationId: orgId,
-          name: locationName || "Matriz",
+          name: locationName || companyName || "Mi Empresa",
           code: "MATRIZ",
           address: locationAddress || address || null,
           phone: phone || null,

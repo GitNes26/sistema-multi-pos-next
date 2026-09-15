@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { resolveBulkUnitPrice } from "@/lib/pos/bulk-pricing"
 import type { Prisma, $Enums } from "@prisma/client"
 import type {
   PosCashRegister,
@@ -708,7 +709,16 @@ async function validateSaleAmounts(
           },
           include: {
             product: {
-              select: { taxRate: true, productType: true, isActive: true },
+              select: {
+                taxRate: true,
+                productType: true,
+                isActive: true,
+                bulkPricePerUnit: true,
+                bulkUnitId: true,
+                allowSplit: true,
+                splitUnitId: true,
+                splitPricePerUnit: true,
+              },
             },
           },
         })
@@ -727,6 +737,10 @@ async function validateSaleAmounts(
             productType: true,
             isActive: true,
             bulkPricePerUnit: true,
+            bulkUnitId: true,
+            allowSplit: true,
+            splitUnitId: true,
+            splitPricePerUnit: true,
             variants: {
               where: { isActive: true },
               take: 1,
@@ -740,10 +754,25 @@ async function validateSaleAmounts(
     const basePrice = variant
       ? toNum(variant.price)
       : product.productType === "bulk"
-        ? toNum(
-            (product as { bulkPricePerUnit?: Prisma.Decimal })
-              .bulkPricePerUnit ?? 0
-          )
+        ? (() => {
+            try {
+              return resolveBulkUnitPrice(
+                {
+                  bulkUnitId: product.bulkUnitId,
+                  bulkPricePerUnit: toNum(product.bulkPricePerUnit),
+                  allowSplit: product.allowSplit,
+                  splitUnitId: product.splitUnitId,
+                  splitPricePerUnit: toNum(product.splitPricePerUnit),
+                },
+                item.unitId
+              )
+            } catch (error) {
+              throw new PosError(
+                error instanceof Error ? error.message : "Unidad de venta inválida",
+                400
+              )
+            }
+          })()
         : toNum(
             (product as { variants?: { price: Prisma.Decimal }[] })
               .variants?.[0]?.price ?? 0

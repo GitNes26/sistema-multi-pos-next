@@ -37,6 +37,7 @@ import { prisma } from "@/lib/db";
 import { BI_REPORTS, reportsForMode, type BiReportId } from "@/lib/reports/bi-catalog";
 import { buildBiExportSections } from "@/lib/reports/bi-export";
 import { buildExecutiveReportPdf } from "@/lib/reports/pdf";
+import { resolveUploadedUrlPath } from "@/lib/uploads/storage";
 
 // FASE 10.3 — Exportación de reportes (Excel + PDF profesional).
 
@@ -67,7 +68,7 @@ async function reportBranding(organizationId:string, locationId?:string) {
     prisma.appSettings.findUnique({ where:{organizationId}, select:{primaryHue:true,accentHue:true,theme:true,fontFamily:true,fontScale:true,density:true,borderRadius:true} }),
   ]);
   let logo:Buffer|null=null; const logoUrl=location?.imageUrl||profile?.logoUrl;
-  if(logoUrl){try{if(logoUrl.startsWith("/")){const fs=await import("node:fs/promises");const path=await import("node:path");logo=await fs.readFile(path.join(process.cwd(),"public",logoUrl.replace(/^\/+/,"")));}else{const response=await fetch(logoUrl);if(response.ok)logo=Buffer.from(await response.arrayBuffer());}}catch{/* encabezado textual si el recurso no está disponible */}}
+  if(logoUrl){try{const uploadedPath=resolveUploadedUrlPath(logoUrl);if(uploadedPath){const fs=await import("node:fs/promises");logo=await fs.readFile(uploadedPath);}else if(logoUrl.startsWith("/")){const fs=await import("node:fs/promises");const path=await import("node:path");logo=await fs.readFile(path.join(process.cwd(),"public",logoUrl.replace(/^\/+/,"")));}else{const response=await fetch(logoUrl);if(response.ok)logo=Buffer.from(await response.arrayBuffer());}}catch{/* encabezado textual si el recurso no está disponible */}}
   return {organization,profile,location,appearance,logo};
 }
 

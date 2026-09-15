@@ -32,7 +32,7 @@ export async function uploadFileWithThumb(file: File): Promise<{ url: string; th
  * route, URLs externas): allí no hay miniatura garantizada.
  */
 export function thumbnailUrl(url: string | null | undefined): string | null {
-  if (!url || !url.startsWith("/uploads/")) return null;
+  if (!url || (!url.startsWith("/uploads/") && !url.startsWith("/api/media/"))) return null;
   const dot = url.lastIndexOf(".");
   if (dot <= url.lastIndexOf("/")) return null; // sin extensión
   return `${url.slice(0, dot)}-thumb.webp`;

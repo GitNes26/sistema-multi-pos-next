@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { processUploadedImage } from "@/lib/uploads/image-process";
+import { uploadedFilePath, uploadedMediaUrl } from "@/lib/uploads/storage";
 
 // FASE 7.11 — Subida de imágenes (Attachment) a almacenamiento local.
 // POST /api/uploads (multipart, campo "file"). Las imágenes quedan en
@@ -57,20 +58,23 @@ export async function POST(req: NextRequest) {
       file.type
     );
 
-    const dir = path.join(process.cwd(), "public", "uploads", organizationId);
-    await mkdir(dir, { recursive: true });
     const base = randomUUID();
     const name = `${base}.${processed.ext}`;
-    await writeFile(path.join(dir, name), processed.buffer);
-    const url = `/uploads/${organizationId}/${name}`;
+    const filePath = uploadedFilePath(organizationId, name);
+    if (!filePath) throw new Error("Ruta de almacenamiento inválida");
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, processed.buffer);
+    const url = uploadedMediaUrl(organizationId, name);
 
     // Miniatura para cuadrículas densas (POS, ticket, chips): hereda el nombre
     // base, así un thumbnail siempre es reconocible junto a su original.
     let thumbUrl: string | null = null;
     if (processed.thumb) {
       const thumbName = `${base}-thumb.webp`;
-      await writeFile(path.join(dir, thumbName), processed.thumb);
-      thumbUrl = `/uploads/${organizationId}/${thumbName}`;
+      const thumbPath = uploadedFilePath(organizationId, thumbName);
+      if (!thumbPath) throw new Error("Ruta de miniatura inválida");
+      await writeFile(thumbPath, processed.thumb);
+      thumbUrl = uploadedMediaUrl(organizationId, thumbName);
     }
 
     return NextResponse.json({ ok: true, url, thumbUrl });

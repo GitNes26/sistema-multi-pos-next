@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manuales Multi-POS"
+  short_description: "Genera y sincroniza los manuales HTML/PDF de Multi-POS"
+  default_prompt: "Actualiza los manuales del sistema desde el codigo real y valida su impresion a PDF."

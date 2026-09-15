@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Manuales Multi-POS</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --ink: light-dark(#171717, #f4f4f4);
+        --muted: light-dark(#666, #aaa);
+        --paper: light-dark(#fff, #181818);
+        --wash: light-dark(#f5f5f3, #222);
+        --line: light-dark(#deded9, #3b3b3b);
+        --accent: light-dark(#1d4ed8, #8bb4ff);
+        font-family: Montserrat, Inter, system-ui, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--wash);
+        color: var(--ink);
+        line-height: 1.58;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      button {
+        min-height: 44px;
+        color: inherit;
+      }
+      .shell {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 820px);
+        gap: 36px;
+        max-width: 1180px;
+        margin: auto;
+        padding: 28px;
+      }
+      aside {
+        position: sticky;
+        top: 20px;
+        align-self: start;
+      }
+      .brand {
+        font-size: 1rem;
+        font-weight: 750;
+        margin-bottom: 18px;
+      }
+      .nav {
+        display: grid;
+        gap: 6px;
+      }
+      .nav button {
+        border: 1px solid transparent;
+        background: transparent;
+        text-align: left;
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .nav button:hover,
+      .nav button[aria-selected="true"] {
+        background: var(--paper);
+        border-color: var(--line);
+      }
+      .tools {
+        display: grid;
+        gap: 10px;
+        margin-top: 24px;
+      }
+      .tools button,
+      .tools input {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        border-radius: 10px;
+        padding: 10px 12px;
+      }
+      main {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: clamp(24px, 5vw, 58px);
+        min-width: 0;
+      }
+      article[hidden] {
+        display: none;
+      }
+      h1,
+      h2,
+      h3 {
+        line-height: 1.2;
+        margin-top: 1.8em;
+        margin-bottom: 0.55em;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-top: 0;
+      }
+      h2 {
+        font-size: 1.25rem;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 0.35em;
+      }
+      h3 {
+        font-size: 1rem;
+      }
+      p,
+      li {
+        max-width: 72ch;
+      }
+      .lede {
+        font-size: 1rem;
+        color: var(--muted);
+      }
+      .meta {
+        font-size: 0.875rem;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+        margin: 18px 0;
+      }
+      th,
+      td {
+        border-bottom: 1px solid var(--line);
+        padding: 9px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: var(--wash);
+      }
+      code {
+        background: var(--wash);
+        padding: 0.12em 0.35em;
+        border-radius: 6px;
+      }
+      pre {
+        overflow: auto;
+        background: var(--wash);
+        padding: 16px;
+        border-radius: 10px;
+      }
+      .callout {
+        background: var(--wash);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin: 18px 0;
+      }
+      .flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .flow span {
+        border: 1px solid var(--line);
+        padding: 7px 10px;
+        border-radius: 8px;
+      }
+      .flow b {
+        color: var(--muted);
+      }
+      :focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent);
+        outline-offset: 2px;
+      }
+      @media (max-width: 760px) {
+        .shell {
+          display: block;
+          padding: 12px;
+        }
+        aside {
+          position: static;
+          margin-bottom: 14px;
+        }
+        .nav {
+          display: flex;
+          overflow-x: auto;
+        }
+        .nav button {
+          white-space: nowrap;
+        }
+        .tools {
+          grid-template-columns: 1fr 1fr;
+          margin-top: 12px;
+        }
+        main {
+          border-radius: 12px;
+          padding: 24px 18px;
+        }
+      }
+      @page {
+        size: A4;
+        margin: 14mm;
+      }
+      @media print {
+        body {
+          background: #fff;
+          color: #111;
+        }
+        .shell {
+          display: block;
+          max-width: none;
+          padding: 0;
+        }
+        aside {
+          display: none;
+        }
+        main {
+          border: 0;
+          padding: 0;
+        }
+        article[hidden] {
+          display: none !important;
+        }
+        h1,
+        h2,
+        h3 {
+          break-after: avoid;
+        }
+        table,
+        .callout,
+        pre {
+          break-inside: avoid;
+        }
+        a {
+          color: inherit;
+          text-decoration: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside aria-label="Selector de manual">
+        <div class="brand">Multi-POS · Manuales</div>
+        <nav class="nav">
+          <button data-target="usuario" aria-selected="true">
+            Manual de usuario
+          </button>
+          <button data-target="vendedor">Manual del vendedor</button>
+          <button data-target="tecnico">Manual técnico</button>
+          <button data-target="modulos">Crear o modificar módulos</button>
+        </nav>
+        <div class="tools">
+          <input
+            id="search"
+            type="search"
+            placeholder="Buscar en este manual"
+            aria-label="Buscar en el manual"
+          />
+          <button id="print">Exportar PDF</button>
+        </div>
+        <p class="meta">
+          Revisión 15/09/2026 · El PDF conserva solo el manual seleccionado.
+        </p>
+      </aside>
+      <main id="content">
+        <article id="usuario">
+          <h1>Manual de usuario</h1>
+          <p class="lede">
+            Guía operativa para propietarios, gerentes, cajeros, meseros,
+            cocina, agentes y clientes.
+          </p>
+          <h2>Entrar y elegir empresa</h2>
+          <ol>
+            <li>
+              Abre <strong>Iniciar sesión</strong> y escribe correo, código de
+              nómina o código de cliente.
+            </li>
+            <li>
+              Si tienes acceso a varias empresas, elige la empresa activa.
+            </li>
+            <li>
+              El menú mostrará únicamente las funciones permitidas para tu rol y
+              el tipo de negocio.
+            </li>
+          </ol>
+          <div class="callout">
+            <strong>Sesión vencida:</strong> vuelve a entrar. Antes de abandonar
+            un formulario, copia cualquier texto largo que aún no hayas
+            guardado.
+          </div>
+          <h2>Jornada de caja y venta</h2>
+          <div class="flow">
+            <span>Abrir caja</span><b>→</b><span>Agregar productos</span><b>→</b
+            ><span>Cliente y descuentos</span><b>→</b><span>Cobrar</span><b>→</b
+            ><span>Ticket</span><b>→</b><span>Cerrar caja</span>
+          </div>
+          <ol>
+            <li>En <strong>POS</strong>, abre la caja con el fondo inicial.</li>
+            <li>
+              Busca, escanea o toca productos. En productos configurables elige
+              variante y opciones.
+            </li>
+            <li>Revisa cantidades, descuentos y total antes del cobro.</li>
+            <li>
+              Selecciona uno o varios métodos de pago y desliza para confirmar
+              la transacción.
+            </li>
+            <li>
+              Imprime o descarga el ticket. Al terminar la jornada, concilia y
+              cierra la caja.
+            </li>
+          </ol>
+          <h2>Productos, recetas e inventario</h2>
+          <p>
+            Desde <strong>Productos</strong> creas artículos, servicios,
+            rentables, variantes, unidades y recetas. Desde cada producto puedes abrir
+            Inventario con la búsqueda ya aplicada. La receta e insumos aparece solo en
+            productos Personalizados. Un producto de restaurante
+            puede descontar varios insumos por receta. Si deja de estar
+            disponible, usa <strong>Ya no hay</strong>; desaparecerá de nuevas
+            capturas y del portal sin borrar su historial.
+          </p>
+          <p>
+            En <strong>Inventario</strong> registra entradas, salidas, mínimos y
+            traslados. Una transferencia no termina hasta que la sucursal
+            destino la recibe.
+          </p>
+          <h2>Empresa y sucursales</h2>
+          <p>
+            En la ficha de Empresa solo el nombre es obligatorio; los campos
+            obligatorios se distinguen con un asterisco rojo. Al crear una
+            organización, su nombre se usa también en la empresa y la sucursal
+            inicial. El teléfono de la sucursal es opcional y, si no eliges una
+            imagen, hereda el logotipo de la empresa.
+          </p>
+          <h2>Flujos por modo</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Modo</th>
+                <th>Recorrido principal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Retail</td>
+                <td>Producto → stock → caja → venta → devolución/reportes.</td>
+              </tr>
+              <tr>
+                <td>Restaurante</td>
+                <td>
+                  Mesa o QR → pedido → KDS → listo → cobro → liberar mesa.
+                </td>
+              </tr>
+              <tr>
+                <td>Servicios</td>
+                <td>Servicio → horario/empleado → cita → atención → cobro.</td>
+              </tr>
+              <tr>
+                <td>Rentas</td>
+                <td>
+                  Artículo → disponibilidad → reservación → entrega →
+                  devolución/cobro.
+                </td>
+              </tr>
+              <tr>
+                <td>Híbrido</td>
+                <td>Combina venta e inventario con mesas, cocina y entrega.</td>
+              </tr>
+            </tbody>
+          </table>
+          <h2>Clientes, crédito y lealtad</h2>
+          <p>
+            El límite general de crédito puede sustituirse por uno individual o
+            bloquearse por cliente. Los puntos se acumulan y canjean según la
+            regla configurada por la empresa. Revisa siempre el saldo disponible
+            antes de confirmar.
+          </p>
+          <h2>Portal del cliente</h2>
+          <p>
+            El cliente elige empresa y sucursal, consulta productos, variantes y
+            descripción, arma su carrito, selecciona recolección o entrega y
+            sigue la línea de tiempo del pedido. Desde su perfil consulta código
+            de cliente, puntos, crédito y métodos guardados.
+          </p>
+          <h2>Formularios y errores</h2>
+          <p>
+            Los campos obligatorios muestran su error en rojo y el foco pasa al
+            primer dato inválido. Corrige ese campo y vuelve a guardar. Los
+            avisos emergentes se reservan para confirmar el resultado final o
+            una acción sensible.
+          </p>
+        </article>
+
+        <article id="vendedor" hidden>
+          <h1>Manual del vendedor</h1>
+          <p class="lede">
+            Guion para descubrir necesidades, elegir una demo y enseñar valor
+            sin prometer funciones no verificadas.
+          </p>
+          <h2>Diagnóstico inicial</h2>
+          <ol>
+            <li>
+              Pregunta tipo de negocio, número de sucursales, cajas y usuarios.
+            </li>
+            <li>
+              Identifica cómo vende, descuenta inventario, agenda o renta hoy.
+            </li>
+            <li>
+              Pregunta qué reportes, impresora, escáner, pagos y entregas
+              utiliza.
+            </li>
+            <li>Elige la organización demo del mismo modo de negocio.</li>
+          </ol>
+          <h2>Demostración de 25 minutos</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Minutos</th>
+                <th>Qué mostrar</th>
+                <th>Mensaje</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>0–4</td>
+                <td>Panel, empresa activa y navegación.</td>
+                <td>La experiencia se adapta al negocio y al rol.</td>
+              </tr>
+              <tr>
+                <td>4–10</td>
+                <td>Producto, variante/receta e inventario.</td>
+                <td>Catálogo e insumos están conectados.</td>
+              </tr>
+              <tr>
+                <td>10–16</td>
+                <td>Venta completa y ticket.</td>
+                <td>El servidor valida total y efectos operativos.</td>
+              </tr>
+              <tr>
+                <td>16–21</td>
+                <td>Flujo específico: KDS, agenda o renta.</td>
+                <td>Se sigue la operación de principio a fin.</td>
+              </tr>
+              <tr>
+                <td>21–25</td>
+                <td>Portal, seguimiento y reportes/PDF.</td>
+                <td>Cliente y administración comparten datos.</td>
+              </tr>
+            </tbody>
+          </table>
+          <h2>Wizards</h2>
+          <p>
+            Inicia un wizard desde el panel. Debe llevar al usuario a las
+            pantallas reales, resaltar el control siguiente, explicar la
+            decisión y continuar después de guardar. No completes el formulario
+            por él ni simules pantallas inexistentes.
+          </p>
+          <h2>Preguntas de cierre</h2>
+          <ul>
+            <li>¿Qué flujo viste hoy que más tiempo te ahorraría?</li>
+            <li>¿Qué roles necesitan entrar y desde qué dispositivo?</li>
+            <li>
+              ¿Qué hardware e integración debemos validar antes de producción?
+            </li>
+            <li>¿Qué datos se migrarán y quién los revisará?</li>
+          </ul>
+          <h2>Límites que debes declarar</h2>
+          <p>
+            No prometas operación offline ni aplicación nativa. La experiencia
+            es web adaptable. Impresora, escáner, pagos, mensajes y mapas deben
+            probarse con el hardware, dominio y cuentas finales. Nunca hagas
+            cargos o envíos reales durante una demo.
+          </p>
+        </article>
+
+        <article id="tecnico" hidden>
+          <h1>Manual técnico</h1>
+          <p class="lede">
+            Arquitectura, puesta en marcha, datos, seguridad, pruebas y
+            operación.
+          </p>
+          <h2>Arquitectura</h2>
+          <div class="flow">
+            <span>Next.js App Router</span><b>→</b><span>API/servicios</span
+            ><b>→</b><span>Prisma</span><b>→</b><span>MySQL</span>
+          </div>
+          <p>
+            NextAuth mantiene sesiones JWT. TanStack Query y Zustand administran
+            estado de interfaz. PDFKit y ExcelJS generan exportaciones. Las
+            notificaciones operativas usan SSE.
+          </p>
+          <h2>Instalación</h2>
+          <pre><code>npm install
+npx prisma generate
+npx prisma migrate deploy
+npm run db:seed
+npm run build
+npm start</code></pre>
+          <p>
+            Configura al menos <code>DATABASE_URL</code>,
+            <code>NEXTAUTH_URL</code> y un
+            <code>NEXTAUTH_SECRET</code> aleatorio. No copies secretos reales al
+            repositorio.
+          </p>
+          <h2>Seeds y datos</h2>
+          <p>
+            El seed de producción crea SuperAdmin, permisos, roles, menús y
+            unidades. El demo solo corre con <code>SEED_DEMO=true</code> y fuera
+            de producción. Las migraciones históricas no se reescriben; todo
+            cambio estructural se agrega como migración nueva.
+          </p>
+          <h2>Seguridad</h2>
+          <ul>
+            <li>Filtra cada consulta por organización efectiva.</li>
+            <li>
+              Comprueba permiso en servidor; ocultar un botón no autoriza una
+              operación.
+            </li>
+            <li>Recalcula precios y relaciones en servidor.</li>
+            <li>Usa transacciones e idempotencia en pagos y movimientos.</li>
+            <li>Valida MIME, contenido, tamaño y destino de uploads.</li>
+            <li>Rota secretos y prueba restauraciones en staging.</li>
+          </ul>
+          <h2>Pruebas y entrega</h2>
+          <pre><code>npm run typecheck
+npm run lint
+npm test
+npm run build</code></pre>
+          <p>
+            Las pruebas de integración y E2E solo pueden usar una base
+            explícitamente desechable. Antes de producción valida flujos
+            críticos en Chromium, Firefox y WebKit, y después en hardware real.
+          </p>
+          <h2>Operación y respaldo</h2>
+          <p>
+            Registra logs sin datos sensibles, supervisa errores de pagos y
+            tareas BI, respalda MySQL y archivos, y ensaya la restauración. El
+            despliegue debe permitir rollback de aplicación; las migraciones
+            destructivas requieren respaldo y verificación de integridad.
+          </p>
+        </article>
+
+        <article id="modulos" hidden>
+          <h1>Crear o modificar módulos</h1>
+          <p class="lede">
+            Contrato de implementación para que una nueva función participe
+            correctamente en seguridad, navegación, UX, datos, reportes y
+            documentación.
+          </p>
+          <h2>Antes de programar</h2>
+          <ol>
+            <li>
+              Define actor, problema, entradas, estados, salida y efecto
+              persistido.
+            </li>
+            <li>Indica modos de negocio y permisos.</li>
+            <li>
+              Identifica dependencias con ventas, inventario, crédito, lealtad,
+              pedidos y reportes.
+            </li>
+            <li>
+              Describe caso correcto, alternos, reintento, doble envío,
+              concurrencia y fallo intermedio.
+            </li>
+          </ol>
+          <h2>Capas obligatorias</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Capa</th>
+                <th>Contrato</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Datos</td>
+                <td>
+                  Modelo, claves, índices, organización, estados, precisión,
+                  migración y seed.
+                </td>
+              </tr>
+              <tr>
+                <td>Servidor</td>
+                <td>
+                  Guard de sesión/permiso, validación, filtro tenant,
+                  transacción e idempotencia.
+                </td>
+              </tr>
+              <tr>
+                <td>API</td>
+                <td>
+                  Entrada tipada, errores estables, respuesta compatible y sin
+                  detalles internos.
+                </td>
+              </tr>
+              <tr>
+                <td>Interfaz</td>
+                <td>
+                  Componentes compartidos, carga/vacío/error/éxito, foco y
+                  trabajo no guardado.
+                </td>
+              </tr>
+              <tr>
+                <td>Adaptación</td>
+                <td>
+                  Escritorio, tablet y móvil; teclado, tacto, scroll, back y
+                  safe areas.
+                </td>
+              </tr>
+              <tr>
+                <td>Integración</td>
+                <td>
+                  Navegación, feature flag, wizard, notificaciones, reportes y
+                  exportación.
+                </td>
+              </tr>
+              <tr>
+                <td>Calidad</td>
+                <td>
+                  Pruebas de reglas y efectos observables, build y
+                  documentación.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <h2>Formulario estándar</h2>
+          <p>
+            Parte de <code>CrudDialog</code>, <code>crud-form.tsx</code> y
+            <code>crud-config.tsx</code>. Usa InputGroupField, FormCombobox,
+            Attachment, AddressField, DatePicker, TimePicker, DateTimePicker,
+            ScheduleEditor y SwitchField según el dato. Cada campo lleva icono y
+            etiqueta asociada; <strong>Activo</strong> inicia en verdadero. Al
+            abrir enfoca el primer campo habilitado y al fallar el envío enfoca
+            el primer inválido.
+          </p>
+          <h2>Secuencia de revisión</h2>
+          <div class="flow">
+            <span>Contrato</span><b>→</b><span>Datos</span><b>→</b
+            ><span>Servidor</span><b>→</b><span>UI</span><b>→</b
+            ><span>Pruebas</span><b>→</b><span>Manual</span>
+          </div>
+          <h2>Criterio de terminado</h2>
+          <p>
+            La función queda terminada cuando permisos y aislamiento están
+            probados, los datos concuerdan, P0/P1 están cerrados, la experiencia
+            cumple los dispositivos acordados, typecheck/lint/build/pruebas
+            pasan y los cuatro manuales reflejan el resultado real.
+          </p>
+        </article>
+      </main>
+    </div>
+    <script>
+      const buttons = [...document.querySelectorAll("[data-target]")]
+      const articles = [...document.querySelectorAll("main article")]
+      const search = document.getElementById("search")
+      function select(id) {
+        articles.forEach((a) => (a.hidden = a.id !== id))
+        buttons.forEach((b) =>
+          b.setAttribute("aria-selected", String(b.dataset.target === id))
+        )
+        search.value = ""
+        filter("")
+        history.replaceState(null, "", "#" + id)
+        document.querySelector("main").focus?.()
+      }
+      function filter(value) {
+        const article = articles.find((a) => !a.hidden)
+        if (!article) return
+        const q = value.trim().toLocaleLowerCase("es")
+        article
+          .querySelectorAll("h2,h3,p,li,table,.flow")
+          .forEach(
+            (el) =>
+              (el.hidden =
+                q && !el.textContent.toLocaleLowerCase("es").includes(q))
+          )
+      }
+      buttons.forEach((b) =>
+        b.addEventListener("click", () => select(b.dataset.target))
+      )
+      search.addEventListener("input", (e) => filter(e.target.value))
+      document
+        .getElementById("print")
+        .addEventListener("click", () => window.print())
+      const initial = location.hash.slice(1)
+      if (articles.some((a) => a.id === initial)) {
+        select(initial)
+        setTimeout(() => window.scrollTo(0, 0), 0)
+      }
+    </script>
+  </body>
+</html>

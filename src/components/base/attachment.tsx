@@ -98,9 +98,22 @@ export function Attachment({
   const [error, setError] = React.useState<string>()
   const [uploading, setUploading] = React.useState(false)
   const [imgError, setImgError] = React.useState(false)
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
   const localPreviewRef = React.useRef<string>("")
   // null = detectando; true/false = hay/no hay cámara disponible.
   const [hasCamera, setHasCamera] = React.useState<boolean | null>(null)
+
+  React.useEffect(() => () => {
+    if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current)
+  }, [])
+
+  React.useEffect(() => {
+    if (!uploading && value && previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+      localPreviewRef.current = ""
+      setPreviewUrl(null)
+    }
+  }, [previewUrl, uploading, value])
 
   React.useEffect(() => {
     let active = true
@@ -140,13 +153,21 @@ export function Attachment({
   async function saveFile(file: File) {
     onFileChange?.(file)
     setImgError(false)
+    if (file.type.startsWith("image/")) {
+      if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current)
+      localPreviewRef.current = URL.createObjectURL(file)
+      setPreviewUrl(localPreviewRef.current)
+    }
     if (upload) {
       setUploading(true)
       try {
         const url = await upload(file)
         onChange?.(url)
-      } catch {
-        setError("No se pudo subir el archivo.")
+      } catch (uploadError) {
+        if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current)
+        localPreviewRef.current = ""
+        setPreviewUrl(null)
+        setError(uploadError instanceof Error ? uploadError.message : "No se pudo subir el archivo.")
       } finally {
         setUploading(false)
       }
@@ -256,13 +277,13 @@ export function Attachment({
       />
 
       <div className={cn("flex items-start gap-3")}>
-        {value ? (
+        {value || previewUrl ? (
           <div className={cn("relative overflow-hidden rounded-lg border bg-card", widthClass, heightClass)}>
             {uploading && <div className="absolute inset-0 z-10 grid place-items-center bg-background/60"><Loader2 className="size-6 animate-spin" /></div>}
             {isImage && !imgError ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={value}
+                src={previewUrl ?? value ?? ""}
                 alt="Adjunto"
                 className="size-full object-cover"
                 onError={() => setImgError(true)}
@@ -272,7 +293,7 @@ export function Attachment({
                 <ImagePlus className="size-8" />
               </div>
             ) : (
-              <object data={value} type="application/pdf" className="size-full" aria-label="Vista previa de PDF">
+              <object data={value ?? undefined} type="application/pdf" className="size-full" aria-label="Vista previa de PDF">
                 <div className="grid h-full w-full place-items-center text-muted-foreground">
                   <FileText className="size-8" />
                 </div>
@@ -297,7 +318,7 @@ export function Attachment({
           >
             <UploadCloud className="size-6" />
             <span className="px-2 text-center text-xs">Arrastra o haz clic</span>
-            <span className="px-2 text-center text-[0.7rem] text-muted-foreground/70">Máx {maxSizeMB} MB</span>
+            <span className="px-2 text-center text-xs text-muted-foreground/70">Máx {maxSizeMB} MB</span>
           </button>
         )}
 
@@ -310,7 +331,7 @@ export function Attachment({
             onClick={() => inputRef.current?.click()}
           >
             <ImagePlus className="size-4" />
-            {value ? "Reemplazar" : "Subir"}
+            {value || previewUrl ? "Reemplazar" : "Subir"}
           </Button>
           {acceptsImageOnly &&
             (hasCamera === false ? (
@@ -337,14 +358,17 @@ export function Attachment({
                 Tomar foto
               </Button>
             ))}
-          {value && (
+          {(value || previewUrl) && (
             <>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 disabled={disabled || uploading}
-                onClick={() => onChange?.(null)}
+                onClick={() => {
+                  setPreviewUrl(null)
+                  onChange?.(null)
+                }}
               >
                 <Trash2 className="size-4" />
                 Quitar

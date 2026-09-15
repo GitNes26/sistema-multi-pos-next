@@ -47,6 +47,8 @@ export interface CrudField {
   required?: boolean
   placeholder?: string
   help?: string
+  /** Leyenda visible debajo del control; `help` permanece en el InfoTooltip. */
+  note?: string
   /** Icono Lucide para input/textarea/select (se muestra a la izquierda). */
   icon?: string
   /** Texto descriptivo para boolean (debajo del label). */
@@ -199,7 +201,19 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     columns: [
       { key: "name", label: "Nombre" },
       { key: "abbreviation", label: "Abreviatura", type: "badge" },
-      { key: "type", label: "Tipo", type: "badge" },
+      {
+        key: "type",
+        label: "Tipo",
+        type: "badge",
+        displayMap: {
+          unit: "Unidad / Pieza",
+          weight: "Peso",
+          volume: "Volumen",
+          length: "Longitud",
+          area: "Área",
+          custom: "Personalizada",
+        },
+      },
       { key: "isSystem", label: "Sistema", type: "boolean" },
       { key: "isActive", label: "Estado", type: "boolean" },
     ],
@@ -278,9 +292,9 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         label: "Teléfono",
         type: "text",
         placeholder: "5512345678",
-        help: "10 dígitos sin espacios",
         maxLength: 10,
-        yup: { matches: [/^\d{10}$/, "Debe contener exactamente 10 dígitos"] },
+        help: "Opcional. Si lo capturas, usa 10 dígitos.",
+        yup: { matches: [/^(?:\d{10})?$/, "Debe contener exactamente 10 dígitos"] },
       },
       {
         key: "email",
@@ -361,7 +375,8 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         label: "Teléfono",
         type: "phone",
         maxLength: 10,
-        yup: { matches: [/^\d{10}$/, "Debe contener exactamente 10 dígitos"] },
+        help: "Opcional. Si lo capturas, usa 10 dígitos.",
+        yup: { matches: [/^(?:\d{10})?$/, "Debe contener exactamente 10 dígitos"] },
       },
       {
         key: "email",
@@ -408,6 +423,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         type: "image",
         full: true,
         help: "Si no eliges una imagen, la sucursal usará el logotipo de la empresa. Puedes reemplazarlo cuando lo necesites.",
+        note: "Si no agregas una imagen, esta sucursal heredará automáticamente el logotipo de la empresa.",
       },
       {
         key: "allowsPickup",
@@ -556,6 +572,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         type: "email",
         placeholder: "empleado@correo.com",
         help: "Correo de acceso y contraseña inicial: es la misma dirección. Si se deja vacío se genera uno automático y ese será también su contraseña. Indícalo al empleado para que lo cambie en su primer acceso.",
+        note: "Este correo será el acceso del empleado. Si lo dejas vacío, el sistema generará uno y lo usará también como contraseña inicial.",
         transform: "lowercase",
         yup: { email: { message: "Ingresa un correo válido" } },
       },

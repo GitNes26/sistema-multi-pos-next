@@ -3,7 +3,7 @@
 > **Documento técnico interno (Fase 0).** No es parte del manual para el usuario final:
 > es la base que usa el agente (skill `manual-usuario`) para redactar y revalidar el manual.
 > Cuando el sistema cambie, actualiza este archivo primero.
-> Última revisión: contra el código del 15 de septiembre de 2026 (Multi-POS v0.18.0.0).
+> Última revisión: contra el código del 15 de septiembre de 2026 (Multi-POS v0.18.1.0).
 
 ---
 

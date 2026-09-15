@@ -78,6 +78,7 @@ export function CompanyForm() {
     event?.preventDefault()
     try {
       await yup.object({
+        tradeName: yup.string().trim().required("El nombre de la empresa es obligatorio"),
         taxId: yup.string().max(13, "El RFC admite hasta 13 caracteres"),
         postalCode: yup.string().test("postal-code", "El código postal debe tener 5 dígitos", (value) => !value || /^\d{5}$/.test(value)),
         phone: yup.string().test("phone", "El teléfono debe tener 10 dígitos", (value) => !value || /^\d{10}$/.test(value)),
@@ -141,20 +142,22 @@ export function CompanyForm() {
         </div>
       )}
       <InputGroupField
+        id="company-tradeName"
+        label="Nombre de la empresa"
+        required
+        helper="Nombre visible en el sistema, tickets y portal."
+        leftAddon={<Store className="size-4" />}
+        value={form.tradeName ?? ""}
+        onChange={(e) => set("tradeName", e.target.value)}
+        error={errors.tradeName}
+      />
+      <InputGroupField
         id="company-legalName"
         label="Razón social"
         helper="Nombre legal/fiscal de la empresa."
         leftAddon={<Building2 className="size-4" />}
         value={form.legalName ?? ""}
         onChange={(e) => set("legalName", e.target.value)}
-      />
-      <InputGroupField
-        id="company-tradeName"
-        label="Nombre comercial"
-        helper="Nombre visible para tus clientes."
-        leftAddon={<Store className="size-4" />}
-        value={form.tradeName ?? ""}
-        onChange={(e) => set("tradeName", e.target.value)}
       />
       <InputGroupField
         id="company-taxId"

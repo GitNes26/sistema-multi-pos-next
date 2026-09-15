@@ -22,7 +22,9 @@ tipo de negocio. Antes de cobrar tu primer ticket, el cajero debe **abrir caja**
 
 1. Toca un producto del catálogo (o escanea su código de barras).
 2. Si el producto tiene **variantes** (tamaños), elige una.
-3. Si es **a granel**, captura el peso o la cantidad.
+3. Si es **a granel**, elige la presentación autorizada (por ejemplo kilo o pieza
+   dividida) y captura la cantidad o el monto. El sistema valida y cobra el precio de esa
+   presentación, no el de la unidad principal.
 4. Repite hasta armar el ticket. Con el **+ y −** ajustas cantidades; deslizando una
    línea la quitas.
 5. Con **Cliente** (opcional) vinculas la venta a un cliente: suma puntos y habilita crédito.

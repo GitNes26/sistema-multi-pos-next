@@ -5,6 +5,10 @@ mesas, inventario y portal de clientes con lealtad, pedidos y entregas.
 
 **Stack:** Next.js (App Router + Turbopack) · Prisma (MySQL) · NextAuth · Tailwind CSS.
 
+**Documentación vigente:** [contexto del sistema](docs/contexto-actual.md) ·
+[manuales HTML/PDF](docs/manuales/index.html) ·
+[auditoría de seguridad](docs/seguridad/auditoria-2026-09-15.md).
+
 ---
 
 ## Puesta en marcha (desarrollo)
