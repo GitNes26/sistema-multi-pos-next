@@ -1,4 +1,5 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { paymentMatches, verifyStripeSignature, verifyMercadoPagoSignature } from "./verification";
+export { verifyStripeSignature } from "./verification";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 import { broadcastOrderStatus } from "@/lib/portal/live";
@@ -188,26 +189,6 @@ async function createMercadoPagoPreference(
 
 // ── Webhooks ─────────────────────────────────────────────────────────────────
 
-/** Verifica la firma de Stripe (Stripe-Signature: t=...,v1=...). */
-export function verifyStripeSignature(
-  rawBody: string,
-  signature: string | null,
-  secret: string
-): boolean {
-  if (!signature || !secret) return false;
-  const parts = signature.split(",").reduce<Record<string, string>>((acc, p) => {
-    const idx = p.indexOf("=");
-    if (idx > 0) acc[p.slice(0, idx)] = p.slice(idx + 1);
-    return acc;
-  }, {});
-  const timestamp = parts.t;
-  const v1 = parts.v1;
-  if (!timestamp || !v1) return false;
-  const expected = createHmac("sha256", secret).update(`${timestamp}.${rawBody}`).digest();
-  const received = Buffer.from(v1, "hex");
-  return received.length === expected.length && timingSafeEqual(received, expected);
-}
-
 async function orderToCheckoutLines(orderId: string): Promise<CreateCheckoutInput> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -220,26 +201,34 @@ async function orderToCheckoutLines(orderId: string): Promise<CreateCheckoutInpu
     amount: Number(order.total),
     currency: order.organization.currency,
     customerEmail: order.customer?.email ?? null,
-    items: order.items.map((i) => ({
-      name: i.variantName ? `${i.productName} (${i.variantName})` : i.productName,
-      quantity: Number(i.quantity),
-      unitPrice: Number(i.unitPrice),
-    })),
+    // El total persistido incluye descuentos, impuestos, envío y puntos.
+    // Una línea de cobro evita omitir esos ajustes y cantidades fraccionarias
+    // incompatibles con Checkout. El detalle permanece en el pedido/ticket.
+    items: [{ name: `Pedido #${order.orderNumber}`, quantity: 1, unitPrice: Number(order.total) }],
   };
 }
 
 /** Marca el pedido como pagado: pending → confirmed + SSE + notificación. */
-export async function markOrderPaid(orderId: string): Promise<{ ok: boolean }> {
-  const order = await prisma.order.findUnique({ where: { id: orderId } });
+export async function markOrderPaid(organizationId: string, orderId: string, amount: unknown, currency: unknown): Promise<{ ok: boolean }> {
+  const order = await prisma.order.findFirst({ where: { id: orderId, organizationId }, include: { organization: { select: { currency: true } } } });
   if (!order) return { ok: false };
-  if (order.status !== "pending") return { ok: true }; // ya procesado
+  if (!paymentMatches(Number(order.total), order.organization.currency, amount, currency)) return { ok: false };
+  if (order.paidAt) return { ok: true };
+  if (order.status !== "pending") return { ok: false };
 
-  await prisma.$transaction([
-    prisma.order.update({ where: { id: orderId }, data: { status: "confirmed" } }),
-    prisma.orderStatusHistory.create({
-      data: { orderId, status: "confirmed", notes: "Pago confirmado" },
-    }),
-  ]);
+  const changed = await prisma.$transaction(async (tx) => {
+    const result = await tx.order.updateMany({
+      where: { id: orderId, organizationId, status: "pending", paidAt: null, total: order.total },
+      data: { status: "confirmed", paidAt: new Date() },
+    });
+    if (!result.count) return false;
+    await tx.orderStatusHistory.create({ data: { orderId, status: "confirmed", notes: "Pago confirmado" } });
+    return true;
+  });
+  if (!changed) {
+    const current = await prisma.order.findFirst({ where: { id: orderId, organizationId }, select: { paidAt: true } });
+    return { ok: Boolean(current?.paidAt) };
+  }
 
   broadcastOrderStatus({
     orderId,
@@ -253,7 +242,7 @@ export async function markOrderPaid(orderId: string): Promise<{ ok: boolean }> {
     status: "confirmed",
     customerName: (await prisma.customer.findUnique({ where: { id: order.customerId ?? "" } }))?.fullName ?? null,
     total: Number(order.total),
-  });
+  }).catch((error: unknown) => console.error("[payments/notification]", error));
 
   return { ok: true };
 }
@@ -261,6 +250,8 @@ export async function markOrderPaid(orderId: string): Promise<{ ok: boolean }> {
 export async function createOrderCheckout(orderId: string): Promise<CheckoutResult> {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) throw new Error("Pedido no encontrado");
+  if (order.status !== "pending" || order.paidAt) throw new Error("El pedido ya no admite un nuevo pago");
+  if (Number(order.total) <= 0) throw new Error("El pedido no tiene un importe pendiente de pago");
   return createCheckout(order.organizationId, await orderToCheckoutLines(orderId));
 }
 
@@ -269,40 +260,41 @@ export async function processStripeWebhook(
   organizationId: string,
   rawBody: string,
   signature: string | null,
-  event: { type?: string; data?: { object?: { client_reference_id?: string; payment_status?: string } } }
+  event: { type?: string; data?: { object?: { client_reference_id?: string; payment_status?: string; amount_total?: number; currency?: string } } }
 ): Promise<{ ok: boolean }> {
   const config = await getPaymentConfig(organizationId);
-  if (config.stripe.webhookSecret && !verifyStripeSignature(rawBody, signature, config.stripe.webhookSecret)) {
+  if (config.provider !== "stripe" || !verifyStripeSignature(rawBody, signature, config.stripe.webhookSecret)) {
     return { ok: false };
   }
   if (event.type !== "checkout.session.completed") return { ok: true };
   const paymentStatus = event.data?.object?.payment_status;
   const orderId = event.data?.object?.client_reference_id;
   if (!orderId || paymentStatus !== "paid") return { ok: true };
-  return markOrderPaid(orderId);
+  const object = event.data!.object!;
+  return markOrderPaid(organizationId, orderId, typeof object.amount_total === "number" ? object.amount_total / 100 : undefined, object.currency);
 }
 
 /** Procesa un webhook de MercadoPago: consulta el pago y, si fue aprobado, marca el pedido. */
 export async function processMercadoPagoWebhook(
   organizationId: string,
-  payload: { type?: string; data?: { id?: string } }
+  payload: { type?: string; data?: { id?: string } },
+  headers: { signature: string | null; requestId: string | null; dataId: string | null }
 ): Promise<{ ok: boolean }> {
   const paymentId = payload.data?.id;
   if (!paymentId) return { ok: false };
 
   const config = await getPaymentConfig(organizationId);
-  if (!config.mercadopago.accessToken) return { ok: false };
+  if (config.provider !== "mercadopago" || !config.mercadopago.accessToken ||
+      headers.dataId !== String(paymentId) ||
+      !verifyMercadoPagoSignature(headers.dataId, headers.requestId, headers.signature, config.mercadopago.webhookSecret)) return { ok: false };
 
-  const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+  const res = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`, {
     headers: { Authorization: `Bearer ${config.mercadopago.accessToken}` },
   });
-  const data = (await res.json()) as { status?: string; external_reference?: string };
-  if (!res.ok || data.status !== "approved") return { ok: true };
+  const data = (await res.json()) as { status?: string; external_reference?: string; transaction_amount?: number; currency_id?: string };
+  if (!res.ok) throw new Error("MercadoPago no pudo verificar el pago");
+  if (data.status !== "approved") return { ok: true };
   if (!data.external_reference) return { ok: true };
 
-  // Verificación opcional con webhook secret (x-signature) si está configurada.
-  if (config.mercadopago.webhookSecret) {
-    // En v2 el header se valida; aquí se omite por simplicidad al no estar en el payload.
-  }
-  return markOrderPaid(data.external_reference);
+  return markOrderPaid(organizationId, data.external_reference, data.transaction_amount, data.currency_id);
 }

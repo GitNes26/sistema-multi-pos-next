@@ -31,37 +31,27 @@ export async function getOmnichannelReport(orgId: string, f: Period) {
   const { from, to } = dateRange(f);
   const locFilter = f.locationId ? { locationId: f.locationId } : {};
 
-  const [posSales, portalOrders] = await Promise.all([
-    prisma.sale.findMany({
-      where: { organizationId: orgId, status: "completed", createdAt: { gte: from, lte: to }, ...locFilter },
-      select: { locationId: true, total: true },
-    }),
-    prisma.order.findMany({
-      where: {
-        organizationId: orgId,
-        createdAt: { gte: from, lte: to },
-        ...(f.locationId ? { locationId: f.locationId } : {}),
-      },
-      select: { locationId: true, total: true, deliveryMethod: true },
-    }),
-  ]);
+  // La venta es la fuente contable. Un pedido del portal puede existir antes
+  // del pago y, cuando se cobra, queda ligado a una Sale; sumar ambas tablas
+  // duplicaba el ingreso y además incluía pedidos pendientes/cancelados.
+  const sales = await prisma.sale.findMany({
+    where: { organizationId: orgId, status: "completed", createdAt: { gte: from, lte: to }, ...locFilter },
+    select: { locationId: true, total: true, orders: { take: 1, select: { id: true } } },
+  });
 
   // Group by location
   const locationMap = new Map<string, { pos: number; posCount: number; portal: number; portalCount: number }>();
 
-  for (const s of posSales) {
+  for (const s of sales) {
     const loc = locationMap.get(s.locationId) ?? { pos: 0, posCount: 0, portal: 0, portalCount: 0 };
-    loc.pos += num(s.total);
-    loc.posCount += 1;
+    if (s.orders.length > 0) {
+      loc.portal += num(s.total);
+      loc.portalCount += 1;
+    } else {
+      loc.pos += num(s.total);
+      loc.posCount += 1;
+    }
     locationMap.set(s.locationId, loc);
-  }
-
-  for (const o of portalOrders) {
-    const locId = o.locationId ?? "unassigned";
-    const loc = locationMap.get(locId) ?? { pos: 0, posCount: 0, portal: 0, portalCount: 0 };
-    loc.portal += num(o.total);
-    loc.portalCount += 1;
-    locationMap.set(locId, loc);
   }
 
   // Fetch location names
@@ -167,6 +157,17 @@ export async function getInventoryValuation(orgId: string, f: Period) {
       variant: { select: { id: true, price: true, cost: true } },
     },
   });
+  const soldItems = await prisma.saleItem.findMany({
+    where: {
+      sale: {
+        organizationId: orgId,
+        status: "completed",
+        createdAt: { gte: from, lte: to },
+        ...(f.locationId ? { locationId: f.locationId } : {}),
+      },
+    },
+    select: { quantity: true, product: { select: { categoryId: true } } },
+  });
 
   // Fetch categories
   const catIds = [...new Set(inventory.map((i) => i.product?.categoryId).filter(Boolean))] as string[];
@@ -184,7 +185,12 @@ export async function getInventoryValuation(orgId: string, f: Period) {
   });
   const defaultPrices = new Map(defaultVariants.map((v) => [v.productId, { price: num(v.price), cost: num(v.cost) }]));
 
-  const catMap = new Map<string, { cost: number; retail: number; count: number; outOfStock: number }>();
+  const soldByCategory = new Map<string, number>();
+  for (const item of soldItems) {
+    const catId = item.product?.categoryId ?? "uncategorized";
+    soldByCategory.set(catId, (soldByCategory.get(catId) ?? 0) + num(item.quantity));
+  }
+  const catMap = new Map<string, { cost: number; retail: number; stock: number; count: number; outOfStock: number }>();
 
   for (const inv of inventory) {
     const catId = inv.product?.categoryId ?? "uncategorized";
@@ -192,9 +198,10 @@ export async function getInventoryValuation(orgId: string, f: Period) {
     const costPrice = inv.variant ? num(inv.variant.cost) : (defaultPrices.get(inv.productId ?? "")?.cost ?? 0);
     const retailPrice = inv.variant ? num(inv.variant.price) : (defaultPrices.get(inv.productId ?? "")?.price ?? 0);
 
-    const cat = catMap.get(catId) ?? { cost: 0, retail: 0, count: 0, outOfStock: 0 };
+    const cat = catMap.get(catId) ?? { cost: 0, retail: 0, stock: 0, count: 0, outOfStock: 0 };
     cat.cost += qty * costPrice;
     cat.retail += qty * retailPrice;
+    cat.stock += Math.max(0, qty);
     cat.count += 1;
     if (qty <= 0) cat.outOfStock += 1;
     catMap.set(catId, cat);
@@ -204,7 +211,7 @@ export async function getInventoryValuation(orgId: string, f: Period) {
     categoryName: catNames.get(catId) ?? catId,
     valueAtCost: round2(v.cost),
     valueAtRetail: round2(v.retail),
-    rotation: 0,
+    rotation: v.stock > 0 ? round2((soldByCategory.get(catId) ?? 0) / v.stock) : 0,
     productCount: v.count,
     outOfStock: v.outOfStock,
   })).sort((a, b) => b.valueAtCost - a.valueAtCost);
@@ -306,24 +313,12 @@ export async function getCustomerCohorts(orgId: string, months: number = 6) {
     orderBy: { createdAt: "asc" },
   });
 
-  // Also get portal orders
-  const orders = await prisma.order.findMany({
-    where: {
-      organizationId: orgId,
-      customerId: { not: null },
-      createdAt: { gte: startMonth },
-    },
-    select: { customerId: true, createdAt: true },
-  });
-
-  // Combine and build customer-month map
+  // Sale completada es la fuente única; los pedidos ligados ya están
+  // representados por su venta y los pendientes no son compras.
   interface Purchase { customerId: string; month: string }
   const purchases: Purchase[] = [];
   for (const s of sales) {
     purchases.push({ customerId: s.customerId!, month: s.createdAt.toISOString().slice(0, 7) });
-  }
-  for (const o of orders) {
-    purchases.push({ customerId: o.customerId!, month: o.createdAt.toISOString().slice(0, 7) });
   }
 
   // Find first purchase month per customer
@@ -429,7 +424,7 @@ export async function getLoyaltySummary(orgId: string, f: Period) {
     where: { organizationId: orgId },
     include: {
       loyaltyTransactions: { where: { createdAt: { gte: from, lte: to } }, select: { points: true } },
-      orders: { where: { createdAt: { gte: from, lte: to }, status: "delivered" }, select: { total: true, createdAt: true } },
+      sales: { where: { createdAt: { gte: from, lte: to }, status: "completed" }, select: { total: true, createdAt: true } },
     },
   });
 
@@ -437,9 +432,9 @@ export async function getLoyaltySummary(orgId: string, f: Period) {
     customerId: c.id,
     customerName: c.fullName,
     totalPoints: c.loyaltyTransactions.reduce((a: number, t: { points: unknown }) => a + num(t.points), 0),
-    totalSpent: c.orders.reduce((a: number, o: { total: unknown }) => a + num(o.total), 0),
-    orderCount: c.orders.length,
-    lastOrderDate: c.orders.length > 0 ? c.orders.sort((a: { createdAt: Date }, b: { createdAt: Date }) => b.createdAt.getTime() - a.createdAt.getTime())[0].createdAt.toISOString().slice(0, 10) : null,
+    totalSpent: round2(c.sales.reduce((a: number, s: { total: unknown }) => a + num(s.total), 0)),
+    orderCount: c.sales.length,
+    lastOrderDate: c.sales.length > 0 ? c.sales.sort((a: { createdAt: Date }, b: { createdAt: Date }) => b.createdAt.getTime() - a.createdAt.getTime())[0].createdAt.toISOString().slice(0, 10) : null,
   }));
 
   rows.sort((a, b) => b.totalSpent - a.totalSpent);
@@ -536,9 +531,9 @@ export async function getPromotionsRoi(orgId: string, f: Period) {
 export interface DeliveryPerfRow {
   locationName: string;
   totalOrders: number;
-  avgPrepMinutes: number;
-  avgDeliveryMinutes: number;
-  onTimeRate: number;
+  avgPrepMinutes: number | null;
+  avgDeliveryMinutes: number | null;
+  onTimeRate: number | null;
   cancelRate: number;
 }
 
@@ -549,24 +544,42 @@ export async function getDeliveryPerformance(orgId: string, f: Period) {
     select: {
       total: true, status: true, createdAt: true,
       location: { select: { name: true } },
+      preparation: { select: { startedAt: true, completedAt: true, elapsedSeconds: true } },
+      statusHistory: { select: { status: true, createdAt: true }, orderBy: { createdAt: "asc" } },
     },
   });
 
-  const map = new Map<string, { total: number; cancelled: number }>();
+  const map = new Map<string, { total: number; cancelled: number; prepMinutes: number; prepCount: number; deliveryMinutes: number; deliveryCount: number }>();
   for (const o of orders) {
     const loc = o.location?.name ?? "N/A";
-    const existing = map.get(loc) ?? { total: 0, cancelled: 0 };
+    const existing = map.get(loc) ?? { total: 0, cancelled: 0, prepMinutes: 0, prepCount: 0, deliveryMinutes: 0, deliveryCount: 0 };
     existing.total += 1;
     if (o.status === "cancelled") existing.cancelled += 1;
+    const prepSeconds = o.preparation?.elapsedSeconds ?? (
+      o.preparation?.startedAt && o.preparation.completedAt
+        ? Math.max(0, (o.preparation.completedAt.getTime() - o.preparation.startedAt.getTime()) / 1000)
+        : null
+    );
+    if (prepSeconds != null) {
+      existing.prepMinutes += prepSeconds / 60;
+      existing.prepCount += 1;
+    }
+    const departed = o.statusHistory.find((h) => h.status === "in_transit")?.createdAt;
+    const delivered = o.statusHistory.find((h) => h.status === "delivered")?.createdAt;
+    if (departed && delivered && delivered >= departed) {
+      existing.deliveryMinutes += (delivered.getTime() - departed.getTime()) / 60000;
+      existing.deliveryCount += 1;
+    }
     map.set(loc, existing);
   }
 
   const rows: DeliveryPerfRow[] = [...map.entries()].map(([name, d]) => ({
     locationName: name,
     totalOrders: d.total,
-    avgPrepMinutes: 0,
-    avgDeliveryMinutes: 0,
-    onTimeRate: 0,
+    avgPrepMinutes: d.prepCount > 0 ? round2(d.prepMinutes / d.prepCount) : null,
+    avgDeliveryMinutes: d.deliveryCount > 0 ? round2(d.deliveryMinutes / d.deliveryCount) : null,
+    // No existe una promesa/ETA persistida contra la cual medir puntualidad.
+    onTimeRate: null,
     cancelRate: d.total > 0 ? round2((d.cancelled / d.total) * 100) : 0,
   }));
 
@@ -630,13 +643,15 @@ export interface SegmentationRow {
 export async function getCustomerSegmentation(orgId: string) {
   const segments = await prisma.customerSegment.findMany({
     where: { organizationId: orgId },
-    include: { customer: { select: { fullName: true } } },
+    include: { customer: { select: { sales: { where: { status: "completed" }, select: { total: true } } } } },
   });
 
   const map = new Map<string, { count: number; totalSpent: number; totalOrders: number }>();
   for (const s of segments) {
     const bucket = map.get(s.segment) ?? { count: 0, totalSpent: 0, totalOrders: 0 };
     bucket.count += 1;
+    bucket.totalSpent += s.customer.sales.reduce((sum, sale) => sum + num(sale.total), 0);
+    bucket.totalOrders += s.customer.sales.length;
     map.set(s.segment, bucket);
   }
 
@@ -662,11 +677,10 @@ export interface MarginRow {
 
 export async function getMarginAnalysis(orgId: string, f: Period) {
   const { from, to } = dateRange(f);
-  const items = await prisma.orderItem.findMany({
-    where: { order: { organizationId: orgId, createdAt: { gte: from, lte: to }, status: "delivered" } },
+  const items = await prisma.saleItem.findMany({
+    where: { sale: { organizationId: orgId, createdAt: { gte: from, lte: to }, status: "completed" } },
     include: {
       product: { select: { name: true, category: { select: { name: true } } } },
-      variant: { select: { cost: true } },
     },
   });
 
@@ -674,8 +688,8 @@ export async function getMarginAnalysis(orgId: string, f: Period) {
   for (const item of items) {
     const cat = item.product?.category?.name ?? "Sin categoría";
     const existing = map.get(cat) ?? { revenue: 0, costOfGoods: 0 };
-    existing.revenue += num(item.unitPrice) * Number(item.quantity);
-    existing.costOfGoods += num(item.variant?.cost ?? 0) * Number(item.quantity);
+    existing.revenue += num(item.lineTotal ?? item.totalPrice);
+    existing.costOfGoods += num(item.unitCost) * Number(item.quantity);
     map.set(cat, existing);
   }
 
@@ -771,23 +785,41 @@ export interface ProductPairRow {
 
 export async function getProductPairs(orgId: string, f: Period) {
   const { from, to } = dateRange(f);
-  const pairs = await prisma.productPair.findMany({
-    where: { organizationId: orgId, lastSeenAt: { gte: from, lte: to } },
-    include: {
-      productA: { select: { name: true } },
-      productB: { select: { name: true } },
+  const sales = await prisma.sale.findMany({
+    where: {
+      organizationId: orgId,
+      status: "completed",
+      createdAt: { gte: from, lte: to },
+      ...(f.locationId ? { locationId: f.locationId } : {}),
     },
-    orderBy: { coOccurrences: "desc" },
-    take: 20,
+    select: {
+      total: true,
+      items: { where: { productId: { not: null } }, select: { productId: true, productName: true } },
+    },
   });
-
-  const rows: ProductPairRow[] = pairs.map((p) => ({
-    productA: p.productA.name,
-    productB: p.productB.name,
-    timesTogether: p.coOccurrences,
-    avgRevenue: 0,
-  }));
-
+  const pairs = new Map<string, { productA: string; productB: string; count: number; revenue: number }>();
+  for (const sale of sales) {
+    const products = [...new Map(sale.items.map((item) => [item.productId!, item.productName])).entries()]
+      .sort(([a], [b]) => a.localeCompare(b));
+    for (let i = 0; i < products.length; i += 1) {
+      for (let j = i + 1; j < products.length; j += 1) {
+        const key = `${products[i][0]}:${products[j][0]}`;
+        const pair = pairs.get(key) ?? { productA: products[i][1], productB: products[j][1], count: 0, revenue: 0 };
+        pair.count += 1;
+        pair.revenue += num(sale.total);
+        pairs.set(key, pair);
+      }
+    }
+  }
+  const rows = [...pairs.values()]
+    .map((pair) => ({
+      productA: pair.productA,
+      productB: pair.productB,
+      timesTogether: pair.count,
+      avgRevenue: pair.count > 0 ? round2(pair.revenue / pair.count) : 0,
+    }))
+    .sort((a, b) => b.timesTogether - a.timesTogether || b.avgRevenue - a.avgRevenue)
+    .slice(0, 20);
   return { rows };
 }
 
@@ -887,7 +919,7 @@ export async function getEmployeeMargin(orgId: string, f: Period) {
     where: { organizationId: orgId, createdAt: { gte: from, lte: to }, status: "completed" },
     include: {
       employee: { select: { fullName: true } },
-      items: { select: { unitPrice: true, quantity: true, variant: { select: { cost: true } } } },
+      items: { select: { lineTotal: true, totalPrice: true, unitCost: true, quantity: true } },
     },
   });
 
@@ -897,8 +929,8 @@ export async function getEmployeeMargin(orgId: string, f: Period) {
     const existing = map.get(name) ?? { revenue: 0, cost: 0, count: 0 };
     existing.count += 1;
     for (const item of s.items) {
-      existing.revenue += num(item.unitPrice) * Number(item.quantity);
-      existing.cost += num(item.variant?.cost ?? 0) * Number(item.quantity);
+      existing.revenue += num(item.lineTotal ?? item.totalPrice);
+      existing.cost += num(item.unitCost) * Number(item.quantity);
     }
     map.set(name, existing);
   }
@@ -922,31 +954,37 @@ export interface ForecastRow {
   date: string;
   predictedSales: number;
   confidence: number;
+  sampleSize: number;
 }
 
-export async function getSalesForecast(orgId: string, days: number = 7) {
-  // Simple moving average forecast based on last 30 days
-  const from = new Date(Date.now() - 60 * 86400000);
-  const to = new Date();
+export async function getSalesForecast(orgId: string, days: number = 7, f: Period = {}) {
+  const { from, to } = f.from || f.to
+    ? dateRange(f)
+    : { from: new Date(Date.now() - 60 * 86400000), to: new Date() };
 
   const sales = await prisma.sale.findMany({
-    where: { organizationId: orgId, createdAt: { gte: from, lte: to }, status: "completed" },
+    where: {
+      organizationId: orgId,
+      createdAt: { gte: from, lte: to },
+      status: "completed",
+      ...(f.locationId ? { locationId: f.locationId } : {}),
+    },
     select: { total: true, createdAt: true },
   });
 
-  // Group by day of week
-  const dowTotals = new Map<number, { total: number; count: number }>();
+  // Primero sumar por fecha; promediar tickets individuales pronosticaba el
+  // ticket medio, no la venta diaria.
+  const dailyTotals = new Map<string, number>();
   for (const s of sales) {
-    const dow = s.createdAt.getDay();
-    const existing = dowTotals.get(dow) ?? { total: 0, count: 0 };
-    existing.total += num(s.total);
-    existing.count += 1;
-    dowTotals.set(dow, existing);
+    const day = s.createdAt.toISOString().slice(0, 10);
+    dailyTotals.set(day, (dailyTotals.get(day) ?? 0) + num(s.total));
   }
-
-  const dowAvg = new Map<number, number>();
-  for (const [dow, d] of dowTotals) {
-    dowAvg.set(dow, d.count > 0 ? d.total / d.count : 0);
+  const samplesByDow = new Map<number, number[]>();
+  for (const [day, total] of dailyTotals) {
+    const dow = new Date(`${day}T12:00:00`).getDay();
+    const samples = samplesByDow.get(dow) ?? [];
+    samples.push(total);
+    samplesByDow.set(dow, samples);
   }
 
   // Forecast for next N days
@@ -954,13 +992,53 @@ export async function getSalesForecast(orgId: string, days: number = 7) {
   for (let i = 1; i <= days; i++) {
     const forecastDate = new Date(Date.now() + i * 86400000);
     const dow = forecastDate.getDay();
-    const predicted = dowAvg.get(dow) ?? 0;
+    const samples = samplesByDow.get(dow) ?? [];
+    if (samples.length === 0) continue;
+    const predicted = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+    const variance = samples.reduce((sum, value) => sum + (value - predicted) ** 2, 0) / samples.length;
+    const coefficientOfVariation = predicted > 0 ? Math.sqrt(variance) / predicted : 1;
+    const confidence = Math.max(10, Math.min(90, 35 + samples.length * 8 - coefficientOfVariation * 25));
     rows.push({
       date: forecastDate.toISOString().slice(0, 10),
       predictedSales: round2(predicted),
-      confidence: Math.min(95, 60 + (dowTotals.get(dow)?.count ?? 0) * 2),
+      confidence: Math.round(confidence),
+      sampleSize: samples.length,
     });
   }
 
   return { rows };
+}
+
+export async function getTablePerformance(orgId: string, f: Period) {
+  const { from, to } = dateRange(f);
+  const sessions = await prisma.tableSession.findMany({
+    where: { table: { organizationId: orgId, ...(f.locationId ? { locationId: f.locationId } : {}) }, startedAt: { gte: from, lte: to } },
+    include: { table: { select: { number: true, name: true } }, order: { select: { total: true, status: true } } },
+  });
+  const map = new Map<string, { sessions: number; minutes: number; revenue: number }>();
+  for (const session of sessions) {
+    const name = session.table.name || `Mesa ${session.table.number}`;
+    const row = map.get(name) ?? { sessions: 0, minutes: 0, revenue: 0 };
+    row.sessions += 1;
+    row.minutes += Math.max(0, Math.round(((session.endedAt ?? new Date()).getTime() - session.startedAt.getTime()) / 60000));
+    if (session.order?.status === "delivered") row.revenue += num(session.order.total);
+    map.set(name, row);
+  }
+  return { rows: [...map].map(([tableName, row]) => ({ tableName, sessions: row.sessions, avgMinutes: row.sessions ? Math.round(row.minutes / row.sessions) : 0, revenue: round2(row.revenue), avgTicket: row.sessions ? round2(row.revenue / row.sessions) : 0 })).sort((a,b) => b.revenue-a.revenue) };
+}
+
+export async function getAppointmentsPerformance(orgId: string, f: Period) {
+  const { from, to } = dateRange(f);
+  const appointments = await prisma.appointment.findMany({ where: { organizationId: orgId, startsAt: { gte: from, lte: to }, ...(f.locationId ? { locationId: f.locationId } : {}) }, include: { employee: { select: { fullName: true } }, variant: { select: { name: true } }, sale: { select: { total: true } } } });
+  const map = new Map<string, { total:number; completed:number; cancelled:number; noShow:number; revenue:number }>();
+  for (const item of appointments) { const name=item.employee.fullName; const row=map.get(name)??{total:0,completed:0,cancelled:0,noShow:0,revenue:0}; row.total++; if(item.status==="completed") row.completed++; if(item.status==="cancelled") row.cancelled++; if(item.status==="no_show") row.noShow++; row.revenue+=num(item.sale?.total); map.set(name,row); }
+  return { rows:[...map].map(([employeeName,row])=>({employeeName,...row,attendancePct:row.total?round2(row.completed/row.total*100):0,revenue:round2(row.revenue)})).sort((a,b)=>b.revenue-a.revenue) };
+}
+
+export async function getRentalPerformance(orgId: string, f: Period) {
+  const { from, to } = dateRange(f);
+  const reservations = await prisma.reservation.findMany({ where:{organizationId:orgId,startsAt:{gte:from,lte:to},...(f.locationId?{locationId:f.locationId}:{})}, include:{location:{select:{name:true}},items:{select:{quantity:true,lineTotal:true}},sale:{select:{total:true}}} });
+  const map=new Map<string,{reservations:number;completed:number;cancelled:number;units:number;revenue:number}>();
+  for(const item of reservations){const name=item.location?.name??"Sin sucursal";const row=map.get(name)??{reservations:0,completed:0,cancelled:0,units:0,revenue:0};row.reservations++;if(item.status==="completed")row.completed++;if(item.status==="cancelled")row.cancelled++;row.units+=item.items.reduce((s,x)=>s+num(x.quantity),0);row.revenue+=num(item.sale?.total)||item.items.reduce((s,x)=>s+num(x.lineTotal),0);map.set(name,row)}
+  return {rows:[...map].map(([locationName,row])=>({locationName,...row,units:round2(row.units),revenue:round2(row.revenue)})).sort((a,b)=>b.revenue-a.revenue)};
 }

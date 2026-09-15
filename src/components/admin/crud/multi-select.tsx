@@ -5,6 +5,7 @@ import { Loader2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { crudApi } from "@/lib/api";
 import type { CrudField, SelectOption } from "./crud-config";
+import { cn } from "@/lib/utils";
 
 function normalize(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(String);
@@ -23,10 +24,14 @@ export function MultiSelect({
   field,
   value,
   onChange,
+  id,
+  error,
 }: {
   field: CrudField;
   value: unknown;
   onChange: (v: string[]) => void;
+  id?: string;
+  error?: string;
 }) {
   const selected = useMemo(() => normalize(value), [value]);
   const [options, setOptions] = useState<SelectOption[]>(field.options ?? []);
@@ -73,7 +78,17 @@ export function MultiSelect({
   }
 
   return (
-    <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded-md border p-2">
+    <div
+      id={id}
+      role="listbox"
+      aria-multiselectable="true"
+      aria-invalid={Boolean(error) || undefined}
+      aria-describedby={error && id ? `${id}-error` : undefined}
+      className={cn(
+        "flex min-h-11 max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded-md border p-2",
+        error && "border-destructive ring-3 ring-destructive/20"
+      )}
+    >
       {options.length === 0 ? (
         <span className="text-sm text-muted-foreground">Sin opciones</span>
       ) : (
@@ -83,6 +98,8 @@ export function MultiSelect({
             <button
               key={opt.value}
               type="button"
+              role="option"
+              aria-selected={active}
               onClick={() => toggle(opt.value)}
               className="focus:outline-none"
             >

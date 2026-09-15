@@ -132,8 +132,10 @@ export function Attachment({
   const [zoom, setZoom] = React.useState(1)
   const [croppedArea, setCroppedArea] = React.useState<Area | null>(null)
 
-  const isImage = value?.match(/^data:image\//) || value?.match(/\.(png|jpe?g|webp|gif|svg)$/i)
   const acceptsImageOnly = accept.split(",").every((a) => a.trim().startsWith("image/"))
+  // Las imágenes persistidas se sirven desde rutas sin extensión; el contrato
+  // `accept` es una fuente más confiable que la URL para elegir el preview.
+  const isImage = acceptsImageOnly || Boolean(value?.match(/^data:image\//) || value?.match(/\.(png|jpe?g|webp|gif|svg)(?:\?|$)/i))
 
   async function saveFile(file: File) {
     onFileChange?.(file)

@@ -19,7 +19,7 @@ export default function KDSPage() {
   const orgMode = session?.user?.businessMode ?? null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4" data-guide="kds-screen">
       <div className="mb-4 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <Button

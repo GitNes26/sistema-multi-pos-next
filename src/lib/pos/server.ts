@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db";
-import type { Prisma, $Enums } from "@prisma/client";
+import { prisma } from "@/lib/db"
+import type { Prisma, $Enums } from "@prisma/client"
 import type {
   PosCashRegister,
   PosCashSession,
@@ -8,29 +8,32 @@ import type {
   PosOrder,
   PosProduct,
   PosSalePayload,
-} from "@/types/pos";
-import { round2 } from "./money";
-import { isFeatureEnabled, type FeatureKey } from "@/lib/features";
+} from "@/types/pos"
+import { round2 } from "./money"
+import { isFeatureEnabled, type FeatureKey } from "@/lib/features"
 import type { BusinessMode } from "@/lib/auth/options"
-import { maybeNotifyLowStock } from "@/lib/inventory/server";
-import { notifySaleCompleted } from "@/lib/notifications/events";
-import { broadcastTableUpdate } from "@/lib/tables/live";
-import { closeKitchenOrderOnSale } from "./kitchen";
+import { maybeNotifyLowStock } from "@/lib/inventory/server"
+import { consumeRecipeIngredients } from "@/lib/inventory/recipes"
+import { notifySaleCompleted } from "@/lib/notifications/events"
+import { broadcastTableUpdate } from "@/lib/tables/live"
+import { closeKitchenOrderOnSale } from "./kitchen"
 
 export class PosError extends Error {
-  status: number;
+  status: number
   constructor(message: string, status = 400) {
-    super(message);
-    this.name = "PosError";
-    this.status = status;
+    super(message)
+    this.name = "PosError"
+    this.status = status
   }
 }
 
 const toNum = (v: Prisma.Decimal | number | string | null): number =>
-  v == null ? 0 : Number(v);
+  v == null ? 0 : Number(v)
 
-function firstActiveLocation<T extends { isActive: boolean }>(locations: T[]): T | undefined {
-  return locations.find((l) => l.isActive) ?? locations[0];
+function firstActiveLocation<T extends { isActive: boolean }>(
+  locations: T[]
+): T | undefined {
+  return locations.find((l) => l.isActive) ?? locations[0]
 }
 
 /** Compute POS features based on business mode */
@@ -45,7 +48,7 @@ function computeFeatures(mode: BusinessMode): PosFeatures {
     credit: isFeatureEnabled("credit", mode),
     tips: isFeatureEnabled("tips", mode),
     splitBill: isFeatureEnabled("split_bill", mode),
-  };
+  }
 }
 
 /**
@@ -57,103 +60,147 @@ export async function getPosCatalog(
   organizationId: string,
   userId: string
 ): Promise<PosCatalog> {
-  const [locations, productsRaw, bulkRaw, categories, customers, promotions, registers, employee, userData, cashSession, companyProfile, orgLoyalty, combosRaw] =
-    await Promise.all([
-      prisma.location.findMany({
-        where: { organizationId },
-        orderBy: { createdAt: "asc" },
-        select: { id: true, name: true, code: true, isActive: true, address: true, phone: true },
-      }),
-      prisma.productVariant.findMany({
-        where: { organizationId, isActive: true, product: { isActive: true } },
-        include: {
-          product: {
-            include: {
-              category: true,
-              options: {
-                orderBy: { position: "asc" },
-                include: {
-                  values: { where: { isActive: true }, orderBy: { position: "asc" } },
+  const [
+    locations,
+    productsRaw,
+    bulkRaw,
+    categories,
+    customers,
+    promotions,
+    registers,
+    employee,
+    userData,
+    cashSession,
+    companyProfile,
+    orgLoyalty,
+    combosRaw,
+  ] = await Promise.all([
+    prisma.location.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        isActive: true,
+        address: true,
+        phone: true,
+      },
+    }),
+    prisma.productVariant.findMany({
+      where: { organizationId, isActive: true, product: { isActive: true } },
+      include: {
+        product: {
+          include: {
+            category: true,
+            options: {
+              orderBy: { position: "asc" },
+              include: {
+                values: {
+                  where: { isActive: true },
+                  orderBy: { position: "asc" },
                 },
               },
             },
           },
         },
-      }),
-      prisma.product.findMany({
-        where: { organizationId, isActive: true, productType: "bulk" },
-        include: { category: true, bulkUnit: true, splitUnit: true },
-      }),
-      prisma.category.findMany({
-        where: { organizationId, isActive: true },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true, imageUrl: true },
-      }),
-      prisma.customer.findMany({
-        where: { organizationId, isActive: true },
-        orderBy: { fullName: "asc" },
-        take: 1000,
-        select: {
-          id: true,
-          fullName: true,
-          phone: true,
-          email: true,
-          customerCode: true,
-          points: true,
-          imageUrl: true,
-          address: true,
-        },
-      }),
-      prisma.promotion.findMany({
-        where: { organizationId, isActive: true },
-        include: { targets: true },
-      }),
-      prisma.cashRegister.findMany({
-        where: { organizationId, isActive: true },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true, folioPrefix: true },
-      }),
-      prisma.employee.findFirst({
-        where: { organizationId, userId: { equals: userId } },
-        select: { id: true },
-      }),
-      prisma.user.findUnique({
-        where: { id: userId },
-        select: { fullName: true },
-      }),
-      prisma.cashSession.findFirst({
-        where: { organizationId, status: "open" },
-        include: { cashRegister: { select: { id: true, name: true } } },
-        orderBy: { openedAt: "desc" },
-      }),
-      prisma.companyProfile.findUnique({
-        where: { organizationId },
-        select: { tradeName: true, legalName: true, logoUrl: true, address: true, city: true, phone: true, ticketFooter: true },
-      }),
-      prisma.organization.findUnique({
-        where: { id: organizationId },
-        select: { pointsPerCurrency: true, pointValue: true, loyaltyEnabled: true, businessMode: true },
-      }),
-      prisma.productCombo.findMany({
-        where: { organizationId, isActive: true },
-        include: {
-          items: {
-            orderBy: { position: "asc" },
-            include: { product: { select: { name: true } }, variant: { select: { name: true } } },
+      },
+    }),
+    prisma.product.findMany({
+      where: { organizationId, isActive: true, productType: "bulk" },
+      include: { category: true, bulkUnit: true, splitUnit: true },
+    }),
+    prisma.category.findMany({
+      where: { organizationId, isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, imageUrl: true },
+    }),
+    prisma.customer.findMany({
+      where: { organizationId, isActive: true },
+      orderBy: { fullName: "asc" },
+      take: 1000,
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        email: true,
+        customerCode: true,
+        points: true,
+        imageUrl: true,
+        address: true,
+      },
+    }),
+    prisma.promotion.findMany({
+      where: { organizationId, isActive: true },
+      include: { targets: true },
+    }),
+    prisma.cashRegister.findMany({
+      where: { organizationId, isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, folioPrefix: true },
+    }),
+    prisma.employee.findFirst({
+      where: { organizationId, userId: { equals: userId } },
+      select: { id: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true },
+    }),
+    prisma.cashSession.findFirst({
+      where: { organizationId, status: "open" },
+      include: { cashRegister: { select: { id: true, name: true } } },
+      orderBy: { openedAt: "desc" },
+    }),
+    prisma.companyProfile.findUnique({
+      where: { organizationId },
+      select: {
+        tradeName: true,
+        legalName: true,
+        logoUrl: true,
+        address: true,
+        city: true,
+        phone: true,
+        ticketFooter: true,
+      },
+    }),
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: {
+        pointsPerCurrency: true,
+        pointValue: true,
+        loyaltyEnabled: true,
+        businessMode: true,
+      },
+    }),
+    prisma.productCombo.findMany({
+      where: { organizationId, isActive: true },
+      include: {
+        items: {
+          orderBy: { position: "asc" },
+          include: {
+            product: { select: { name: true } },
+            variant: { select: { name: true } },
           },
         },
-        orderBy: { createdAt: "asc" },
-      }),
-    ]);
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ])
 
-  const location = firstActiveLocation(locations);
+  const location = firstActiveLocation(locations)
   if (!location) {
-    throw new PosError("No se encontró una sucursal activa para la organización", 400);
+    throw new PosError(
+      "No se encontró una sucursal activa para la organización",
+      400
+    )
   }
 
   // Compute features early so we can filter options and combos
-  const businessMode = (orgLoyalty as { businessMode?: BusinessMode } | null)?.businessMode ?? "retail" as BusinessMode;
-  const features = computeFeatures(businessMode);
+  const businessMode =
+    (orgLoyalty as { businessMode?: BusinessMode } | null)?.businessMode ??
+    ("retail" as BusinessMode)
+  const features = computeFeatures(businessMode)
 
   const inventoryRows = await prisma.inventory.findMany({
     where: {
@@ -162,45 +209,52 @@ export async function getPosCatalog(
       locationType: "location",
     },
     select: { variantId: true, productId: true, quantity: true },
-  });
-  const variantStock = new Map<string, number>();
-  const productStock = new Map<string, number>();
+  })
+  const variantStock = new Map<string, number>()
+  const productStock = new Map<string, number>()
   for (const inv of inventoryRows) {
-    const q = toNum(inv.quantity);
-    if (inv.variantId) variantStock.set(inv.variantId, q);
-    if (inv.productId) productStock.set(inv.productId, q);
+    const q = toNum(inv.quantity)
+    if (inv.variantId) variantStock.set(inv.variantId, q)
+    if (inv.productId) productStock.set(inv.productId, q)
   }
 
-  const products: PosProduct[] = [];
+  const products: PosProduct[] = []
 
   // Agrupar variantes estándar por producto (una card por producto).
-  const stdByProduct = new Map<string, PosProduct>();
+  const stdByProduct = new Map<string, PosProduct>()
   for (const v of productsRaw) {
-    const p = v.product;
-    let entry = stdByProduct.get(p.id);
+    const p = v.product
+    let entry = stdByProduct.get(p.id)
     if (!entry) {
+      const categoryBelongsToOrganization =
+        p.category?.organizationId === organizationId
       entry = {
         id: v.id,
         productId: p.id,
         variantId: v.id,
         kind: "standard",
         name: p.name,
+        description: p.description ?? null,
         sku: v.sku,
         barcode: v.barcode,
         price: toNum(v.price),
         taxRate: toNum(p.taxRate),
-        categoryId: p.categoryId,
-        categoryName: p.category?.name ?? null,
+        categoryId: categoryBelongsToOrganization ? p.categoryId : null,
+        categoryName: categoryBelongsToOrganization
+          ? (p.category?.name ?? null)
+          : null,
         imageUrl: v.imageUrl ?? p.imageUrl,
         trackInventory: p.trackInventory,
+        isAvailable: p.isAvailable,
+        availabilityNote: p.availabilityNote,
         stock: variantStock.get(v.id) ?? 0,
         bulk: null,
         variantCount: 0,
         variants: [],
         options: [],
         hasOptions: false,
-      };
-      stdByProduct.set(p.id, entry);
+      }
+      stdByProduct.set(p.id, entry)
     }
     entry.variants.push({
       id: v.id,
@@ -209,42 +263,50 @@ export async function getPosCatalog(
       imageUrl: v.imageUrl ?? p.imageUrl,
       stock: variantStock.get(v.id) ?? 0,
       isActive: v.isActive,
-    });
+      isAvailable: v.isAvailable,
+    })
   }
-  products.push(...stdByProduct.values());
+  products.push(...stdByProduct.values())
 
   // Elegir la variante "default" de cada producto (la activa "Default", o la primera activa).
   for (const p of products) {
-    p.variantCount = p.variants.length;
+    p.variantCount = p.variants.length
     const def =
       p.variants.find((v) => v.name === "Default" && v.isActive) ??
       p.variants.find((v) => v.isActive) ??
-      p.variants[0];
+      p.variants[0]
     if (def) {
-      p.id = def.id;
-      p.variantId = def.id;
-      p.price = def.price;
-      p.imageUrl = def.imageUrl;
-      p.stock = def.stock;
+      p.id = def.id
+      p.variantId = def.id
+      p.price = def.price
+      p.imageUrl = def.imageUrl
+      p.stock = def.stock
       // NO mutar p.name — el cliente construye el displayName con product.name + variant.name
     }
   }
 
   for (const p of bulkRaw) {
+    const categoryBelongsToOrganization =
+      p.category?.organizationId === organizationId
     products.push({
       id: p.id,
       productId: p.id,
       variantId: null,
       kind: "bulk",
       name: p.name,
+      description: p.description ?? null,
       sku: null,
       barcode: null,
       price: toNum(p.bulkPricePerUnit),
       taxRate: toNum(p.taxRate),
-      categoryId: p.categoryId,
-      categoryName: p.category?.name ?? null,
+      categoryId: categoryBelongsToOrganization ? p.categoryId : null,
+      categoryName: categoryBelongsToOrganization
+        ? (p.category?.name ?? null)
+        : null,
       imageUrl: p.imageUrl,
       trackInventory: p.trackInventory,
+      isAvailable: p.isAvailable,
+      availabilityNote: p.availabilityNote,
       stock: productStock.get(p.id) ?? 0,
       variantCount: 0,
       variants: [],
@@ -256,38 +318,39 @@ export async function getPosCatalog(
         step: toNum(p.bulkStep),
         maxQty: toNum(p.bulkMaxQuantity) || 0,
         allowSplit: p.allowSplit,
-        split: p.allowSplit && p.splitUnit
-          ? {
-              unitId: p.splitUnit.id,
-              unitName: p.splitUnit.name,
-              unitAbbrev: p.splitUnit.abbreviation,
-              price: toNum(p.splitPricePerUnit),
-            }
-          : null,
+        split:
+          p.allowSplit && p.splitUnit
+            ? {
+                unitId: p.splitUnit.id,
+                unitName: p.splitUnit.name,
+                unitAbbrev: p.splitUnit.abbreviation,
+                price: toNum(p.splitPricePerUnit),
+              }
+            : null,
       },
       options: [],
       hasOptions: false,
-    });
+    })
   }
 
   products.sort(
     (a, b) =>
       (a.categoryName ?? "").localeCompare(b.categoryName ?? "") ||
       a.name.localeCompare(b.name)
-  );
+  )
 
   const categoriesWithCount = categories.map((c) => ({
     id: c.id,
     name: c.name,
     imageUrl: c.imageUrl,
     productCount: products.filter((p) => p.categoryId === c.id).length,
-  }));
+  }))
 
   const registersMapped: PosCashRegister[] = registers.map((r) => ({
     id: r.id,
     name: r.name,
     folioPrefix: r.folioPrefix,
-  }));
+  }))
 
   const session: PosCashSession | null = cashSession
     ? {
@@ -295,18 +358,21 @@ export async function getPosCatalog(
         status: cashSession.status,
         openingCash: toNum(cashSession.openingCash),
         openedAt: cashSession.openedAt.toISOString(),
-        closingCash: cashSession.closingCash == null ? null : toNum(cashSession.closingCash),
+        closingCash:
+          cashSession.closingCash == null
+            ? null
+            : toNum(cashSession.closingCash),
         closedAt: cashSession.closedAt?.toISOString() ?? null,
         registerId: cashSession.cashRegister.id,
         registerName: cashSession.cashRegister.name,
       }
-    : null;
+    : null
 
   // Add options to each product (only if productBuilder feature is enabled
   // AND the product is tipo "custom": los productos estándar/granel nunca
   // llevan tópicos en el POS, solo los personalizados abren el constructor).
   for (const p of products) {
-    const raw = productsRaw.find((v) => v.productId === p.productId);
+    const raw = productsRaw.find((v) => v.productId === p.productId)
     if (
       features.productBuilder &&
       raw?.product?.productType === "custom" &&
@@ -326,11 +392,11 @@ export async function getPosCatalog(
           imageUrl: v.imageUrl ?? null,
           isActive: v.isActive,
         })),
-      }));
-      p.hasOptions = p.options.length > 0;
+      }))
+      p.hasOptions = p.options.length > 0
     } else {
-      p.options = [];
-      p.hasOptions = false;
+      p.options = []
+      p.hasOptions = false
     }
   }
 
@@ -353,7 +419,7 @@ export async function getPosCatalog(
           position: ci.position,
         })),
       }))
-    : [];
+    : []
 
   return {
     location: {
@@ -363,14 +429,14 @@ export async function getPosCatalog(
       address: location.address ?? null,
       phone: location.phone ?? null,
     },
-company: {
-  name: companyProfile?.tradeName ?? companyProfile?.legalName ?? null,
-  logoUrl: companyProfile?.logoUrl ?? null,
-  address: companyProfile?.address ?? null,
-  city: companyProfile?.city ?? null,
-  phone: companyProfile?.phone ?? null,
-  ticketFooter: companyProfile?.ticketFooter ?? null,
-},
+    company: {
+      name: companyProfile?.tradeName ?? companyProfile?.legalName ?? null,
+      logoUrl: companyProfile?.logoUrl ?? null,
+      address: companyProfile?.address ?? null,
+      city: companyProfile?.city ?? null,
+      phone: companyProfile?.phone ?? null,
+      ticketFooter: companyProfile?.ticketFooter ?? null,
+    },
     products,
     categories: categoriesWithCount,
     customers: customers.map((c) => ({
@@ -409,7 +475,7 @@ company: {
       endTime: p.endTime,
       targets: p.targets.map((t) => ({ kind: t.kind, targetId: t.targetId })),
     })),
-registers: registersMapped,
+    registers: registersMapped,
     session,
     cashier: {
       userId,
@@ -423,7 +489,7 @@ registers: registersMapped,
       enabled: orgLoyalty?.loyaltyEnabled ?? true,
     },
     features,
-  };
+  }
 }
 
 const ORDER_STATUSES: $Enums.OrderStatus[] = [
@@ -433,7 +499,7 @@ const ORDER_STATUSES: $Enums.OrderStatus[] = [
   "ready",
   "delivered",
   "cancelled",
-];
+]
 
 export async function getRecentOrders(
   organizationId: string,
@@ -447,7 +513,7 @@ export async function getRecentOrders(
     },
     orderBy: { createdAt: "desc" },
     take: 30,
-  });
+  })
   return orders
     .map((o) => ({
       id: o.id,
@@ -463,45 +529,84 @@ export async function getRecentOrders(
       (a, b) =>
         ORDER_STATUSES.indexOf(a.status) - ORDER_STATUSES.indexOf(b.status) ||
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+    )
 }
 
-export async function getSalesStats(organizationId: string, locationId: string) {
+export async function getSalesStats(
+  organizationId: string,
+  locationId: string
+) {
   const [todayStart, session] = await Promise.all([
     prisma.sale.findMany({
-      where: { organizationId, locationId, status: "completed", createdAt: { gte: startOfDay() } },
+      where: {
+        organizationId,
+        locationId,
+        status: "completed",
+        createdAt: { gte: startOfDay() },
+      },
       select: { total: true },
     }),
     prisma.cashSession.findFirst({
       where: { organizationId, cashRegister: { locationId }, status: "open" },
-      include: { sales: { where: { status: "completed" }, select: { total: true, payments: true, changeGiven: true } } },
+      include: {
+        sales: {
+          where: { status: "completed" },
+          select: { total: true, payments: true, changeGiven: true },
+        },
+        saleReturns: {
+          where: { status: "completed", returnType: "refund" },
+          select: {
+            refundPayments: {
+              where: { method: "cash" },
+              select: { amount: true },
+            },
+          },
+        },
+      },
     }),
-  ]);
+  ])
 
   const sessionCashData = session
     ? {
         sales: session.sales.length,
         cashPayments: round2(
           session.sales.reduce(
-            (acc, s) => acc + s.payments.filter((p) => p.method === "cash").reduce((x, p) => x + toNum(p.amount), 0),
+            (acc, s) =>
+              acc +
+              s.payments
+                .filter((p) => p.method === "cash")
+                .reduce((x, p) => x + toNum(p.amount), 0),
             0
           )
         ),
-        changeGiven: round2(session.sales.reduce((acc, s) => acc + toNum(s.changeGiven), 0)),
+        changeGiven: round2(
+          session.sales.reduce((acc, s) => acc + toNum(s.changeGiven), 0)
+        ),
+        cashRefunds: round2(
+          session.saleReturns.reduce(
+            (sum, ret) =>
+              sum +
+              ret.refundPayments.reduce(
+                (subtotal, payment) => subtotal + toNum(payment.amount),
+                0
+              ),
+            0
+          )
+        ),
       }
-    : null;
+    : null
 
   return {
     todaySales: todayStart.reduce((acc, s) => acc + toNum(s.total), 0),
     todayCount: todayStart.length,
     session: sessionCashData,
-  };
+  }
 }
 
 function startOfDay(): Date {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return now;
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  return now
 }
 
 export async function validateCoupon(
@@ -509,18 +614,29 @@ export async function validateCoupon(
   code: string,
   customerId?: string
 ): Promise<
-  | { ok: true; label: string; percent?: number; amount: number; couponId?: string; promotionId?: string }
+  | {
+      ok: true
+      label: string
+      percent?: number
+      amount: number
+      couponId?: string
+      promotionId?: string
+    }
   | { ok: false; error: string }
 > {
-  const trimmed = code.trim().toUpperCase();
-  if (!trimmed) return { ok: false, error: "Ingresa un código de cupón" };
+  const trimmed = code.trim().toUpperCase()
+  if (!trimmed) return { ok: false, error: "Ingresa un código de cupón" }
 
-  const coupon = await prisma.coupon.findFirst({ where: { organizationId, code: trimmed } });
+  const coupon = await prisma.coupon.findFirst({
+    where: { organizationId, code: trimmed },
+  })
   if (coupon) {
-    if (coupon.redeemedAt) return { ok: false, error: "Este cupón ya fue utilizado" };
-    if (coupon.expiresAt && coupon.expiresAt < new Date()) return { ok: false, error: "Este cupón está vencido" };
+    if (coupon.redeemedAt)
+      return { ok: false, error: "Este cupón ya fue utilizado" }
+    if (coupon.expiresAt && coupon.expiresAt < new Date())
+      return { ok: false, error: "Este cupón está vencido" }
     if (coupon.customerId && (!customerId || coupon.customerId !== customerId))
-      return { ok: false, error: "Este cupón pertenece a otro cliente" };
+      return { ok: false, error: "Este cupón pertenece a otro cliente" }
     return {
       ok: true,
       label: `Cupón ${trimmed}`,
@@ -528,35 +644,162 @@ export async function validateCoupon(
       percent: toNum(coupon.percent) > 0 ? toNum(coupon.percent) : undefined,
       couponId: coupon.id,
       promotionId: coupon.promotionId ?? undefined,
-    };
+    }
   }
 
   const promo = await prisma.promotion.findFirst({
     where: { organizationId, couponCode: trimmed, isActive: true },
-  });
+  })
   if (promo) {
-    if (promo.endsAt && promo.endsAt < new Date()) return { ok: false, error: "Este cupón está vencido" };
+    if (promo.endsAt && promo.endsAt < new Date())
+      return { ok: false, error: "Este cupón está vencido" }
     if (promo.maxUses != null && promo.usesCount >= promo.maxUses)
-      return { ok: false, error: "Este cupón alcanzó su límite de usos" };
-    const percent = promo.benefit === "percent_off" ? toNum(promo.value) : 0;
-    const amount = promo.benefit === "amount_off" ? toNum(promo.value) : 0;
-    if (!percent && !amount) return { ok: false, error: "Este cupón no aplica como descuento" };
+      return { ok: false, error: "Este cupón alcanzó su límite de usos" }
+    const percent = promo.benefit === "percent_off" ? toNum(promo.value) : 0
+    const amount = promo.benefit === "amount_off" ? toNum(promo.value) : 0
+    if (!percent && !amount)
+      return { ok: false, error: "Este cupón no aplica como descuento" }
     return {
       ok: true,
       label: promo.name,
       percent: percent > 0 ? percent : undefined,
       amount,
       promotionId: promo.id,
-    };
+    }
   }
 
-  return { ok: false, error: "Cupón no válido" };
+  return { ok: false, error: "Cupón no válido" }
 }
 
 function nextPurchaseCoupons(payload: PosSalePayload) {
   return payload.nextPurchaseCoupon
-    ? [{ promotionId: payload.nextPurchaseCoupon.promotionId, amount: payload.nextPurchaseCoupon.amount }]
-    : [];
+    ? [
+        {
+          promotionId: payload.nextPurchaseCoupon.promotionId,
+          amount: payload.nextPurchaseCoupon.amount,
+        },
+      ]
+    : []
+}
+
+/** Valida referencias y precios contra el catálogo de la organización. */
+async function validateSaleAmounts(
+  organizationId: string,
+  payload: PosSalePayload
+) {
+  let subtotal = 0
+  for (const item of payload.items) {
+    if (
+      !Number.isFinite(item.quantity) ||
+      item.quantity <= 0 ||
+      item.quantity > 100000
+    ) {
+      throw new PosError("Cantidad inválida", 400)
+    }
+    const variant = item.variantId
+      ? await prisma.productVariant.findFirst({
+          where: {
+            id: item.variantId,
+            productId: item.productId,
+            organizationId,
+            isActive: true,
+            isAvailable: true,
+            product: { isAvailable: true },
+          },
+          include: {
+            product: {
+              select: { taxRate: true, productType: true, isActive: true },
+            },
+          },
+        })
+      : null
+    const product = variant
+      ? variant.product
+      : await prisma.product.findFirst({
+          where: {
+            id: item.productId,
+            organizationId,
+            isActive: true,
+            isAvailable: true,
+          },
+          select: {
+            taxRate: true,
+            productType: true,
+            isActive: true,
+            bulkPricePerUnit: true,
+            variants: {
+              where: { isActive: true },
+              take: 1,
+              select: { price: true },
+            },
+          },
+        })
+    if (!product || !product.isActive || (item.variantId && !variant)) {
+      throw new PosError("Producto o variante no disponible", 400)
+    }
+    const basePrice = variant
+      ? toNum(variant.price)
+      : product.productType === "bulk"
+        ? toNum(
+            (product as { bulkPricePerUnit?: Prisma.Decimal })
+              .bulkPricePerUnit ?? 0
+          )
+        : toNum(
+            (product as { variants?: { price: Prisma.Decimal }[] })
+              .variants?.[0]?.price ?? 0
+          )
+    let optionsExtra = 0
+    if (Array.isArray(item.selectedOptions) && item.selectedOptions.length) {
+      const valueIds = item.selectedOptions.flatMap(
+        (option) => option.valueIds ?? []
+      )
+      if (!valueIds.length)
+        throw new PosError(
+          "Las opciones del producto deben volver a seleccionarse",
+          400
+        )
+      const values = await prisma.productOptionValue.findMany({
+        where: {
+          id: { in: valueIds },
+          isActive: true,
+          option: { productId: item.productId },
+        },
+        select: { id: true, extraPrice: true },
+      })
+      if (values.length !== new Set(valueIds).size) {
+        throw new PosError("Una opción elegida ya no está disponible", 409)
+      }
+      optionsExtra = values.reduce(
+        (sum, value) => sum + Math.max(0, toNum(value.extraPrice)),
+        0
+      )
+    }
+    const trustedUnitPrice = round2(basePrice + optionsExtra)
+    if (Math.abs(Number(item.unitPrice) - trustedUnitPrice) > 0.01) {
+      throw new PosError(`Precio inválido para ${item.productName}`, 400)
+    }
+    const lineSubtotal = round2(item.quantity * trustedUnitPrice)
+    if (Math.abs(Number(item.totalPrice) - lineSubtotal) > 0.01) {
+      throw new PosError("Importe de línea inválido", 400)
+    }
+    if (Math.abs(Number(item.taxRate) - toNum(product.taxRate)) > 0.0001) {
+      throw new PosError("Impuesto de producto inválido", 400)
+    }
+    subtotal = round2(subtotal + lineSubtotal)
+  }
+  if (Math.abs(Number(payload.subtotal) - subtotal) > 0.01) {
+    throw new PosError("Subtotal inválido", 400)
+  }
+  if (
+    ![
+      payload.discount,
+      payload.tax,
+      payload.total,
+      payload.pointsRedeemedValue,
+    ].every(Number.isFinite)
+  ) {
+    throw new PosError("Totales inválidos", 400)
+  }
 }
 
 export async function createSale(
@@ -565,40 +808,63 @@ export async function createSale(
   payload: PosSalePayload,
   ctx: { userId: string; employeeId: string | null }
 ): Promise<{ id: string; saleNumber: string; locationName: string }> {
-  if (!payload.items.length) throw new PosError("El ticket está vacío", 400);
+  if (!payload.items.length) throw new PosError("El ticket está vacío", 400)
 
-  const payable = round2(payload.total - payload.pointsRedeemedValue);
-  const paid = round2(payload.payments.reduce((acc, p) => acc + p.amount, 0));
+  await validateSaleAmounts(organizationId, payload)
+
+  const payable = round2(payload.total - payload.pointsRedeemedValue)
+  const paid = round2(payload.payments.reduce((acc, p) => acc + p.amount, 0))
   if (round2(paid - payable) < -0.01) {
-    throw new PosError("Los pagos no cubren el total", 400);
+    throw new PosError("Los pagos no cubren el total", 400)
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    const loc = await tx.location.findFirst({ where: { id: locationId, organizationId } });
-    if (!loc) throw new PosError("Sucursal no encontrada", 400);
+    const loc = await tx.location.findFirst({
+      where: { id: locationId, organizationId },
+    })
+    if (!loc) throw new PosError("Sucursal no encontrada", 400)
 
     // Reservar secuencia de ticket por sucursal (6.12 – folio).
     await tx.location.update({
       where: { id: locationId },
       data: { saleSeq: { increment: 1 } },
-    });
-    const updated = await tx.location.findUniqueOrThrow({ where: { id: locationId } });
-    const locationSaleNumber = updated.saleSeq;
+    })
+    const updated = await tx.location.findUniqueOrThrow({
+      where: { id: locationId },
+    })
+    const locationSaleNumber = updated.saleSeq
 
     // Validar y descontar inventario (6.12 – ticket correcto/posible error de stock).
     for (const item of payload.items) {
-      if (!item.trackInventory) continue;
+      if (!item.trackInventory) continue
       const inv = item.variantId
         ? await tx.inventory.findUnique({
-            where: { variantId_locationId_locationType: { variantId: item.variantId, locationId, locationType: "location" } },
+            where: {
+              variantId_locationId_locationType: {
+                variantId: item.variantId,
+                locationId,
+                locationType: "location",
+              },
+            },
           })
         : await tx.inventory.findFirst({
-            where: { productId: item.productId, locationId, locationType: "location" },
-          });
-      if (!inv) throw new PosError(`Sin inventario registrado para ${item.productName}`, 400);
-      const current = toNum(inv.quantity);
+            where: {
+              productId: item.productId,
+              locationId,
+              locationType: "location",
+            },
+          })
+      if (!inv)
+        throw new PosError(
+          `Sin inventario registrado para ${item.productName}`,
+          400
+        )
+      const current = toNum(inv.quantity)
       if (current < item.quantity) {
-        throw new PosError(`Stock insuficiente para ${item.productName} (disponible ${current})`, 409);
+        throw new PosError(
+          `Stock insuficiente para ${item.productName} (disponible ${current})`,
+          409
+        )
       }
     }
 
@@ -623,7 +889,7 @@ export async function createSale(
         status: "completed",
         notes: payload.notes,
       },
-    });
+    })
 
     if (payload.items.length) {
       await tx.saleItem.createMany({
@@ -644,10 +910,12 @@ export async function createSale(
           lineTotal: i.lineTotal,
           bulkQuantityDisplay: i.bulkQuantityDisplay,
           notes: i.notes ?? undefined,
-          selectedOptions: i.selectedOptions ? JSON.parse(JSON.stringify(i.selectedOptions)) : undefined,
+          selectedOptions: i.selectedOptions
+            ? JSON.parse(JSON.stringify(i.selectedOptions))
+            : undefined,
           extraPrice: i.extraPrice ?? 0,
         })),
-      });
+      })
     }
 
     if (payload.payments.length) {
@@ -658,7 +926,7 @@ export async function createSale(
           amount: p.amount,
           reference: p.reference,
         })),
-      });
+      })
     }
 
     if (payload.discounts.length) {
@@ -669,34 +937,60 @@ export async function createSale(
           label: d.label,
           amount: d.amount,
         })),
-      });
+      })
     }
     for (const d of payload.discounts) {
       if (d.promotionId) {
         await tx.promotion.update({
           where: { id: d.promotionId },
           data: { usesCount: { increment: 1 } },
-        });
+        })
       }
     }
 
     // Descontar inventario y registrar movimientos.
-    const touchedInventoryIds: string[] = [];
+    const touchedInventoryIds: string[] = []
     for (const item of payload.items) {
-      if (!item.trackInventory) continue;
+      if (!item.trackInventory) continue
       const inv = item.variantId
         ? await tx.inventory.update({
-            where: { variantId_locationId_locationType: { variantId: item.variantId, locationId, locationType: "location" } },
-            data: { quantity: { decrement: item.quantity }, updatedAt: new Date() },
+            where: {
+              variantId_locationId_locationType: {
+                variantId: item.variantId,
+                locationId,
+                locationType: "location",
+              },
+            },
+            data: {
+              quantity: { decrement: item.quantity },
+              updatedAt: new Date(),
+            },
           })
-        : await tx.inventory.findFirst({
-            where: { productId: item.productId, locationId, locationType: "location" },
-          }).then((r) => r ? tx.inventory.update({
-            where: { id: r.id },
-            data: { quantity: { decrement: item.quantity }, updatedAt: new Date() },
-          }) : null);
-      if (!inv) throw new PosError(`Sin inventario registrado para ${item.productName}`, 400);
-      touchedInventoryIds.push(inv.id);
+        : await tx.inventory
+            .findFirst({
+              where: {
+                productId: item.productId,
+                locationId,
+                locationType: "location",
+              },
+            })
+            .then((r) =>
+              r
+                ? tx.inventory.update({
+                    where: { id: r.id },
+                    data: {
+                      quantity: { decrement: item.quantity },
+                      updatedAt: new Date(),
+                    },
+                  })
+                : null
+            )
+      if (!inv)
+        throw new PosError(
+          `Sin inventario registrado para ${item.productName}`,
+          400
+        )
+      touchedInventoryIds.push(inv.id)
       await tx.inventoryMovement.create({
         data: {
           organizationId,
@@ -712,17 +1006,31 @@ export async function createSale(
           userId: ctx.userId,
           employeeId: ctx.employeeId,
         },
-      });
+      })
     }
+
+    await consumeRecipeIngredients(
+      tx,
+      organizationId,
+      locationId,
+      sale.id,
+      ctx.userId,
+      payload.items.map((item) => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity: item.quantity,
+        selectedOptions: item.selectedOptions,
+      }))
+    )
 
     // Redimir cupón si aplica (6.8).
     if (payload.couponCode) {
-      await redeemCouponTx(tx, organizationId, payload.couponCode, sale.id);
+      await redeemCouponTx(tx, organizationId, payload.couponCode, sale.id)
     }
 
     // Generar cupón de próxima compra cuando una promoción lo otorga (6.8).
     for (const np of nextPurchaseCoupons(payload)) {
-      const code = await nextCouponCode(tx, organizationId);
+      const code = await nextCouponCode(tx, organizationId)
       await tx.coupon.create({
         data: {
           organizationId,
@@ -732,28 +1040,31 @@ export async function createSale(
           customerId: payload.customerId ?? null,
           expiresAt: addDays(new Date(), 30),
         },
-      });
+      })
       await tx.promotion.update({
         where: { id: np.promotionId },
         data: { usesCount: { increment: 1 } },
-      });
+      })
     }
 
     // Loyalty: ganar y/o canjear puntos (6.7 / 6.10).
     // Si la venta es a crédito y la política indica que el crédito NO genera puntos, suprimir.
-    let effectivePointsEarned = payload.pointsEarned;
-    if (effectivePointsEarned > 0 && payload.payments?.some((p) => p.method === "credit")) {
+    let effectivePointsEarned = payload.pointsEarned
+    if (
+      effectivePointsEarned > 0 &&
+      payload.payments?.some((p) => p.method === "credit")
+    ) {
       const creditPolicy = await tx.creditPolicy.findUnique({
         where: { organizationId },
         select: { creditEarnsPoints: true },
-      });
+      })
       if (creditPolicy && !creditPolicy.creditEarnsPoints) {
-        effectivePointsEarned = 0;
+        effectivePointsEarned = 0
         // Actualizar el registro de venta con los puntos efectivos
         await tx.sale.update({
           where: { id: sale.id },
           data: { pointsEarned: 0 },
-        });
+        })
       }
     }
 
@@ -761,13 +1072,13 @@ export async function createSale(
       const customer = await tx.customer.findUnique({
         where: { id: payload.customerId, organizationId },
         select: { id: true },
-      });
+      })
       if (customer) {
         if (effectivePointsEarned > 0) {
           await tx.customer.update({
             where: { id: customer.id },
             data: { points: { increment: effectivePointsEarned } },
-          });
+          })
           await tx.loyaltyTransaction.create({
             data: {
               organizationId,
@@ -777,13 +1088,13 @@ export async function createSale(
               points: effectivePointsEarned,
               note: "Venta POS",
             },
-          });
+          })
         }
         if (payload.pointsRedeemed > 0) {
           await tx.customer.update({
             where: { id: customer.id },
             data: { points: { decrement: payload.pointsRedeemed } },
-          });
+          })
           await tx.loyaltyTransaction.create({
             data: {
               organizationId,
@@ -793,13 +1104,13 @@ export async function createSale(
               points: payload.pointsRedeemed,
               note: "Canje en POS",
             },
-          });
+          })
         }
       }
     }
 
-    return { sale, locationName: loc.name, touchedInventoryIds };
-  });
+    return { sale, locationName: loc.name, touchedInventoryIds }
+  })
 
   await Promise.all(
     (result.touchedInventoryIds ?? []).map((id) =>
@@ -808,7 +1119,7 @@ export async function createSale(
         employeeId: ctx.employeeId,
       })
     )
-  );
+  )
 
   // Asociar mesa si se seleccionó (food_service): ocupar → cobrar → liberar.
   if (payload.tableId && !payload.tableId.startsWith("manual-")) {
@@ -816,7 +1127,7 @@ export async function createSale(
       where: { id: payload.tableId },
       data: { status: "free" },
       include: { location: { select: { name: true } } },
-    });
+    })
     broadcastTableUpdate(organizationId, {
       id: freedTable.id,
       number: freedTable.number,
@@ -825,38 +1136,46 @@ export async function createSale(
       status: freedTable.status,
       location: freedTable.location,
       updatedAt: freedTable.updatedAt.toISOString(),
-    });
+    })
     // Cerrar sesión de mesa activa si existe (el cobro la finaliza).
     const activeSession = await prisma.tableSession.findFirst({
       where: { tableId: payload.tableId, endedAt: null },
-    });
+    })
     if (activeSession) {
       await prisma.tableSession.update({
         where: { id: activeSession.id },
         data: { endedAt: new Date() },
-      });
+      })
     }
     // Cerrar la orden de cocina de la mesa si el ticket se envió al KDS:
     // liga la venta (saleId + paidAt) y la saca de la pantalla de cocina.
-    await closeKitchenOrderOnSale(organizationId, payload.tableId, result.sale.id, {
-      userId: ctx.userId,
-      employeeId: ctx.employeeId,
-    });
+    await closeKitchenOrderOnSale(
+      organizationId,
+      payload.tableId,
+      result.sale.id,
+      {
+        userId: ctx.userId,
+        employeeId: ctx.employeeId,
+      }
+    )
   }
 
   // Notificar venta completada por SSE (11.6) — fuera de la transacción.
   await notifySaleCompleted(organizationId, result.sale.locationId, ctx, {
-    locationSaleNumber: result.sale.locationSaleNumber == null ? null : Number(result.sale.locationSaleNumber),
+    locationSaleNumber:
+      result.sale.locationSaleNumber == null
+        ? null
+        : Number(result.sale.locationSaleNumber),
     saleNumber: String(result.sale.saleNumber),
     total: toNum(result.sale.total),
     locationName: result.locationName,
-  });
+  })
 
   return {
     id: result.sale.id,
     saleNumber: `#${Number(result.sale.locationSaleNumber)}`,
     locationName: result.locationName,
-  };
+  }
 }
 
 async function redeemCouponTx(
@@ -865,36 +1184,46 @@ async function redeemCouponTx(
   code: string,
   saleId: string
 ) {
-  const trimmed = code.trim().toUpperCase();
-  const coupon = await tx.coupon.findFirst({ where: { organizationId, code: trimmed } });
+  const trimmed = code.trim().toUpperCase()
+  const coupon = await tx.coupon.findFirst({
+    where: { organizationId, code: trimmed },
+  })
   if (coupon && !coupon.redeemedAt) {
     await tx.coupon.update({
       where: { id: coupon.id },
       data: { redeemedAt: new Date(), redeemedSaleId: saleId },
-    });
+    })
   }
-  return coupon?.promotionId ?? null;
+  return coupon?.promotionId ?? null
 }
 
-async function nextCouponCode(tx: Prisma.TransactionClient, organizationId: string): Promise<string> {
-  const count = await tx.coupon.count({ where: { organizationId } });
-  const candidate = `NEXT-${1000 + count + 1}`;
-  const existing = await tx.coupon.findFirst({ where: { organizationId, code: candidate } });
-  return existing ? `NEXT-${Date.now()}` : candidate;
+async function nextCouponCode(
+  tx: Prisma.TransactionClient,
+  organizationId: string
+): Promise<string> {
+  const count = await tx.coupon.count({ where: { organizationId } })
+  const candidate = `NEXT-${1000 + count + 1}`
+  const existing = await tx.coupon.findFirst({
+    where: { organizationId, code: candidate },
+  })
+  return existing ? `NEXT-${Date.now()}` : candidate
 }
 
 function addDays(d: Date, days: number): Date {
-  const copy = new Date(d);
-  copy.setDate(copy.getDate() + days);
-  return copy;
+  const copy = new Date(d)
+  copy.setDate(copy.getDate() + days)
+  return copy
 }
 
-export async function getCurrentCashSession(organizationId: string, locationId: string) {
+export async function getCurrentCashSession(
+  organizationId: string,
+  locationId: string
+) {
   const s = await prisma.cashSession.findFirst({
     where: { organizationId, cashRegister: { locationId }, status: "open" },
     include: { cashRegister: { select: { id: true, name: true } } },
     orderBy: { openedAt: "desc" },
-  });
+  })
   return s
     ? {
         id: s.id,
@@ -906,7 +1235,7 @@ export async function getCurrentCashSession(organizationId: string, locationId: 
         registerId: s.cashRegister.id,
         registerName: s.cashRegister.name,
       }
-    : null;
+    : null
 }
 
 export async function openCashSession(
@@ -918,13 +1247,17 @@ export async function openCashSession(
 ) {
   const existing = await prisma.cashSession.findFirst({
     where: { organizationId, cashRegister: { locationId }, status: "open" },
-  });
-  if (existing) return { created: false, session: await getCurrentCashSession(organizationId, locationId) };
+  })
+  if (existing)
+    return {
+      created: false,
+      session: await getCurrentCashSession(organizationId, locationId),
+    }
 
   const reg = await prisma.cashRegister.findFirst({
     where: { id: registerId, organizationId, locationId },
-  });
-  if (!reg) throw new PosError("Caja no encontrada en la sucursal", 400);
+  })
+  if (!reg) throw new PosError("Caja no encontrada en la sucursal", 400)
 
   const session = await prisma.cashSession.create({
     data: {
@@ -936,7 +1269,7 @@ export async function openCashSession(
       openedBy: userId,
       status: "open",
     },
-  });
+  })
   return {
     created: true,
     session: {
@@ -949,7 +1282,7 @@ export async function openCashSession(
       registerId,
       registerName: reg.name,
     },
-  };
+  }
 }
 
 export async function closeCashSession(
@@ -961,29 +1294,61 @@ export async function closeCashSession(
   const result = await prisma.$transaction(async (tx) => {
     const session = await tx.cashSession.findFirst({
       where: { id: sessionId, organizationId, status: "open" },
-    });
-    if (!session) throw new PosError("La caja no está abierta", 400);
+    })
+    if (!session) throw new PosError("La caja no está abierta", 400)
 
     const sales = await tx.sale.findMany({
       where: { cashSessionId: session.id, status: "completed" },
       include: { payments: true },
       orderBy: { createdAt: "asc" },
-    });
+    })
 
     const cashPayments = round2(
       sales.reduce(
-        (acc, s) => acc + s.payments.filter((p) => p.method === "cash").reduce((x, p) => x + toNum(p.amount), 0),
+        (acc, s) =>
+          acc +
+          s.payments
+            .filter((p) => p.method === "cash")
+            .reduce((x, p) => x + toNum(p.amount), 0),
         0
       )
-    );
-    const changeGiven = round2(sales.reduce((acc, s) => acc + toNum(s.changeGiven), 0));
-    const totalSales = round2(sales.reduce((acc, s) => acc + toNum(s.total), 0));
-    const expectedCash = round2(toNum(session.openingCash) + cashPayments - changeGiven);
+    )
+    const changeGiven = round2(
+      sales.reduce((acc, s) => acc + toNum(s.changeGiven), 0)
+    )
+    const cashRefunds = round2(
+      toNum(
+        (
+          await tx.saleReturnPayment.aggregate({
+            where: {
+              method: "cash",
+              return: {
+                organizationId,
+                cashSessionId: session.id,
+                status: "completed",
+                returnType: "refund",
+              },
+            },
+            _sum: { amount: true },
+          })
+        )._sum.amount
+      )
+    )
+    const totalSales = round2(sales.reduce((acc, s) => acc + toNum(s.total), 0))
+    const expectedCash = round2(
+      toNum(session.openingCash) + cashPayments - changeGiven - cashRefunds
+    )
 
     const updated = await tx.cashSession.update({
       where: { id: session.id },
-      data: { closingCash: round2(closingCash), systemCash: round2(expectedCash), notes, closedAt: new Date(), status: "closed" },
-    });
+      data: {
+        closingCash: round2(closingCash),
+        systemCash: round2(expectedCash),
+        notes,
+        closedAt: new Date(),
+        status: "closed",
+      },
+    })
 
     return {
       id: updated.id,
@@ -991,12 +1356,13 @@ export async function closeCashSession(
       totalSales,
       cashPayments,
       changeGiven,
+      cashRefunds,
       openingCash: toNum(session.openingCash),
       systemCash: round2(expectedCash),
       closingCash: round2(closingCash),
       difference: round2(closingCash - expectedCash),
       closedAt: updated.closedAt?.toISOString() ?? null,
-    };
-  });
-  return result;
+    }
+  })
+  return result
 }

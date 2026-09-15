@@ -109,8 +109,8 @@ export interface CrudUiConfig {
   columns: CrudColumn[]
   fields: CrudField[]
   /** Componente renderizado después de los campos del formulario, recibe los valores actuales. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  afterFields?: (props: { values: Record<string, any> }) => React.JSX.Element | null
+  afterFields?: (props: { values: Record<string, unknown> }) => React.JSX.Element | null
+  beforeFields?: (props: { values: Record<string, unknown> }) => React.JSX.Element | null
 }
 
 const UNIT_TYPES: SelectOption[] = [
@@ -407,6 +407,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         label: "Imagen",
         type: "image",
         full: true,
+        help: "Si no eliges una imagen, la sucursal usará el logotipo de la empresa. Puedes reemplazarlo cuando lo necesites.",
       },
       {
         key: "allowsPickup",
@@ -629,7 +630,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         key: "folioPrefix",
         label: "Prefijo de folio",
         type: "text",
-        help: "Se genera automáticamente: código de sucursal + primera letra de la caja (ej. CTR-C1). Puedes sobrescribirlo.",
+        help: "Se actualiza automáticamente con el código de la sucursal y la abreviación del nombre de la caja (ej. CTR-CP).",
         transform: "uppercase",
         maxLength: 10,
         yup: {
@@ -935,6 +936,8 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       { key: "isActive", label: "Activa", type: "boolean" },
     ],
     afterFields: PromotionDescriptionPreview,
+    beforeFields: PromotionDescriptionPreview,
+
   },
 }
 

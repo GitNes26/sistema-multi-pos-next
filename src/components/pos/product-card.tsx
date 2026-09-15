@@ -2,13 +2,15 @@
 
 import { memo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Package, Scale } from "lucide-react";
+import { Check, Info, Package, Scale } from "lucide-react";
 import type { PosProduct } from "@/types/pos";
 import { money } from "@/lib/pos/money";
 import { categoryAccent } from "@/lib/catalog/placeholder";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
 import { ThumbImage } from "@/components/base/thumb-image";
+import { DialogComponent } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface ProductCardProps {
   product: PosProduct;
@@ -40,6 +42,7 @@ function StockBadge({ stock }: { stock: number }) {
 
 export const ProductCard = memo(function ProductCard({ product, hot, onSelect }: ProductCardProps) {
   const [added, setAdded] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const handleClick = () => {
     haptic.light();
@@ -49,17 +52,22 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
   };
 
   return (
-    <motion.button
-      type="button"
-      onClick={handleClick}
+    <>
+    <motion.div
       whileTap={{ scale: 0.96 }}
       className={cn(
         "group relative flex h-full w-full flex-col gap-2 rounded-2xl border bg-card p-2.5 text-left shadow-sm transition",
         "hover:border-primary/50 hover:shadow-md",
-        product.stock <= 0 && "opacity-60",
+        (!product.isAvailable || (product.trackInventory && product.stock <= 0)) && "opacity-60",
         added && "border-primary bg-primary/5"
       )}
     >
+      <button
+        type="button"
+        onClick={handleClick}
+        className="absolute inset-0 z-20 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        aria-label={`Agregar ${product.name}`}
+      />
       {/* Add feedback overlay */}
       <AnimatePresence>
         {added && (
@@ -67,7 +75,7 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.5 }}
-            className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-primary/10"
+            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-primary/10"
           >
             <div className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
               <Check className="size-5" />
@@ -82,10 +90,22 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
         </span>
       )}
       {hot && (
-        <span className="absolute right-2 top-2 z-10 rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase text-primary-foreground">
+        <span className="absolute right-11 top-2 z-10 rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase text-primary-foreground">
           Vigente
         </span>
       )}
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setInfoOpen(true);
+        }}
+        className="absolute right-2 top-2 z-30 flex size-8 items-center justify-center rounded-full border border-border/60 bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        aria-label={`Ver información de ${product.name}`}
+        title="Ver información del producto"
+      >
+        <Info className="size-4" />
+      </button>
       <div className="relative flex h-16 items-center justify-center rounded-xl bg-muted/40">
         {product.imageUrl ? (
           <ThumbImage
@@ -134,6 +154,34 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
           )}
         </div>
       </div>
-    </motion.button>
+    </motion.div>
+    <DialogComponent
+      open={infoOpen}
+      onOpenChange={setInfoOpen}
+      size="sm"
+      icon={<Info className="size-5 text-primary" />}
+      title={product.name}
+      description={product.categoryName ?? "Información del producto"}
+      footer={<Button variant="outline" onClick={() => setInfoOpen(false)}>Cerrar</Button>}
+    >
+      <div className="space-y-4">
+        {product.imageUrl && (
+          <ThumbImage src={product.imageUrl} alt={product.name} className="h-40 w-full rounded-xl object-cover" />
+        )}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Descripción</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">
+            {product.description?.trim() || "Este producto aún no tiene una descripción registrada."}
+          </p>
+        </div>
+        <dl className="grid grid-cols-2 gap-3 rounded-xl bg-muted/50 p-3 text-sm">
+          <div><dt className="text-xs text-muted-foreground">Precio</dt><dd className="font-semibold">{money(product.price)}{product.bulk ? ` /${product.bulk.unitAbbrev}` : ""}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Existencia</dt><dd className="font-semibold">{product.trackInventory ? product.stock : "Sin control"}</dd></div>
+          {product.sku && <div><dt className="text-xs text-muted-foreground">SKU</dt><dd className="break-all font-medium">{product.sku}</dd></div>}
+          {product.barcode && <div><dt className="text-xs text-muted-foreground">Código</dt><dd className="break-all font-medium">{product.barcode}</dd></div>}
+        </dl>
+      </div>
+    </DialogComponent>
+    </>
   );
 });

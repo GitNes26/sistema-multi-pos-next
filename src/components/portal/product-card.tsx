@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Bell, Heart, Plus, Check, Package, Scale, Layers } from "lucide-react"
 import type { PortalProduct, PortalVariantOption } from "@/lib/portal/server"
@@ -31,16 +31,30 @@ function PlaceholderImage() {
 function StockBadge({ stock, track }: { stock: number; track: boolean }) {
   if (!track) {
     return (
-      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">—</span>
+      <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+        —
+      </span>
     )
   }
   if (stock <= 0) {
-    return <span className="rounded-full bg-destructive/90 px-1.5 py-0.5 text-[10px] font-bold text-white">Sin stock</span>
+    return (
+      <span className="rounded-md bg-destructive/90 px-1.5 py-0.5 text-xs font-bold text-white">
+        Sin stock
+      </span>
+    )
   }
   if (stock <= 8) {
-    return <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{Math.floor(stock)} u</span>
+    return (
+      <span className="rounded-md bg-amber-500 px-1.5 py-0.5 text-xs font-bold text-white">
+        {Math.floor(stock)} u
+      </span>
+    )
   }
-  return <span className="rounded-full bg-emerald-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white">{Math.floor(stock)} u</span>
+  return (
+    <span className="rounded-md bg-emerald-600/90 px-1.5 py-0.5 text-xs font-bold text-white">
+      {Math.floor(stock)} u
+    </span>
+  )
 }
 
 export function ProductCard({
@@ -69,12 +83,17 @@ export function ProductCard({
   const defaultVariant = product.variants[0] ?? null
   const hasVariants = product.variants.length > 1
   const hasOptions = product.options && product.options.length > 0
-  const outOfStock = isBulk
-    ? product.trackInventory && product.stock <= 0
-    : product.trackInventory && (defaultVariant?.stock ?? 0) <= 0
+  const outOfStock =
+    product.isAvailable === false ||
+    defaultVariant?.isAvailable === false ||
+    (isBulk
+      ? product.trackInventory && product.stock <= 0
+      : product.trackInventory && (defaultVariant?.stock ?? 0) <= 0)
 
   const favVariantIds = Array.from(favorites)
-  const isFav = defaultVariant ? favVariantIds.includes(defaultVariant.id) : false
+  const isFav = defaultVariant
+    ? favVariantIds.includes(defaultVariant.id)
+    : false
 
   const priceLabel = isBulk
     ? product.bulk
@@ -113,7 +132,10 @@ export function ProductCard({
       return
     }
     if (res.limited) {
-      swalToast(`Solo quedan ${res.added} disponible${res.added !== 1 ? "s" : ""}`, "info")
+      swalToast(
+        `Solo quedan ${res.added} disponible${res.added !== 1 ? "s" : ""}`,
+        "info"
+      )
     }
     setJustAdded(true)
     haptic.medium()
@@ -169,7 +191,7 @@ export function ProductCard({
 
           {/* Badge a granel */}
           {isBulk && (
-            <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-violet-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+            <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-violet-600 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
               <Scale className="size-3" /> A granel
             </span>
           )}
@@ -195,7 +217,9 @@ export function ProductCard({
                   <Heart
                     className={cn(
                       "size-4 transition-colors",
-                      isFav ? "fill-destructive text-destructive" : "text-muted-foreground"
+                      isFav
+                        ? "fill-destructive text-destructive"
+                        : "text-muted-foreground"
                     )}
                   />
                 </motion.div>
@@ -205,27 +229,53 @@ export function ProductCard({
 
           {/* Variantes badge */}
           {hasVariants && (
-            <span className="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">
+            <span className="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-xs font-bold text-white">
               <Layers className="size-3" /> {product.variants.length} variantes
             </span>
           )}
         </div>
 
         <div className="flex flex-1 flex-col gap-1 p-3">
-          <p className="line-clamp-2 text-[13px] font-semibold leading-tight">{product.name}</p>
+          <p className="line-clamp-2 text-sm font-semibold leading-tight">
+            {product.name}
+          </p>
+          {product.description && (
+            <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+              {product.description}
+            </p>
+          )}
 
           <div className="flex items-end justify-between gap-1">
             <p className="text-sm font-bold text-primary tabular-nums">
               {priceLabel}
-              {unitLabel && <span className="ml-0.5 text-[11px] font-normal text-muted-foreground">{unitLabel}</span>}
+              {unitLabel && (
+                <span className="ml-0.5 text-xs font-normal text-muted-foreground">
+                  {unitLabel}
+                </span>
+              )}
             </p>
-            <StockBadge stock={isBulk ? product.stock : (defaultVariant?.stock ?? 0)} track={product.trackInventory} />
+            <StockBadge
+              stock={isBulk ? product.stock : (defaultVariant?.stock ?? 0)}
+              track={product.trackInventory}
+            />
           </div>
 
           <div className="mt-auto pt-1.5">
             {outOfStock ? (
-              <Button variant="outline" size="sm" className="h-9 w-full rounded-xl text-xs" onClick={() => swalToast("Te avisaremos cuando haya stock", "info")}>
-                <Bell className="size-3.5" /> Sin stock
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 w-full rounded-xl text-xs"
+                onClick={() =>
+                  swalToast(
+                    product.availabilityNote ||
+                      "Este producto no está disponible por el momento",
+                    "info"
+                  )
+                }
+              >
+                <Bell className="size-3.5" />{" "}
+                {product.isAvailable === false ? "Ya no hay" : "Sin stock"}
               </Button>
             ) : (
               <Button
@@ -238,11 +288,21 @@ export function ProductCard({
               >
                 <AnimatePresence mode="wait">
                   {justAdded ? (
-                    <motion.div key="check" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                    <motion.div
+                      key="check"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                    >
                       <Check className="size-4" />
                     </motion.div>
                   ) : (
-                    <motion.div key="plus" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                    <motion.div
+                      key="plus"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                    >
                       <Plus className="size-4" />
                     </motion.div>
                   )}
@@ -263,8 +323,13 @@ export function ProductCard({
       >
         <div className="space-y-2">
           {product.variants.map((v) => {
-            const vOut = product.trackInventory && v.stock <= 0
-            const name = v.name === "Default" || v.name === "Estándar" ? "Estándar" : v.name
+            const vOut =
+              v.isAvailable === false ||
+              (product.trackInventory && v.stock <= 0)
+            const name =
+              v.name === "Default" || v.name === "Estándar"
+                ? "Estándar"
+                : v.name
             return (
               <button
                 key={v.id}
@@ -279,20 +344,32 @@ export function ProductCard({
                 <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/60">
                   {v.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={v.imageUrl} alt={name} className="size-full object-cover" />
+                    <img
+                      src={v.imageUrl}
+                      alt={name}
+                      className="size-full object-cover"
+                    />
                   ) : (
                     <Layers className="size-5 text-muted-foreground" />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{name}</span>
+                  <span className="block truncate text-sm font-medium">
+                    {name}
+                  </span>
                   {vOut ? (
-                    <span className="block text-xs text-muted-foreground">Sin stock</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {v.isAvailable === false ? "Ya no hay" : "Sin stock"}
+                    </span>
                   ) : product.trackInventory ? (
-                    <span className="block text-xs text-muted-foreground">{Math.floor(v.stock)} disponibles</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {Math.floor(v.stock)} disponibles
+                    </span>
                   ) : null}
                 </span>
-                <span className="shrink-0 text-sm font-bold tabular-nums">{money(v.price)}</span>
+                <span className="shrink-0 text-sm font-bold tabular-nums">
+                  {money(v.price)}
+                </span>
                 <Plus className="size-4 shrink-0 text-muted-foreground" />
               </button>
             )
@@ -318,7 +395,8 @@ export function ProductCard({
               config.quantity,
               config.totalExtraPrice,
               selectedOptionsKey(config.selectedOptions),
-              config.notes
+              config.notes,
+              config.selectedOptions
             )
             if (res.added <= 0) {
               swalToast("Sin stock disponible", "info")

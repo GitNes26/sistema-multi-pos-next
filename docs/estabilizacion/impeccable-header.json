@@ -1,0 +1,24 @@
+[
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\org-switcher.tsx",
+    "line": 211,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\user-menu.tsx",
+    "line": 107,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem"
+  }
+]

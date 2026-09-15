@@ -38,6 +38,7 @@ import { DataTable } from "@/components/base/data-table";
 import { crudApi, inventoryApi, type InventoryRow, type InventoryMovement, type InventoryRevision, type RevisionDetailData, type RevisionItem, type RevisionStatus } from "@/lib/api";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { playSound } from "@/lib/sounds";
+import { SlideToPay } from "@/components/shared/slide-to-pay";
 
 interface InventoryPageProps {
   canManage: boolean;
@@ -526,16 +527,7 @@ function TransferDialog({
       description={`${row.variantName ?? row.productName} · disponible: ${row.quantity} ${row.unit ?? ""}`}
       className="sm:max-w-md"
       bodyClassName="space-y-3"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={submit} disabled={saving}>
-            {saving && <Loader2 className="size-4 animate-spin" />} Transferir
-          </Button>
-        </>
-      }
+      footer={<Button variant="ghost" onClick={onClose} disabled={saving}>Cancelar</Button>}
     >
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -583,6 +575,14 @@ function TransferDialog({
             <Label htmlFor="transferReason">Motivo (opcional)</Label>
             <Textarea id="transferReason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. traslado de mercancía" />
           </div>
+          <SlideToPay
+            action="transfer"
+            label={`Desliza para transferir ${quantity || 0} ${row.unit ?? "unidades"}`}
+            hint="El movimiento ajustará las existencias de ambos destinos"
+            onConfirm={submit}
+            loading={saving}
+            disabled={!toId || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0}
+          />
     </DialogComponent>
   );
 }
@@ -632,7 +632,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
   const [mFrom, setMFrom] = useState("");
   const [mTo, setMTo] = useState("");
 
-  const [exportBusy, setExportBusy] = useState<"pdf" | "xlsx" | "movements" | null>(null);
+  const [exportBusy, setExportBusy] = useState<"pdf" | "xlsx" | "template" | "movements" | null>(null);
 
   const [active, setActive] = useState<InventoryRow | null>(null);
   const [dialog, setDialog] = useState<"movement" | "threshold" | "transfer" | null>(null);
@@ -831,9 +831,28 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={importing || exportBusy !== null}
+                  onClick={async () => {
+                    setExportBusy("template");
+                    try {
+                      await inventoryApi.exportImportTemplate({ locationType, locationId });
+                    } catch (err) {
+                      swalError("No se pudo descargar la plantilla", err instanceof Error ? err.message : undefined);
+                    } finally {
+                      setExportBusy(null);
+                    }
+                  }}
+                  title="Plantilla vacía con instrucciones y el catálogo actualizado de productos"
+                >
+                  {exportBusy === "template" ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
+                  Plantilla
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={importing}
                   onClick={() => importInputRef.current?.click()}
-                  title="Importar existencias desde Excel (SKU, código de barras o nombre + cantidad)"
+                  title="1) Descarga la plantilla · 2) llena las existencias finales · 3) selecciona la ubicación · 4) importa el archivo"
                 >
                   {importing ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
                   Importar
@@ -962,6 +981,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                                   <Button
                                     variant="ghost"
                                     size="sm"
+                                    data-guide="inv-transfer"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActive(r);
@@ -1032,6 +1052,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                               variant="ghost"
                               size="icon-sm"
                               title="Movimiento"
+                              data-guide="inv-movement"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActive(r);
@@ -1044,6 +1065,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                               variant="ghost"
                               size="icon-sm"
                               title="Mínimo"
+                              data-guide="inv-threshold"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActive(r);
@@ -1056,6 +1078,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                               variant="ghost"
                               size="icon-sm"
                               title="Transferir"
+                              data-guide="inv-transfer"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActive(r);

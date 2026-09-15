@@ -24,7 +24,7 @@ const buttonVariants = cva(
         default:
           "h-11 gap-1.5 px-3 rounded-xl has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5 md:h-8 md:rounded-lg md:px-2.5",
         xs: "h-7 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3 md:h-6",
-        sm: "h-9 gap-1 rounded-[min(var(--radius-md),12px)] px-3 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5 md:h-7 md:px-2.5",
+        sm: "h-9 gap-1 rounded-[min(var(--radius-md),12px)] px-3 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5 md:h-7 md:px-2.5",
         lg: "h-12 gap-1.5 px-3 rounded-xl has-data-[icon=inline-end]:pr-2.5 has-data-[icon=inline-start]:pl-2.5 md:h-9 md:rounded-lg md:px-2.5",
         icon: "size-11 rounded-xl md:size-8 md:rounded-lg",
         "icon-xs":
@@ -60,7 +60,7 @@ function Button({
       data-size={size}
       className={cn([
         buttonVariants({ variant, size, className }),
-        "hover:cursor-pointer hover:scale-105 transition-transform duration-200 ease-in-out",
+        "ui-button-motion cursor-pointer active:scale-[0.98] motion-reduce:transform-none",
       ])}
       {...props}
     />

@@ -31,5 +31,5 @@ export async function POST(req: Request) {
   }
 
   const result = await processStripeWebhook(order.organizationId, rawBody, signature, event);
-  return NextResponse.json(result);
+  return NextResponse.json(result, { status: result.ok ? 200 : 400 });
 }

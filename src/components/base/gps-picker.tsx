@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { MapPin, MapPinned } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -25,6 +25,7 @@ export interface GpsValue {
 }
 
 export interface GpsPickerProps {
+  id?: string
   value?: GpsValue | null
   onChange?: (value: GpsValue | null) => void
   onPermissionError?: () => void
@@ -33,18 +34,22 @@ export interface GpsPickerProps {
   required?: boolean
   disabled?: boolean
   className?: string
+  error?: string
 }
 
 export function GpsPicker({
+  id,
   value,
   onChange,
-  onPermissionError,
   label,
   helper,
   required,
   disabled,
   className,
+  error,
 }: GpsPickerProps) {
+  const autoId = useId().replace(/:/g, "")
+  const fieldId = id ?? `gps-${autoId}`
   const { hasGoogleMaps } = useLocation()
   const [showMap, setShowMap] = useState(false)
 
@@ -93,7 +98,8 @@ export function GpsPicker({
     <div className={cn("space-y-3", className)}>
       {label && (
         <div className="flex items-center gap-1.5">
-          <Label className="leading-none">
+          <MapPin className="size-4 text-muted-foreground" />
+          <Label htmlFor={fieldId} className="cursor-pointer leading-none">
             {label}
             {required && <span className="text-destructive"> *</span>}
           </Label>
@@ -102,6 +108,7 @@ export function GpsPicker({
       )}
 
       <LocationSearch
+        id={fieldId}
         value={value ? [value.calle, value.numero, value.colonia, value.municipio, value.estado, value.cp].filter(Boolean).join(", ") : ""}
         onChange={handleLocationChange}
         onLocationSelect={handleLocationSelect}
@@ -111,6 +118,7 @@ export function GpsPicker({
         disabled={disabled}
         showMap={false}
         showDetect={true}
+        validationError={error}
       />
 
       {/* Map toggle button */}
@@ -203,6 +211,11 @@ export function GpsPicker({
       {!hasGoogleMaps && (
         <p className="text-[10px] text-muted-foreground">
           Usa Google Maps para mejores resultados de búsqueda
+        </p>
+      )}
+      {error && (
+        <p id={`${fieldId}-error`} role="alert" className="text-xs text-destructive">
+          {error}
         </p>
       )}
     </div>

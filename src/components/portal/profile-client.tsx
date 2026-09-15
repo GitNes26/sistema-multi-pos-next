@@ -22,6 +22,7 @@ import {
   Camera,
   BarChart3,
   FileText,
+  IdCard,
 } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import { logout } from "@/lib/auth/logout";
@@ -201,6 +202,12 @@ export function ProfileClient() {
             <h2 className="mt-4 text-xl font-bold tracking-tight">{customer.fullName}</h2>
             {customer.email && (
               <p className="text-sm text-muted-foreground">@{customer.email.split("@")[0]}</p>
+            )}
+            {customer.customerCode && (
+              <p className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-muted px-3 text-xs font-semibold text-muted-foreground">
+                <IdCard className="size-3.5" aria-hidden="true" />
+                Núm. de cliente: {customer.customerCode}
+              </p>
             )}
 
             {/* Stats row */}

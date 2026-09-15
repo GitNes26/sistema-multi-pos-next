@@ -46,6 +46,7 @@ export interface CashReportRow {
   totalSales: number;
   cashPayments: number;
   changeGiven: number;
+  cashRefunds: number;
   expectedCash: number;
   closingCash: number | null;
   difference: number | null;
@@ -225,18 +226,37 @@ export interface SalesReportRow {
 }
 
 export async function getSalesReport(organizationId: string, f: ReportFilters) {
-  const rows = await prisma.sale.findMany({
-    where: whereFrom(organizationId, f),
-    include: {
-      location: { select: { name: true } },
-      cashRegister: { select: { name: true } },
-      employee: { select: { fullName: true } },
-      customer: { select: { fullName: true } },
-      _count: { select: { items: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: Math.min(5000, f.limit ?? 2000),
-  });
+  const [rows, refunds] = await Promise.all([
+    prisma.sale.findMany({
+      where: whereFrom(organizationId, f),
+      include: {
+        location: { select: { name: true } },
+        cashRegister: { select: { name: true } },
+        employee: { select: { fullName: true } },
+        customer: { select: { fullName: true } },
+        _count: { select: { items: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: Math.min(5000, f.limit ?? 2000),
+    }),
+    prisma.saleReturn.aggregate({
+      where: {
+        organizationId,
+        status: "completed",
+        returnType: "refund",
+        ...(f.locationId ? { locationId: f.locationId } : {}),
+        ...(f.from || f.to ? { createdAt: {
+          ...(f.from ? { gte: new Date(`${f.from}T00:00:00`) } : {}),
+          ...(f.to ? { lte: new Date(`${f.to}T23:59:59.999`) } : {}),
+        } } : {}),
+        ...(f.employeeId || f.cashRegisterId ? { sale: {
+          ...(f.employeeId ? { employeeId: f.employeeId } : {}),
+          ...(f.cashRegisterId ? { cashRegisterId: f.cashRegisterId } : {}),
+        } } : {}),
+      },
+      _sum: { total: true },
+    }),
+  ]);
 
   const mapped: SalesReportRow[] = rows.map((s) => ({
     id: s.id,
@@ -268,7 +288,13 @@ export async function getSalesReport(organizationId: string, f: ReportFilters) {
     { subtotal: 0, discount: 0, tax: 0, total: 0, pointsEarned: 0 }
   );
 
-  return { rows: mapped, count: mapped.length, totals: mapValues(totals, round2) };
+  const rounded = mapValues(totals, round2);
+  const refundsTotal = round2(toNum(refunds._sum.total));
+  return {
+    rows: mapped,
+    count: mapped.length,
+    totals: { ...rounded, refundsTotal, netTotal: round2(rounded.total - refundsTotal) },
+  };
 }
 
 export async function getCashReport(organizationId: string, f: ReportFilters) {
@@ -288,6 +314,10 @@ export async function getCashReport(organizationId: string, f: ReportFilters) {
       location: { select: { name: true } },
       employee: { select: { fullName: true } },
       sales: { where: { status: "completed" }, select: { total: true, payments: true, changeGiven: true } },
+      saleReturns: {
+        where: { status: "completed", returnType: "refund" },
+        select: { refundPayments: { where: { method: "cash" }, select: { amount: true } } },
+      },
     },
     orderBy: { openedAt: "desc" },
     take: Math.min(2000, f.limit ?? 500),
@@ -300,8 +330,12 @@ export async function getCashReport(organizationId: string, f: ReportFilters) {
       0
     );
     const changeGiven = s.sales.reduce((a, x) => a + toNum(x.changeGiven), 0);
+    const cashRefunds = s.saleReturns.reduce(
+      (sum, ret) => sum + ret.refundPayments.reduce((subtotal, payment) => subtotal + toNum(payment.amount), 0),
+      0
+    );
     const opening = toNum(s.openingCash);
-    const expectedCash = opening + cashPayments - changeGiven;
+    const expectedCash = opening + cashPayments - changeGiven - cashRefunds;
     const closing = s.closingCash == null ? null : toNum(s.closingCash);
     return {
       id: s.id,
@@ -316,6 +350,7 @@ export async function getCashReport(organizationId: string, f: ReportFilters) {
       totalSales: round2(totalSales),
       cashPayments: round2(cashPayments),
       changeGiven: round2(changeGiven),
+      cashRefunds: round2(cashRefunds),
       expectedCash: round2(expectedCash),
       closingCash: closing == null ? null : round2(closing),
       difference: closing == null ? null : round2(closing - expectedCash),
@@ -327,10 +362,11 @@ export async function getCashReport(organizationId: string, f: ReportFilters) {
       acc.totalSales += r.totalSales;
       acc.salesCount += r.salesCount;
       acc.cashPayments += r.cashPayments;
+      acc.cashRefunds += r.cashRefunds;
       acc.expectedCash += r.expectedCash;
       return acc;
     },
-    { totalSales: 0, salesCount: 0, cashPayments: 0, expectedCash: 0 }
+    { totalSales: 0, salesCount: 0, cashPayments: 0, cashRefunds: 0, expectedCash: 0 }
   );
 
   return { rows, count: rows.length, totals: mapValues(totals, round2) };

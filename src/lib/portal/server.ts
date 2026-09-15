@@ -1,38 +1,67 @@
-import { prisma } from "@/lib/db";
-import type { $Enums, Prisma } from "@prisma/client";
-import { notifyOrderEvent } from "@/lib/notifications/events";
-import { round2, round3 } from "@/lib/pos/money";
-import { parseSchedule, formatSchedule } from "@/lib/schedule";
-import { evaluatePortalPromotions } from "./promo-engine";
+import { prisma } from "@/lib/db"
+import { Prisma, type $Enums } from "@prisma/client"
+import { notifyOrderEvent } from "@/lib/notifications/events"
+import { round2, round3 } from "@/lib/pos/money"
+import {
+  parseSchedule,
+  formatSchedule,
+  isScheduleOpenNow,
+} from "@/lib/schedule"
+import {
+  calculateDeliveryFee,
+  getEffectiveDeliveryPolicy,
+} from "@/lib/orders/server"
+import { evaluatePortalPromotions } from "./promo-engine"
+import {
+  consumeRecipeIngredients,
+  restoreRecipeIngredients,
+} from "@/lib/inventory/recipes"
 
 // FASE 13 — Servidor del portal de clientes: catálogo, pedidos, lealtad,
 // favoritos, listas de compra, perfil y métodos de pago.
 
 export class PortalError extends Error {
-  status: number;
+  status: number
   constructor(message: string, status = 400) {
-    super(message);
-    this.name = "PortalError";
-    this.status = status;
+    super(message)
+    this.name = "PortalError"
+    this.status = status
   }
 }
 
 const toNum = (v: Prisma.Decimal | number | string | null): number =>
-  v == null ? 0 : Number(v);
+  v == null ? 0 : Number(v)
+
+function distanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const earthRadiusKm = 6371
+  const latitudeDelta = ((lat2 - lat1) * Math.PI) / 180
+  const longitudeDelta = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(longitudeDelta / 2) ** 2
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
 
 // ── Cliente (resolución de sesión) ───────────────────────────────────────────
 
 export interface PortalCustomer {
-  id: string;
-  fullName: string;
-  phone: string | null;
-  email: string | null;
-  customerCode: string | null;
-  points: number;
-  imageUrl: string | null;
-  address: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  id: string
+  fullName: string
+  phone: string | null
+  email: string | null
+  customerCode: string | null
+  points: number
+  imageUrl: string | null
+  address: string | null
+  latitude: number | null
+  longitude: number | null
 }
 
 export async function getPortalCustomer(
@@ -53,136 +82,148 @@ export async function getPortalCustomer(
       latitude: true,
       longitude: true,
     },
-  });
-  if (!c) return null;
-  return { ...c, points: toNum(c.points), latitude: c.latitude ? toNum(c.latitude) : null, longitude: c.longitude ? toNum(c.longitude) : null };
+  })
+  if (!c) return null
+  return {
+    ...c,
+    points: toNum(c.points),
+    latitude: c.latitude ? toNum(c.latitude) : null,
+    longitude: c.longitude ? toNum(c.longitude) : null,
+  }
 }
 
 // ── Productos del portal (reutiliza la forma del POS + favoritos) ────────────
 
 export interface PortalBulkInfo {
-  unitId: string;
-  unitName: string;
-  unitAbbrev: string;
-  price: number;
-  minQty: number;
-  step: number;
-  maxQty: number;
-  allowSplit: boolean;
+  unitId: string
+  unitName: string
+  unitAbbrev: string
+  price: number
+  minQty: number
+  step: number
+  maxQty: number
+  allowSplit: boolean
   split: {
-    unitId: string;
-    unitName: string;
-    unitAbbrev: string;
-    price: number;
-  } | null;
+    unitId: string
+    unitName: string
+    unitAbbrev: string
+    price: number
+  } | null
 }
 
 export interface PortalVariantOption {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl: string | null;
-  stock: number;
-  isFavorite: boolean;
+  id: string
+  name: string
+  price: number
+  imageUrl: string | null
+  stock: number
+  isFavorite: boolean
+  isAvailable: boolean
 }
 
 export interface PortalProductOptionValue {
-  id: string;
-  value: string;
-  extraPrice: number;
-  imageUrl: string | null;
-  isActive: boolean;
+  id: string
+  value: string
+  extraPrice: number
+  imageUrl: string | null
+  isActive: boolean
 }
 
 export interface PortalProductOption {
-  id: string;
-  name: string;
-  position: number;
-  required: boolean;
-  minSelect: number;
-  maxSelect: number;
-  values: PortalProductOptionValue[];
+  id: string
+  name: string
+  position: number
+  required: boolean
+  minSelect: number
+  maxSelect: number
+  values: PortalProductOptionValue[]
 }
 
 export interface PortalProduct {
-  id: string;
-  productId: string;
-  kind: "standard" | "bulk" | "custom";
-  name: string;
-  taxRate: number;
-  categoryId: string | null;
-  categoryName: string | null;
-  imageUrl: string | null;
-  trackInventory: boolean;
+  id: string
+  productId: string
+  kind: "standard" | "bulk" | "custom"
+  name: string
+  taxRate: number
+  categoryId: string | null
+  categoryName: string | null
+  imageUrl: string | null
+  trackInventory: boolean
+  isAvailable: boolean
+  availabilityNote: string | null
   /** Stock total (granel) o suma de variantes (estándar). */
-  stock: number;
+  stock: number
   /** Estándar: opciones de variante (13.4 selector de variantes). */
-  variants: PortalVariantOption[];
+  variants: PortalVariantOption[]
   /** Granel: precio por unidad + badge + split. */
-  bulk: PortalBulkInfo | null;
+  bulk: PortalBulkInfo | null
   /** Opciones configurables del producto (sabores, toppings, etc.). */
-  options: PortalProductOption[];
+  options: PortalProductOption[]
   /** Descripción del producto (opcional). */
-  description: string | null;
+  description: string | null
 }
 
 export interface PortalCategory {
-  id: string;
-  name: string;
-  imageUrl: string | null;
-  productCount: number;
+  id: string
+  name: string
+  imageUrl: string | null
+  productCount: number
 }
 
 export async function getStorefront(
   organizationId: string,
   customerId: string | null
 ): Promise<{ categories: PortalCategory[]; products: PortalProduct[] }> {
-  const [variantsRaw, bulkRaw, categories, favorites, orgRow] = await Promise.all([
-    prisma.productVariant.findMany({
-      where: { organizationId, isActive: true, product: { isActive: true } },
-      include: {
-        product: {
-          include: {
-            category: true,
-            options: {
-              orderBy: { position: "asc" },
-              include: {
-                values: { where: { isActive: true }, orderBy: { position: "asc" } },
+  const [variantsRaw, bulkRaw, categories, favorites, orgRow] =
+    await Promise.all([
+      prisma.productVariant.findMany({
+        where: { organizationId, isActive: true, product: { isActive: true } },
+        include: {
+          product: {
+            include: {
+              category: true,
+              options: {
+                orderBy: { position: "asc" },
+                include: {
+                  values: {
+                    where: { isActive: true },
+                    orderBy: { position: "asc" },
+                  },
+                },
               },
             },
           },
         },
-      },
-    }),
-    prisma.product.findMany({
-      where: { organizationId, isActive: true, productType: "bulk" },
-      include: { category: true, bulkUnit: true, splitUnit: true },
-    }),
-    prisma.category.findMany({
-      where: { organizationId, isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, imageUrl: true },
-    }),
-    customerId
-      ? prisma.customerFavorite.findMany({
-          where: { customerId },
-          select: { variantId: true },
-        })
-      : Promise.resolve([]),
-    // Las opciones/constructor son de restaurantes; retail no las consume.
-    prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { businessMode: true },
-    }),
-  ]);
+      }),
+      prisma.product.findMany({
+        where: { organizationId, isActive: true, productType: "bulk" },
+        include: { category: true, bulkUnit: true, splitUnit: true },
+      }),
+      prisma.category.findMany({
+        where: { organizationId, isActive: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, imageUrl: true },
+      }),
+      customerId
+        ? prisma.customerFavorite.findMany({
+            where: { customerId },
+            select: { variantId: true },
+          })
+        : Promise.resolve([]),
+      // Las opciones/constructor son de restaurantes; retail no las consume.
+      prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { businessMode: true },
+      }),
+    ])
 
-  const favoriteIds = new Set(favorites.map((f) => f.variantId));
+  const favoriteIds = new Set(favorites.map((f) => f.variantId))
   // El constructor de producto es de restaurantes Y solo se abre para
   // productos tipo "custom": un estándar (o a granel) nunca lleva tópicos.
   const builderMode =
-    orgRow?.businessMode === "food_service" || orgRow?.businessMode === "hybrid";
+    orgRow?.businessMode === "food_service" || orgRow?.businessMode === "hybrid"
   const optionsEnabled = (productType: string) =>
-    builderMode && productType === "custom";
+    builderMode && productType === "custom"
 
   // Stock total de la org (suma de todas las sucursales activas).
   const locationIds = (
@@ -190,25 +231,33 @@ export async function getStorefront(
       where: { organizationId, isActive: true },
       select: { id: true },
     })
-  ).map((l) => l.id);
+  ).map((l) => l.id)
   const inventoryRows = await prisma.inventory.findMany({
     where: { organizationId, locationId: { in: locationIds } },
     select: { variantId: true, productId: true, quantity: true },
-  });
-  const variantStock = new Map<string, number>();
-  const productStock = new Map<string, number>();
+  })
+  const variantStock = new Map<string, number>()
+  const productStock = new Map<string, number>()
   for (const inv of inventoryRows) {
-    const q = toNum(inv.quantity);
-    if (inv.variantId) variantStock.set(inv.variantId, (variantStock.get(inv.variantId) ?? 0) + q);
-    if (inv.productId) productStock.set(inv.productId, (productStock.get(inv.productId) ?? 0) + q);
+    const q = toNum(inv.quantity)
+    if (inv.variantId)
+      variantStock.set(
+        inv.variantId,
+        (variantStock.get(inv.variantId) ?? 0) + q
+      )
+    if (inv.productId)
+      productStock.set(
+        inv.productId,
+        (productStock.get(inv.productId) ?? 0) + q
+      )
   }
 
   // Estándar: agrupa variantes por producto para el selector (13.4).
-  const stdByProduct = new Map<string, PortalProduct>();
+  const stdByProduct = new Map<string, PortalProduct>()
   for (const v of variantsRaw) {
-    const p = v.product;
-    const stock = variantStock.get(v.id) ?? 0;
-    let entry = stdByProduct.get(p.id);
+    const p = v.product
+    const stock = variantStock.get(v.id) ?? 0
+    let entry = stdByProduct.get(p.id)
     if (!entry) {
       entry = {
         id: p.id,
@@ -220,6 +269,8 @@ export async function getStorefront(
         categoryName: p.category?.name ?? null,
         imageUrl: v.imageUrl ?? p.imageUrl,
         trackInventory: p.trackInventory,
+        isAvailable: p.isAvailable,
+        availabilityNote: p.availabilityNote,
         description: p.description ?? null,
         stock: 0,
         variants: [],
@@ -241,8 +292,8 @@ export async function getStorefront(
               })),
             }))
           : [],
-      };
-      stdByProduct.set(p.id, entry);
+      }
+      stdByProduct.set(p.id, entry)
     }
     entry.variants.push({
       id: v.id,
@@ -251,10 +302,11 @@ export async function getStorefront(
       imageUrl: v.imageUrl ?? p.imageUrl,
       stock,
       isFavorite: favoriteIds.has(v.id),
-    });
+      isAvailable: v.isAvailable,
+    })
   }
 
-  const products: PortalProduct[] = [...stdByProduct.values()];
+  const products: PortalProduct[] = [...stdByProduct.values()]
 
   for (const p of bulkRaw) {
     products.push({
@@ -267,6 +319,8 @@ export async function getStorefront(
       categoryName: p.category?.name ?? null,
       imageUrl: p.imageUrl,
       trackInventory: p.trackInventory,
+      isAvailable: p.isAvailable,
+      availabilityNote: p.availabilityNote,
       description: p.description ?? null,
       stock: productStock.get(p.id) ?? 0,
       variants: [],
@@ -290,43 +344,49 @@ export async function getStorefront(
             : null,
       },
       options: [],
-    });
+    })
   }
 
   products.sort(
     (a, b) =>
       (a.categoryName ?? "").localeCompare(b.categoryName ?? "") ||
       a.name.localeCompare(b.name)
-  );
+  )
 
   const categoriesWithCount: PortalCategory[] = categories.map((c) => ({
     id: c.id,
     name: c.name,
     imageUrl: c.imageUrl,
     productCount: products.filter((p) => p.categoryId === c.id).length,
-  }));
+  }))
 
-  return { categories: categoriesWithCount, products };
+  return { categories: categoriesWithCount, products }
 }
 
 // ── Home (13.2) ──────────────────────────────────────────────────────────────
 
 export interface PortalOrderBanner {
-  id: string;
-  orderNumber: number;
-  status: string;
-  deliveryMethod: string;
-  total: number;
-  itemsCount: number;
-  createdAt: string;
+  id: string
+  orderNumber: number
+  status: string
+  deliveryMethod: string
+  total: number
+  itemsCount: number
+  createdAt: string
 }
 
 export interface PortalComboItem {
   id: string
+  productId: string
+  variantId: string | null
+  productType: "standard" | "bulk" | "custom"
   productName: string
   variantName: string | null
   quantity: number
+  unitPrice: number
   extraPrice: number
+  taxRate: number
+  categoryId: string | null
 }
 
 export interface PortalCombo {
@@ -341,51 +401,58 @@ export interface PortalCombo {
 }
 
 export interface PortalHomeData {
-  points: number;
+  points: number
   promotions: {
-    id: string;
-    name: string;
-    description: string | null;
-    descriptionFinal: string | null;
-    imageUrl: string | null;
-    benefit: string;
-    value: number;
-    startsAt: string | null;
-    endsAt: string | null;
-  }[];
-  activeOrders: PortalOrderBanner[];
+    id: string
+    name: string
+    description: string | null
+    descriptionFinal: string | null
+    imageUrl: string | null
+    benefit: string
+    value: number
+    startsAt: string | null
+    endsAt: string | null
+  }[]
+  activeOrders: PortalOrderBanner[]
   newProducts: {
-    id: string;
-    name: string;
-    price: number;
-    imageUrl: string | null;
-    kind: string;
-  }[];
+    id: string
+    name: string
+    price: number
+    imageUrl: string | null
+    kind: string
+  }[]
   publications: {
-    id: string;
-    title: string;
-    content: string | null;
-    imageUrl: string | null;
-    type: string;
-    publishedAt: string | null;
-  }[];
-  combos: PortalCombo[];
+    id: string
+    title: string
+    content: string | null
+    imageUrl: string | null
+    type: string
+    publishedAt: string | null
+  }[]
+  combos: PortalCombo[]
 }
 
 export async function getPortalHome(
   organizationId: string,
   customerId: string
 ): Promise<PortalHomeData> {
-  const now = new Date();
+  const now = new Date()
 
   // Fetch org businessMode for filtering
   const org = await prisma.organization.findUnique({
     where: { id: organizationId },
     select: { businessMode: true },
-  });
-  const bm = org?.businessMode ?? null;
+  })
+  const bm = org?.businessMode ?? null
 
-  const [customer, promotions, activeOrders, newProducts, publications, combosRaw] = await Promise.all([
+  const [
+    customer,
+    promotions,
+    activeOrders,
+    newProducts,
+    publications,
+    combosRaw,
+  ] = await Promise.all([
     prisma.customer.findUnique({
       where: { id: customerId },
       select: { points: true },
@@ -397,7 +464,9 @@ export async function getPortalHome(
         AND: [
           { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
           // Filter by businessMode: null=todos, specific=only that mode
-          ...(bm ? [{ OR: [{ businessMode: null }, { businessMode: bm }] }] : []),
+          ...(bm
+            ? [{ OR: [{ businessMode: null }, { businessMode: bm }] }]
+            : []),
         ],
       },
       orderBy: { priority: "asc" },
@@ -442,14 +511,18 @@ export async function getPortalHome(
         organizationId,
         isActive: true,
         AND: [
-          { OR: [
-            { startsAt: null, endsAt: null },
-            { startsAt: null, endsAt: { gte: now } },
-            { startsAt: { lte: now }, endsAt: null },
-            { startsAt: { lte: now }, endsAt: { gte: now } },
-          ] },
+          {
+            OR: [
+              { startsAt: null, endsAt: null },
+              { startsAt: null, endsAt: { gte: now } },
+              { startsAt: { lte: now }, endsAt: null },
+              { startsAt: { lte: now }, endsAt: { gte: now } },
+            ],
+          },
           // Filter by businessMode: null=todos, specific=only that mode
-          ...(bm ? [{ OR: [{ businessMode: null }, { businessMode: bm }] }] : []),
+          ...(bm
+            ? [{ OR: [{ businessMode: null }, { businessMode: bm }] }]
+            : []),
         ],
       },
       orderBy: { publishedAt: "desc" },
@@ -461,7 +534,20 @@ export async function getPortalHome(
         items: {
           orderBy: { position: "asc" },
           include: {
-            product: { select: { name: true } },
+            product: {
+              select: {
+                name: true,
+                productType: true,
+                bulkPricePerUnit: true,
+                taxRate: true,
+                categoryId: true,
+                variants: {
+                  where: { isActive: true },
+                  take: 1,
+                  select: { price: true },
+                },
+              },
+            },
             variant: { select: { name: true, price: true } },
           },
         },
@@ -469,9 +555,11 @@ export async function getPortalHome(
       orderBy: { createdAt: "asc" },
       take: 12,
     }),
-  ]);
+  ])
 
-  console.log(`[portal/home] org=${organizationId} promos=${promotions.length} orders=${activeOrders.length} products=${newProducts.length} pubs=${publications.length} combos=${combosRaw.length}`);
+  console.log(
+    `[portal/home] org=${organizationId} promos=${promotions.length} orders=${activeOrders.length} products=${newProducts.length} pubs=${publications.length} combos=${combosRaw.length}`
+  )
 
   return {
     points: toNum(customer?.points ?? null),
@@ -496,7 +584,7 @@ export async function getPortalHome(
       createdAt: o.createdAt.toISOString(),
     })),
     newProducts: newProducts.map((p) => {
-      const variantPrices = p.variants.map((v) => toNum(v.price));
+      const variantPrices = p.variants.map((v) => toNum(v.price))
       return {
         id: p.id,
         name: p.name,
@@ -508,7 +596,7 @@ export async function getPortalHome(
               : 0,
         imageUrl: p.imageUrl,
         kind: p.productType,
-      };
+      }
     }),
     publications: publications.map((p) => ({
       id: p.id,
@@ -520,8 +608,15 @@ export async function getPortalHome(
     })),
     combos: combosRaw.map((c) => {
       const originalPrice = c.items.reduce((sum, ci) => {
-        const itemPrice = ci.variant?.price ?? ci.product?.name ? 0 : 0
-        return sum + (Number(ci.extraPrice) || 0)
+        const basePrice =
+          ci.variant?.price != null
+            ? toNum(ci.variant.price)
+            : ci.product.productType === "bulk"
+              ? toNum(ci.product.bulkPricePerUnit)
+              : toNum(ci.product.variants[0]?.price ?? null)
+        return round2(
+          sum + (basePrice + toNum(ci.extraPrice)) * toNum(ci.quantity)
+        )
       }, 0)
       const comboPrice = Number(c.comboPrice)
       return {
@@ -534,35 +629,50 @@ export async function getPortalHome(
         savings: Math.max(0, originalPrice - comboPrice),
         items: c.items.map((ci) => ({
           id: ci.id,
+          productId: ci.productId,
+          variantId: ci.variantId,
+          productType: ci.product.productType,
           productName: ci.product.name,
           variantName: ci.variant?.name ?? null,
           quantity: Number(ci.quantity),
+          unitPrice: round2(
+            (ci.variant?.price != null
+              ? toNum(ci.variant.price)
+              : ci.product.productType === "bulk"
+                ? toNum(ci.product.bulkPricePerUnit)
+                : toNum(ci.product.variants[0]?.price ?? null)) +
+              toNum(ci.extraPrice)
+          ),
           extraPrice: Number(ci.extraPrice),
+          taxRate: toNum(ci.product.taxRate),
+          categoryId: ci.product.categoryId,
         })),
       }
     }),
-  };
+  }
 }
 
 // ── Sucursales (13.6) ────────────────────────────────────────────────────────
 
 export interface PortalLocation {
-  id: string;
-  name: string;
-  address: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  openingHours: string | null;
-  openingScheduleJson: string | null;
-  allowsPickup: boolean;
-  allowsDelivery: boolean;
+  id: string
+  name: string
+  address: string | null
+  latitude: number | null
+  longitude: number | null
+  openingHours: string | null
+  openingScheduleJson: string | null
+  allowsPickup: boolean
+  allowsDelivery: boolean
 }
 
-export async function listPortalLocations(organizationId: string): Promise<PortalLocation[]> {
+export async function listPortalLocations(
+  organizationId: string
+): Promise<PortalLocation[]> {
   const rows = await prisma.location.findMany({
     where: { organizationId, isActive: true },
     orderBy: { name: "asc" },
-  });
+  })
   return rows.map((l) => ({
     id: l.id,
     name: l.name,
@@ -575,55 +685,65 @@ export async function listPortalLocations(organizationId: string): Promise<Porta
     openingScheduleJson: l.openingScheduleJson,
     allowsPickup: l.allowsPickup,
     allowsDelivery: l.allowsDelivery,
-  }));
+  }))
 }
 
 // ── Pedidos (13.6-13.8, 13.11) ───────────────────────────────────────────────
 
 export interface PortalOrderInput {
+  idempotencyKey?: string
   items: {
-    productId: string;
-    variantId: string | null;
-    productType: "standard" | "bulk";
-    productName: string;
-    variantName: string | null;
-    quantity: number;
-    unitId: string | null;
-    unitPrice: number;
-    lineTotal: number;
-    categoryId?: string | null;
-    bulkQuantityDisplay?: string | null;
-    comment?: string | null;
-  }[];
-  deliveryMethod: "pickup" | "delivery";
-  locationId?: string | null;
-  address?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  paymentMethod: string;
-  paymentReference?: string | null;
-  pointsRedeemed?: number;
-  subtotal: number;
-  discount: number;
-  deliveryFee?: number;
+    productId: string
+    variantId: string | null
+    productType: "standard" | "bulk" | "custom"
+    productName: string
+    variantName: string | null
+    quantity: number
+    unitId: string | null
+    unitPrice: number
+    lineTotal: number
+    categoryId?: string | null
+    bulkQuantityDisplay?: string | null
+    comment?: string | null
+    selectedOptions?: {
+      optionId: string
+      optionName: string
+      values: { id: string; value: string; extraPrice: number }[]
+    }[]
+    extraPrice?: number
+    comboId?: string
+    comboItemId?: string
+    comboQuantity?: number
+  }[]
+  deliveryMethod: "pickup" | "delivery"
+  locationId?: string | null
+  address?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  paymentMethod: string
+  paymentReference?: string | null
+  pointsRedeemed?: number
+  subtotal: number
+  discount: number
+  deliveryFee?: number
   /** Par mesa QR (token del QR escaneado) para pedidos desde el menú digital. */
-  tableToken?: string | null;
-  total: number;
-  tip?: number;
-  notes?: string | null;
-  tableId?: string | null;
+  tableToken?: string | null
+  total: number
+  tip?: number
+  notes?: string | null
+  tableId?: string | null
 }
 
-const VALID_PAYMENT_METHODS = ["cash", "card", "wallet", "other", "points"];
+const VALID_PAYMENT_METHODS = ["cash", "card", "wallet", "other", "points"]
 
 export interface PortalOrderRow {
-  id: string;
-  orderNumber: number;
-  status: string;
-  deliveryMethod: string;
-  total: number;
-  itemsCount: number;
-  createdAt: string;
+  id: string
+  orderNumber: number
+  status: string
+  deliveryMethod: string
+  total: number
+  itemsCount: number
+  createdAt: string
 }
 
 export async function listPortalOrders(
@@ -634,7 +754,7 @@ export async function listPortalOrders(
     where: { organizationId, customerId },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { items: true } } },
-  });
+  })
   return orders.map((o) => ({
     id: o.id,
     orderNumber: Number(o.orderNumber),
@@ -643,48 +763,52 @@ export async function listPortalOrders(
     total: toNum(o.total),
     itemsCount: o._count.items,
     createdAt: o.createdAt.toISOString(),
-  }));
+  }))
 }
 
 export interface PortalOrderDetail {
-  id: string;
-  orderNumber: number;
-  status: string;
-  deliveryMethod: string;
-  subtotal: number;
-  discount: number;
-  total: number;
-  notes: string | null;
-  address: string | null;
-  locationName: string | null;
-  paymentMethod: string | null;
-  paymentReference: string | null;
-  deliveryPin: string | null;
-  deliveryQrToken: string | null;
+  id: string
+  orderNumber: number
+  status: string
+  deliveryMethod: string
+  subtotal: number
+  discount: number
+  deliveryFee: number
+  tip: number
+  pointsRedeemed: number
+  pointsValue: number
+  total: number
+  notes: string | null
+  address: string | null
+  locationName: string | null
+  paymentMethod: string | null
+  paymentReference: string | null
+  deliveryPin: string | null
+  deliveryQrToken: string | null
   /** Destino del pedido a domicilio. */
-  latitude: number | null;
-  longitude: number | null;
+  latitude: number | null
+  longitude: number | null
   /** Coordenadas de la sucursal que surte (para el mapa de seguimiento). */
-  locationLatitude: number | null;
-  locationLongitude: number | null;
-  createdAt: string;
-  updatedAt: string;
+  locationLatitude: number | null
+  locationLongitude: number | null
+  createdAt: string
+  updatedAt: string
   items: {
-    id: string;
-    productName: string;
-    variantName: string | null;
-    quantity: number;
-    unitName: string | null;
-    unitPrice: number;
-    lineTotal: number;
-    bulkQuantityDisplay: string | null;
-    comment: string | null;
-  }[];
+    id: string
+    productName: string
+    variantName: string | null
+    quantity: number
+    unitName: string | null
+    unitPrice: number
+    lineTotal: number
+    bulkQuantityDisplay: string | null
+    comment: string | null
+  }[]
   history: {
-    status: string;
-    notes: string | null;
-    createdAt: string;
-  }[];
+    status: string
+    notes: string | null
+    createdAt: string
+  }[]
 }
 
 export async function getPortalOrder(
@@ -696,11 +820,14 @@ export async function getPortalOrder(
     where: { id: orderId, organizationId, customerId },
     include: {
       location: { select: { name: true, latitude: true, longitude: true } },
-      items: { include: { unit: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
+      items: {
+        include: { unit: { select: { name: true } } },
+        orderBy: { createdAt: "asc" },
+      },
       statusHistory: { orderBy: { createdAt: "asc" } },
     },
-  });
-  if (!order) return null;
+  })
+  if (!order) return null
 
   return {
     id: order.id,
@@ -709,6 +836,10 @@ export async function getPortalOrder(
     deliveryMethod: order.deliveryMethod,
     subtotal: toNum(order.subtotal),
     discount: toNum(order.discount),
+    deliveryFee: toNum(order.deliveryFee),
+    tip: toNum(order.tip),
+    pointsRedeemed: toNum(order.pointsRedeemed),
+    pointsValue: toNum(order.pointsValue),
     total: toNum(order.total),
     notes: order.notes,
     address: order.address,
@@ -730,7 +861,9 @@ export async function getPortalOrder(
     locationLatitude:
       order.location?.latitude != null ? toNum(order.location.latitude) : null,
     locationLongitude:
-      order.location?.longitude != null ? toNum(order.location.longitude) : null,
+      order.location?.longitude != null
+        ? toNum(order.location.longitude)
+        : null,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     items: order.items.map((i) => ({
@@ -749,7 +882,7 @@ export async function getPortalOrder(
       notes: h.notes,
       createdAt: h.createdAt.toISOString(),
     })),
-  };
+  }
 }
 
 export async function createPortalOrder(
@@ -757,86 +890,444 @@ export async function createPortalOrder(
   customerId: string,
   input: PortalOrderInput
 ): Promise<PortalOrderDetail> {
-  if (!input.items.length) throw new PortalError("El carrito está vacío");
-  if (input.deliveryMethod !== "pickup" && input.deliveryMethod !== "delivery") {
-    throw new PortalError("Método de entrega inválido");
+  if (!input.items.length) throw new PortalError("El carrito está vacío")
+  if (
+    input.deliveryMethod !== "pickup" &&
+    input.deliveryMethod !== "delivery"
+  ) {
+    throw new PortalError("Método de entrega inválido")
   }
   if (!VALID_PAYMENT_METHODS.includes(input.paymentMethod)) {
-    throw new PortalError("Método de pago inválido");
+    throw new PortalError("Método de pago inválido")
+  }
+  const idempotencyKey = input.idempotencyKey?.trim() || null
+  if (idempotencyKey && !/^[A-Za-z0-9_-]{16,64}$/.test(idempotencyKey)) {
+    throw new PortalError("Identificador de pedido inválido")
+  }
+  if (idempotencyKey) {
+    const existing = await prisma.order.findFirst({
+      where: { organizationId, customerId, idempotencyKey },
+      select: { id: true },
+    })
+    if (existing)
+      return (await getPortalOrder(organizationId, customerId, existing.id))!
   }
   // Pedido a mesa (menú digital por QR): el par (tableId, tableToken) debe
   // validar contra la BD — no basta con conocer el id de la mesa (un id
   // adivinado no debe permitir colgar pedidos en mesas ajenas). Va ANTES de
   // la validación de sucursal: la mesa define la ubicación del pedido.
-  let effectiveLocationId = input.locationId ?? null;
+  let effectiveLocationId = input.locationId ?? null
   if (input.tableId) {
     if (!input.tableToken) {
-      throw new PortalError("Token de mesa requerido: escanea el QR de tu mesa", 400);
+      throw new PortalError(
+        "Token de mesa requerido: escanea el QR de tu mesa",
+        400
+      )
     }
     const table = await prisma.table.findFirst({
-      where: { id: input.tableId, organizationId, qrToken: input.tableToken, isActive: true },
+      where: {
+        id: input.tableId,
+        organizationId,
+        qrToken: input.tableToken,
+        isActive: true,
+      },
       select: { id: true, locationId: true },
-    });
+    })
     if (!table) {
-      throw new PortalError("QR de mesa inválido", 400);
+      throw new PortalError("QR de mesa inválido", 400)
     }
-    effectiveLocationId = table.locationId;
+    effectiveLocationId = table.locationId
   } else if (input.tableToken) {
     // Token sin mesa: par incompleto, rechazar.
-    throw new PortalError("QR de mesa inválido", 400);
+    throw new PortalError("QR de mesa inválido", 400)
   }
-  if (input.deliveryMethod === "pickup" && !input.locationId && !input.tableId) {
-    throw new PortalError("Selecciona una sucursal para recoger");
+  if (
+    input.deliveryMethod === "pickup" &&
+    !input.locationId &&
+    !input.tableId
+  ) {
+    throw new PortalError("Selecciona una sucursal para recoger")
   }
   if (input.deliveryMethod === "delivery" && !input.address?.trim()) {
-    throw new PortalError("Ingresa una dirección de entrega");
+    throw new PortalError("Ingresa una dirección de entrega")
   }
 
-  const customer = await prisma.customer.findUnique({ where: { id: customerId } });
-  if (!customer) throw new PortalError("Cliente no encontrado", 404);
+  const customer = await prisma.customer.findFirst({
+    where: { id: customerId, organizationId },
+  })
+  if (!customer) throw new PortalError("Cliente no encontrado", 404)
 
-  // Validación de stock: suma disponible en la org.
-  const locationIds = (
-    await prisma.location.findMany({
-      where: { organizationId, isActive: true },
-      select: { id: true },
+  const requestedComboIds = [
+    ...new Set(
+      input.items
+        .map((item) => item.comboId)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ]
+  const requestedCombos = requestedComboIds.length
+    ? await prisma.productCombo.findMany({
+        where: {
+          id: { in: requestedComboIds },
+          organizationId,
+          isActive: true,
+        },
+        include: { items: true },
+      })
+    : []
+  if (requestedCombos.length !== requestedComboIds.length)
+    throw new PortalError("Combo no disponible")
+  type ComboState = {
+    combo: (typeof requestedCombos)[number]
+    quantity: number | null
+    seenItems: Set<string>
+    originalTotal: number
+  }
+  const comboStates = new Map<string, ComboState>(
+    requestedCombos.map((combo) => [
+      combo.id,
+      {
+        combo,
+        quantity: null,
+        seenItems: new Set<string>(),
+        originalTotal: 0,
+      },
+    ])
+  )
+
+  const latitude = input.latitude == null ? null : Number(input.latitude)
+  const longitude = input.longitude == null ? null : Number(input.longitude)
+  if (
+    (latitude != null &&
+      (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) ||
+    (longitude != null &&
+      (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)) ||
+    (latitude == null) !== (longitude == null)
+  ) {
+    throw new PortalError("Ubicación de entrega inválida")
+  }
+
+  if (!input.tableId) {
+    const eligibleLocations = await prisma.location.findMany({
+      where: {
+        organizationId,
+        isActive: true,
+        ...(input.deliveryMethod === "pickup"
+          ? { allowsPickup: true }
+          : { allowsDelivery: true }),
+      },
+      select: { id: true, latitude: true, longitude: true },
+      orderBy: { name: "asc" },
     })
-  ).map((l) => l.id);
-  const inventoryRows = await prisma.inventory.findMany({
-    where: { organizationId, locationId: { in: locationIds } },
-    select: { variantId: true, productId: true, quantity: true },
-  });
-  const available = new Map<string, number>();
-  for (const inv of inventoryRows) {
-    const key = inv.variantId ?? inv.productId ?? "";
-    if (!key) continue;
-    available.set(key, (available.get(key) ?? 0) + toNum(inv.quantity));
-  }
-  for (const item of input.items) {
-    const key = item.variantId ?? item.productId;
-    if (!available.has(key) && item.quantity > 0) continue;
-    const stock = available.get(key) ?? 0;
-    if (item.quantity > stock) {
-      throw new PortalError(`Stock insuficiente para "${item.productName}"`);
+    if (eligibleLocations.length === 0) {
+      throw new PortalError(
+        input.deliveryMethod === "pickup"
+          ? "No hay sucursales disponibles para recoger"
+          : "El servicio a domicilio no está disponible"
+      )
+    }
+    if (input.deliveryMethod === "pickup") {
+      if (
+        !eligibleLocations.some(
+          (location) => location.id === effectiveLocationId
+        )
+      ) {
+        throw new PortalError(
+          "La sucursal seleccionada no está disponible para recoger"
+        )
+      }
+    } else if (latitude != null && longitude != null) {
+      const nearest = eligibleLocations
+        .filter(
+          (location) => location.latitude != null && location.longitude != null
+        )
+        .map((location) => ({
+          ...location,
+          distance: distanceKm(
+            latitude,
+            longitude,
+            toNum(location.latitude),
+            toNum(location.longitude)
+          ),
+        }))
+        .sort((a, b) => a.distance - b.distance)[0]
+      effectiveLocationId = nearest?.id ?? eligibleLocations[0].id
+    } else {
+      effectiveLocationId = eligibleLocations[0].id
     }
   }
 
-  const pointsRedeemed = Math.max(0, Math.floor(input.pointsRedeemed ?? 0));
+  // El cliente solo propone cantidades y referencias; precio, producto y
+  // subtotal se vuelven a resolver desde el catálogo de la organización.
+  let trustedSubtotal = 0
+  let trustedTax = 0
+  const trustedItems: PortalOrderInput["items"] = []
+  for (const item of input.items) {
+    if (
+      !Number.isFinite(item.quantity) ||
+      item.quantity <= 0 ||
+      item.quantity > 100000
+    ) {
+      throw new PortalError("Cantidad inválida")
+    }
+    const hasComboReference = Boolean(
+      item.comboId || item.comboItemId || item.comboQuantity != null
+    )
+    let comboState: ComboState | undefined
+    let trustedComboExtra = 0
+    if (hasComboReference) {
+      if (
+        !item.comboId ||
+        !item.comboItemId ||
+        !Number.isFinite(item.comboQuantity) ||
+        Number(item.comboQuantity) <= 0
+      ) {
+        throw new PortalError("Referencia de combo inválida")
+      }
+      comboState = comboStates.get(item.comboId)
+      const comboItem = comboState?.combo.items.find(
+        (candidate) => candidate.id === item.comboItemId
+      )
+      if (
+        !comboState ||
+        !comboItem ||
+        comboState.seenItems.has(comboItem.id) ||
+        comboItem.productId !== item.productId ||
+        comboItem.variantId !== item.variantId
+      ) {
+        throw new PortalError("Contenido de combo inválido")
+      }
+      const comboQuantity = round3(Number(item.comboQuantity))
+      if (
+        comboState.quantity != null &&
+        comboState.quantity !== comboQuantity
+      ) {
+        throw new PortalError("Cantidad de combo inconsistente")
+      }
+      if (
+        Math.abs(
+          item.quantity - round3(toNum(comboItem.quantity) * comboQuantity)
+        ) > 0.001
+      ) {
+        throw new PortalError("Cantidad de combo inválida")
+      }
+      comboState.quantity = comboQuantity
+      comboState.seenItems.add(comboItem.id)
+      trustedComboExtra = toNum(comboItem.extraPrice)
+    }
+    const variant = item.variantId
+      ? await prisma.productVariant.findFirst({
+          where: {
+            id: item.variantId,
+            productId: item.productId,
+            organizationId,
+            isActive: true,
+            isAvailable: true,
+            product: { isAvailable: true },
+          },
+          include: {
+            product: {
+              select: {
+                isActive: true,
+                productType: true,
+                bulkPricePerUnit: true,
+                bulkUnitId: true,
+                allowSplit: true,
+                splitUnitId: true,
+                splitPricePerUnit: true,
+                taxRate: true,
+                categoryId: true,
+                name: true,
+              },
+            },
+          },
+        })
+      : null
+    const product = variant
+      ? variant.product
+      : await prisma.product.findFirst({
+          where: {
+            id: item.productId,
+            organizationId,
+            isActive: true,
+            isAvailable: true,
+          },
+          select: {
+            isActive: true,
+            productType: true,
+            bulkPricePerUnit: true,
+            bulkUnitId: true,
+            allowSplit: true,
+            splitUnitId: true,
+            splitPricePerUnit: true,
+            taxRate: true,
+            categoryId: true,
+            name: true,
+            variants: {
+              where: { isActive: true },
+              take: 1,
+              select: { price: true },
+            },
+          },
+        })
+    if (!product || !product.isActive || (item.variantId && !variant))
+      throw new PortalError("Producto no disponible")
+    let optionsExtra = 0
+    if (comboState) {
+      if ((item.selectedOptions?.length ?? 0) > 0)
+        throw new PortalError("Las opciones del combo no se pueden modificar")
+      optionsExtra = trustedComboExtra
+    } else if (product.productType === "custom") {
+      const configuredOptions = await prisma.productOption.findMany({
+        where: { productId: item.productId },
+        include: { values: { where: { isActive: true } } },
+      })
+      const submittedOptions = Array.isArray(item.selectedOptions)
+        ? item.selectedOptions
+        : []
+      const submittedByOption = new Map(
+        submittedOptions.map((option) => [option.optionId, option])
+      )
+      if (submittedByOption.size !== submittedOptions.length)
+        throw new PortalError("Opciones de producto inválidas")
+      for (const submitted of submittedOptions) {
+        if (
+          !configuredOptions.some((option) => option.id === submitted.optionId)
+        ) {
+          throw new PortalError("Opciones de producto inválidas")
+        }
+      }
+      for (const option of configuredOptions) {
+        const submitted = submittedByOption.get(option.id)
+        const submittedValues = submitted?.values ?? []
+        const uniqueIds = new Set(submittedValues.map((value) => value.id))
+        const minimum = option.required
+          ? Math.max(1, option.minSelect)
+          : option.minSelect
+        if (
+          uniqueIds.size !== submittedValues.length ||
+          uniqueIds.size < minimum ||
+          uniqueIds.size > option.maxSelect
+        ) {
+          throw new PortalError(
+            `Completa correctamente la opción "${option.name}"`
+          )
+        }
+        for (const valueId of uniqueIds) {
+          const trustedValue = option.values.find(
+            (value) => value.id === valueId
+          )
+          if (!trustedValue)
+            throw new PortalError("Valor de opción no disponible")
+          optionsExtra = round2(optionsExtra + toNum(trustedValue.extraPrice))
+        }
+      }
+    } else if (
+      (item.selectedOptions?.length ?? 0) > 0 ||
+      toNum(item.extraPrice ?? 0) > 0
+    ) {
+      throw new PortalError("Este producto no admite opciones adicionales")
+    }
+
+    let basePrice: number
+    if (variant) {
+      basePrice = toNum(variant.price)
+    } else if (product.productType === "bulk") {
+      if (item.unitId === product.bulkUnitId) {
+        basePrice = toNum(product.bulkPricePerUnit)
+      } else if (product.allowSplit && item.unitId === product.splitUnitId) {
+        basePrice = toNum(product.splitPricePerUnit)
+      } else {
+        throw new PortalError("Unidad de venta inválida")
+      }
+    } else {
+      basePrice = toNum(
+        (product as { variants?: { price: Prisma.Decimal }[] }).variants?.[0]
+          ?.price ?? 0
+      )
+    }
+    const trustedUnitPrice = round2(basePrice + optionsExtra)
+    if (Math.abs(toNum(item.unitPrice) - trustedUnitPrice) > 0.01)
+      throw new PortalError("Precio de producto inválido")
+    const lineTotal = round2(item.quantity * trustedUnitPrice)
+    if (Math.abs(toNum(item.lineTotal) - lineTotal) > 0.01)
+      throw new PortalError("Importe de línea inválido")
+    trustedSubtotal = round2(trustedSubtotal + lineTotal)
+    trustedTax = round2(trustedTax + lineTotal * toNum(product.taxRate))
+    trustedItems.push({
+      ...item,
+      productType: product.productType,
+      productName: product.name,
+      variantName: variant?.name ?? null,
+      unitPrice: trustedUnitPrice,
+      lineTotal,
+      categoryId: product.categoryId,
+      selectedOptions: item.selectedOptions,
+      extraPrice: optionsExtra,
+    })
+    if (comboState)
+      comboState.originalTotal = round2(comboState.originalTotal + lineTotal)
+  }
+  for (const state of comboStates.values()) {
+    if (
+      state.quantity == null ||
+      state.seenItems.size !== state.combo.items.length
+    ) {
+      throw new PortalError("El combo está incompleto")
+    }
+  }
+
+  if (!effectiveLocationId)
+    throw new PortalError("No se pudo asignar una sucursal al pedido")
+
+  // El pedido se prepara en una sucursal concreta; validar su existencia evita
+  // prometer mercancía ubicada en otra sucursal o en CEDIS.
+  const inventoryRows = await prisma.inventory.findMany({
+    where: { organizationId, locationId: effectiveLocationId },
+    select: { variantId: true, productId: true, quantity: true },
+  })
+  const available = new Map<string, number>()
+  for (const inv of inventoryRows) {
+    const key = inv.variantId ?? inv.productId ?? ""
+    if (!key) continue
+    available.set(key, (available.get(key) ?? 0) + toNum(inv.quantity))
+  }
+  const requested = new Map<string, number>()
+  for (const item of trustedItems) {
+    const key = item.variantId ?? item.productId
+    requested.set(key, round3((requested.get(key) ?? 0) + item.quantity))
+  }
+  for (const [key, quantity] of requested) {
+    // La ausencia de una fila conserva la semántica actual de productos sin
+    // seguimiento de inventario. Si existe inventario, sí debe alcanzar para
+    // la suma de todos los renglones equivalentes.
+    if (!available.has(key)) continue
+    const stock = available.get(key) ?? 0
+    if (quantity > stock) {
+      const item = trustedItems.find(
+        (candidate) => (candidate.variantId ?? candidate.productId) === key
+      )
+      throw new PortalError(
+        `Stock insuficiente para "${item?.productName ?? "el producto"}"`
+      )
+    }
+  }
+
+  const pointsRedeemed = Math.max(0, Math.floor(input.pointsRedeemed ?? 0))
   const orgLoyalty = await prisma.organization.findUnique({
     where: { id: organizationId },
     select: { pointValue: true },
-  });
-  const pointValue = toNum(orgLoyalty?.pointValue ?? null) || 0.01;
-  const pointsValue = round2(pointsRedeemed * pointValue);
+  })
+  const pointValue = toNum(orgLoyalty?.pointValue ?? null) || 0.01
+  const pointsValue = round2(pointsRedeemed * pointValue)
   if (pointsRedeemed > 0 && pointsRedeemed > toNum(customer.points)) {
-    throw new PortalError("No tienes suficientes puntos");
+    throw new PortalError("No tienes suficientes puntos")
   }
 
   // ── Evaluar promociones activas ──────────────────────────────────────────
   const activePromos = await prisma.promotion.findMany({
     where: { organizationId, isActive: true },
     include: { targets: { select: { kind: true, targetId: true } } },
-  });
+  })
   const promoResult = evaluatePortalPromotions(
     activePromos.map((p) => ({
       id: p.id,
@@ -861,98 +1352,210 @@ export async function createPortalOrder(
       endTime: p.endTime,
       targets: p.targets.map((t) => ({ kind: t.kind, targetId: t.targetId })),
     })),
-    input.items,
-  );
+    trustedItems
+  )
 
-  // Descuento total: manual + promoción
-  const subtotal = round2(input.subtotal);
-  const manualDiscount = round2(input.discount);
-  const promoDiscount = round2(promoResult.discount);
-  const totalDiscount = round2(Math.min(subtotal, manualDiscount + promoDiscount));
-  // El total del cliente ya incluye tax + envío - puntos;
-  // restamos el descuento adicional de promoción
-  const adjustedTotal = round2(input.total - promoDiscount);
+  const policy = await getEffectiveDeliveryPolicy(
+    organizationId,
+    effectiveLocationId ?? undefined
+  )
+  const schedule =
+    input.deliveryMethod === "pickup"
+      ? policy?.pickupSchedule
+      : policy?.deliverySchedule
+  if (schedule?.length) {
+    const scheduleState = isScheduleOpenNow(schedule)
+    if (!scheduleState.open) throw new PortalError(scheduleState.message)
+  }
+  let deliveryDistanceKm: number | undefined
+  if (
+    input.deliveryMethod === "delivery" &&
+    latitude != null &&
+    longitude != null &&
+    effectiveLocationId
+  ) {
+    const branch = await prisma.location.findFirst({
+      where: { id: effectiveLocationId, organizationId },
+      select: { latitude: true, longitude: true },
+    })
+    if (branch?.latitude != null && branch.longitude != null) {
+      const distance = distanceKm(
+        latitude,
+        longitude,
+        toNum(branch.latitude),
+        toNum(branch.longitude)
+      )
+      deliveryDistanceKm = distance
+      if (policy?.deliveryRadiusKm && distance > policy.deliveryRadiusKm) {
+        throw new PortalError(
+          `Fuera del radio de entrega (${policy.deliveryRadiusKm} km)`
+        )
+      }
+    }
+  }
+  const feeResult = calculateDeliveryFee(
+    policy,
+    input.deliveryMethod,
+    trustedSubtotal,
+    deliveryDistanceKm
+  )
+  if (feeResult.error) throw new PortalError(feeResult.error)
 
-  const order = await prisma.$transaction(async (tx) => {
-    const created = await tx.order.create({
-      data: {
-        organizationId,
-        customerId,
-        locationId: effectiveLocationId,
-        tableId: input.tableId ?? null,
-        status: "pending",
-        deliveryMethod: input.deliveryMethod,
-        subtotal: round2(input.subtotal),
-        discount: round2(totalDiscount),
-        deliveryFee: round2(input.deliveryFee ?? 0),
-        total: adjustedTotal,
-        pointsRedeemed,
-        pointsValue,
-        notes: input.notes ?? null,
-        address: input.address ?? null,
-        latitude: input.latitude != null ? input.latitude : null,
-        longitude: input.longitude != null ? input.longitude : null,
-        paymentMethod: input.paymentMethod as $Enums.PaymentMethod,
-        paymentReference: input.paymentReference ?? null,
-        tip: input.tip ?? 0,
-      },
-    });
+  const trustedTip = Number(input.tip ?? 0)
+  if (!Number.isFinite(trustedTip) || trustedTip < 0 || trustedTip > 100000) {
+    throw new PortalError("Propina inválida")
+  }
 
-    await tx.orderItem.createMany({
-      data: input.items.map((i) => ({
-        orderId: created.id,
-        productId: i.productId,
-        variantId: i.variantId,
-        productName: i.productName,
-        variantName: i.variantName,
-        productType: i.productType,
-        quantity: round3(i.quantity),
-        unitId: i.unitId,
-        unitPrice: round2(i.unitPrice),
-        lineTotal: round2(i.lineTotal),
-        bulkQuantityDisplay: i.bulkQuantityDisplay ?? null,
-        comment: i.comment ?? null,
-      })),
-    });
+  // Todos los importes se calculan con catálogo, política y promociones vigentes.
+  // Los importes enviados por el cliente se conservan en el contrato por compatibilidad,
+  // pero nunca autorizan el total persistido.
+  const promoDiscount = round2(promoResult.discount)
+  const comboDiscount = round2(
+    [...comboStates.values()].reduce(
+      (sum, state) =>
+        sum +
+        Math.max(
+          0,
+          state.originalTotal -
+            toNum(state.combo.comboPrice) * (state.quantity ?? 0)
+        ),
+      0
+    )
+  )
+  const totalDiscount = round2(
+    Math.min(trustedSubtotal, promoDiscount + comboDiscount)
+  )
+  const beforePoints = round2(
+    trustedSubtotal + trustedTax + feeResult.fee - totalDiscount + trustedTip
+  )
+  if (pointsValue > beforePoints + 0.01) {
+    throw new PortalError("Los puntos exceden el total del pedido")
+  }
+  const adjustedTotal = round2(Math.max(0, beforePoints - pointsValue))
 
-    await tx.orderStatusHistory.create({
-      data: {
-        orderId: created.id,
-        status: "pending",
-        userId: customer.userId,
-      },
-    });
-
-    // Deducción de puntos por redención
-    if (pointsRedeemed > 0) {
-      await tx.customer.update({
-        where: { id: customerId },
-        data: { points: { decrement: pointsRedeemed } },
-      });
-      await tx.loyaltyTransaction.create({
+  let order
+  try {
+    order = await prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
         data: {
           organizationId,
           customerId,
-          kind: "redeem",
-          points: -pointsRedeemed,
-          note: `Canje en pedido #${Number(created.orderNumber)}`,
+          idempotencyKey,
+          locationId: effectiveLocationId,
+          tableId: input.tableId ?? null,
+          status: "pending",
+          deliveryMethod: input.deliveryMethod,
+          subtotal: trustedSubtotal,
+          discount: totalDiscount,
+          deliveryFee: round2(feeResult.fee),
+          total: adjustedTotal,
+          pointsRedeemed,
+          pointsValue,
+          notes: input.notes ?? null,
+          address: input.address ?? null,
+          latitude,
+          longitude,
+          paymentMethod: input.paymentMethod as $Enums.PaymentMethod,
+          paymentReference: input.paymentReference ?? null,
+          tip: round2(trustedTip),
         },
-      });
+      })
+
+      await tx.orderItem.createMany({
+        data: trustedItems.map((i) => ({
+          orderId: created.id,
+          productId: i.productId,
+          variantId: i.variantId,
+          productName: i.productName,
+          variantName: i.variantName,
+          productType: i.productType,
+          quantity: round3(i.quantity),
+          unitId: i.unitId,
+          unitPrice: round2(i.unitPrice),
+          lineTotal: round2(i.lineTotal),
+          bulkQuantityDisplay: i.bulkQuantityDisplay ?? null,
+          comment: i.comment ?? null,
+          selectedOptions: i.selectedOptions
+            ? JSON.parse(JSON.stringify(i.selectedOptions))
+            : undefined,
+          extraPrice: round2(i.extraPrice ?? 0),
+        })),
+      })
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: created.id,
+          status: "pending",
+          userId: customer.userId,
+        },
+      })
+
+      // Deducción de puntos por redención
+      if (pointsRedeemed > 0) {
+        await tx.customer.update({
+          where: { id: customerId },
+          data: { points: { decrement: pointsRedeemed } },
+        })
+        await tx.loyaltyTransaction.create({
+          data: {
+            organizationId,
+            customerId,
+            kind: "redeem",
+            points: -pointsRedeemed,
+            note: `Canje en pedido #${Number(created.orderNumber)}`,
+          },
+        })
+      }
+
+      if (effectiveLocationId) {
+        await consumeRecipeIngredients(
+          tx,
+          organizationId,
+          effectiveLocationId,
+          created.id,
+          customer.userId,
+          trustedItems.map((item) => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            selectedOptions: item.selectedOptions,
+          }))
+        )
+      }
+
+      return created
+    })
+  } catch (error) {
+    if (
+      idempotencyKey &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await prisma.order.findFirst({
+        where: { organizationId, customerId, idempotencyKey },
+        select: { id: true },
+      })
+      if (existing)
+        return (await getPortalOrder(organizationId, customerId, existing.id))!
     }
+    throw error
+  }
 
-    return created;
-  });
+  const detail = await getPortalOrder(organizationId, customerId, order.id)
+  await notifyOrderEvent(
+    organizationId,
+    order.locationId,
+    { userId: customer.userId },
+    {
+      id: order.id,
+      orderNumber: Number(order.orderNumber),
+      status: "pending",
+      customerName: customer.fullName,
+      total: toNum(order.total),
+    }
+  )
 
-  const detail = await getPortalOrder(organizationId, customerId, order.id);
-  await notifyOrderEvent(organizationId, order.locationId, { userId: customer.userId }, {
-    id: order.id,
-    orderNumber: Number(order.orderNumber),
-    status: "pending",
-    customerName: customer.fullName,
-    total: toNum(order.total),
-  });
-
-  return detail!;
+  return detail!
 }
 
 export async function cancelPortalOrder(
@@ -962,44 +1565,98 @@ export async function cancelPortalOrder(
 ): Promise<PortalOrderDetail> {
   const order = await prisma.order.findFirst({
     where: { id: orderId, organizationId, customerId },
-  });
-  if (!order) throw new PortalError("Pedido no encontrado", 404);
+  })
+  if (!order) throw new PortalError("Pedido no encontrado", 404)
   if (order.status !== "pending" && order.status !== "confirmed") {
-    throw new PortalError("Este pedido ya no se puede cancelar");
+    throw new PortalError("Este pedido ya no se puede cancelar")
   }
+  if (order.paidAt)
+    throw new PortalError(
+      "Un pedido pagado requiere un reembolso antes de cancelarse"
+    )
 
   await prisma.$transaction(async (tx) => {
-    await tx.order.update({ where: { id: orderId }, data: { status: "cancelled" } });
+    const claimed = await tx.order.updateMany({
+      where: {
+        id: orderId,
+        organizationId,
+        customerId,
+        status: { in: ["pending", "confirmed"] },
+        paidAt: null,
+      },
+      data: { status: "cancelled" },
+    })
+    if (claimed.count !== 1)
+      throw new PortalError("Este pedido ya no se puede cancelar", 409)
     await tx.orderStatusHistory.create({
-      data: { orderId, status: "cancelled", userId: order.customerId ? (await tx.customer.findUnique({ where: { id: order.customerId } }))?.userId : null },
-    });
-  });
+      data: {
+        orderId,
+        status: "cancelled",
+        userId: order.customerId
+          ? (await tx.customer.findUnique({ where: { id: order.customerId } }))
+              ?.userId
+          : null,
+      },
+    })
+    const restoredPoints = Math.max(0, Math.floor(toNum(order.pointsRedeemed)))
+    if (restoredPoints > 0) {
+      await tx.customer.update({
+        where: { id: customerId },
+        data: { points: { increment: restoredPoints } },
+      })
+      await tx.loyaltyTransaction.create({
+        data: {
+          organizationId,
+          customerId,
+          kind: "adjust",
+          points: restoredPoints,
+          note: `Reintegro por cancelación de pedido #${Number(order.orderNumber)}`,
+        },
+      })
+    }
+    await restoreRecipeIngredients(tx, organizationId, orderId, null)
+  })
 
-  const customer = await prisma.customer.findUnique({ where: { id: customerId } });
-  await notifyOrderEvent(organizationId, order.locationId, { userId: customer?.userId }, {
-    id: orderId,
-    orderNumber: Number(order.orderNumber),
-    status: "cancelled",
-    customerName: customer?.fullName,
-    total: toNum(order.total),
-  });
+  const customer = await prisma.customer.findUnique({
+    where: { id: customerId },
+  })
+  await notifyOrderEvent(
+    organizationId,
+    order.locationId,
+    { userId: customer?.userId },
+    {
+      id: orderId,
+      orderNumber: Number(order.orderNumber),
+      status: "cancelled",
+      customerName: customer?.fullName,
+      total: toNum(order.total),
+    }
+  )
 
-  return (await getPortalOrder(organizationId, customerId, orderId))!;
+  return (await getPortalOrder(organizationId, customerId, orderId))!
 }
 
 // ── Lealtad (13.12) ──────────────────────────────────────────────────────────
 
 export async function getLoyalty(organizationId: string, customerId: string) {
   const [customer, org, transactions] = await Promise.all([
-    prisma.customer.findUnique({ where: { id: customerId }, select: { points: true } }),
-    prisma.organization.findUnique({ where: { id: organizationId }, select: { pointValue: true, loyaltyEnabled: true } }),
+    prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { points: true },
+    }),
+    prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { pointValue: true, loyaltyEnabled: true },
+    }),
     prisma.loyaltyTransaction.findMany({
       where: { organizationId, customerId },
       orderBy: { createdAt: "desc" },
       take: 200,
-      include: { sale: { select: { saleNumber: true, locationSaleNumber: true } } },
+      include: {
+        sale: { select: { saleNumber: true, locationSaleNumber: true } },
+      },
     }),
-  ]);
+  ])
   return {
     points: toNum(customer?.points ?? null),
     pointValue: toNum(org?.pointValue ?? null) || 0.01,
@@ -1009,10 +1666,12 @@ export async function getLoyalty(organizationId: string, customerId: string) {
       kind: t.kind,
       points: toNum(t.points),
       note: t.note,
-      ticket: t.sale ? Number(t.sale.locationSaleNumber ?? t.sale.saleNumber) : null,
+      ticket: t.sale
+        ? Number(t.sale.locationSaleNumber ?? t.sale.saleNumber)
+        : null,
       createdAt: t.createdAt.toISOString(),
     })),
-  };
+  }
 }
 
 // ── Perfil (13.13) ───────────────────────────────────────────────────────────
@@ -1020,10 +1679,20 @@ export async function getLoyalty(organizationId: string, customerId: string) {
 export async function updatePortalProfile(
   organizationId: string,
   customerId: string,
-  input: { fullName?: string; phone?: string; email?: string; address?: string | null; latitude?: number | null; longitude?: number | null; imageUrl?: string | null }
+  input: {
+    fullName?: string
+    phone?: string
+    email?: string
+    address?: string | null
+    latitude?: number | null
+    longitude?: number | null
+    imageUrl?: string | null
+  }
 ): Promise<PortalCustomer> {
-  const customer = await prisma.customer.findUnique({ where: { id: customerId } });
-  if (!customer) throw new PortalError("Cliente no encontrado", 404);
+  const customer = await prisma.customer.findUnique({
+    where: { id: customerId },
+  })
+  if (!customer) throw new PortalError("Cliente no encontrado", 404)
 
   await prisma.$transaction([
     prisma.user.update({
@@ -1041,32 +1710,34 @@ export async function updatePortalProfile(
         ...(input.email !== undefined ? { email: input.email || null } : {}),
         ...(input.address !== undefined ? { address: input.address } : {}),
         ...(input.latitude !== undefined ? { latitude: input.latitude } : {}),
-        ...(input.longitude !== undefined ? { longitude: input.longitude } : {}),
+        ...(input.longitude !== undefined
+          ? { longitude: input.longitude }
+          : {}),
         ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
       },
     }),
-  ]);
+  ])
 
-  return (await getPortalCustomer(organizationId, customer.userId))!;
+  return (await getPortalCustomer(organizationId, customer.userId))!
 }
 
 // ── Destinos guardados (direcciones del cliente) ──────────────────────────────
 
 export interface CustomerAddressView {
-  id: string;
-  label: string;
-  address: string;
-  latitude: number | null;
-  longitude: number | null;
-  notes: string | null;
+  id: string
+  label: string
+  address: string
+  latitude: number | null
+  longitude: number | null
+  notes: string | null
 }
 
 export interface CustomerAddressInput {
-  label: string;
-  address: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  notes?: string | null;
+  label: string
+  address: string
+  latitude?: number | null
+  longitude?: number | null
+  notes?: string | null
 }
 
 export async function listCustomerAddresses(
@@ -1076,7 +1747,7 @@ export async function listCustomerAddresses(
   const rows = await prisma.customerAddress.findMany({
     where: { organizationId, customerId },
     orderBy: { createdAt: "asc" },
-  });
+  })
   return rows.map((a) => ({
     id: a.id,
     label: a.label,
@@ -1084,7 +1755,7 @@ export async function listCustomerAddresses(
     latitude: a.latitude != null ? toNum(a.latitude) : null,
     longitude: a.longitude != null ? toNum(a.longitude) : null,
     notes: a.notes,
-  }));
+  }))
 }
 
 export async function createCustomerAddress(
@@ -1092,8 +1763,8 @@ export async function createCustomerAddress(
   customerId: string,
   input: CustomerAddressInput
 ): Promise<CustomerAddressView> {
-  if (!input.label.trim()) throw new PortalError("Ponle un nombre al destino");
-  if (!input.address.trim()) throw new PortalError("Ingresa una dirección");
+  if (!input.label.trim()) throw new PortalError("Ponle un nombre al destino")
+  if (!input.address.trim()) throw new PortalError("Ingresa una dirección")
 
   const row = await prisma.customerAddress.create({
     data: {
@@ -1105,7 +1776,7 @@ export async function createCustomerAddress(
       longitude: input.longitude ?? null,
       notes: input.notes?.trim() || null,
     },
-  });
+  })
   return {
     id: row.id,
     label: row.label,
@@ -1113,7 +1784,7 @@ export async function createCustomerAddress(
     latitude: row.latitude != null ? toNum(row.latitude) : null,
     longitude: row.longitude != null ? toNum(row.longitude) : null,
     notes: row.notes,
-  };
+  }
 }
 
 export async function deleteCustomerAddress(
@@ -1123,68 +1794,79 @@ export async function deleteCustomerAddress(
 ): Promise<void> {
   await prisma.customerAddress.deleteMany({
     where: { id: addressId, organizationId, customerId },
-  });
+  })
 }
 
 // ── Favoritos (13.9) ─────────────────────────────────────────────────────────
 
-export async function listFavorites(organizationId: string, customerId: string): Promise<string[]> {
+export async function listFavorites(
+  organizationId: string,
+  customerId: string
+): Promise<string[]> {
   const rows = await prisma.customerFavorite.findMany({
     where: { customerId },
     select: { variantId: true },
-  });
-  return rows.map((r) => r.variantId);
+  })
+  return rows.map((r) => r.variantId)
 }
 
-export async function addFavorite(organizationId: string, customerId: string, variantId: string) {
+export async function addFavorite(
+  organizationId: string,
+  customerId: string,
+  variantId: string
+) {
   const variant = await prisma.productVariant.findFirst({
     where: { id: variantId, organizationId },
     select: { id: true },
-  });
-  if (!variant) throw new PortalError("Producto no encontrado", 404);
+  })
+  if (!variant) throw new PortalError("Producto no encontrado", 404)
   await prisma.customerFavorite.upsert({
     where: { customerId_variantId: { customerId, variantId } },
     create: { organizationId, customerId, variantId },
     update: {},
-  });
-  return { ok: true };
+  })
+  return { ok: true }
 }
 
-export async function removeFavorite(organizationId: string, customerId: string, variantId: string) {
-  await prisma.customerFavorite.deleteMany({ where: { customerId, variantId } });
-  return { ok: true };
+export async function removeFavorite(
+  organizationId: string,
+  customerId: string,
+  variantId: string
+) {
+  await prisma.customerFavorite.deleteMany({ where: { customerId, variantId } })
+  return { ok: true }
 }
 
 // ── Listas de compra (13.10) ─────────────────────────────────────────────────
 
 export interface ShoppingListInput {
-  name: string;
-  notes?: string | null;
-  items: { variantId: string; quantity: number }[];
+  name: string
+  notes?: string | null
+  items: { variantId: string; quantity: number }[]
 }
 
 export interface ShoppingListRow {
-  id: string;
-  name: string;
-  notes: string | null;
-  itemsCount: number;
-  createdAt: string;
+  id: string
+  name: string
+  notes: string | null
+  itemsCount: number
+  createdAt: string
 }
 
 export interface ShoppingListView {
-  id: string;
-  name: string;
-  notes: string | null;
-  createdAt: string;
+  id: string
+  name: string
+  notes: string | null
+  createdAt: string
   items: {
-    id: string;
-    variantId: string;
-    quantity: number;
-    productName: string;
-    variantName: string | null;
-    price: number;
-    imageUrl: string | null;
-  }[];
+    id: string
+    variantId: string
+    quantity: number
+    productName: string
+    variantName: string | null
+    price: number
+    imageUrl: string | null
+  }[]
 }
 
 export async function listShoppingLists(
@@ -1195,14 +1877,14 @@ export async function listShoppingLists(
     where: { customerId },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { items: true } } },
-  });
+  })
   return lists.map((l) => ({
     id: l.id,
     name: l.name,
     notes: l.notes,
     itemsCount: l._count.items,
     createdAt: l.createdAt.toISOString(),
-  }));
+  }))
 }
 
 export async function getShoppingList(
@@ -1218,8 +1900,8 @@ export async function getShoppingList(
         orderBy: { createdAt: "asc" },
       },
     },
-  });
-  if (!list) return null;
+  })
+  if (!list) return null
   return {
     id: list.id,
     name: list.name,
@@ -1234,7 +1916,7 @@ export async function getShoppingList(
       price: toNum(i.variant.price),
       imageUrl: i.variant.imageUrl ?? i.variant.product.imageUrl,
     })),
-  };
+  }
 }
 
 export async function createShoppingList(
@@ -1242,7 +1924,7 @@ export async function createShoppingList(
   customerId: string,
   input: ShoppingListInput
 ): Promise<ShoppingListView> {
-  if (!input.name.trim()) throw new PortalError("El nombre es obligatorio");
+  if (!input.name.trim()) throw new PortalError("El nombre es obligatorio")
   const list = await prisma.shoppingList.create({
     data: {
       organizationId,
@@ -1256,8 +1938,8 @@ export async function createShoppingList(
         })),
       },
     },
-  });
-  return (await getShoppingList(organizationId, customerId, list.id))!;
+  })
+  return (await getShoppingList(organizationId, customerId, list.id))!
 }
 
 export async function updateShoppingList(
@@ -1266,9 +1948,11 @@ export async function updateShoppingList(
   listId: string,
   input: ShoppingListInput
 ): Promise<ShoppingListView> {
-  const list = await prisma.shoppingList.findFirst({ where: { id: listId, customerId } });
-  if (!list) throw new PortalError("Lista no encontrada", 404);
-  if (!input.name.trim()) throw new PortalError("El nombre es obligatorio");
+  const list = await prisma.shoppingList.findFirst({
+    where: { id: listId, customerId },
+  })
+  if (!list) throw new PortalError("Lista no encontrada", 404)
+  if (!input.name.trim()) throw new PortalError("El nombre es obligatorio")
 
   await prisma.$transaction([
     prisma.shoppingListItem.deleteMany({ where: { listId } }),
@@ -1285,9 +1969,9 @@ export async function updateShoppingList(
         },
       },
     }),
-  ]);
+  ])
 
-  return (await getShoppingList(organizationId, customerId, listId))!;
+  return (await getShoppingList(organizationId, customerId, listId))!
 }
 
 export async function deleteShoppingList(
@@ -1295,10 +1979,12 @@ export async function deleteShoppingList(
   customerId: string,
   listId: string
 ) {
-  const list = await prisma.shoppingList.findFirst({ where: { id: listId, customerId } });
-  if (!list) throw new PortalError("Lista no encontrada", 404);
-  await prisma.shoppingList.delete({ where: { id: listId } });
-  return { ok: true };
+  const list = await prisma.shoppingList.findFirst({
+    where: { id: listId, customerId },
+  })
+  if (!list) throw new PortalError("Lista no encontrada", 404)
+  await prisma.shoppingList.delete({ where: { id: listId } })
+  return { ok: true }
 }
 
 export async function duplicateShoppingList(
@@ -1309,8 +1995,8 @@ export async function duplicateShoppingList(
   const list = await prisma.shoppingList.findFirst({
     where: { id: listId, customerId },
     include: { items: true },
-  });
-  if (!list) throw new PortalError("Lista no encontrada", 404);
+  })
+  if (!list) throw new PortalError("Lista no encontrada", 404)
 
   const copy = await prisma.shoppingList.create({
     data: {
@@ -1319,25 +2005,28 @@ export async function duplicateShoppingList(
       name: `${list.name} (copia)`,
       notes: list.notes,
       items: {
-        create: list.items.map((i) => ({ variantId: i.variantId, quantity: toNum(i.quantity) })),
+        create: list.items.map((i) => ({
+          variantId: i.variantId,
+          quantity: toNum(i.quantity),
+        })),
       },
     },
-  });
-  return (await getShoppingList(organizationId, customerId, copy.id))!;
+  })
+  return (await getShoppingList(organizationId, customerId, copy.id))!
 }
 
 // ── Métodos de pago (13.14, 13.15) ───────────────────────────────────────────
 
 export interface PaymentMethodView {
-  id: string;
-  alias: string | null;
-  brand: string | null;
-  last4: string | null;
-  expMonth: number | null;
-  expYear: number | null;
-  isDefault: boolean;
-  color: string | null;
-  createdAt: string;
+  id: string
+  alias: string | null
+  brand: string | null
+  last4: string | null
+  expMonth: number | null
+  expYear: number | null
+  isDefault: boolean
+  color: string | null
+  createdAt: string
 }
 
 export async function listPaymentMethods(
@@ -1347,7 +2036,7 @@ export async function listPaymentMethods(
   const rows = await prisma.customerPaymentMethod.findMany({
     where: { customerId },
     orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
-  });
+  })
   return rows.map((m) => ({
     id: m.id,
     alias: m.alias,
@@ -1358,32 +2047,40 @@ export async function listPaymentMethods(
     isDefault: m.isDefault,
     color: m.color,
     createdAt: m.createdAt.toISOString(),
-  }));
+  }))
 }
 
 export async function addPaymentMethod(
   organizationId: string,
   customerId: string,
-  input: { alias?: string; brand?: string; last4: string; expMonth: number; expYear: number; isDefault?: boolean; color?: string }
+  input: {
+    alias?: string
+    brand?: string
+    last4: string
+    expMonth: number
+    expYear: number
+    isDefault?: boolean
+    color?: string
+  }
 ): Promise<PaymentMethodView[]> {
   if (!input.last4 || !/^\d{4}$/.test(input.last4)) {
-    throw new PortalError("Los últimos 4 dígitos son inválidos");
+    throw new PortalError("Los últimos 4 dígitos son inválidos")
   }
   if (!input.expMonth || input.expMonth < 1 || input.expMonth > 12) {
-    throw new PortalError("Mes de expiración inválido");
+    throw new PortalError("Mes de expiración inválido")
   }
   if (!input.expYear || input.expYear < new Date().getFullYear()) {
-    throw new PortalError("Año de expiración inválido");
+    throw new PortalError("Año de expiración inválido")
   }
 
-  const isDefault = input.isDefault ?? false;
-  const alias = input.alias ? String(input.alias).trim().slice(0, 40) : null;
+  const isDefault = input.isDefault ?? false
+  const alias = input.alias ? String(input.alias).trim().slice(0, 40) : null
   await prisma.$transaction(async (tx) => {
     if (isDefault) {
       await tx.customerPaymentMethod.updateMany({
         where: { customerId },
         data: { isDefault: false },
-      });
+      })
     }
     await tx.customerPaymentMethod.create({
       data: {
@@ -1397,10 +2094,10 @@ export async function addPaymentMethod(
         isDefault,
         color: input.color ?? null,
       },
-    });
-  });
+    })
+  })
 
-  return listPaymentMethods(organizationId, customerId);
+  return listPaymentMethods(organizationId, customerId)
 }
 
 export async function removePaymentMethod(
@@ -1410,10 +2107,10 @@ export async function removePaymentMethod(
 ) {
   const method = await prisma.customerPaymentMethod.findFirst({
     where: { id: methodId, customerId },
-  });
-  if (!method) throw new PortalError("Método de pago no encontrado", 404);
-  await prisma.customerPaymentMethod.delete({ where: { id: methodId } });
-  return { ok: true };
+  })
+  if (!method) throw new PortalError("Método de pago no encontrado", 404)
+  await prisma.customerPaymentMethod.delete({ where: { id: methodId } })
+  return { ok: true }
 }
 
 export async function setDefaultPaymentMethod(
@@ -1423,8 +2120,8 @@ export async function setDefaultPaymentMethod(
 ): Promise<PaymentMethodView[]> {
   const method = await prisma.customerPaymentMethod.findFirst({
     where: { id: methodId, customerId },
-  });
-  if (!method) throw new PortalError("Método de pago no encontrado", 404);
+  })
+  if (!method) throw new PortalError("Método de pago no encontrado", 404)
   await prisma.$transaction([
     prisma.customerPaymentMethod.updateMany({
       where: { customerId },
@@ -1434,17 +2131,17 @@ export async function setDefaultPaymentMethod(
       where: { id: methodId },
       data: { isDefault: true },
     }),
-  ]);
-  return listPaymentMethods(organizationId, customerId);
+  ])
+  return listPaymentMethods(organizationId, customerId)
 }
 
 export interface ExpiringCardView {
-  id: string;
-  alias: string | null;
-  brand: string | null;
-  last4: string | null;
-  expMonth: number | null;
-  expYear: number | null;
+  id: string
+  alias: string | null
+  brand: string | null
+  last4: string | null
+  expMonth: number | null
+  expYear: number | null
 }
 
 /** Tarjetas que vencen en los próximos 2 meses (13.15). */
@@ -1452,23 +2149,30 @@ export async function listExpiringCards(
   organizationId: string,
   customerId: string
 ): Promise<ExpiringCardView[]> {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1; // 1-12
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth() + 1 // 1-12
 
   const methods = await prisma.customerPaymentMethod.findMany({
     where: { customerId, expYear: { not: null }, expMonth: { not: null } },
-    select: { id: true, alias: true, brand: true, last4: true, expMonth: true, expYear: true },
-  });
+    select: {
+      id: true,
+      alias: true,
+      brand: true,
+      last4: true,
+      expMonth: true,
+      expYear: true,
+    },
+  })
 
   return methods
     .filter((card) => {
-      const expYear = card.expYear!;
-      const expMonth = card.expMonth!;
-      const totalMonths = expYear * 12 + expMonth;
-      const nowMonths = y * 12 + m;
-      const diff = totalMonths - nowMonths;
-      return diff >= 0 && diff <= 2;
+      const expYear = card.expYear!
+      const expMonth = card.expMonth!
+      const totalMonths = expYear * 12 + expMonth
+      const nowMonths = y * 12 + m
+      const diff = totalMonths - nowMonths
+      return diff >= 0 && diff <= 2
     })
     .map((c) => ({
       id: c.id,
@@ -1477,5 +2181,5 @@ export async function listExpiringCards(
       last4: c.last4,
       expMonth: c.expMonth,
       expYear: c.expYear,
-    }));
+    }))
 }

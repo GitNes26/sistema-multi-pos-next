@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Megaphone, Pencil, Plus, Trash2, Heading } from "lucide-react";
+import * as yup from "yup";
+import { AlertCircle, FileText, Megaphone, Pencil, Plus, Trash2, Heading } from "lucide-react";
 import { publicationsApi } from "@/lib/publications/client";
 import {
   PUBLICATION_TYPES,
@@ -20,10 +21,11 @@ import { InputGroupField } from "@/components/base/input-group-field";
 import { Attachment } from "@/components/base/attachment";
 import { DatePicker } from "@/components/base/date-picker";
 import { TooltipButton } from "@/components/shared/tooltip-button";
-import { Switch } from "@/components/ui/switch";
+import { SwitchField } from "@/components/base/switch-field";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DialogComponent } from "@/components/ui/dialog";
+import { useFocusInvalid } from "@/hooks/use-focus-invalid";
 
 const TYPE_COLORS: Record<string, string> = {
   product_new: "bg-emerald-500 text-white",
@@ -47,6 +49,9 @@ export function PublicationsManager() {
   const [items, setItems] = useState<PublicationRow[] | null>(null);
   const [form, setForm] = useState<(PublicationInput & { id?: string }) | null>(null);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string>();
+  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
 
   const load = useCallback(() => {
     publicationsApi
@@ -59,9 +64,11 @@ export function PublicationsManager() {
     load();
   }, [load]);
 
-  const openCreate = () => setForm({ ...EMPTY_FORM });
+  const openCreate = () => { setErrors({}); setFormError(undefined); setForm({ ...EMPTY_FORM }); };
 
-  const openEdit = (p: PublicationRow) =>
+  const openEdit = (p: PublicationRow) => {
+    setErrors({});
+    setFormError(undefined);
     setForm({
       id: p.id,
       title: p.title,
@@ -73,14 +80,39 @@ export function PublicationsManager() {
       startsAt: p.startsAt,
       endsAt: p.endsAt,
     });
+  };
+
+  const formIdentity = form ? form.id ?? "new" : null;
+  useEffect(() => {
+    if (!formIdentity) return;
+    const frame = window.requestAnimationFrame(() => focusFirstEnabled("publication-form"));
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusFirstEnabled, formIdentity]);
 
   const submit = async () => {
     if (!form) return;
-    if (!form.title?.trim()) {
-      swalError("El título es obligatorio");
+    try {
+      await yup.object({
+        title: yup.string().trim().required("El título es obligatorio").max(160, "Máximo 160 caracteres"),
+        content: yup.string().max(2000, "Máximo 2000 caracteres"),
+      }).validate(form, { abortEarly: false });
+      if (form.startsAt && form.endsAt && new Date(form.endsAt) < new Date(form.startsAt)) {
+        throw new yup.ValidationError("La fecha de fin debe ser posterior al inicio", form.endsAt, "endsAt");
+      }
+      setErrors({});
+    } catch (error) {
+      if (error instanceof yup.ValidationError) {
+        const next: Record<string, string> = {};
+        const failures = error.inner.length ? error.inner : [error];
+        for (const failure of failures) if (failure.path && !next[failure.path]) next[failure.path] = failure.message;
+        setErrors(next);
+        const focusErrors = Object.fromEntries(Object.entries(next).map(([key, message]) => [`publication-${key}`, message]));
+        window.requestAnimationFrame(() => focusFirstInvalid(focusErrors, "publication-form"));
+      }
       return;
     }
     setSaving(true);
+    setFormError(undefined);
     try {
       if (form.id) {
         await publicationsApi.update(form.id, form);
@@ -92,7 +124,7 @@ export function PublicationsManager() {
       setForm(null);
       load();
     } catch (err) {
-      swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudo guardar la publicación");
     } finally {
       setSaving(false);
     }
@@ -165,37 +197,47 @@ export function PublicationsManager() {
         icon={<Megaphone className="size-4 text-primary" />}
         title={form?.id ? "Editar publicación" : "Nueva publicación"}
         description="Se mostrará a los clientes en el portal"
-        className="sm:max-w-md"
+        size="lg"
+        className="sm:w-full"
         bodyClassName="space-y-3"
         footer={
           <>
             <Button variant="outline" onClick={() => setForm(null)}>
               Cancelar
             </Button>
-            <Button onClick={submit} disabled={saving}>
+            <Button type="submit" form="publication-form" disabled={saving}>
               {saving ? "Guardando…" : "Guardar"}
             </Button>
           </>
         }
       >
           {form && (
-            <div className="space-y-3">
+            <form id="publication-form" noValidate onSubmit={(event) => { event.preventDefault(); void submit(); }} className="space-y-3">
+              {formError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
               <InputGroupField
+                id="publication-title"
                 label="Título"
                 leftIcon={<Heading className="size-4" />}
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
+                required
+                error={errors.title}
               />
               <div className="space-y-1.5">
-                <Label htmlFor="pubContent">Contenido</Label>
+                <div className="flex items-center gap-1.5"><FileText className="size-4 text-muted-foreground" /><Label htmlFor="publication-content" className="cursor-pointer">Contenido</Label></div>
                 <Textarea
-                  id="pubContent"
+                  id="publication-content"
                   rows={4}
                   value={form.content ?? ""}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
+                  aria-invalid={Boolean(errors.content) || undefined}
+                  aria-describedby={errors.content ? "publication-content-error" : undefined}
+                  className={errors.content ? "border-destructive focus-visible:ring-destructive/20" : undefined}
                 />
+                {errors.content && <p id="publication-content-error" role="alert" className="text-xs text-destructive">{errors.content}</p>}
               </div>
               <FormCombobox
+                id="publication-type"
                 label="Tipo"
                 value={form.type}
                 onChange={(v) => setForm({ ...form, type: v as PublicationKind })}
@@ -205,16 +247,19 @@ export function PublicationsManager() {
               />
               <div className="grid grid-cols-2 gap-3">
                 <DatePicker
+                  id="publication-startsAt"
                   label="Fecha de inicio"
                   helper="Cuándo empieza a mostrarse."
                   value={form.startsAt ? new Date(form.startsAt) : null}
                   onChange={(d) => setForm({ ...form, startsAt: d ? d.toISOString() : null })}
                 />
                 <DatePicker
+                  id="publication-endsAt"
                   label="Fecha de fin"
                   helper="Cuándo deja de mostrarse (opcional)."
                   value={form.endsAt ? new Date(form.endsAt) : null}
                   onChange={(d) => setForm({ ...form, endsAt: d ? d.toISOString() : null })}
+                  error={errors.endsAt}
                 />
               </div>
               <Attachment
@@ -225,18 +270,8 @@ export function PublicationsManager() {
                 upload={uploadFile}
                 accept={UPLOAD_IMAGE_ACCEPT}
               />
-              <div className="flex items-center justify-between rounded-lg border p-2.5">
-                <label htmlFor="pub-active" className="cursor-pointer">
-                  <span className="block text-sm font-medium">Activa</span>
-                  <span className="block text-xs text-muted-foreground">Visible en el portal</span>
-                </label>
-                <Switch
-                  id="pub-active"
-                  checked={form.isActive}
-                  onCheckedChange={(v) => setForm({ ...form, isActive: v })}
-                />
-              </div>
-            </div>
+              <SwitchField id="publication-active" label="Activa" description="Visible en el portal" icon={<Megaphone className="size-4" />} checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
+            </form>
           )}
       </DialogComponent>
     </div>

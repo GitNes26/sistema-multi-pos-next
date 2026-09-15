@@ -755,6 +755,8 @@ export interface DeliveryPolicyData {
   deliveryMinAmount: number | null;
   deliveryFee: number;
   deliveryFeeEnabled: boolean;
+  deliveryFeeType: "fixed" | "per_km";
+  deliveryFeePerKm: number;
   deliverySchedule: DaySchedule[] | null;
   deliveryRadiusKm: number | null;
   deliveryEstimatedMins: number | null;
@@ -779,6 +781,8 @@ export async function getDeliveryPolicy(organizationId: string): Promise<Deliver
     deliveryMinAmount: toNum(p.deliveryMinAmount) || null,
     deliveryFee: toNum(p.deliveryFee),
     deliveryFeeEnabled: p.deliveryFeeEnabled,
+    deliveryFeeType: p.deliveryFeeType === "per_km" ? "per_km" : "fixed",
+    deliveryFeePerKm: toNum(p.deliveryFeePerKm),
     deliverySchedule: p.deliveryScheduleJson ? JSON.parse(p.deliveryScheduleJson) : null,
     deliveryRadiusKm: toNum(p.deliveryRadiusKm) || null,
     deliveryEstimatedMins: p.deliveryEstimatedMins,
@@ -799,6 +803,8 @@ export async function upsertDeliveryPolicy(
   if (input.deliveryMinAmount !== undefined) data.deliveryMinAmount = input.deliveryMinAmount;
   if (input.deliveryFee !== undefined) data.deliveryFee = input.deliveryFee;
   if (input.deliveryFeeEnabled !== undefined) data.deliveryFeeEnabled = input.deliveryFeeEnabled;
+  if (input.deliveryFeeType !== undefined) data.deliveryFeeType = input.deliveryFeeType === "per_km" ? "per_km" : "fixed";
+  if (input.deliveryFeePerKm !== undefined) data.deliveryFeePerKm = input.deliveryFeePerKm;
   if (input.deliverySchedule !== undefined) data.deliveryScheduleJson = JSON.stringify(input.deliverySchedule);
   if (input.deliveryRadiusKm !== undefined) data.deliveryRadiusKm = input.deliveryRadiusKm;
   if (input.deliveryEstimatedMins !== undefined) data.deliveryEstimatedMins = input.deliveryEstimatedMins;
@@ -821,6 +827,8 @@ export async function upsertDeliveryPolicy(
     deliveryMinAmount: toNum(policy.deliveryMinAmount) || null,
     deliveryFee: toNum(policy.deliveryFee),
     deliveryFeeEnabled: policy.deliveryFeeEnabled,
+    deliveryFeeType: policy.deliveryFeeType === "per_km" ? "per_km" : "fixed",
+    deliveryFeePerKm: toNum(policy.deliveryFeePerKm),
     deliverySchedule: policy.deliveryScheduleJson ? JSON.parse(policy.deliveryScheduleJson) : null,
     deliveryRadiusKm: toNum(policy.deliveryRadiusKm) || null,
     deliveryEstimatedMins: policy.deliveryEstimatedMins,
@@ -830,7 +838,8 @@ export async function upsertDeliveryPolicy(
 export function calculateDeliveryFee(
   policy: DeliveryPolicyData | null,
   method: "pickup" | "delivery",
-  subtotal: number
+  subtotal: number,
+  distanceKm?: number
 ): { fee: number; error?: string } {
   if (!policy) return { fee: 0 };
 
@@ -847,7 +856,13 @@ export function calculateDeliveryFee(
   if (policy.deliveryMinAmount && subtotal < policy.deliveryMinAmount) {
     return { fee: 0, error: `Monto mínimo para domicilio: $${policy.deliveryMinAmount}` };
   }
-  if (policy.deliveryFeeEnabled) return { fee: policy.deliveryFee };
+  if (policy.deliveryFeeEnabled) {
+    if (policy.deliveryFeeType === "per_km") {
+      if (distanceKm == null || !Number.isFinite(distanceKm)) return { fee: 0, error: "Se necesita la ubicación para calcular el envío por kilómetro" };
+      return { fee: Math.round(distanceKm * policy.deliveryFeePerKm * 100) / 100 };
+    }
+    return { fee: policy.deliveryFee };
+  }
   return { fee: 0 };
 }
 
@@ -868,6 +883,8 @@ export async function getBranchDeliveryPolicy(branchId: string): Promise<Deliver
     deliveryMinAmount: toNum(p.deliveryMinAmount) || null,
     deliveryFee: toNum(p.deliveryFee),
     deliveryFeeEnabled: p.deliveryFeeEnabled,
+    deliveryFeeType: p.deliveryFeeType === "per_km" ? "per_km" : "fixed",
+    deliveryFeePerKm: toNum(p.deliveryFeePerKm),
     deliverySchedule: p.deliveryScheduleJson ? JSON.parse(p.deliveryScheduleJson) : null,
     deliveryRadiusKm: toNum(p.deliveryRadiusKm) || null,
     deliveryEstimatedMins: p.deliveryEstimatedMins,
@@ -879,8 +896,14 @@ export async function getEffectiveDeliveryPolicy(
   branchId?: string
 ): Promise<DeliveryPolicyData | null> {
   if (branchId) {
-    const branchPolicy = await getBranchDeliveryPolicy(branchId);
-    if (branchPolicy) return branchPolicy;
+    const branch = await prisma.location.findFirst({
+      where: { id: branchId, organizationId, isActive: true },
+      select: { id: true },
+    });
+    if (branch) {
+      const branchPolicy = await getBranchDeliveryPolicy(branch.id);
+      if (branchPolicy) return branchPolicy;
+    }
   }
   return getDeliveryPolicy(organizationId);
 }
@@ -899,6 +922,8 @@ export async function upsertBranchDeliveryPolicy(
   if (input.deliveryMinAmount !== undefined) data.deliveryMinAmount = input.deliveryMinAmount;
   if (input.deliveryFee !== undefined) data.deliveryFee = input.deliveryFee;
   if (input.deliveryFeeEnabled !== undefined) data.deliveryFeeEnabled = input.deliveryFeeEnabled;
+  if (input.deliveryFeeType !== undefined) data.deliveryFeeType = input.deliveryFeeType === "per_km" ? "per_km" : "fixed";
+  if (input.deliveryFeePerKm !== undefined) data.deliveryFeePerKm = input.deliveryFeePerKm;
   if (input.deliverySchedule !== undefined) data.deliveryScheduleJson = JSON.stringify(input.deliverySchedule);
   if (input.deliveryRadiusKm !== undefined) data.deliveryRadiusKm = input.deliveryRadiusKm;
   if (input.deliveryEstimatedMins !== undefined) data.deliveryEstimatedMins = input.deliveryEstimatedMins;
@@ -921,6 +946,8 @@ export async function upsertBranchDeliveryPolicy(
     deliveryMinAmount: toNum(policy.deliveryMinAmount) || null,
     deliveryFee: toNum(policy.deliveryFee),
     deliveryFeeEnabled: policy.deliveryFeeEnabled,
+    deliveryFeeType: policy.deliveryFeeType === "per_km" ? "per_km" : "fixed",
+    deliveryFeePerKm: toNum(policy.deliveryFeePerKm),
     deliverySchedule: policy.deliveryScheduleJson ? JSON.parse(policy.deliveryScheduleJson) : null,
     deliveryRadiusKm: toNum(policy.deliveryRadiusKm) || null,
     deliveryEstimatedMins: policy.deliveryEstimatedMins,

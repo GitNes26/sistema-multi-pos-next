@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { FormCombobox, type ComboboxOption } from "@/components/base/form-combobox";
 import { CrudCreateDialog } from "./crud-create-dialog";
 import { crudApi } from "@/lib/api";
@@ -12,12 +12,16 @@ export function OptionSelect({
   onChange,
   id,
   error,
+  icon,
+  infoTooltip,
 }: {
   field: CrudField;
   value: string;
   onChange: (v: string) => void;
   id?: string;
   error?: string;
+  icon?: ReactNode;
+  infoTooltip?: ReactNode | null;
 }) {
   const [options, setOptions] = useState<ComboboxOption[]>(field.options ?? []);
   const [loading, setLoading] = useState(false);
@@ -55,7 +59,9 @@ export function OptionSelect({
         label={field.label}
         required={field.required}
         helper={field.help}
+        infoTooltip={infoTooltip}
         error={error}
+        icon={icon}
         options={options}
         value={value ? String(value) : null}
         onChange={onChange}

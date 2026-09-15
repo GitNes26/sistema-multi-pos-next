@@ -1,0 +1,886 @@
+[
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\app-sidebar.tsx",
+    "line": 144,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\bottom-tab-bar.tsx",
+    "line": 52,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\nav-link.tsx",
+    "line": 51,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\notifications-bell.tsx",
+    "line": 92,
+    "snippet": "text-[…] class: 0.6rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.6rem"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\notifications-bell.tsx",
+    "line": 105,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\notifications-bell.tsx",
+    "line": 142,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\notifications-bell.tsx",
+    "line": 194,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\org-switcher.tsx",
+    "line": 211,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\search-dialog.tsx",
+    "line": 74,
+    "snippet": "text-[…] class: 0.6rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.6rem"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\search-dialog.tsx",
+    "line": 96,
+    "snippet": "text-[…] class: 0.6rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.6rem"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\layout\\user-menu.tsx",
+    "line": 107,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\catalogs-modal.tsx",
+    "line": 360,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\catalogs-modal.tsx",
+    "line": 446,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\catalogs-modal.tsx",
+    "line": 451,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\catalogs-modal.tsx",
+    "line": 459,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\catalogs-modal.tsx",
+    "line": 492,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\combo-card.tsx",
+    "line": 61,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "catalog-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\combo-card.tsx",
+    "line": 66,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "catalog-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\combo-card.tsx",
+    "line": 93,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "catalog-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\combo-card.tsx",
+    "line": 99,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "catalog-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\combo-card.tsx",
+    "line": 111,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "catalog-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\customer-modal.tsx",
+    "line": 106,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\discount-dialog.tsx",
+    "line": 162,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\kitchen-status.tsx",
+    "line": 163,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\kitchen-status.tsx",
+    "line": 169,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\kitchen-status.tsx",
+    "line": 182,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "ai-color-palette",
+    "name": "AI color palette",
+    "description": "Purple/violet gradients and cyan-on-dark are the most recognizable tells of AI-generated UIs. Choose a distinctive, intentional palette.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\payment-dialog.tsx",
+    "line": 67,
+    "snippet": "from-violet-500 gradient",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\payment-dialog.tsx",
+    "line": 506,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\payment-dialog.tsx",
+    "line": 642,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\pos-header.tsx",
+    "line": 79,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\pos-header.tsx",
+    "line": 96,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\pos-order-detail.tsx",
+    "line": 116,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem",
+    "importedBy": [
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\pos-order-detail.tsx",
+    "line": 153,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem",
+    "importedBy": [
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\pos-order-detail.tsx",
+    "line": 245,
+    "snippet": "text-[…] class: 0.65rem is off the DESIGN.md type ramp",
+    "ignoreValue": "0.65rem",
+    "importedBy": [
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\pos-role-guide.tsx",
+    "line": 95,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\pos-role-guide.tsx",
+    "line": 104,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\pos-role-guide.tsx",
+    "line": 114,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\pos-role-guide.tsx",
+    "line": 123,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-builder.tsx",
+    "line": 161,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-builder.tsx",
+    "line": 210,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-builder.tsx",
+    "line": 625,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-builder.tsx",
+    "line": 676,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-card.tsx",
+    "line": 22,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "catalog-panel.tsx",
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-card.tsx",
+    "line": 29,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "catalog-panel.tsx",
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-card.tsx",
+    "line": 35,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "catalog-panel.tsx",
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-card.tsx",
+    "line": 80,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "catalog-panel.tsx",
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-card.tsx",
+    "line": 85,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "catalog-panel.tsx",
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-card.tsx",
+    "line": 110,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "catalog-panel.tsx",
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-card.tsx",
+    "line": 123,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "catalog-panel.tsx",
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\product-card.tsx",
+    "line": 131,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "catalog-panel.tsx",
+      "catalogs-modal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\receipt.tsx",
+    "line": 47,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\receipt.tsx",
+    "line": 94,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\receipt.tsx",
+    "line": 97,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\receipt.tsx",
+    "line": 169,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\table-selector.tsx",
+    "line": 228,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\table-selector.tsx",
+    "line": 262,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\table-selector.tsx",
+    "line": 272,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\table-selector.tsx",
+    "line": 274,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\table-selector.tsx",
+    "line": 278,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\ticket-item-row.tsx",
+    "line": 82,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\ticket-item-row.tsx",
+    "line": 96,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\ticket-item-row.tsx",
+    "line": 105,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\ticket-item-row.tsx",
+    "line": 110,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\ticket-item-row.tsx",
+    "line": 114,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px",
+    "importedBy": [
+      "ticket-panel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\pos\\ticket-panel.tsx",
+    "line": 248,
+    "snippet": "text-[…] class: 10px is off the DESIGN.md type ramp",
+    "ignoreValue": "10px",
+    "importedBy": [
+      "pos-app.tsx"
+    ]
+  }
+]

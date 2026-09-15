@@ -11,6 +11,7 @@ export interface VariantDto {
   cost: number;
   imageUrl: string | null;
   isActive: boolean;
+  isAvailable: boolean;
   optionValues: { optionId: string; optionName: string; valueId: string; value: string }[];
 }
 
@@ -33,6 +34,8 @@ export interface ProductDto {
   imageUrl: string | null;
   taxRate: number;
   isActive: boolean;
+  isAvailable: boolean;
+  availabilityNote: string | null;
   trackInventory: boolean;
   isNew: boolean;
   productType: "standard" | "bulk" | "custom";
@@ -61,6 +64,8 @@ type ProductRow = {
   imageUrl: string | null;
   taxRate: { toNumber(): number } | number;
   isActive: boolean;
+  isAvailable: boolean;
+  availabilityNote: string | null;
   trackInventory: boolean;
   isNew: boolean;
   productType: "standard" | "bulk" | "custom";
@@ -94,6 +99,7 @@ type ProductRow = {
     cost: { toNumber(): number } | number;
     imageUrl: string | null;
     isActive: boolean;
+    isAvailable: boolean;
     optionValues: {
       optionValue: { id: string; value: string; option: { id: string; name: string } };
     }[];
@@ -131,6 +137,7 @@ const include = {
       cost: true,
       imageUrl: true,
       isActive: true,
+      isAvailable: true,
       optionValues: {
         select: {
           optionValue: {
@@ -153,6 +160,8 @@ function serialize(p: ProductRow): ProductDto {
     imageUrl: p.imageUrl,
     taxRate: num(p.taxRate),
     isActive: p.isActive,
+    isAvailable: p.isAvailable,
+    availabilityNote: p.availabilityNote,
     trackInventory: p.trackInventory,
     isNew: p.isNew,
     productType: p.productType,
@@ -177,6 +186,7 @@ function serialize(p: ProductRow): ProductDto {
       cost: num(v.cost),
       imageUrl: v.imageUrl,
       isActive: v.isActive,
+      isAvailable: v.isAvailable,
       optionValues: v.optionValues.map((ov) => ({
         optionId: ov.optionValue.option.id,
         optionName: ov.optionValue.option.name,
@@ -201,6 +211,19 @@ function serialize(p: ProductRow): ProductDto {
     })),
     createdAt: p.createdAt.toISOString(),
   };
+}
+
+async function validateCategory(organizationId: string, value: unknown): Promise<string | null> {
+  if (!value) return null;
+  const categoryId = String(value);
+  const category = await prisma.category.findFirst({
+    where: { id: categoryId, organizationId },
+    select: { id: true },
+  });
+  if (!category) {
+    throw new CrudError("La categoría no pertenece a la empresa activa", 400, "categoryId");
+  }
+  return category.id;
 }
 
 async function restoreProduct(organizationId: string, id: string) {
@@ -260,6 +283,7 @@ export const productsModule: CrudModule<ProductDto> = {
 
   async create(organizationId, input, _ctx) {
     const data = input as Record<string, unknown>;
+    const categoryId = await validateCategory(organizationId, data.categoryId);
     if (!data.name || String(data.name).trim() === "") {
       throw new CrudError("El nombre es obligatorio", 400, "name");
     }
@@ -276,10 +300,12 @@ export const productsModule: CrudModule<ProductDto> = {
         organizationId,
         name: String(data.name).trim(),
         description: data.description ? String(data.description) : null,
-        categoryId: data.categoryId ? String(data.categoryId) : null,
+        categoryId,
         imageUrl: data.imageUrl ? String(data.imageUrl) : null,
         taxRate: Number(data.taxRate) || 0,
         isActive: data.isActive !== false,
+        isAvailable: data.isAvailable !== false,
+        availabilityNote: data.availabilityNote ? String(data.availabilityNote).trim() : null,
         trackInventory: data.trackInventory !== false,
         isNew,
         productType,
@@ -352,6 +378,9 @@ export const productsModule: CrudModule<ProductDto> = {
     const data = input as Record<string, unknown>;
     const existing = await prisma.product.findFirst({ where: { id, organizationId }, select: { id: true, productType: true, isNew: true, name: true, description: true, imageUrl: true } });
     if (!existing) throw new CrudError("Producto no encontrado", 404);
+    const categoryId = data.categoryId !== undefined
+      ? await validateCategory(organizationId, data.categoryId)
+      : undefined;
 
     const productType =
       data.productType === "bulk" ||
@@ -369,10 +398,12 @@ export const productsModule: CrudModule<ProductDto> = {
       data: {
         ...(data.name !== undefined ? { name: String(data.name).trim() } : {}),
         ...(data.description !== undefined ? { description: data.description ? String(data.description) : null } : {}),
-        ...(data.categoryId !== undefined ? { categoryId: data.categoryId ? String(data.categoryId) : null } : {}),
+        ...(categoryId !== undefined ? { categoryId } : {}),
         ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl ? String(data.imageUrl) : null } : {}),
         ...(data.taxRate !== undefined ? { taxRate: Number(data.taxRate) || 0 } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive !== false } : {}),
+        ...(data.isAvailable !== undefined ? { isAvailable: data.isAvailable !== false } : {}),
+        ...(data.availabilityNote !== undefined ? { availabilityNote: data.availabilityNote ? String(data.availabilityNote).trim() : null } : {}),
         ...(data.trackInventory !== undefined ? { trackInventory: data.trackInventory !== false } : {}),
         ...(data.isNew !== undefined ? { isNew: data.isNew === true } : {}),
         productType,
@@ -591,6 +622,7 @@ export async function createVariant(organizationId: string, productId: string, i
       cost: true,
       imageUrl: true,
       isActive: true,
+      isAvailable: true,
       optionValues: {
         select: { optionValue: { select: { id: true, value: true, option: { select: { id: true, name: true } } } } },
       },
@@ -605,6 +637,7 @@ export async function createVariant(organizationId: string, productId: string, i
     cost: num(full!.cost),
     imageUrl: full!.imageUrl,
     isActive: full!.isActive,
+    isAvailable: full!.isAvailable,
     optionValues: full!.optionValues.map((ov) => ({
       optionId: ov.optionValue.option.id,
       optionName: ov.optionValue.option.name,
@@ -642,6 +675,7 @@ export async function updateVariant(organizationId: string, variantId: string, i
       ...(input.cost !== undefined ? { cost: Number(input.cost) || 0 } : {}),
       ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl ? String(input.imageUrl) : null } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive !== false } : {}),
+      ...(input.isAvailable !== undefined ? { isAvailable: input.isAvailable !== false } : {}),
       ...(Array.isArray(input.optionValueIds)
         ? {
             optionValues: {
@@ -664,6 +698,7 @@ export async function updateVariant(organizationId: string, variantId: string, i
       cost: true,
       imageUrl: true,
       isActive: true,
+      isAvailable: true,
       optionValues: {
         select: { optionValue: { select: { id: true, value: true, option: { select: { id: true, name: true } } } } },
       },
@@ -679,6 +714,7 @@ export async function updateVariant(organizationId: string, variantId: string, i
     cost: num(full!.cost),
     imageUrl: full!.imageUrl,
     isActive: full!.isActive,
+    isAvailable: full!.isAvailable,
     optionValues: full!.optionValues.map((ov) => ({
       optionId: ov.optionValue.option.id,
       optionName: ov.optionValue.option.name,

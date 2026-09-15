@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { InputGroupField } from "@/components/base/input-group-field";
-import { swalError, swalToast } from "@/lib/swal";
+import { swalToast } from "@/lib/swal";
 import { cn } from "@/lib/utils";
 import { PlanTableElement, type PlanTable } from "@/components/admin/tables/plan-elements";
 
@@ -105,6 +105,7 @@ export function ReservationWizard({
   const [phone, setPhone] = useState(customerPhone ?? "");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [done, setDone] = useState<{ table: number | null; room: string | null } | null>(null);
 
   const month = useMemo(() => {
@@ -131,7 +132,7 @@ export function ReservationWizard({
       setPolicy(data.policy ?? null);
       setDate((prev) => (prev && (data.days ?? []).includes(prev) ? prev : null));
     } catch (err) {
-      swalError("No se pudo cargar el calendario", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudo cargar el calendario");
     } finally {
       setLoadingDays(false);
     }
@@ -157,7 +158,7 @@ export function ReservationWizard({
       setSlots(data.slots ?? []);
       setTime((prev) => (prev && (data.slots ?? []).some((s: SlotDetail) => s.time === prev) ? prev : null));
     } catch (err) {
-      swalError("No se pudo cargar el horario", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudo cargar el horario");
     } finally {
       setLoadingSlots(false);
     }
@@ -185,7 +186,7 @@ export function ReservationWizard({
         return t?.free ? prev : null;
       });
     } catch (err) {
-      swalError("No se pudo cargar la sala", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudo cargar la sala");
     } finally {
       setLoadingTables(false);
     }
@@ -197,13 +198,16 @@ export function ReservationWizard({
 
   const submit = async () => {
     if (!date || !time) {
-      swalError("Elige fecha y hora");
+      setFormError("Elige fecha y hora antes de continuar.");
+      requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('button[aria-label="Elige una fecha"]')?.focus());
       return;
     }
     if (name.trim().length < 2) {
-      swalError("Ingresa el nombre del comensal");
+      setFormError("Ingresa el nombre del comensal.");
+      requestAnimationFrame(() => document.getElementById("reservation-guest-name")?.focus());
       return;
     }
+    setFormError(null);
     setSubmitting(true);
     try {
       const startsAt = new Date(`${date}T${time}:00`);
@@ -232,7 +236,7 @@ export function ReservationWizard({
       setDone({ table: table?.number ?? null, room: table?.roomName ?? null });
       onDone?.();
     } catch (err) {
-      swalError("No se pudo reservar", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudo reservar");
     } finally {
       setSubmitting(false);
     }
@@ -259,7 +263,7 @@ export function ReservationWizard({
           <CalendarCheck2 className="size-6" />
         </div>
         <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
-          {policy?.requireConfirmation ? "Solicitud enviada" : "¡Reservación confirmada!"}
+          {doneMessage ?? (policy?.requireConfirmation ? "Solicitud enviada" : "¡Reservación confirmada!")}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           {date && new Date(`${date}T${time ?? "00:00"}:00`).toLocaleString("es-MX", {
@@ -299,7 +303,7 @@ export function ReservationWizard({
             />
             <span
               className={cn(
-                "text-[10px] font-medium",
+                "text-xs font-medium",
                 i === step ? "text-foreground" : "text-muted-foreground"
               )}
             >
@@ -311,7 +315,7 @@ export function ReservationWizard({
 
       {/* Chips de política (se recuerdan durante todo el flujo) */}
       {policy && (
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
           <ScrollText className="size-3.5" />
           <span className="rounded-full border bg-muted/50 px-2 py-0.5">
             {policy.minNoticeMinutes >= 60
@@ -326,6 +330,12 @@ export function ReservationWizard({
             </span>
           )}
         </div>
+      )}
+
+      {formError && (
+        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {formError}
+        </p>
       )}
 
       {/* PASO 0: Sucursal */}
@@ -360,7 +370,7 @@ export function ReservationWizard({
           <div className="flex items-center gap-2">
             <CalendarDays className="size-4 text-muted-foreground" />
             <p className="text-sm font-semibold">Elige el día</p>
-            <span className="ml-auto text-[11px] text-muted-foreground">
+            <span className="ml-auto text-xs text-muted-foreground">
               Solo días con la sucursal abierta
             </span>
           </div>
@@ -417,7 +427,7 @@ export function ReservationWizard({
             </span>
             <div className="flex-1">
               <p className="text-sm font-medium">Asientos</p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {policy && party > policy.maxGuests
                   ? `La política permite máximo ${policy.maxGuests}`
                   : "¿Cuántos comensales serán?"}
@@ -426,7 +436,7 @@ export function ReservationWizard({
             <Button
               variant="outline"
               size="sm"
-              className="size-8 rounded-full p-0"
+              className="size-11 rounded-full p-0"
               onClick={() => setGuests(String(Math.max(1, party - 1)))}
               disabled={party <= 1}
             >
@@ -436,7 +446,7 @@ export function ReservationWizard({
             <Button
               variant="outline"
               size="sm"
-              className="size-8 rounded-full p-0"
+              className="size-11 rounded-full p-0"
               onClick={() => setGuests(String(party + 1))}
               disabled={!!policy && party >= policy.maxGuests}
             >
@@ -451,7 +461,7 @@ export function ReservationWizard({
                 <Clock className="size-4 text-muted-foreground" />
                 <p className="text-sm font-semibold">Elige la hora</p>
                 {selectedSlot && (
-                  <Badge variant="outline" className="ml-auto text-[10px]">
+                  <Badge variant="outline" className="ml-auto text-xs">
                     {selectedSlot.rooms.reduce((a, r) => a + r.free, 0)} mesas libres a esa hora
                   </Badge>
                 )}
@@ -505,13 +515,13 @@ export function ReservationWizard({
           <div className="flex flex-wrap items-center gap-2">
             <Armchair className="size-4 text-muted-foreground" />
             <p className="text-sm font-semibold">¿Dónde prefieren sentarse?</p>
-            <span className="ml-auto text-[11px] text-muted-foreground">
+            <span className="ml-auto text-xs text-muted-foreground">
               {date && time
                 ? `${new Date(`${date}T${time}:00`).toLocaleString("es-MX", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · ${party} pers.`
                 : ""}
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Las mesas bloqueadas no caben o ya están apartadas. Puedes continuar sin elegir mesa y el
             anfitrión te asignará la mejor opción.
           </p>
@@ -529,7 +539,7 @@ export function ReservationWizard({
                 <div className="mb-1.5 flex items-center gap-2">
                   <MapPin className="size-3.5 text-muted-foreground" />
                   <p className="text-sm font-semibold">{g.name}</p>
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-xs">
                     {g.tables.filter((t) => t.free).length} disponibles
                   </Badge>
                 </div>
@@ -567,10 +577,12 @@ export function ReservationWizard({
         <div className="space-y-3">
           <p className="text-sm font-semibold">Datos de la reservación</p>
           <InputGroupField
+            id="reservation-guest-name"
             label="Nombre del comensal"
             value={name}
             onChange={(e) => setName(e.target.value)}
             leftIcon={<Users className="size-4 text-slate-400" />}
+            error={name.trim().length > 0 && name.trim().length < 2 ? "Escribe al menos 2 caracteres" : undefined}
           />
           <InputGroupField
             label="Teléfono (opcional)"
@@ -626,7 +638,7 @@ export function ReservationWizard({
             <ChevronRight className="size-4" />
           </Button>
         ) : (
-          <Button size="sm" onClick={submit} disabled={submitting || !canNext}>
+          <Button size="sm" onClick={submit} disabled={submitting}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <CalendarCheck2 className="size-4" />}
             {policy?.requireConfirmation ? "Enviar solicitud" : "Confirmar reservación"}
           </Button>
@@ -662,7 +674,7 @@ function DayGrid({
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-muted-foreground">
+      <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold uppercase text-muted-foreground">
         {["D", "L", "M", "M", "J", "V", "S"].map((d, i) => (
           <span key={i}>{d}</span>
         ))}
@@ -678,6 +690,7 @@ function DayGrid({
               type="button"
               disabled={!selectable}
               onClick={() => onSelect(ymd)}
+              aria-label={selectable ? `Elige una fecha: ${ymd}` : `Fecha no disponible: ${ymd}`}
               className={cn(
                 "aspect-square rounded-lg text-xs font-medium transition",
                 isSelected

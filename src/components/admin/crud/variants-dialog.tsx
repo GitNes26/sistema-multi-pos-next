@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Barcode,
   Copy,
@@ -27,10 +27,13 @@ import {
 import { DialogComponent } from "@/components/ui/dialog"
 import { variantApi, type VariantRow } from "@/lib/api"
 import { money } from "@/lib/pos/money"
-import { swalConfirm, swalError, swalToast } from "@/lib/swal"
+import { swalConfirm, swalToast } from "@/lib/swal"
 import { uploadFile } from "@/lib/uploads"
 import { useImageDropzone } from "@/hooks/use-image-dropzone"
 import { ThumbImage } from "@/components/base/thumb-image"
+import { InputGroupField } from "@/components/base/input-group-field"
+import { SwitchField } from "@/components/base/switch-field"
+import { useFocusInvalid } from "@/hooks/use-focus-invalid"
 
 // ── Thumbnail de imagen de variante ──────────────────────────────────────────
 
@@ -38,10 +41,12 @@ function VariantImageCell({
   variant,
   productId,
   onSaved,
+  onError,
 }: {
   variant: VariantRow
   productId: string
   onSaved: () => void
+  onError: (message: string) => void
 }) {
   const [busy, setBusy] = useState(false)
 
@@ -52,9 +57,8 @@ function VariantImageCell({
       await variantApi.update(productId, variant.id, { imageUrl: url })
       onSaved()
     } catch (err) {
-      swalError(
-        "No se pudo actualizar la imagen",
-        err instanceof Error ? err.message : undefined
+      onError(
+        err instanceof Error ? err.message : "No se pudo actualizar la imagen"
       )
     } finally {
       setBusy(false)
@@ -74,9 +78,8 @@ function VariantImageCell({
       await variantApi.update(productId, variant.id, { imageUrl: null })
       onSaved()
     } catch (err) {
-      swalError(
-        "No se pudo quitar la imagen",
-        err instanceof Error ? err.message : undefined
+      onError(
+        err instanceof Error ? err.message : "No se pudo quitar la imagen"
       )
     } finally {
       setBusy(false)
@@ -136,6 +139,7 @@ function VariantRowEditor({
   defaultBarcode,
   onSaved,
   onRemove,
+  onError,
 }: {
   variant: VariantRow
   productId: string
@@ -143,6 +147,7 @@ function VariantRowEditor({
   defaultBarcode: string
   onSaved: () => void
   onRemove: (v: VariantRow) => void
+  onError: (message: string) => void
 }) {
   const [busy, setBusy] = useState(false)
 
@@ -153,9 +158,8 @@ function VariantRowEditor({
       swalToast("Variante guardada")
       onSaved()
     } catch (err) {
-      swalError(
-        "No se pudo guardar",
-        err instanceof Error ? err.message : undefined
+      onError(
+        err instanceof Error ? err.message : "No se pudo guardar la variante"
       )
     } finally {
       setBusy(false)
@@ -173,6 +177,7 @@ function VariantRowEditor({
           variant={variant}
           productId={productId}
           onSaved={onSaved}
+          onError={onError}
         />
       </td>
       <td className="px-1 py-1.5">
@@ -269,6 +274,13 @@ function VariantRowEditor({
           onCheckedChange={(v) => void save({ isActive: v })}
         />
       </td>
+      <td className="px-2 py-2">
+        <Switch
+          checked={variant.isAvailable !== false}
+          onCheckedChange={(value) => void save({ isAvailable: value })}
+          aria-label={`${variant.isAvailable !== false ? "Marcar ya no hay" : "Marcar disponible"} ${variant.name}`}
+        />
+      </td>
       <td className="px-2 py-2 whitespace-nowrap">
         <Button
           type="button"
@@ -324,6 +336,14 @@ function AutoCodesDialog({
   onClose: () => void
   onApply: () => void
 }) {
+  const { focusFirstEnabled } = useFocusInvalid()
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() =>
+      focusFirstEnabled("auto-codes-form")
+    )
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusFirstEnabled])
+
   const preview = (n: number) =>
     `${prefix.trim() || "SKU"}${String(Math.max(0, Math.floor(start) || 0) + n).padStart(3, "0")}`
 
@@ -340,65 +360,85 @@ function AutoCodesDialog({
           <Button variant="ghost" size="sm" onClick={onClose} disabled={busy}>
             Cancelar
           </Button>
-          <Button size="sm" onClick={onApply} disabled={busy}>
+          <Button
+            type="submit"
+            form="auto-codes-form"
+            size="sm"
+            disabled={busy}
+          >
             {busy && <Loader2 className="size-4 animate-spin" />}
             {busy ? "Generando…" : "Generar códigos"}
           </Button>
         </>
       }
     >
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium">Prefijo</p>
-              <Input
-                value={prefix}
-                onChange={(e) => onPrefix(e.target.value)}
-                placeholder="SKU"
-                className="h-9 font-mono text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium">Inicia en el número</p>
-              <Input
-                type="number"
-                min={0}
-                value={start}
-                onChange={(e) => onStart(Number(e.target.value))}
-                className="h-9 font-mono text-sm"
-              />
-            </div>
-          </div>
+      <form
+        id="auto-codes-form"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          onApply()
+        }}
+        className="space-y-4"
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <InputGroupField
+            id="auto-codes-prefix"
+            label="Prefijo"
+            leftIcon={<Hash className="size-4" />}
+            value={prefix}
+            onChange={(e) => onPrefix(e.target.value)}
+            placeholder="SKU"
+            className="h-9 font-mono text-sm"
+          />
+          <InputGroupField
+            id="auto-codes-start"
+            label="Inicia en el número"
+            leftIcon={<Hash className="size-4" />}
+            type="number"
+            min={0}
+            value={start}
+            onChange={(e) => onStart(Number(e.target.value))}
+            className="h-9 font-mono text-sm"
+          />
+        </div>
 
-          <div className="space-y-2 rounded-lg border bg-muted/30 p-3 text-xs">
-            <p className="font-medium text-foreground">Vista previa</p>
-            <div className="flex flex-wrap gap-1.5">
-              {[0, 1, 2].map((n) => (
-                <code key={n} className="rounded bg-background px-1.5 py-0.5 ring-1 ring-border">
-                  {preview(n)}
-                </code>
-              ))}
-              <span className="text-muted-foreground">…</span>
-            </div>
+        <div className="space-y-2 rounded-lg border bg-muted/30 p-3 text-xs">
+          <p className="font-medium text-foreground">Vista previa</p>
+          <div className="flex flex-wrap gap-1.5">
+            {[0, 1, 2].map((n) => (
+              <code
+                key={n}
+                className="rounded bg-background px-1.5 py-0.5 ring-1 ring-border"
+              >
+                {preview(n)}
+              </code>
+            ))}
+            <span className="text-muted-foreground">…</span>
           </div>
+        </div>
 
-          <div className="space-y-2.5">
-            <label className="flex items-center justify-between gap-3 text-sm">
-              <span>
-                Solo las que están vacías{" "}
-                {hasEmpty && (
-                  <span className="text-xs text-muted-foreground">(hay algunas sin código)</span>
-                )}
-              </span>
-              <Switch checked={onlyEmpty} onCheckedChange={onOnlyEmpty} />
-            </label>
-            <label className="flex items-center justify-between gap-3 text-sm">
-              <span className="flex items-center gap-1.5">
-                <Barcode className="size-3.5 text-muted-foreground" />
-                Generar también códigos de barras (13 dígitos)
-              </span>
-              <Switch checked={barcode} onCheckedChange={onBarcode} />
-            </label>
-          </div>
+        <div className="space-y-2.5">
+          <SwitchField
+            id="auto-codes-only-empty"
+            label="Solo las que están vacías"
+            description={
+              hasEmpty ? "Hay algunas variantes sin código" : undefined
+            }
+            icon={<Hash className="size-4" />}
+            checked={onlyEmpty}
+            onCheckedChange={onOnlyEmpty}
+          />
+          <SwitchField
+            id="auto-codes-barcode"
+            label="Generar también códigos de barras"
+            description="Formato de 13 dígitos"
+            icon={<Barcode className="size-4" />}
+            checked={barcode}
+            onCheckedChange={onBarcode}
+          />
+        </div>
+      </form>
     </DialogComponent>
   )
 }
@@ -426,15 +466,18 @@ export function VariantsDialog({
   const [autoOnlyEmpty, setAutoOnlyEmpty] = useState(true)
   const [autoBarcode, setAutoBarcode] = useState(false)
   const [autoBusy, setAutoBusy] = useState(false)
+  const [formError, setFormError] = useState<string>()
 
   const refresh = useCallback(async () => {
     try {
+      setFormError(undefined)
       const res = await variantApi.list(productId)
       setVariants(res.rows)
     } catch (err) {
-      swalError(
-        "No se pudieron cargar las variantes",
-        err instanceof Error ? err.message : undefined
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : "No se pudieron cargar las variantes"
       )
     }
   }, [productId])
@@ -447,7 +490,7 @@ export function VariantsDialog({
         const res = await variantApi.list(productId)
         if (active) setVariants(res.rows)
       } catch {
-        if (active) swalError("Error al cargar variantes")
+        if (active) setFormError("No se pudieron cargar las variantes")
       } finally {
         if (active) setLoading(false)
       }
@@ -471,9 +514,8 @@ export function VariantsDialog({
       await variantApi.remove(productId, v.id)
       await refresh()
     } catch (err) {
-      swalError(
-        "No se pudo eliminar",
-        err instanceof Error ? err.message : undefined
+      setFormError(
+        err instanceof Error ? err.message : "No se pudo eliminar la variante"
       )
     }
   }
@@ -483,6 +525,7 @@ export function VariantsDialog({
       open
       onOpenChange={(o) => !o && onClose()}
       title="Variantes"
+      icon={<Tag className="size-5" />}
       description={`${productName} · ${variants.length} variante(s) · Edición inline: modifica y sal del campo para guardar.`}
       className="w-[60vw]"
       size="full"
@@ -496,7 +539,10 @@ export function VariantsDialog({
               disabled={variants.length === 0}
               onClick={() => {
                 setAutoPrefix(
-                  productName.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase() || "SKU"
+                  productName
+                    .replace(/[^a-zA-Z0-9]/g, "")
+                    .slice(0, 6)
+                    .toUpperCase() || "SKU"
                 )
                 setAutoStart(1)
                 setAutoOnlyEmpty(true)
@@ -531,7 +577,11 @@ export function VariantsDialog({
                   swalToast("Precios actualizados en todas las variantes")
                   await refresh()
                 } catch (err) {
-                  swalError("Error", err instanceof Error ? err.message : undefined)
+                  setFormError(
+                    err instanceof Error
+                      ? err.message
+                      : "No se pudieron copiar los precios"
+                  )
                 }
               }}
             >
@@ -545,6 +595,14 @@ export function VariantsDialog({
         </div>
       }
     >
+      {formError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+        >
+          {formError}
+        </div>
+      )}
       {/* Cabecera del producto */}
       <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 p-3">
         {productImage ? (
@@ -657,8 +715,13 @@ export function VariantsDialog({
               const targets = variants
                 .map((v, i) => ({
                   v,
-                  sku: autoOnlyEmpty && v.sku ? undefined : `${prefix}${String(start + i).padStart(3, "0")}`,
-                  barcode: autoBarcode ? String(7500000000000 + start + i) : undefined,
+                  sku:
+                    autoOnlyEmpty && v.sku
+                      ? undefined
+                      : `${prefix}${String(start + i).padStart(3, "0")}`,
+                  barcode: autoBarcode
+                    ? String(7500000000000 + start + i)
+                    : undefined,
                 }))
                 .filter((t) => t.sku !== undefined || t.barcode !== undefined)
               if (targets.length === 0) {
@@ -668,14 +731,21 @@ export function VariantsDialog({
               }
               await Promise.all(
                 targets.map((t) =>
-                  variantApi.update(productId, t.v.id, { sku: t.sku, barcode: t.barcode })
+                  variantApi.update(productId, t.v.id, {
+                    sku: t.sku,
+                    barcode: t.barcode,
+                  })
                 )
               )
               swalToast(`Códigos generados en ${targets.length} variante(s)`)
               setAutoOpen(false)
               await refresh()
             } catch (err) {
-              swalError("No se pudieron generar", err instanceof Error ? err.message : undefined)
+              setFormError(
+                err instanceof Error
+                  ? err.message
+                  : "No se pudieron generar los códigos"
+              )
             } finally {
               setAutoBusy(false)
             }
@@ -700,6 +770,7 @@ export function VariantsDialog({
                 <th className="px-2 py-2 text-right">Precio</th>
                 <th className="px-2 py-2 text-right">Costo</th>
                 <th className="w-14 px-2 py-2">Activa</th>
+                <th className="px-2 py-2">Venta</th>
                 <th className="w-14 px-2 py-2"></th>
               </tr>
             </thead>
@@ -707,7 +778,7 @@ export function VariantsDialog({
               {variants.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-3 py-8 text-center text-muted-foreground"
                   >
                     No hay variantes registradas para este producto.
@@ -723,6 +794,7 @@ export function VariantsDialog({
                   defaultBarcode={defaults.barcode}
                   onSaved={refresh}
                   onRemove={removeVariant}
+                  onError={setFormError}
                 />
               ))}
             </tbody>

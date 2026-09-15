@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import * as yup from "yup";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
@@ -13,6 +14,7 @@ import {
   Trash2,
   UserRound,
   Users,
+  AlertCircle,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { businessModeInfo } from "@/lib/business-modes";
 import type { BusinessMode } from "@/lib/auth/options";
+import { useFocusInvalid } from "@/hooks/use-focus-invalid";
 
 // FASE 15.9 — Gestión de organizaciones y asignación de admins (superAdmin).
 
@@ -280,6 +283,15 @@ function CreateOrgDialog({
   const [ownerEmail, setOwnerEmail] = React.useState("");
   const [ownerPassword, setOwnerPassword] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [formError, setFormError] = React.useState<string>();
+  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
+
+  React.useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => focusFirstEnabled("create-org-form"));
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusFirstEnabled, open]);
 
   const reset = () => {
     setName("");
@@ -287,10 +299,32 @@ function CreateOrgDialog({
     setOwnerName("");
     setOwnerEmail("");
     setOwnerPassword("");
+    setErrors({});
+    setFormError(undefined);
   };
 
   const save = async () => {
+    try {
+      await yup.object({
+        name: yup.string().trim().required("El nombre es obligatorio").max(160, "Máximo 160 caracteres"),
+        currency: yup.string().trim().uppercase().matches(/^[A-Z]{3}$/, "Usa el código ISO de 3 letras, por ejemplo MXN").required("La moneda es obligatoria"),
+        ownerName: yup.string().trim().max(160, "Máximo 160 caracteres"),
+        ownerEmail: yup.string().trim().lowercase().email("Ingresa un correo válido").required("El correo es obligatorio"),
+        ownerPassword: yup.string().min(6, "La contraseña debe tener al menos 6 caracteres").required("La contraseña es obligatoria"),
+      }).validate({ name, currency, ownerName, ownerEmail, ownerPassword }, { abortEarly: false });
+      setErrors({});
+    } catch (error) {
+      if (error instanceof yup.ValidationError) {
+        const next: Record<string, string> = {};
+        for (const failure of error.inner) if (failure.path && !next[failure.path]) next[failure.path] = failure.message;
+        setErrors(next);
+        const focusErrors = Object.fromEntries(Object.entries(next).map(([key, message]) => [`create-org-${key}`, message]));
+        window.requestAnimationFrame(() => focusFirstInvalid(focusErrors, "create-org-form"));
+      }
+      return;
+    }
     setSaving(true);
+    setFormError(undefined);
     try {
       await api("/api/settings/organizations", {
         method: "POST",
@@ -301,7 +335,7 @@ function CreateOrgDialog({
       onCreated();
       swalToast("Organización creada");
     } catch (err) {
-      swalError("No se pudo crear", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudo crear la organización");
     } finally {
       setSaving(false);
     }
@@ -317,49 +351,55 @@ function CreateOrgDialog({
       footer={
         <>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => void save()} disabled={saving || !name.trim() || !ownerEmail.trim() || !ownerPassword}>
+          <Button type="submit" form="create-org-form" disabled={saving}>
             {saving ? "Creando…" : "Crear organización"}
           </Button>
         </>
       }
     >
-      <div className="space-y-3">
+      <form id="create-org-form" noValidate onSubmit={(event) => { event.preventDefault(); void save(); }} className="space-y-3">
+        {formError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
         <InputGroupField
-          id="org-name"
+          id="create-org-name"
           label="Nombre de la organización"
           required
           placeholder="Ej. Supermercado Mi Tienda"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          error={errors.name}
         />
         <InputGroupField
-          id="org-currency"
+          id="create-org-currency"
           label="Moneda"
           placeholder="MXN"
           value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
+          onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
+          required
+          error={errors.currency}
         />
         <p className="text-xs font-semibold text-muted-foreground">Cuenta del owner</p>
         <InputGroupField
-          id="owner-name"
+          id="create-org-ownerName"
           label="Nombre"
           placeholder="Nombre completo"
           leftIcon={<UserRound className="size-4" />}
           value={ownerName}
           onChange={(e) => setOwnerName(e.target.value)}
+          error={errors.ownerName}
         />
         <InputGroupField
-          id="owner-email"
+          id="create-org-ownerEmail"
           label="Email"
           type="email"
           required
           placeholder="owner@empresa.com"
           leftIcon={<UserRound className="size-4" />}
           value={ownerEmail}
-          onChange={(e) => setOwnerEmail(e.target.value)}
+          onChange={(e) => setOwnerEmail(e.target.value.toLowerCase())}
+          error={errors.ownerEmail}
         />
         <InputGroupField
-          id="owner-password"
+          id="create-org-ownerPassword"
           label="Contraseña"
           type="password"
           required
@@ -367,8 +407,9 @@ function CreateOrgDialog({
           leftIcon={<KeyRound className="size-4" />}
           value={ownerPassword}
           onChange={(e) => setOwnerPassword(e.target.value)}
+          error={errors.ownerPassword}
         />
-      </div>
+      </form>
     </DialogComponent>
   );
 }
@@ -385,17 +426,41 @@ function EditOrgDialog({
   const [name, setName] = React.useState("");
   const [currency, setCurrency] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [formError, setFormError] = React.useState<string>();
+  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
 
   React.useEffect(() => {
     if (org) {
       setName(org.name);
       setCurrency(org.currency);
+      setErrors({});
+      setFormError(undefined);
+      const frame = window.requestAnimationFrame(() => focusFirstEnabled("edit-org-form"));
+      return () => window.cancelAnimationFrame(frame);
     }
-  }, [org]);
+  }, [focusFirstEnabled, org]);
 
   const save = async () => {
     if (!org) return;
+    try {
+      await yup.object({
+        name: yup.string().trim().required("El nombre es obligatorio").max(160, "Máximo 160 caracteres"),
+        currency: yup.string().trim().uppercase().matches(/^[A-Z]{3}$/, "Usa un código ISO de 3 letras").required("La moneda es obligatoria"),
+      }).validate({ name, currency }, { abortEarly: false });
+      setErrors({});
+    } catch (error) {
+      if (error instanceof yup.ValidationError) {
+        const next: Record<string, string> = {};
+        for (const failure of error.inner) if (failure.path && !next[failure.path]) next[failure.path] = failure.message;
+        setErrors(next);
+        const focusErrors = Object.fromEntries(Object.entries(next).map(([key, message]) => [`edit-org-${key}`, message]));
+        window.requestAnimationFrame(() => focusFirstInvalid(focusErrors, "edit-org-form"));
+      }
+      return;
+    }
     setSaving(true);
+    setFormError(undefined);
     try {
       await api(`/api/settings/organizations/${org.id}`, {
         method: "PATCH",
@@ -405,7 +470,7 @@ function EditOrgDialog({
       onSaved();
       swalToast("Organización actualizada");
     } catch (err) {
-      swalError("No se pudo actualizar", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudo actualizar la organización");
     } finally {
       setSaving(false);
     }
@@ -420,27 +485,31 @@ function EditOrgDialog({
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={() => void save()} disabled={saving || !name.trim()}>
+          <Button type="submit" form="edit-org-form" disabled={saving}>
             {saving ? "Guardando…" : "Guardar"}
           </Button>
         </>
       }
     >
-      <div className="space-y-3">
+      <form id="edit-org-form" noValidate onSubmit={(event) => { event.preventDefault(); void save(); }} className="space-y-3">
+        {formError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
         <InputGroupField
           id="edit-org-name"
           label="Nombre"
           required
           value={name}
           onChange={(e) => setName(e.target.value)}
+          error={errors.name}
         />
         <InputGroupField
           id="edit-org-currency"
           label="Moneda"
           value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
+          onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
+          required
+          error={errors.currency}
         />
-      </div>
+      </form>
     </DialogComponent>
   );
 }
@@ -537,9 +606,36 @@ function CreateUserDialog({
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [formError, setFormError] = React.useState<string>();
+  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
+
+  React.useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => focusFirstEnabled("create-user-form"));
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusFirstEnabled, open]);
 
   const save = async () => {
+    try {
+      await yup.object({
+        fullName: yup.string().trim().required("El nombre es obligatorio").max(160, "Máximo 160 caracteres"),
+        email: yup.string().trim().lowercase().email("Ingresa un correo válido").required("El correo es obligatorio"),
+        password: yup.string().min(6, "La contraseña debe tener al menos 6 caracteres").required("La contraseña es obligatoria"),
+      }).validate({ fullName, email, password }, { abortEarly: false });
+      setErrors({});
+    } catch (error) {
+      if (error instanceof yup.ValidationError) {
+        const next: Record<string, string> = {};
+        for (const failure of error.inner) if (failure.path && !next[failure.path]) next[failure.path] = failure.message;
+        setErrors(next);
+        const focusErrors = Object.fromEntries(Object.entries(next).map(([key, message]) => [`create-user-${key}`, message]));
+        window.requestAnimationFrame(() => focusFirstInvalid(focusErrors, "create-user-form"));
+      }
+      return;
+    }
     setSaving(true);
+    setFormError(undefined);
     try {
       await api("/api/settings/organizations/users", {
         method: "POST",
@@ -550,9 +646,10 @@ function CreateUserDialog({
       setFullName("");
       setEmail("");
       setPassword("");
+      setErrors({});
       swalToast("Usuario creado");
     } catch (err) {
-      swalError("No se pudo crear", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudo crear el usuario");
     } finally {
       setSaving(false);
     }
@@ -568,38 +665,42 @@ function CreateUserDialog({
       footer={
         <>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => void save()} disabled={saving || !fullName.trim() || !email.trim() || !password}>
+          <Button type="submit" form="create-user-form" disabled={saving}>
             {saving ? "Creando…" : "Crear usuario"}
           </Button>
         </>
       }
     >
-      <div className="space-y-3">
+      <form id="create-user-form" noValidate onSubmit={(event) => { event.preventDefault(); void save(); }} className="space-y-3">
+        {formError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
         <InputGroupField
-          id="user-fullname"
+          id="create-user-fullName"
           label="Nombre completo"
           required
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
+          error={errors.fullName}
         />
         <InputGroupField
-          id="user-email"
+          id="create-user-email"
           label="Email"
           type="email"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value.toLowerCase())}
+          error={errors.email}
         />
         <InputGroupField
-          id="user-password"
+          id="create-user-password"
           label="Contraseña"
           type="password"
           required
           placeholder="Mínimo 6 caracteres"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          error={errors.password}
         />
-      </div>
+      </form>
     </DialogComponent>
   );
 }
@@ -617,6 +718,8 @@ function AssignOrgDialog({
 }) {
   const [roles, setRoles] = React.useState<Record<string, string>>({});
   const [saving, setSaving] = React.useState(false);
+  const [formError, setFormError] = React.useState<string>();
+  const { focusFirstEnabled } = useFocusInvalid();
 
   React.useEffect(() => {
     if (!user) return;
@@ -626,12 +729,16 @@ function AssignOrgDialog({
       next[o.id] = current ? roleValue(current) : "";
     }
     setRoles(next);
-  }, [user, orgs]);
+    setFormError(undefined);
+    const frame = window.requestAnimationFrame(() => focusFirstEnabled("assign-org-form"));
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusFirstEnabled, user, orgs]);
 
   if (!user) return null;
 
   const save = async () => {
     setSaving(true);
+    setFormError(undefined);
     try {
       for (const o of orgs) {
         const value = roles[o.id] ?? "";
@@ -652,7 +759,7 @@ function AssignOrgDialog({
       onSaved();
       swalToast("Asignaciones actualizadas");
     } catch (err) {
-      swalError("No se pudieron guardar las asignaciones", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudieron guardar las asignaciones");
     } finally {
       setSaving(false);
     }
@@ -669,13 +776,14 @@ function AssignOrgDialog({
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={() => void save()} disabled={saving}>
+          <Button type="submit" form="assign-org-form" disabled={saving}>
             {saving ? "Guardando…" : "Guardar asignaciones"}
           </Button>
         </>
       }
     >
-      <div className="space-y-3">
+      <form id="assign-org-form" noValidate onSubmit={(event) => { event.preventDefault(); void save(); }} className="space-y-3">
+        {formError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
         {orgs.length === 0 && (
           <p className="text-sm text-muted-foreground">
             No hay organizaciones registradas. Crea una primero.
@@ -705,6 +813,8 @@ function AssignOrgDialog({
                 )}
               </div>
               <FormCombobox
+                id={`assign-org-${o.id}`}
+                ariaLabel={`Rol en ${o.name}`}
                 className="w-44"
                 value={roles[o.id] ?? ""}
                 onChange={(v) => setRoles((prev) => ({ ...prev, [o.id]: v }))}
@@ -718,7 +828,7 @@ function AssignOrgDialog({
             </div>
           );
         })}
-      </div>
+      </form>
     </DialogComponent>
   );
 }

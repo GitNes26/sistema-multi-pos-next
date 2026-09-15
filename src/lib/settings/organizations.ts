@@ -132,6 +132,7 @@ export async function createOrganization(input: CreateOrganizationInput): Promis
         name: "Matriz",
         code: "MATRIZ",
         managerName: ownerName,
+        email,
         allowsPickup: true,
         allowsDelivery: true,
         isActive: true,
@@ -142,7 +143,7 @@ export async function createOrganization(input: CreateOrganizationInput): Promis
         organizationId: created.id,
         locationId: matriz.id,
         name: "Caja 1",
-        folioPrefix: "C1",
+        folioPrefix: "MATRIZ-C1",
         isActive: true,
       },
     });

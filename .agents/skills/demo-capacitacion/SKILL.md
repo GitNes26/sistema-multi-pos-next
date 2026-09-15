@@ -20,10 +20,12 @@ de los wizards y credenciales demo reales.
    (Bienvenida → Tipo de negocio → ¡Listo!) y textos visibles.
 3. `src/lib/business-modes.ts` — nombre, descripción y chips de cada tipo de negocio +
    `MODE_WIZARDS` (qué acciones guiadas muestra cada modo).
-4. `src/components/admin/dashboard/wizard-launcher.tsx` — **Wizard 2**: tarjeta de acciones
-   guiadas del dashboard, orden numerado, auto-ocultado y el diálogo "Prueba tu portal".
-5. `src/components/shared/wizards/first-order-wizard.tsx` — **Wizard del portal**: pasos
-   (Cliente de prueba → Ver portal → Hacer un pedido → ¡Listo!) con sus botones reales.
+4. `src/components/admin/dashboard/wizard-launcher.tsx` — **acciones guiadas** del dashboard,
+   orden numerado y auto-ocultado por organización; cada tarjeta inicia el recorrido de
+   `GUIDES` sobre la pantalla real.
+5. `src/lib/guides.tsx`, `src/components/shared/guide/guide-coach.tsx` y
+   `src/components/admin/dashboard/wizard-launcher.tsx` — **guías inmersivas**: rutas,
+   controles reales resaltados y acciones finales de cada recorrido.
 6. `src/components/pos/pos-role-guide.tsx` — **Guía del POS** ("Mesa y cocina en 3 pasos",
    solo food_service/hybrid) y dónde se reabre (header del POS).
 7. `src/lib/pos/config.ts` — PIN de supervisor por defecto, métodos de pago y reglas

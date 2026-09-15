@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { PortalCategory, PortalProduct, PortalVariantOption } from "@/lib/portal/server";
+import type { PortalCategory, PortalCombo, PortalProduct, PortalVariantOption } from "@/lib/portal/server";
 import { round2, round3 } from "@/lib/pos/money";
 import type { NavItemIdIncludingCombos } from "@/components/portal/portal-shell";
 
@@ -30,7 +30,7 @@ export interface PortalCartItem {
   key: string;
   productId: string;
   variantId: string | null;
-  kind: "standard" | "bulk";
+  kind: "standard" | "bulk" | "custom";
   name: string;
   variantName: string | null;
   imageUrl: string | null;
@@ -47,6 +47,14 @@ export interface PortalCartItem {
   comment?: string;
   /** Recargo total por unidad aplicado al precio base (opciones del producto). */
   extraPrice?: number;
+  selectedOptions?: {
+    optionId: string;
+    optionName: string;
+    values: { id: string; value: string; extraPrice: number }[];
+  }[];
+  comboId?: string;
+  comboItems?: PortalCombo["items"];
+  comboTax?: number;
 }
 
 interface PortalState {
@@ -78,9 +86,11 @@ interface PortalState {
     /** Huella de la configuración (opciones elegidas) para líneas distintas. */
     optionKey?: string,
     /** Notas / modificaciones del producto (se envían como comentario). */
-    notes?: string
+    notes?: string,
+    selectedOptions?: PortalCartItem["selectedOptions"]
   ) => { added: number; limited: boolean };
   addBulk: (product: PortalProduct, opts: BulkInputOptions) => { added: number; limited: boolean };
+  addCombo: (combo: PortalCombo) => void;
   reorderItems: (items: ReorderItem[]) => number;
   setQty: (key: string, qty: number) => void;
   setComment: (key: string, comment: string) => void;
@@ -119,7 +129,7 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
   setNavOpen: (navOpen) => set({ navOpen }),
   setNavOrder: (navOrder) => set({ navOrder }),
 
-  addStandard: (product, variant, qty = 1, extraPerUnit = 0, optionKey, notes) => {
+  addStandard: (product, variant, qty = 1, extraPerUnit = 0, optionKey, notes, selectedOptions) => {
     // Dos configuraciones distintas de la misma variante conviven como líneas
     // separadas (solo se fusionan cuando son idénticas).
     const key = optionKey
@@ -146,7 +156,7 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
         key,
         productId: product.productId,
         variantId: variant.id,
-        kind: "standard",
+        kind: product.kind === "custom" ? "custom" : "standard",
         name: product.name,
         variantName,
         imageUrl: variant.imageUrl ?? product.imageUrl,
@@ -160,6 +170,7 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
         stock: variant.stock,
         step: 1,
         extraPrice: extra,
+        selectedOptions,
         comment: notes?.trim() || undefined,
       };
       return { items: [...s.items, line] };
@@ -203,6 +214,41 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
     });
     return { added: addQty, limited: track && addQty < round3(opts.qty) };
   },
+
+  addCombo: (combo) => set((state) => {
+    const key = `combo::${combo.id}`;
+    const existing = state.items.find((item) => item.key === key);
+    if (existing) {
+      return { items: state.items.map((item) => item.key === key ? { ...item, qty: item.qty + 1 } : item) };
+    }
+    const comboTax = round2(combo.items.reduce(
+      (sum, item) => sum + item.unitPrice * item.quantity * item.taxRate,
+      0,
+    ));
+    return {
+      items: [...state.items, {
+        key,
+        productId: combo.id,
+        variantId: null,
+        kind: "standard",
+        name: combo.name,
+        variantName: null,
+        imageUrl: combo.imageUrl,
+        unitPrice: combo.comboPrice,
+        unitAbbrev: "combo",
+        unitId: null,
+        qty: 1,
+        taxRate: 0,
+        categoryId: null,
+        trackInventory: false,
+        stock: Number.POSITIVE_INFINITY,
+        step: 1,
+        comboId: combo.id,
+        comboItems: combo.items,
+        comboTax,
+      }],
+    };
+  }),
 
   reorderItems: (reorderItems) => {
     let addedCount = 0;
@@ -281,7 +327,7 @@ export function cartSubtotal(items: PortalCartItem[]): number {
 
 export function cartTax(items: PortalCartItem[]): number {
   return round2(
-    items.reduce((acc, i) => acc + i.unitPrice * i.qty * i.taxRate, 0)
+    items.reduce((acc, i) => acc + (i.comboTax != null ? i.comboTax * i.qty : i.unitPrice * i.qty * i.taxRate), 0)
   );
 }
 

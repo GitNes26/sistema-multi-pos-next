@@ -1,4 +1,4 @@
-import type { $Enums } from "@prisma/client";
+import type { $Enums, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { round2 } from "@/lib/pos/money";
 import { createSale, PosError } from "@/lib/pos/server";
@@ -185,9 +185,10 @@ export async function hasTimeConflict(
   employeeId: string,
   startsAt: Date,
   endsAt: Date,
-  excludeId?: string
+  excludeId?: string,
+  db: Prisma.TransactionClient | typeof prisma = prisma
 ): Promise<boolean> {
-  const clash = await prisma.appointment.findFirst({
+  const clash = await db.appointment.findFirst({
     where: {
       organizationId,
       employeeId,
@@ -230,30 +231,97 @@ export async function createAppointment(organizationId: string, input: Appointme
   const durationMin = input.durationMin && input.durationMin > 0 ? input.durationMin : assignment.durationMin;
   const endsAt = new Date(input.startsAt.getTime() + durationMin * 60000);
 
-  if (await hasTimeConflict(organizationId, input.employeeId, input.startsAt, endsAt)) {
-    throw new AgendaError("El empleado ya tiene una cita en ese horario", 409);
-  }
-
   const location = await prisma.location.findFirst({
     where: { organizationId },
     orderBy: { createdAt: "asc" },
     select: { id: true },
   });
 
-  return prisma.appointment.create({
-    data: {
-      organizationId,
-      locationId: location?.id ?? null,
-      customerId: input.customerId,
-      employeeId: input.employeeId,
-      variantId: input.variantId,
-      status: "pending",
-      startsAt: input.startsAt,
-      endsAt,
-      durationMin,
-      notes: input.notes?.trim() ? input.notes.trim() : null,
-    },
-  });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      if (await hasTimeConflict(organizationId, input.employeeId, input.startsAt, endsAt, undefined, tx)) {
+        throw new AgendaError("El empleado ya tiene una cita en ese horario", 409);
+      }
+      return tx.appointment.create({
+        data: {
+          organizationId,
+          locationId: location?.id ?? null,
+          customerId: input.customerId,
+          employeeId: input.employeeId,
+          variantId: input.variantId,
+          status: "pending",
+          startsAt: input.startsAt,
+          endsAt,
+          durationMin,
+          notes: input.notes?.trim() ? input.notes.trim() : null,
+        },
+      });
+    }, { isolationLevel: "Serializable" });
+  } catch (err) {
+    if (err instanceof AgendaError) throw err;
+    if ((err as { code?: string })?.code === "P2034") {
+      throw new AgendaError("El empleado ya tiene una cita en ese horario", 409);
+    }
+    throw err;
+  }
+}
+
+export async function updateAppointment(
+  organizationId: string,
+  id: string,
+  changes: { status?: $Enums.AppointmentStatus; startsAt?: Date; durationMin?: number; notes?: string | null }
+) {
+  if (changes.status === "completed") {
+    throw new AgendaError("Usa el cobro para completar la cita", 400);
+  }
+  if (changes.startsAt && Number.isNaN(changes.startsAt.getTime())) {
+    throw new AgendaError("Horario inválido", 400);
+  }
+  if (changes.durationMin !== undefined && (!Number.isInteger(changes.durationMin) || changes.durationMin < 5 || changes.durationMin > 480)) {
+    throw new AgendaError("Duración inválida (5–480 min)", 400);
+  }
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const appointment = await tx.appointment.findFirst({ where: { id, organizationId } });
+      if (!appointment) throw new AgendaError("Cita no encontrada", 404);
+
+      const terminal = appointment.status === "completed" || appointment.status === "cancelled" || appointment.status === "no_show";
+      if (changes.status && terminal && changes.status !== appointment.status) {
+        throw new AgendaError("La cita ya está cerrada y no puede cambiar de estado", 409);
+      }
+      const startsAt = changes.startsAt ?? appointment.startsAt;
+      const durationMin = changes.durationMin ?? appointment.durationMin;
+      const endsAt = new Date(startsAt.getTime() + durationMin * 60000);
+      const rescheduled = startsAt.getTime() !== appointment.startsAt.getTime() || durationMin !== appointment.durationMin;
+      if (rescheduled) {
+        if (terminal) throw new AgendaError("No se puede reprogramar una cita cerrada", 409);
+        if (await hasTimeConflict(organizationId, appointment.employeeId, startsAt, endsAt, id, tx)) {
+          throw new AgendaError("El empleado ya tiene una cita en ese horario", 409);
+        }
+      }
+
+      const updated = await tx.appointment.updateMany({
+        where: { id, organizationId, status: appointment.status, updatedAt: appointment.updatedAt },
+        data: {
+          status: changes.status ?? appointment.status,
+          startsAt,
+          endsAt,
+          durationMin,
+          notes: changes.notes !== undefined ? (changes.notes?.trim() || null) : appointment.notes,
+        },
+      });
+      if (updated.count !== 1) throw new AgendaError("La cita cambió mientras se actualizaba", 409);
+      return tx.appointment.findUniqueOrThrow({
+        where: { id },
+        select: { id: true, status: true, startsAt: true, endsAt: true, durationMin: true, notes: true },
+      });
+    }, { isolationLevel: "Serializable" });
+  } catch (err) {
+    if (err instanceof AgendaError) throw err;
+    if ((err as { code?: string })?.code === "P2034") throw new AgendaError("La cita cambió mientras se actualizaba", 409);
+    throw err;
+  }
 }
 
 /** Cobra la cita: crea la venta del servicio y la liga (checkout). */
@@ -286,6 +354,14 @@ export async function checkoutAppointment(
   if (appointment.status === "cancelled" || appointment.status === "no_show") {
     throw new AgendaError("No se puede cobrar una cita cancelada o sin asistencia", 409);
   }
+
+  // Reclamar el cobro antes de crear la venta para que dos solicitudes
+  // concurrentes no generen ventas duplicadas.
+  const claimed = await prisma.appointment.updateMany({
+    where: { id: appointment.id, organizationId, status: { in: ["pending", "confirmed"] } },
+    data: { status: "completed" },
+  });
+  if (claimed.count !== 1) throw new AgendaError("La cita ya fue cobrada o cambió de estado", 409);
 
   const price = Number(appointment.variant.price);
   const taxRate = Number(appointment.variant.product.taxRate);
@@ -331,12 +407,16 @@ export async function checkoutAppointment(
   try {
     sale = await createSale(organizationId, locationId, payload, ctx);
   } catch (err) {
+    await prisma.appointment.updateMany({
+      where: { id: appointment.id, organizationId, status: "completed", saleId: null },
+      data: { status: appointment.status },
+    });
     if (err instanceof PosError) throw new AgendaError(err.message, err.status);
     throw err;
   }
 
-  await prisma.appointment.update({
-    where: { id: appointment.id },
+  await prisma.appointment.updateMany({
+    where: { id: appointment.id, organizationId, status: "completed", saleId: null },
     data: { status: "completed", saleId: sale.id },
   });
 

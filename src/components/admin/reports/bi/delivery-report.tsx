@@ -9,9 +9,9 @@ interface Props { from: string; to: string }
 interface Row {
   locationName: string
   totalOrders: number
-  avgPrepMinutes: number
-  avgDeliveryMinutes: number
-  onTimeRate: number
+  avgPrepMinutes: number | null
+  avgDeliveryMinutes: number | null
+  onTimeRate: number | null
   cancelRate: number
 }
 
@@ -38,7 +38,7 @@ export function DeliveryReport({ from, to }: Props) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <Truck className="size-4" /> Performance de Delivery
+            <Truck className="size-4" /> Operación de entregas
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -48,6 +48,8 @@ export function DeliveryReport({ from, to }: Props) {
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 pr-4">Sucursal</th>
                   <th className="pb-2 pr-4 text-right">Pedidos</th>
+                  <th className="pb-2 pr-4 text-right">Preparación prom.</th>
+                  <th className="pb-2 pr-4 text-right">Entrega prom.</th>
                   <th className="pb-2 pr-4 text-right">Cancelados</th>
                   <th className="pb-2 text-right">Tasa cancelación</th>
                 </tr>
@@ -57,6 +59,8 @@ export function DeliveryReport({ from, to }: Props) {
                   <tr key={r.locationName} className="border-b last:border-0">
                     <td className="py-2 pr-4 font-medium">{r.locationName}</td>
                     <td className="py-2 pr-4 text-right">{r.totalOrders}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">{r.avgPrepMinutes == null ? "Sin datos" : `${r.avgPrepMinutes.toFixed(1)} min`}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">{r.avgDeliveryMinutes == null ? "Sin datos" : `${r.avgDeliveryMinutes.toFixed(1)} min`}</td>
                     <td className="py-2 pr-4 text-right">{Math.round(r.totalOrders * r.cancelRate / 100)}</td>
                     <td className="py-2 text-right">
                       <span className={r.cancelRate > 10 ? "text-red-600 font-medium" : "text-muted-foreground"}>
@@ -66,7 +70,7 @@ export function DeliveryReport({ from, to }: Props) {
                   </tr>
                 ))}
                 {rows.length === 0 && (
-                  <tr><td colSpan={4} className="py-4 text-center text-muted-foreground">Sin pedidos de delivery</td></tr>
+                  <tr><td colSpan={6} className="py-4 text-center text-muted-foreground">No hay pedidos de entrega en este período.</td></tr>
                 )}
               </tbody>
             </table>

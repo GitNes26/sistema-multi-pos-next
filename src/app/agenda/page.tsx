@@ -30,8 +30,8 @@ export default async function AgendaPage() {
     where: { id: organizationId },
     select: { businessMode: true, name: true },
   });
-  if (!org || !AGENDA_MODES.includes(org.businessMode)) redirect("/pos");
-  if (!hasPermission(session, "appointments.view")) redirect("/pos");
+  if (!org || !AGENDA_MODES.includes(org.businessMode)) redirect("/admin");
+  if (!hasPermission(session, "appointments.view")) redirect("/admin");
 
   const canManage = hasPermission(session, "appointments.manage");
   const tenant = await getAppSettings(organizationId);

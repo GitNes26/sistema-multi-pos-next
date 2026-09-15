@@ -9,6 +9,10 @@ export async function GET(req: NextRequest) {
   const { entry, organizationId } = guard;
 
   try {
+    if (req.nextUrl.searchParams.get("defaults") === "1") {
+      const defaults = (await entry.module.createDefaults?.(organizationId)) ?? {};
+      return NextResponse.json({ ok: true, defaults });
+    }
     const params = parseListParams(req.nextUrl.searchParams);
     const result = await entry.module.list(organizationId, params);
     return NextResponse.json({ ok: true, ...result });

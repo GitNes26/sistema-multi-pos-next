@@ -172,7 +172,7 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg" data-guide="pos-table-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Armchair className="size-5" />

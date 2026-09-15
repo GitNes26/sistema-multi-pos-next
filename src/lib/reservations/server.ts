@@ -1,4 +1,4 @@
-import type { $Enums } from "@prisma/client";
+import type { $Enums, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { round2 } from "@/lib/pos/money";
 import { createSale, PosError } from "@/lib/pos/server";
@@ -50,15 +50,15 @@ export interface ReservationRow {
 }
 
 /** Artículos rentables = variantes de productos con unidades en inventario. */
-export async function getRentableUnits(organizationId: string): Promise<RentableUnit[]> {
-  const location = await prisma.location.findFirst({
+export async function getRentableUnits(organizationId: string, db: Prisma.TransactionClient | typeof prisma = prisma): Promise<RentableUnit[]> {
+  const location = await db.location.findFirst({
     where: { organizationId },
     orderBy: { createdAt: "asc" },
     select: { id: true },
   });
   if (!location) return [];
 
-  const inv = await prisma.inventory.findMany({
+  const inv = await db.inventory.findMany({
     where: {
       organizationId,
       locationId: location.id,
@@ -152,14 +152,15 @@ async function reservedUnitsForDate(
   organizationId: string,
   variantId: string,
   date: Date,
-  excludeId?: string
+  excludeId?: string,
+  db: Prisma.TransactionClient | typeof prisma = prisma
 ): Promise<number> {
   const dayStart = new Date(date);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayEnd.getDate() + 1);
 
-  const agg = await prisma.reservationItem.aggregate({
+  const agg = await db.reservationItem.aggregate({
     where: {
       variantId,
       reservation: {
@@ -199,9 +200,10 @@ export async function assertAvailability(
   items: { variantId: string; quantity: number }[],
   startsAt: Date,
   endsAt: Date,
-  excludeId?: string
+  excludeId?: string,
+  db: Prisma.TransactionClient | typeof prisma = prisma
 ): Promise<Map<string, number>> {
-  const units = await getRentableUnits(organizationId);
+  const units = await getRentableUnits(organizationId, db);
   const unitByName = new Map(units.map((u) => [u.variantId, u]));
   const totals = new Map<string, number>();
 
@@ -219,7 +221,7 @@ export async function assertAvailability(
     totals.set(it.variantId, unit.totalUnits);
 
     for (const day of iterateDays(startsAt, endsAt)) {
-      const booked = await reservedUnitsForDate(organizationId, it.variantId, day, excludeId);
+      const booked = await reservedUnitsForDate(organizationId, it.variantId, day, excludeId, db);
       const available = unit.totalUnits - booked;
       if (qty > available) {
         const label = day.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
@@ -255,17 +257,17 @@ export async function createReservation(organizationId: string, input: Reservati
   });
   if (!customer) throw new ReservationError("Cliente no encontrado en esta organización", 404);
 
-  const units = await getRentableUnits(organizationId);
-  const priceByVariant = new Map(units.map((u) => [u.variantId, u.price]));
-  await assertAvailability(organizationId, input.items, input.startsAt, input.endsAt);
-
   const location = await prisma.location.findFirst({
     where: { organizationId },
     orderBy: { createdAt: "asc" },
     select: { id: true },
   });
 
-  return prisma.$transaction(async (tx) => {
+  try {
+    return await prisma.$transaction(async (tx) => {
+    const units = await getRentableUnits(organizationId, tx);
+    const priceByVariant = new Map(units.map((u) => [u.variantId, u.price]));
+    await assertAvailability(organizationId, input.items, input.startsAt, input.endsAt, undefined, tx);
     const reservation = await tx.reservation.create({
       data: {
         organizationId,
@@ -291,7 +293,13 @@ export async function createReservation(organizationId: string, input: Reservati
       select: { id: true },
     });
     return reservation;
-  });
+    }, { isolationLevel: "Serializable" });
+  } catch (err) {
+    if ((err as { code?: string })?.code === "P2034") {
+      throw new ReservationError("Las unidades ya no están disponibles para ese período", 409);
+    }
+    throw err;
+  }
 }
 
 /** Cobra la reservación: venta del período + marca completed + saleId. */
@@ -331,6 +339,13 @@ export async function checkoutReservation(
   if (reservation.status === "cancelled") {
     throw new ReservationError("No se puede cobrar una reservación cancelada", 409);
   }
+  // Reclamar el checkout antes de crear la venta para evitar cobros dobles
+  // cuando llegan dos solicitudes simultáneas.
+  const claimed = await prisma.reservation.updateMany({
+    where: { id: reservation.id, organizationId, status: { in: ["pending", "confirmed"] } },
+    data: { status: "completed" },
+  });
+  if (claimed.count !== 1) throw new ReservationError("La reservación ya fue cobrada o cambió de estado", 409);
   if (!reservation.items.length) {
     throw new ReservationError("La reservación no tiene artículos", 400);
   }
@@ -388,12 +403,16 @@ export async function checkoutReservation(
   try {
     sale = await createSale(organizationId, locationId, payload, ctx);
   } catch (err) {
+    await prisma.reservation.updateMany({
+      where: { id: reservation.id, organizationId, status: "completed", saleId: null },
+      data: { status: reservation.status },
+    });
     if (err instanceof PosError) throw new ReservationError(err.message, err.status);
     throw err;
   }
 
-  await prisma.reservation.update({
-    where: { id: reservation.id },
+  await prisma.reservation.updateMany({
+    where: { id: reservation.id, organizationId, status: "completed", saleId: null },
     data: { status: "completed", saleId: sale.id },
   });
   return { saleId: sale.id, saleNumber: sale.saleNumber, locationName: sale.locationName, total };
@@ -415,12 +434,6 @@ export async function updateReservation(
   id: string,
   changes: { status?: $Enums.ReservationStatus; startsAt?: Date; endsAt?: Date; notes?: string | null }
 ) {
-  const reservation = await prisma.reservation.findFirst({
-    where: { id, organizationId },
-    select: { id: true, status: true, saleId: true, startsAt: true, endsAt: true, notes: true },
-  });
-  if (!reservation) throw new ReservationError("Reservación no encontrada", 404);
-
   if (changes.status === "completed") {
     throw new ReservationError("Usa el cobro para completar la reservación", 400);
   }
@@ -428,46 +441,60 @@ export async function updateReservation(
   if (changes.status && !allowed[changes.status]) {
     throw new ReservationError("Estatus inválido", 400);
   }
-  if (changes.status === "cancelled" && reservation.saleId) {
-    throw new ReservationError("La reservación ya fue cobrada", 409);
+  if ((changes.startsAt && Number.isNaN(changes.startsAt.getTime())) || (changes.endsAt && Number.isNaN(changes.endsAt.getTime()))) {
+    throw new ReservationError("Período inválido", 400);
   }
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const reservation = await tx.reservation.findFirst({
+        where: { id, organizationId },
+        select: { id: true, status: true, saleId: true, startsAt: true, endsAt: true, notes: true, updatedAt: true },
+      });
+      if (!reservation) throw new ReservationError("Reservación no encontrada", 404);
+      const terminal = reservation.status === "completed" || reservation.status === "cancelled";
+      if (changes.status && terminal && changes.status !== reservation.status) {
+        throw new ReservationError("La reservación ya está cerrada y no puede cambiar de estado", 409);
+      }
 
-  const startsAt = changes.startsAt ?? reservation.startsAt;
-  const endsAt = changes.endsAt ?? reservation.endsAt;
-  if (changes.startsAt || changes.endsAt) {
-    if (endsAt.getTime() <= startsAt.getTime()) {
-      throw new ReservationError("La fecha de fin debe ser posterior al inicio", 400);
-    }
-    if (reservation.status === "completed") {
-      throw new ReservationError("No se puede reprogramar una reservación cobrada", 409);
-    }
-    // Validar que las unidades sigan disponibles en el nuevo período.
-    const items = await prisma.reservationItem.findMany({
-      where: { reservationId: id },
-      select: { variantId: true, quantity: true },
-    });
-    await assertAvailability(
-      organizationId,
-      items.map((i) => ({ variantId: i.variantId, quantity: Number(i.quantity) })),
-      startsAt,
-      endsAt,
-      id
-    );
+      const startsAt = changes.startsAt ?? reservation.startsAt;
+      const endsAt = changes.endsAt ?? reservation.endsAt;
+      if (endsAt.getTime() <= startsAt.getTime()) {
+        throw new ReservationError("La fecha de fin debe ser posterior al inicio", 400);
+      }
+      if (changes.startsAt || changes.endsAt) {
+        if (terminal) throw new ReservationError("No se puede reprogramar una reservación cerrada", 409);
+        const items = await tx.reservationItem.findMany({
+          where: { reservationId: id },
+          select: { variantId: true, quantity: true },
+        });
+        await assertAvailability(
+          organizationId,
+          items.map((i) => ({ variantId: i.variantId, quantity: Number(i.quantity) })),
+          startsAt,
+          endsAt,
+          id,
+          tx
+        );
+      }
+
+      const updated = await tx.reservation.updateMany({
+        where: { id, organizationId, status: reservation.status, updatedAt: reservation.updatedAt },
+        data: {
+          status: changes.status ?? reservation.status,
+          startsAt,
+          endsAt,
+          notes: changes.notes !== undefined ? (String(changes.notes).trim() || null) : reservation.notes,
+        },
+      });
+      if (updated.count !== 1) throw new ReservationError("La reservación cambió mientras se actualizaba", 409);
+      return tx.reservation.findUniqueOrThrow({
+        where: { id },
+        select: { id: true, status: true, startsAt: true, endsAt: true, notes: true },
+      });
+    }, { isolationLevel: "Serializable" });
+  } catch (err) {
+    if (err instanceof ReservationError) throw err;
+    if ((err as { code?: string })?.code === "P2034") throw new ReservationError("La reservación cambió mientras se actualizaba", 409);
+    throw err;
   }
-
-  return prisma.reservation.update({
-    where: { id },
-    data: {
-      status: changes.status ?? reservation.status,
-      startsAt,
-      endsAt,
-      notes:
-        changes.notes !== undefined
-          ? String(changes.notes).trim()
-            ? String(changes.notes).trim()
-            : null
-          : reservation.notes,
-    },
-    select: { id: true, status: true, startsAt: true, endsAt: true, notes: true },
-  });
 }

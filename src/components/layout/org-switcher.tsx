@@ -1,12 +1,12 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { Building2, Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import * as React from "react"
+import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
+import { Building2, Check, ChevronsUpDown, Loader2 } from "lucide-react"
 
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,12 +15,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { swalError } from "@/lib/swal";
-import { cn } from "@/lib/utils";
-import { businessModeInfo } from "@/lib/business-modes";
-import { BusinessModeBadge, BusinessModeDot } from "@/components/shared/business-mode-badge";
-import type { BusinessMode } from "@/lib/auth/options";
+} from "@/components/ui/dropdown-menu"
+import { swalError } from "@/lib/swal"
+import { cn } from "@/lib/utils"
+import { businessModeInfo } from "@/lib/business-modes"
+import {
+  BusinessModeBadge,
+  BusinessModeDot,
+} from "@/components/shared/business-mode-badge"
+import type { BusinessMode } from "@/lib/auth/options"
 
 // FASE 15.9 — Selector de organización activa.
 // SuperAdmin: siempre visible (elige empresa o indica "Sin organización").
@@ -32,22 +35,22 @@ import type { BusinessMode } from "@/lib/auth/options";
 // sepa siempre dónde está (también en el POS, que lee la misma sesión).
 
 type OrgOption = {
-  id: string;
-  name: string;
-  businessMode?: BusinessMode;
-  role?: string;
-  currency?: string;
-};
+  id: string
+  name: string
+  businessMode?: BusinessMode
+  role?: string
+  currency?: string
+}
 
 export interface OrgSwitcherProps {
-  activeOrganizationId?: string | null;
-  scope?: string | null;
+  activeOrganizationId?: string | null
+  scope?: string | null
   /** "header" = fila superior (nombre oculto en pantallas < sm).
    *  "sidebar" = dentro del drawer/sidebar: ocupa el ancho y muestra siempre
    *  nombre + chevron (ya es una superficie ancha). */
-  variant?: "header" | "sidebar";
+  variant?: "header" | "sidebar"
   /** Aviso tras cambiar la org activa con éxito (p. ej. cerrar el drawer). */
-  onSwitched?: () => void;
+  onSwitched?: () => void
 }
 
 export function OrgSwitcher({
@@ -56,69 +59,75 @@ export function OrgSwitcher({
   variant = "header",
   onSwitched,
 }: OrgSwitcherProps) {
-  const router = useRouter();
-  const { data: sessionData, update } = useSession();
-  const [orgs, setOrgs] = React.useState<OrgOption[] | null>(null);
-  const [open, setOpen] = React.useState(false);
-  const [switching, setSwitching] = React.useState(false);
+  const router = useRouter()
+  const { data: sessionData, update } = useSession()
+  const [orgs, setOrgs] = React.useState<OrgOption[] | null>(null)
+  const [open, setOpen] = React.useState(false)
+  const [switching, setSwitching] = React.useState(false)
 
-  const isSuperadmin = scope === "superadmin";
+  const isSuperadmin = scope === "superadmin"
 
   React.useEffect(() => {
-    let active = true;
-    fetch("/api/settings/organizations/mine", {
-      headers: { "Content-Type": "application/json" },
-    })
+    let active = true
+    fetch(
+      scope === "portal"
+        ? "/api/portal/organizations"
+        : "/api/settings/organizations/mine",
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    )
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { organizations?: OrgOption[] } | null) => {
-        if (active) setOrgs(data?.organizations ?? []);
+        if (active) setOrgs(data?.organizations ?? [])
       })
       .catch(() => {
-        if (active) setOrgs([]);
-      });
+        if (active) setOrgs([])
+      })
     return () => {
-      active = false;
-    };
-  }, []);
+      active = false
+    }
+  }, [scope])
 
   const activeOption = React.useMemo(
     () => orgs?.find((o) => o.id === activeOrganizationId) ?? null,
     [orgs, activeOrganizationId]
-  );
-  const activeName = activeOption?.name ?? null;
-  const activeCurrency = activeOption?.currency ?? null;
+  )
+  const activeName = activeOption?.name ?? null
+  const activeCurrency = activeOption?.currency ?? null
   // Modo de la org activa: preferir el dato fresco de la lista; si aún no
   // cargó, el de la sesión (que el servidor refresca al cambiar de org).
-  const sessionMode = (sessionData?.user as { businessMode?: BusinessMode } | undefined)
-    ?.businessMode;
+  const sessionMode = (
+    sessionData?.user as { businessMode?: BusinessMode } | undefined
+  )?.businessMode
   const activeOrgMode: BusinessMode | null =
     activeOption?.businessMode ??
-    (activeOrganizationId ? (sessionMode ?? null) : null);
+    (activeOrganizationId ? (sessionMode ?? null) : null)
 
   // Sin datos todavía (orgs === null): los usuarios de app esperan a saber si
   // tienen más de una organización; el superAdmin siempre ve el selector.
-  const hasMultipleOrgs = orgs !== null && orgs.length > 1;
-  if (!isSuperadmin && !hasMultipleOrgs) return null;
+  const hasMultipleOrgs = orgs !== null && orgs.length > 1
+  if (!isSuperadmin && !hasMultipleOrgs) return null
 
   const switchOrg = async (orgId: string) => {
     if (orgId === activeOrganizationId) {
-      setOpen(false);
-      return;
+      setOpen(false)
+      return
     }
-    setSwitching(true);
+    setSwitching(true)
     try {
-      await update({ activeOrganizationId: orgId });
-      setOpen(false);
+      await update({ activeOrganizationId: orgId })
+      setOpen(false)
       // Cerrar antes del refresh: el contexto de navegación cambia debajo
       // (secciones por modo) y el drawer no debe quedarse abierto encima.
-      onSwitched?.();
-      router.refresh();
+      onSwitched?.()
+      router.refresh()
     } catch {
-      swalError("No se pudo cambiar de organización");
+      swalError("No se pudo cambiar de organización")
     } finally {
-      setSwitching(false);
+      setSwitching(false)
     }
-  };
+  }
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -141,7 +150,7 @@ export function OrgSwitcher({
             className={
               variant === "sidebar"
                 ? "block min-w-0 flex-1 truncate text-left"
-                : "hidden min-w-0 max-w-40 truncate sm:block"
+                : "hidden min-w-0 max-w-40 truncate md:block"
             }
           >
             {activeName ?? (isSuperadmin ? "Sin organización" : "Organización")}
@@ -152,7 +161,7 @@ export function OrgSwitcher({
               className={
                 variant === "sidebar"
                   ? "inline-flex shrink-0"
-                  : "hidden shrink-0 sm:inline-flex"
+                  : "hidden shrink-0 md:inline-flex"
               }
               labelClassName="hidden max-w-28 lg:inline"
             />
@@ -164,7 +173,7 @@ export function OrgSwitcher({
               className={
                 variant === "sidebar"
                   ? "size-3.5 shrink-0 text-muted-foreground"
-                  : "hidden size-3.5 shrink-0 text-muted-foreground sm:block"
+                  : "hidden size-3.5 shrink-0 text-muted-foreground md:block"
               }
             />
           )}
@@ -195,7 +204,10 @@ export function OrgSwitcher({
               >
                 <span className="flex min-w-0 flex-1 items-center gap-2">
                   {o.businessMode ? (
-                    <BusinessModeDot mode={o.businessMode} className="shrink-0" />
+                    <BusinessModeDot
+                      mode={o.businessMode}
+                      className="shrink-0"
+                    />
                   ) : null}
                   <span className="truncate">
                     {o.name}
@@ -214,12 +226,14 @@ export function OrgSwitcher({
                     </Badge>
                   ) : null}
                 </span>
-                {o.id === activeOrganizationId && <Check className="size-4 shrink-0" />}
+                {o.id === activeOrganizationId && (
+                  <Check className="size-4 shrink-0" />
+                )}
               </DropdownMenuItem>
             ))}
           </DropdownMenuGroup>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }

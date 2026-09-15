@@ -24,6 +24,8 @@ import type { ComboboxOption } from "@/components/base/form-combobox";
 import { swalError, swalConfirm } from "@/lib/swal";
 import { toast } from "sonner";
 import { money, qty } from "@/lib/pos/money";
+import { RefundCompletionDialog } from "./refund-completion-dialog";
+import { SlideToPay } from "@/components/shared/slide-to-pay";
 
 const RETURN_TYPE_LABELS: Record<string, string> = {
   refund: "Reembolso",
@@ -44,6 +46,13 @@ const RETURN_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructi
   approved: "default",
   completed: "secondary",
   rejected: "destructive",
+};
+
+const REFUND_METHOD_LABELS: Record<string, string> = {
+  cash: "Efectivo",
+  card: "Tarjeta",
+  wallet: "Wallet",
+  other: "Otro medio",
 };
 
 interface Props {
@@ -70,6 +79,8 @@ export function ReturnsTab({ canView, canManage }: Props) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [locations, setLocations] = useState<ComboboxOption[]>([]);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundDetail, setRefundDetail] = useState<SaleReturnDetail | null>(null);
 
   useEffect(() => {
     setPage(1);
@@ -132,9 +143,11 @@ export function ReturnsTab({ canView, canManage }: Props) {
     }
   };
 
-  const handleApprove = async (returnId: string) => {
-    const ok = await swalConfirm("¿Aprobar devolución?", "Se marcará como aprobada y quedará lista para procesar.");
-    if (!ok) return;
+  const handleApprove = async (returnId: string, alreadyConfirmed = false) => {
+    if (!alreadyConfirmed) {
+      const ok = await swalConfirm("¿Aprobar devolución?", "Se marcará como aprobada y quedará lista para procesar.");
+      if (!ok) return;
+    }
     setActionBusy(returnId);
     try {
       await salesApi.approveReturn(returnId);
@@ -171,6 +184,23 @@ export function ReturnsTab({ canView, canManage }: Props) {
   };
 
   const handleComplete = async (returnId: string) => {
+    let target = detail?.id === returnId ? detail : null;
+    if (!target) {
+      setActionBusy(returnId);
+      try {
+        target = (await salesApi.returnDetail(returnId)).return;
+      } catch (err) {
+        swalError("Error", err instanceof Error ? err.message : undefined);
+        setActionBusy(null);
+        return;
+      }
+      setActionBusy(null);
+    }
+    if (target.returnType === "refund") {
+      setRefundDetail(target);
+      setRefundOpen(true);
+      return;
+    }
     const ok = await swalConfirm(
       "¿Procesar devolución?",
       "Se aplicará el reembolso/bonificación y se reestacionará el inventario."
@@ -385,13 +415,25 @@ export function ReturnsTab({ canView, canManage }: Props) {
           <ReturnDetailContent
             detail={detail}
             canManage={canManage}
-            onApprove={() => handleApprove(detail.id)}
+            onApprove={() => handleApprove(detail.id, true)}
             onReject={() => handleReject(detail.id)}
             onComplete={() => handleComplete(detail.id)}
             busy={actionBusy === detail.id}
           />
         ) : null}
       </DialogComponent>
+      <RefundCompletionDialog
+        open={refundOpen}
+        onOpenChange={setRefundOpen}
+        detail={refundDetail}
+        onCompleted={() => {
+          toast.success("Reembolso registrado y devolución procesada");
+          void load();
+          if (detail?.id === refundDetail?.id && refundDetail) {
+            void salesApi.returnDetail(refundDetail.id).then((response) => setDetail(response.return));
+          }
+        }}
+      />
     </div>
   );
 }
@@ -488,7 +530,16 @@ function ReturnDetailContent({
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-800 dark:bg-emerald-950">
           <p className="font-medium text-emerald-700 dark:text-emerald-400">Devolución procesada</p>
           {detail.returnType === "refund" && (
-            <p className="mt-1 text-emerald-700 dark:text-emerald-400">Se devolvió {money(Number(detail.total))} al método de pago original.</p>
+            <div className="mt-2 space-y-1 text-emerald-700 dark:text-emerald-400">
+              {detail.refundPayments.map((payment) => (
+                <p key={payment.id} className="flex flex-wrap justify-between gap-2">
+                  <span>{REFUND_METHOD_LABELS[payment.method] ?? payment.method}</span>
+                  <span className="font-medium tabular-nums">
+                    {money(Number(payment.amount))}{payment.reference ? ` · Ref. ${payment.reference}` : ""}
+                  </span>
+                </p>
+              ))}
+            </div>
           )}
           {detail.returnType === "coupon" && detail.couponCode && (
             <p className="mt-1 text-emerald-700 dark:text-emerald-400">Cupón: <code className="font-bold">{detail.couponCode}</code> por {money(Number(detail.couponAmount ?? 0))}{detail.couponExpiresAt ? ` · Vence: ${new Date(detail.couponExpiresAt).toLocaleDateString("es-MX")}` : ""}</p>
@@ -537,9 +588,9 @@ function ReturnDetailContent({
             <Button variant="destructive" size="sm" disabled={busy} onClick={onReject}>
               <XCircle className="size-4" /> Rechazar
             </Button>
-            <Button variant="default" size="sm" disabled={busy} onClick={onApprove}>
-              <CheckCircle className="size-4" /> Aprobar
-            </Button>
+            <div className="w-full sm:w-72">
+              <SlideToPay action="approval" label="Desliza para aprobar" disabled={busy} onConfirm={onApprove} />
+            </div>
           </>
         )}
         {canManage && detail.status === "approved" && (

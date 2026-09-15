@@ -45,25 +45,27 @@ export function applyAppearanceToDom(
   const css = root.style;
   const hue = effective.primaryHue;
   const acc = effective.accentHue;
+  const primaryChroma = hue === 360 ? 0.02 : 0.14;
+  const accentChroma = acc === 360 ? 0.015 : 0.1;
 
   if (isDark) {
-    css.setProperty("--primary", oklch(0.68, 0.14, hue));
+    css.setProperty("--primary", oklch(0.68, primaryChroma, hue === 360 ? 250 : hue));
     css.setProperty("--primary-foreground", "oklch(0.16 0 0)");
-    css.setProperty("--ring", oklch(0.68, 0.14, hue, 0.4));
-    css.setProperty("--accent", oklch(0.3, 0.1, acc));
-    css.setProperty("--accent-foreground", oklch(0.95, 0.08, acc));
-    css.setProperty("--sidebar-primary", oklch(0.68, 0.14, hue));
+    css.setProperty("--ring", oklch(0.68, primaryChroma, hue === 360 ? 250 : hue, 0.4));
+    css.setProperty("--accent", oklch(0.3, accentChroma, acc === 360 ? 250 : acc));
+    css.setProperty("--accent-foreground", oklch(0.95, acc === 360 ? 0.01 : 0.08, acc === 360 ? 250 : acc));
+    css.setProperty("--sidebar-primary", oklch(0.68, primaryChroma, hue === 360 ? 250 : hue));
     css.setProperty("--sidebar-primary-foreground", "oklch(0.16 0 0)");
-    css.setProperty("--sidebar-ring", oklch(0.68, 0.14, hue, 0.4));
+    css.setProperty("--sidebar-ring", oklch(0.68, primaryChroma, hue === 360 ? 250 : hue, 0.4));
   } else {
-    css.setProperty("--primary", oklch(0.55, 0.14, hue));
+    css.setProperty("--primary", oklch(0.55, primaryChroma, hue === 360 ? 250 : hue));
     css.setProperty("--primary-foreground", "oklch(0.99 0 0)");
-    css.setProperty("--ring", oklch(0.55, 0.14, hue, 0.4));
-    css.setProperty("--accent", oklch(0.95, 0.08, acc));
-    css.setProperty("--accent-foreground", oklch(0.3, 0.1, acc));
-    css.setProperty("--sidebar-primary", oklch(0.55, 0.14, hue));
+    css.setProperty("--ring", oklch(0.55, primaryChroma, hue === 360 ? 250 : hue, 0.4));
+    css.setProperty("--accent", oklch(0.95, acc === 360 ? 0.01 : 0.08, acc === 360 ? 250 : acc));
+    css.setProperty("--accent-foreground", oklch(0.3, accentChroma, acc === 360 ? 250 : acc));
+    css.setProperty("--sidebar-primary", oklch(0.55, primaryChroma, hue === 360 ? 250 : hue));
     css.setProperty("--sidebar-primary-foreground", "oklch(0.99 0 0)");
-    css.setProperty("--sidebar-ring", oklch(0.55, 0.14, hue, 0.4));
+    css.setProperty("--sidebar-ring", oklch(0.55, primaryChroma, hue === 360 ? 250 : hue, 0.4));
   }
 
   css.setProperty("--primary-hue", String(hue));

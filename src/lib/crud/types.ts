@@ -13,6 +13,8 @@ export interface CrudContext {
 
 export interface CrudModule<T> {
   key: string;
+  /** Values calculated by the server for a new form (folios, tenant defaults, etc.). */
+  createDefaults?: (organizationId: string) => Promise<Record<string, unknown>>;
   list: (organizationId: string, params: ListParams) => Promise<CrudListResult<T>>;
   get: (organizationId: string, id: string) => Promise<T>;
   create: (organizationId: string, input: unknown, ctx: CrudContext) => Promise<T>;

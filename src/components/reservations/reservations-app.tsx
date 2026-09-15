@@ -138,7 +138,7 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
         </div>
         <div className="ml-auto">
           {canManage && (
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Button size="sm" data-guide="reservation-new" onClick={() => setCreateOpen(true)}>
               <Plus className="size-4" /> <span className="hidden sm:inline">Nueva reservación</span>
             </Button>
           )}
@@ -147,7 +147,7 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
 
       <main className="mx-auto grid w-full max-w-6xl flex-1 gap-4 px-3 py-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:px-4">
         {/* Calendario de disponibilidad */}
-        <section className="rounded-2xl border bg-card p-4">
+        <section className="rounded-2xl border bg-card p-4" data-guide="reservation-availability">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="flex items-center gap-1.5 text-sm font-bold">

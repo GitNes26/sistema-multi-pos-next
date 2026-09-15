@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requirePortalCustomer, portalErrorResponse } from "../guard";
 import type { PortalCombo } from "@/lib/portal/server";
+import { round2 } from "@/lib/pos/money";
 
 // GET /api/portal/combos — List active combos for the portal
 
@@ -31,7 +32,17 @@ export async function GET() {
         items: {
           orderBy: { position: "asc" },
           include: {
-            product: { select: { name: true, imageUrl: true } },
+            product: {
+              select: {
+                name: true,
+                imageUrl: true,
+                productType: true,
+                bulkPricePerUnit: true,
+                taxRate: true,
+                categoryId: true,
+                variants: { where: { isActive: true }, take: 1, select: { price: true } },
+              },
+            },
             variant: { select: { name: true, price: true } },
           },
         },
@@ -42,10 +53,13 @@ export async function GET() {
     const combos: PortalCombo[] = combosRaw.map((c) => {
       // Calculate original price from items
       const originalPrice = c.items.reduce((sum, ci) => {
-        const variantPrice = ci.variant?.price ? toNum(ci.variant.price) : 0;
+        const variantPrice = ci.variant?.price != null
+          ? toNum(ci.variant.price)
+          : ci.product.productType === "bulk"
+            ? toNum(ci.product.bulkPricePerUnit)
+            : toNum(ci.product.variants[0]?.price ?? null);
         const extraPrice = toNum(ci.extraPrice);
-        // Use variant price if available, otherwise use extraPrice as the item cost
-        const itemCost = variantPrice > 0 ? variantPrice * toNum(ci.quantity) : extraPrice;
+        const itemCost = (variantPrice + extraPrice) * toNum(ci.quantity);
         return sum + itemCost;
       }, 0);
 
@@ -61,10 +75,22 @@ export async function GET() {
         savings: Math.max(0, originalPrice - comboPrice),
         items: c.items.map((ci) => ({
           id: ci.id,
+          productId: ci.productId,
+          variantId: ci.variantId,
+          productType: ci.product.productType,
           productName: ci.product.name,
           variantName: ci.variant?.name ?? null,
           quantity: toNum(ci.quantity),
+          unitPrice: round2(
+            (ci.variant?.price != null
+              ? toNum(ci.variant.price)
+              : ci.product.productType === "bulk"
+                ? toNum(ci.product.bulkPricePerUnit)
+                : toNum(ci.product.variants[0]?.price ?? null)) + toNum(ci.extraPrice),
+          ),
           extraPrice: toNum(ci.extraPrice),
+          taxRate: toNum(ci.product.taxRate),
+          categoryId: ci.product.categoryId,
         })),
       };
     });

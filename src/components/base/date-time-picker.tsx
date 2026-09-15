@@ -6,8 +6,12 @@ import { cn } from "@/lib/utils"
 import { DatePicker } from "@/components/base/date-picker"
 import { TimePicker } from "@/components/base/time-picker"
 import { dateToTime } from "@/lib/dates"
+import { CalendarClock } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { InfoTooltip } from "@/components/base/info-tooltip"
 
 export interface DateTimePickerProps {
+  id?: string
   value?: Date | null
   onChange?: (date: Date | null) => void
   dateProps?: Partial<React.ComponentProps<typeof DatePicker>>
@@ -15,10 +19,13 @@ export interface DateTimePickerProps {
   className?: string
   disabled?: boolean
   label?: string
+  required?: boolean
+  error?: string
   helper?: React.ReactNode
 }
 
 export function DateTimePicker({
+  id,
   value,
   onChange,
   dateProps,
@@ -26,6 +33,8 @@ export function DateTimePicker({
   className,
   disabled,
   label,
+  required,
+  error,
   helper,
 }: DateTimePickerProps) {
   const time = value ? dateToTime(value) : null
@@ -33,14 +42,26 @@ export function DateTimePicker({
   return (
     <div className={cn("space-y-2", className)}>
       {label && (
-        <p className="flex items-center gap-1.5 text-sm font-medium leading-none">
-          {label}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <CalendarClock className="size-4 text-muted-foreground" />
+          <Label htmlFor={id ? `${id}-date` : undefined} className="cursor-pointer leading-none">
+            {label}
+            {required && <span className="text-destructive"> *</span>}
+          </Label>
+          {helper && <InfoTooltip text={helper} />}
+        </div>
       )}
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div
+        role="group"
+        aria-describedby={error && id ? `${id}-error` : undefined}
+        className="flex flex-col gap-2 sm:flex-row"
+      >
         <DatePicker
+          id={id ? `${id}-date` : undefined}
           value={value}
           disabled={disabled}
+          error={error}
+          showError={false}
           onChange={(d) => {
             if (!d) {
               onChange?.(null)
@@ -53,8 +74,11 @@ export function DateTimePicker({
           {...dateProps}
         />
         <TimePicker
+          id={id ? `${id}-time` : undefined}
           value={time}
           disabled={disabled}
+          error={error}
+          showError={false}
           onChange={(t) => {
             if (!t) {
               const base = value ? new Date(value) : new Date()
@@ -71,7 +95,11 @@ export function DateTimePicker({
           {...timeProps}
         />
       </div>
-      {helper && <p className="text-xs text-muted-foreground">{helper}</p>}
+      {error && (
+        <p id={id ? `${id}-error` : undefined} role="alert" className="text-xs leading-relaxed text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

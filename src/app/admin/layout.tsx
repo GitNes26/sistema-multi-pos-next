@@ -8,7 +8,6 @@ import { Splash } from "@/components/appearance/splash"
 import { AppShell } from "@/components/layout/app-shell"
 import { SessionGuard } from "@/components/auth/session-guard"
 import { RouteTransition } from "@/components/layout/route-transition"
-import { GuideProvider } from "@/components/shared/guide/guide-provider"
 
 export default async function AdminLayout({
   children,
@@ -54,8 +53,6 @@ export default async function AdminLayout({
         >
           <RouteTransition>{children}</RouteTransition>
         </AppShell>
-        {/* Guías inmersivas: sobreviven la navegación entre páginas del panel. */}
-        <GuideProvider />
       </>
     </SessionGuard>
   )

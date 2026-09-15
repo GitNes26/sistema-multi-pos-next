@@ -1,9 +1,12 @@
 "use client"
 
-import { Copy, Plus, Trash2 } from "lucide-react"
+import { CalendarDays, Copy, Plus, Trash2 } from "lucide-react"
+import { useMemo, useState } from "react"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { TimePicker } from "@/components/base/time-picker"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   DAYS_LABELS,
   type DaySchedule,
@@ -76,6 +79,8 @@ export function ScheduleEditor({
   onChange,
   disabled,
 }: ScheduleEditorProps) {
+  const [replicateOpen, setReplicateOpen] = useState(false)
+  const [targetDays, setTargetDays] = useState<number[]>([])
   const updateDay = (idx: number, patch: Partial<DaySchedule>) => {
     const next = schedule.map((d, i) => (i === idx ? { ...d, ...patch } : d))
     onChange(next)
@@ -115,18 +120,27 @@ export function ScheduleEditor({
 
   const legend = buildLegend(schedule)
 
-  // Replicar la configuración del lunes (o del primer día con horario) en el resto de la semana.
-  const replicateMonday = () => {
-    const monday = schedule.find((d) => d.day === 1)
-    const source = monday && monday.slots.length > 0 ? monday : schedule.find((d) => d.enabled && d.slots.length > 0)
+  const source = useMemo(() => {
+    const monday = schedule.find((d) => d.day === 1 && d.enabled && d.slots.length > 0)
+    return monday ?? schedule.find((d) => d.enabled && d.slots.length > 0)
+  }, [schedule])
+
+  const openReplicate = () => {
     if (!source) return
+    setTargetDays(schedule.filter((day) => day.day !== source.day).map((day) => day.day))
+    setReplicateOpen(true)
+  }
+
+  const replicateSchedule = () => {
+    if (!source || targetDays.length === 0) return
     onChange(
       schedule.map((d) =>
-        d.day === source.day
+        !targetDays.includes(d.day)
           ? d
           : { day: d.day, enabled: true, slots: source.slots.map((s) => ({ ...s })) }
       )
     )
+    setReplicateOpen(false)
   }
 
   const hasSource = schedule.some((d) => d.enabled && d.slots.length > 0)
@@ -144,19 +158,22 @@ export function ScheduleEditor({
             </p>
           )}
         </div>
-        {hasSource && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 shrink-0 gap-1.5 whitespace-nowrap"
-            onClick={replicateMonday}
-            disabled={disabled}
-            title="Copia el horario del lunes a los demás días"
-          >
-            <Copy className="size-3.5" />
-            Replicar Lun
-          </Button>
+        {hasSource && source && (
+          <Popover open={replicateOpen} onOpenChange={setReplicateOpen}>
+            <PopoverTrigger asChild><Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 whitespace-nowrap" onClick={openReplicate} disabled={disabled}><Copy className="size-3.5" />Replicar {DAYS_LABELS[source.day]}</Button></PopoverTrigger>
+            <PopoverContent align="end" className="w-72 space-y-3 p-3">
+              <div><p className="flex items-center gap-2 text-sm font-semibold"><CalendarDays className="size-4 text-primary"/>Copiar horario</p><p className="mt-1 text-xs text-muted-foreground">El horario de {DAYS_LABELS[source.day]} se aplicará únicamente a los días elegidos.</p></div>
+              <div className="flex flex-wrap gap-1.5">
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={()=>setTargetDays([1,2,3,4,5].filter(day=>day!==source.day))}>Lun–Vie</Button>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={()=>setTargetDays([0,6].filter(day=>day!==source.day))}>Fin de semana</Button>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={()=>setTargetDays(schedule.filter(day=>day.day!==source.day).map(day=>day.day))}>Todos</Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {schedule.filter(day=>day.day!==source.day).map(day=><label key={day.day} className="flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border px-2.5 text-sm"><Checkbox checked={targetDays.includes(day.day)} onCheckedChange={(checked)=>setTargetDays(current=>checked?[...current,day.day]:current.filter(value=>value!==day.day))}/>{DAYS_LABELS[day.day]}</label>)}
+              </div>
+              <Button type="button" className="w-full" size="sm" disabled={!targetDays.length} onClick={replicateSchedule}><Copy className="size-4"/>Aplicar a {targetDays.length} {targetDays.length===1?"día":"días"}</Button>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
       {schedule.map((s, dayIdx) => (

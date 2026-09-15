@@ -49,7 +49,10 @@ export function AppShell({ user, permissions, logoUrl, children }: AppShellProps
   }, [dbSections, businessMode]);
 
   const sections = filteredDbSections ?? fallbackSections;
-  const bottomNav = bottomItems ?? BOTTOM_NAV;
+  const bottomNav = React.useMemo(
+    () => (bottomItems ?? BOTTOM_NAV).filter((item) => !item.href || isNavHrefEnabled(item.href, businessMode)),
+    [bottomItems, businessMode]
+  );
 
   return (
     <div className="flex min-h-svh bg-background">

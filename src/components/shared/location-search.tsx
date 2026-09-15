@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Crosshair, MapPin, Search, Loader2, Map, X, ChevronRight } from "lucide-react"
+import { Crosshair, MapPin, Loader2, Map, X, ChevronRight } from "lucide-react"
 import { MapPreview } from "@/components/shared/map-preview"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { useLocation, type LocationResult } from "@/hooks/use-location"
 
 interface LocationSearchProps {
+  id?: string
   /** Current address text */
   value: string
   /** Called when address changes */
@@ -33,9 +34,11 @@ interface LocationSearchProps {
   showDetect?: boolean
   /** Additional CSS class */
   className?: string
+  validationError?: string
 }
 
 export function LocationSearch({
+  id,
   value,
   onChange,
   onLocationSelect,
@@ -48,6 +51,7 @@ export function LocationSearch({
   showMap = true,
   showDetect = true,
   className,
+  validationError,
 }: LocationSearchProps) {
   const { detectMyLocation, searchAddress, getPlaceDetails, loading, error, hasGoogleMaps } = useLocation()
   const [query, setQuery] = useState("")
@@ -169,6 +173,7 @@ export function LocationSearch({
         <div className="relative flex items-center">
           <MapPin className="pointer-events-none absolute left-3 size-4 text-muted-foreground" />
           <Input
+            id={id}
             ref={inputRef}
             value={query || value}
             onChange={(e) => {
@@ -185,7 +190,9 @@ export function LocationSearch({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={disabled}
-            className="pl-9 pr-9"
+            aria-invalid={Boolean(validationError) || undefined}
+            aria-describedby={validationError && id ? `${id}-error` : undefined}
+            className={cn("md:pl-9 md:pr-9 pl-9 pr-9", validationError && "border-destructive focus-visible:ring-destructive/20")}
           />
           {value && !showSuggestions && (
             <button

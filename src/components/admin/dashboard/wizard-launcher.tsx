@@ -29,8 +29,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { DialogComponent } from "@/components/ui/dialog";
-import { FirstOrderWizard } from "@/components/shared/wizards/first-order-wizard";
 import { useGuideStore } from "@/stores/guide-store";
 import { useBusinessMode } from "@/hooks/use-business-mode";
 import { usePermission } from "@/hooks/use-permission";
@@ -96,7 +94,6 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
   // Ocultar la guía por organización (mismo patrón que el onboarding del portal).
   const dismissKey = welcomeGuideDismissKey(orgId);
   const [dismissed, setDismissed] = useState(false);
-  const [portalOpen, setPortalOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -300,7 +297,7 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
                 <button
                   key={a.kind}
                   type="button"
-                  onClick={() => (a.kind === "portal" ? setPortalOpen(true) : go(a.kind))}
+                  onClick={() => go(a.kind)}
                   className="group relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border bg-background/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.99]"
                 >
                   <span className="absolute top-2.5 right-3 flex size-6 items-center justify-center rounded-full bg-primary/10 text-[11px] font-black text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
@@ -325,19 +322,6 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
         </CardContent>
       </Card>
 
-      {/* Diálogo del portal: explica cómo probar la tienda en línea */}
-      {portalOpen && (
-        <DialogComponent
-          open
-          onOpenChange={(o) => !o && setPortalOpen(false)}
-          title="Prueba tu portal de cliente"
-          description="Así ven tus clientes tu negocio en línea"
-          icon={<ExternalLink className="size-4 text-primary" />}
-          size="2xl"
-        >
-          <FirstOrderWizard onClose={() => setPortalOpen(false)} />
-        </DialogComponent>
-      )}
     </>
   );
 }

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { InfoTooltip } from "@/components/base/info-tooltip"
-import { AlertCircle, Eye, EyeOff } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, Hash, KeyRound, Mail, Phone, Type } from "lucide-react"
 
 export interface InputGroupFieldProps
   extends React.ComponentProps<typeof Input> {
@@ -44,14 +44,26 @@ export const InputGroupField = React.forwardRef<
   ref
 ) {
   const [hasError] = useForwardedError(error)
+  const autoId = React.useId().replace(/:/g, "")
+  const inputId = id ?? `field-${autoId}`
   const isPassword = type === "password"
   const [showPassword, setShowPassword] = React.useState(false)
+  const defaultIcon = type === "email"
+    ? <Mail className="size-4" />
+    : type === "tel"
+      ? <Phone className="size-4" />
+      : type === "number"
+        ? <Hash className="size-4" />
+        : type === "password"
+          ? <KeyRound className="size-4" />
+          : <Type className="size-4" />
+  const resolvedLeftIcon = leftIcon ?? (leftAddon ? undefined : defaultIcon)
 
   return (
     <div className={cn("space-y-2", containerClassName)}>
       {label && (
         <div className="flex items-center gap-1.5">
-          <Label htmlFor={id} className="leading-none">
+          <Label htmlFor={inputId} className="cursor-pointer leading-none">
             {label}
             {required && <span className="text-destructive"> *</span>}
           </Label>
@@ -59,9 +71,9 @@ export const InputGroupField = React.forwardRef<
         </div>
       )}
       <div className="relative">
-        {leftIcon && (
+        {resolvedLeftIcon && (
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
-            {leftIcon}
+            {resolvedLeftIcon}
           </span>
         )}
         {leftAddon && (
@@ -71,13 +83,13 @@ export const InputGroupField = React.forwardRef<
         )}
         <Input
           ref={ref}
-          id={id}
+          id={inputId}
           aria-invalid={hasError || undefined}
           aria-describedby={
-            hint && !hasError ? `${id}-describe` : undefined
+            hasError ? `${inputId}-error` : hint ? `${inputId}-describe` : undefined
           }
           className={cn(
-            (leftIcon || leftAddon) && "pl-9 md:pl-9",
+            (resolvedLeftIcon || leftAddon) && "pl-9 md:pl-9",
             isPassword && "pr-10 md:pr-10",
             rightAddon && !hasError && "pr-16 md:pr-16",
             hasError && !isPassword && "pr-9 md:pr-9",
@@ -109,10 +121,16 @@ export const InputGroupField = React.forwardRef<
       </div>
       {hint && !hasError && (
         <p
-          id={`${id}-describe`}
+          id={`${inputId}-describe`}
           className="text-xs leading-relaxed text-muted-foreground"
         >
           {hint}
+        </p>
+      )}
+      {error && (
+        <p id={`${inputId}-error`} role="alert" className="flex items-center gap-1 text-xs leading-relaxed text-destructive">
+          <AlertCircle className="size-3 shrink-0" />
+          {error}
         </p>
       )}
     </div>

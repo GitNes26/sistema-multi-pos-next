@@ -17,9 +17,10 @@ interface Props {
   onFinish: () => void | Promise<void>
   finishLabel?: string
   loading?: boolean
+  onBeforeNext?: (step: WizardStep) => boolean | Promise<boolean>
 }
 
-export function WizardShell({ steps, children, onFinish, finishLabel = "Finalizar", loading }: Props) {
+export function WizardShell({ steps, children, onFinish, finishLabel = "Finalizar", loading, onBeforeNext }: Props) {
   const [cur, setCur] = useState(0)
   const step = steps[cur]
 
@@ -58,7 +59,10 @@ export function WizardShell({ steps, children, onFinish, finishLabel = "Finaliza
             {finishLabel}
           </Button>
         ) : (
-          <Button onClick={() => setCur((c) => c + 1)}>
+          <Button onClick={async () => {
+            const canContinue = await onBeforeNext?.(step)
+            if (canContinue !== false) setCur((c) => c + 1)
+          }}>
             Siguiente <ArrowRight className="size-4" />
           </Button>
         )}

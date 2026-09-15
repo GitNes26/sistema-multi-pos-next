@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -30,7 +30,7 @@ import {
 } from "@/components/pos/product-builder"
 import { swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
-import { SPRING_BOUNCE, SPRING_DEFAULT, STAGGER_FADE_UP } from "@/lib/animation-tokens"
+import { SPRING_BOUNCE, STAGGER_FADE_UP } from "@/lib/animation-tokens"
 import { haptic } from "@/lib/haptics"
 import { MaskReveal } from "@/components/shared/mask-reveal"
 import { ThumbImage } from "@/components/base/thumb-image"
@@ -386,10 +386,10 @@ export function ProductDetailClient({ productId }: { productId: string }) {
                     )}
                     <div className="text-left">
                       <span className="block text-xs font-medium">{v.name}</span>
-                      <span className="block text-[11px] tabular-nums">{money(v.price)}</span>
+                      <span className="block text-xs tabular-nums">{money(v.price)}</span>
                     </div>
                     {vOut && (
-                      <span className="ml-1 text-[10px] text-destructive">Sin stock</span>
+                      <span className="ml-1 text-xs text-destructive">Sin stock</span>
                     )}
                   </button>
                 )
@@ -613,7 +613,8 @@ export function ProductDetailClient({ productId }: { productId: string }) {
               config.quantity,
               config.totalExtraPrice,
               selectedOptionsKey(config.selectedOptions),
-              config.notes
+              config.notes,
+              config.selectedOptions
             )
             if (res.added <= 0) {
               swalToast("Sin stock disponible", "info")

@@ -74,13 +74,20 @@ const SIDEBAR_LABELS: Record<SidebarStyle, string> = {
 
 const COLOR_PRESETS = [
   { label: "Esmeralda", primary: 160, accent: 210 },
+  { label: "Turquesa", primary: 180, accent: 35 },
+  { label: "Cian", primary: 195, accent: 15 },
   { label: "Azul", primary: 220, accent: 280 },
+  { label: "Índigo", primary: 245, accent: 165 },
   { label: "Violeta", primary: 270, accent: 330 },
+  { label: "Magenta", primary: 305, accent: 185 },
   { label: "Rosa", primary: 330, accent: 20 },
+  { label: "Coral", primary: 12, accent: 205 },
   { label: "Naranja", primary: 25, accent: 200 },
   { label: "Ámbar", primary: 45, accent: 260 },
+  { label: "Amarillo", primary: 90, accent: 225 },
+  { label: "Lima", primary: 105, accent: 285 },
   { label: "Rojo", primary: 0, accent: 220 },
-  { label: "Gris", primary: 210, accent: 150 },
+  { label: "Gris", primary: 360, accent: 360 },
 ]
 
 function Swatch({ hue }: { hue: number }) {
@@ -88,7 +95,7 @@ function Swatch({ hue }: { hue: number }) {
     <div className="flex items-center gap-1.5">
       <span
         className="size-5 rounded-md border"
-        style={{ background: `oklch(0.55 0.14 ${hue})` }}
+        style={{ background: hue === 360 ? "var(--muted-foreground)" : `oklch(0.55 0.14 ${hue})` }}
       />
       <span className="font-mono text-xs text-muted-foreground">{hue}°</span>
     </div>
@@ -264,11 +271,11 @@ export function AppearanceSettingsForm() {
                 >
                   <span
                     className="size-4 rounded-full border"
-                    style={{ background: `oklch(0.55 0.14 ${preset.primary})` }}
+                    style={{ background: preset.primary === 360 ? "var(--muted-foreground)" : `oklch(0.55 0.14 ${preset.primary})` }}
                   />
                   <span
                     className="size-4 rounded-full border"
-                    style={{ background: `oklch(0.55 0.10 ${preset.accent})` }}
+                    style={{ background: preset.accent === 360 ? "var(--muted)" : `oklch(0.55 0.10 ${preset.accent})` }}
                   />
                   <span className="hidden sm:inline text-muted-foreground group-hover:text-foreground">{preset.label}</span>
                 </button>
@@ -281,6 +288,8 @@ export function AppearanceSettingsForm() {
               <Swatch hue={appearance.primaryHue} />
             </div>
             <Slider
+              aria-label="Color primario: rojo, amarillo, verde, azul, violeta o gris"
+              className="[&_[data-slot=slider-track]]:bg-[linear-gradient(90deg,#dc2626_0%,#eab308_17%,#16a34a_33%,#0891b2_50%,#2563eb_62%,#7c3aed_75%,#db2777_88%,#6b7280_100%)] [&_[data-slot=slider-range]]:bg-transparent"
               min={0}
               max={360}
               step={1}
@@ -296,6 +305,8 @@ export function AppearanceSettingsForm() {
               <Swatch hue={appearance.accentHue} />
             </div>
             <Slider
+              aria-label="Color de acento: rojo, amarillo, verde, azul, violeta o gris"
+              className="[&_[data-slot=slider-track]]:bg-[linear-gradient(90deg,#dc2626_0%,#eab308_17%,#16a34a_33%,#0891b2_50%,#2563eb_62%,#7c3aed_75%,#db2777_88%,#6b7280_100%)] [&_[data-slot=slider-range]]:bg-transparent"
               min={0}
               max={360}
               step={1}
@@ -415,8 +426,8 @@ export function AppearanceSettingsForm() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Los cambios se guardan también en este dispositivo en tiempo real
-        (preferencias locales en localStorage, sincronizadas entre pestañas).
+        La empresa es la fuente de verdad. La vista previa se aplica en este
+        dispositivo y se conserva al guardar para la organización activa.
       </p>
     </div>
   )

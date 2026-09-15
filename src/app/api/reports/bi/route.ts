@@ -21,7 +21,12 @@ import {
   getInventoryFillRate,
   getEmployeeMargin,
   getSalesForecast,
+  getTablePerformance,
+  getAppointmentsPerformance,
+  getRentalPerformance,
 } from "@/lib/reports/bi-server";
+import { prisma } from "@/lib/db";
+import { reportsForMode } from "@/lib/reports/bi-catalog";
 
 export async function GET(req: NextRequest) {
   const guard = await reportsGuard("reports.view");
@@ -37,6 +42,11 @@ export async function GET(req: NextRequest) {
   const filters = { from, to, locationId };
 
   try {
+    if (report === "catalog") {
+      const organization = await prisma.organization.findUnique({ where: { id: guard.organizationId }, select: { businessMode: true } });
+      const mode = organization?.businessMode ?? "retail";
+      return NextResponse.json({ ok: true, businessMode: mode, reports: reportsForMode(mode) });
+    }
     switch (report) {
       case "omnichannel": {
         const data = await getOmnichannelReport(guard.organizationId, filters);
@@ -117,9 +127,12 @@ export async function GET(req: NextRequest) {
       }
       case "forecast": {
         const days = parseInt(sp.get("days") ?? "7", 10);
-        const data = await getSalesForecast(guard.organizationId, days);
+        const data = await getSalesForecast(guard.organizationId, days, filters);
         return NextResponse.json({ ok: true, ...data });
       }
+      case "table_performance": return NextResponse.json({ ok: true, ...await getTablePerformance(guard.organizationId, filters) });
+      case "appointments": return NextResponse.json({ ok: true, ...await getAppointmentsPerformance(guard.organizationId, filters) });
+      case "rentals": return NextResponse.json({ ok: true, ...await getRentalPerformance(guard.organizationId, filters) });
       default:
         return NextResponse.json({ ok: false, error: `Reporte desconocido: ${report}` }, { status: 400 });
     }

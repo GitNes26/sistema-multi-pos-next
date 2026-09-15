@@ -11,22 +11,26 @@ interface Row {
   date: string
   predictedSales: number
   confidence: number
+  sampleSize: number
 }
 
 const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
 
-export function ForecastReport({ from: _from, to: _to }: Props) {
+export function ForecastReport({ from, to }: Props) {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    fetch("/api/reports/bi?report=forecast&days=7")
+    const params = new URLSearchParams({ report: "forecast", days: "7" })
+    if (from) params.set("from", from)
+    if (to) params.set("to", to)
+    fetch(`/api/reports/bi?${params}`)
       .then((r) => r.json())
       .then((d) => setRows(d.rows ?? []))
       .catch(() => setRows([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [from, to])
 
   const maxSales = Math.max(...rows.map((r) => r.predictedSales), 1)
 
@@ -37,7 +41,7 @@ export function ForecastReport({ from: _from, to: _to }: Props) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <TrendingUp className="size-4" /> Pronóstico de Ventas (7 días)
+            <TrendingUp className="size-4" /> Estimación de ventas · próximos 7 días
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -54,13 +58,14 @@ export function ForecastReport({ from: _from, to: _to }: Props) {
                   </div>
                 </div>
                 <span className="w-20 text-right text-xs font-mono">{money(r.predictedSales)}</span>
-                <Badge variant="secondary" className="w-14 justify-center text-[10px]">
+                <Badge variant="secondary" className="w-14 justify-center text-xs">
                   {r.confidence}%
                 </Badge>
+                <span className="w-16 text-right text-xs text-muted-foreground">{r.sampleSize} fechas</span>
               </div>
             ))}
             {rows.length === 0 && (
-              <div className="py-4 text-center text-muted-foreground">Sin datos para pronóstico</div>
+              <div className="py-4 text-center text-muted-foreground">Aún no hay suficientes ventas históricas para estimar los próximos días.</div>
             )}
           </div>
         </CardContent>

@@ -1,157 +1,100 @@
 "use client"
 
-import { motion, useMotionValue, useTransform, animate, useAnimation } from "framer-motion"
-import { ArrowRight, Check, Lock, CreditCard, ShoppingBag } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { animate, motion, useMotionValue, useTransform } from "framer-motion"
+import { ArrowRight, Check, Lock, ShoppingBag, Loader2, ArrowRightLeft, ShieldCheck, CreditCard } from "lucide-react"
 import { haptic } from "@/lib/haptics"
 import { cn } from "@/lib/utils"
 
+type SlideAction = "payment" | "transfer" | "approval" | "confirm"
+
 interface SlideToPayProps {
-  onConfirm: () => void
+  onConfirm: () => void | Promise<void>
   label?: string
+  hint?: string
+  action?: SlideAction
   className?: string
   disabled?: boolean
   empty?: boolean
+  loading?: boolean
 }
 
-const THRESHOLD = 0.78
+const THRESHOLD = 0.82
+const ICONS = { payment: CreditCard, transfer: ArrowRightLeft, approval: ShieldCheck, confirm: Check }
+const ACTION_LABELS = { payment: "Pagar", transfer: "Transferir", approval: "Aprobar", confirm: "Confirmar" }
 
-export function SlideToPay({
-  onConfirm,
-  label = "Desliza para pagar",
-  className,
-  disabled = false,
-  empty = false,
-}: SlideToPayProps) {
+export function SlideToPay({ onConfirm, label, hint = "Desliza hasta el final para confirmar", action = "payment", className, disabled = false, empty = false, loading: controlledLoading }: SlideToPayProps) {
+  const trackRef = useRef<HTMLDivElement>(null)
   const x = useMotionValue(0)
+  const [travel, setTravel] = useState(0)
+  const [internalLoading, setInternalLoading] = useState(false)
+  const [complete, setComplete] = useState(false)
+  const loading = controlledLoading ?? internalLoading
+  const blocked = disabled || empty || loading || complete
+  const progress = useTransform(x, [0, Math.max(1, travel)], [0, 1])
+  const fill = useTransform(progress, [0, 1], ["8%", "100%"])
+  const textOpacity = useTransform(progress, [0, 0.65], [1, 0.15])
+  const ActionIcon = ICONS[action]
+  const visibleLabel = label ?? `Desliza para ${ACTION_LABELS[action].toLowerCase()}`
 
-  // Ancho del track en píxeles, medido en client durante el montaje.
-  const trackWidth = useMotionValue(0)
+  useEffect(() => {
+    const measure = () => setTravel(Math.max(0, (trackRef.current?.clientWidth ?? 0) - 64))
+    measure()
+    const observer = new ResizeObserver(measure)
+    if (trackRef.current) observer.observe(trackRef.current)
+    return () => observer.disconnect()
+  }, [])
 
-  // Progreso 0..1 calculado sobre el ancho real para que no dependa de
-  // constantes de píxeles en pantallas de alta densidad.
-  const progress = useTransform(x, [0, trackWidth.get()], [0, 1])
-
-  const conf = useAnimation()
-
-  const trackRefInner = { current: null as HTMLDivElement | null }
-
-  const handleDragEnd = (_: unknown, info: { offset: { x: number }; velocity: { x: number } }) => {
-    if (disabled || empty) {
-      animate(x, 0, { type: "spring", stiffness: 420, damping: 28 })
-      return
-    }
-
-    const width = trackWidth.get()
-    const dragged = (info.offset.x ?? 0) / width
-    const fast = (info.velocity.x ?? 0) > 420
-
-    if (dragged > THRESHOLD || fast) {
-      haptic.success()
-      conf.start({ opacity: 1, scale: 1 })
-      onConfirm()
-    } else {
-      haptic.medium()
-      animate(x, 0, { type: "spring", stiffness: 340, damping: 28 })
+  const reset = () => animate(x, 0, { type: "spring", stiffness: 420, damping: 34 })
+  const confirm = async () => {
+    if (blocked) return
+    setInternalLoading(true)
+    animate(x, travel, { duration: 0.18 })
+    haptic.success()
+    try {
+      await onConfirm()
+      setComplete(true)
+      window.setTimeout(() => { setComplete(false); reset() }, 900)
+    } catch (error) {
+      reset()
+      throw error
+    } finally {
+      setInternalLoading(false)
     }
   }
-
-  const handleDragStart = () => {
-    if (!disabled && !empty) haptic.light()
-  }
-
-  const measuredWidth = trackWidth.get()
 
   return (
-    <div
-      className={cn("relative h-14 w-full overflow-hidden rounded-full select-none", className)}
-      ref={(node) => {
-        const div = node as HTMLDivElement | null
-        trackRefInner.current = div
-        if (div) trackWidth.set(div.getBoundingClientRect().width)
-      }}
-    >
-      {/* Track background */}
-      <motion.div
-        className="absolute inset-0 flex items-center justify-center rounded-full"
-        style={{
-          background: empty
-            ? "hsl(var(--muted)/0.18)"
-            : `linear-gradient(to right, hsl(var(--muted)/0.45) 0%, hsl(340 80% 52%) ${(THRESHOLD * 100).toFixed(0)}%, hsl(340 80% 52%/0.9) 100%)`,
-        }}
-      >
-        {/* Thumb */}
-        <motion.div
+    <div className={cn("space-y-1.5", className)}>
+      <div ref={trackRef} className={cn("relative h-16 w-full overflow-hidden rounded-2xl border bg-muted/70 p-1 shadow-inner select-none", !blocked && "border-primary/25", blocked && "opacity-65")}>
+        <motion.div className="absolute inset-y-1 left-1 rounded-xl bg-primary/15" style={{ width: fill }} />
+        <motion.div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-16 text-center" style={{ opacity: textOpacity }}>
+          <span className="text-sm font-semibold">{empty ? "No hay elementos para procesar" : loading ? "Procesando…" : complete ? "Acción confirmada" : visibleLabel}</span>
+          {!empty && !loading && !complete && <span className="text-[11px] text-muted-foreground">{hint}</span>}
+        </motion.div>
+        <motion.button
+          type="button"
           style={{ x }}
-          drag="x"
-          dragConstraints={{ left: 0, right: measuredWidth }}
-          dragElastic={0.08}
+          drag={blocked ? false : "x"}
+          dragConstraints={{ left: 0, right: travel }}
+          dragElastic={0.03}
           dragMomentum={false}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          animate={conf}
-          whileDrag={{ scale: 1.06 }}
-          whileTap={{ scale: 1.05 }}
-          role="slider"
-          aria-label={empty ? "Carrito vacío, no se puede pagar" : disabled ? "Pago bloqueado" : label}
-          aria-disabled={disabled || empty}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round((progress.get() ?? 0) * 100)}
-          tabIndex={disabled || empty ? -1 : 0}
-          onKeyDown={(e) => {
-            if (disabled || empty) return
-            // Accesibilidad por teclado: Enter/Espacio confirma (equivalente a deslizar).
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              haptic.success()
-              conf.start({ opacity: 1, scale: 1 })
-              onConfirm()
-            }
+          onDragStart={() => haptic.light()}
+          onDragEnd={(_, info) => {
+            const reached = travel > 0 && (info.offset.x / travel >= THRESHOLD || info.velocity.x > 650)
+            if (reached) void confirm()
+            else reset()
           }}
-          className={cn(
-            "absolute top-1/2 z-10 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-[0_6px_14px_rgba(0,0,0,0.35)] transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
-            !empty && "cursor-grab active:cursor-grabbing",
-            disabled && "cursor-not-allowed",
-            empty && "cursor-default"
-          )}
+          onKeyDown={(event) => {
+            if ((event.key === "Enter" || event.key === " ") && !blocked) { event.preventDefault(); void confirm() }
+          }}
+          aria-label={empty ? "Acción no disponible" : visibleLabel}
+          aria-disabled={blocked}
+          disabled={blocked}
+          className="absolute left-1 top-1 z-10 flex size-14 touch-none items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed"
         >
-          {empty ? (
-            <ShoppingBag className="size-5 text-muted-foreground/60" />
-          ) : disabled ? (
-            <Lock className="size-5 text-muted-foreground/70" />
-          ) : (
-            <ArrowRight className="size-5 text-white" />
-          )}
-        </motion.div>
-
-        {/* Etiqueta central */}
-        <motion.div
-          className="absolute inset-0 flex items-center justify-center px-4 pointer-events-none"
-        >
-          {empty ? (
-            <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">
-              Carrito vacío
-            </span>
-          ) : disabled ? (
-            <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70">
-              Bloqueado
-            </span>
-          ) : (
-            <span className="text-sm font-semibold text-white tracking-tight">{label}</span>
-          )}
-        </motion.div>
-
-        {/* Mini badge de acción */}
-        {!empty && !disabled && (
-          <motion.div
-            className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white"
-            style={{ opacity: 0.6 + 0.4 * Math.min(1, progress.get() ?? 0) }}
-          >
-            <CreditCard className="size-3" />
-            <span>Paga</span>
-          </motion.div>
-        )}
-      </motion.div>
+          {loading ? <Loader2 className="size-5 animate-spin" /> : complete ? <Check className="size-5" /> : empty ? <ShoppingBag className="size-5" /> : disabled ? <Lock className="size-5" /> : <><ActionIcon className="size-5" /><ArrowRight className="absolute right-1 size-3 opacity-65" /></>}
+        </motion.button>
+      </div>
     </div>
   )
 }

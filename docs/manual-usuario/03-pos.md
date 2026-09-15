@@ -10,7 +10,8 @@ tipo de negocio. Antes de cobrar tu primer ticket, el cajero debe **abrir caja**
 
 ### 3.1.1 La pantalla
 
-- **Catálogo** (un lado): productos con foto, precio y stock. Buscador, escáner de
+- **Catálogo** (un lado): productos con foto, precio y stock. El botón **Información**
+  abre la descripción, categoría, precio, existencia y códigos sin agregar el producto. Buscador, escáner de
   código de barras y filtro por categoría. En tablet puedes arrastrar el separador
   entre catálogo y ticket; el sistema recuerda el tamaño que le diste, aunque gires
   la tablet o la apagues.
@@ -37,7 +38,7 @@ tipo de negocio. Antes de cobrar tu primer ticket, el cajero debe **abrir caja**
    - **Crédito:** venta fiada (ver capítulo 8; valida límite y saldo del cliente).
    - **Otro:** voucher, transferencia u otros.
 2. Puedes **dividir el pago** entre varios métodos (mitad efectivo, mitad tarjeta).
-3. Confirma. Se imprime el **ticket de 80 mm** y suena la notificación de venta completada.
+3. Confirma. Se imprime el **ticket de 80 mm** con la misma jerarquía del comprobante mostrado al terminar: empresa, sucursal, artículos, descuentos, puntos, pagos y total.
 
 ### 3.1.4 Descuentos y supervisor
 
@@ -162,6 +163,11 @@ flowchart LR
 2. En el POS se cobra el servicio de la cita (y los productos que se llevó, si aplica).
 3. También se cobra venta directa de productos (shampoos, cremas) como cualquier tienda.
 4. La cita atendida queda como **Cobrada** en la agenda.
+
+Los servicios no manejan unidades en existencia. La capacidad se define por la duración,
+el horario disponible y el profesional asignado. Si un servicio consume materiales,
+configura su **Receta e insumos** en Productos; al cobrar la cita se descuentan esas
+cantidades. Si falta un insumo, el cobro se detiene y muestra qué debes reponer.
 
 **Eventos típicos:** cita con anticipo ya pagado (se descuenta del total), cliente que
 compra producto extra en la caja, servicio con precio especial de promoción.

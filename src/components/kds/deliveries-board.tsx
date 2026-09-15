@@ -457,12 +457,12 @@ export function DeliveriesBoard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="flex items-center gap-2 text-2xl font-bold">
           <Truck className="size-7" />
           Entregas
         </h2>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           {gpsChip}
           <span className="text-xs text-muted-foreground">
             {toPickup.length + inTransit.length + atDoor.length + pickup.length} activa(s)

@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ColumnDef } from "@tanstack/react-table";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,51 +12,69 @@ import {
   Layers,
   Loader2,
   Package,
+  CookingPot,
   Plus,
   Pencil,
   RotateCcw,
   Search,
   Trash2,
   Upload,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { DialogComponent } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import { PageHeader } from "@/components/layout/page-header";
-import { DataTable } from "@/components/base/data-table";
-import { crudApi, exportExcel, exportTemplate, importExcel, previewExcel, getCustomerActivity, type CustomerActivityData, type ExcelPreviewResult } from "@/lib/api";
-import { BulkImagesDialog } from "./bulk-images-dialog";
-import { money } from "@/lib/pos/money";
-import { categoryAccent } from "@/lib/catalog/placeholder";
-import { swalConfirm, swalError, swalToast } from "@/lib/swal";
-import { CrudForm } from "./crud-form";
-import { ProductsForm } from "./products-form";
-import { VariantsDialog } from "./variants-dialog";
-import { TooltipButton } from "@/components/shared/tooltip-button";
-import { getCrudUi, CRUD_PRODUCTS_TITLE, type CrudColumn, type CrudUiConfig } from "./crud-config";
-import { ThumbImage } from "@/components/base/thumb-image";
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { DialogComponent } from "@/components/ui/dialog"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Card, CardContent } from "@/components/ui/card"
+import { PageHeader } from "@/components/layout/page-header"
+import { DataTable } from "@/components/base/data-table"
+import {
+  crudApi,
+  exportExcel,
+  exportTemplate,
+  importExcel,
+  previewExcel,
+  getCustomerActivity,
+  type CustomerActivityData,
+  type ExcelPreviewResult,
+} from "@/lib/api"
+import { BulkImagesDialog } from "./bulk-images-dialog"
+import { money } from "@/lib/pos/money"
+import { categoryAccent } from "@/lib/catalog/placeholder"
+import { swalConfirm, swalError, swalToast } from "@/lib/swal"
+import { CrudForm } from "./crud-form"
+import { ProductsForm } from "./products-form"
+import { VariantsDialog } from "./variants-dialog"
+import { RecipeDialog, type RecipeProduct } from "./recipe-dialog"
+import { TooltipButton } from "@/components/shared/tooltip-button"
+import {
+  getCrudUi,
+  CRUD_PRODUCTS_TITLE,
+  type CrudColumn,
+  type CrudUiConfig,
+} from "./crud-config"
+import { ThumbImage } from "@/components/base/thumb-image"
+import { Switch } from "@/components/ui/switch"
 
 interface CrudPageProps {
-  moduleKey: string;
-  canManage: boolean;
-  canDelete: boolean;
-  icon?: React.ReactNode;
+  moduleKey: string
+  canManage: boolean
+  canDelete: boolean
+  icon?: React.ReactNode
 }
 
 function isProducts(moduleKey: string) {
-  return moduleKey === "products";
+  return moduleKey === "products"
 }
 
-const EXCEL_MODULES = ["products", "categories", "customers"];
-const isExcelModule = (m: string) => EXCEL_MODULES.includes(m);
+const EXCEL_MODULES = ["products", "categories", "customers"]
+const isExcelModule = (m: string) => EXCEL_MODULES.includes(m)
 
 function renderCell(column: CrudColumn, row: Record<string, unknown>) {
-  const value = row[column.key];
-  const type = column.type ?? "text";
-  if (value === undefined || value === null || value === "") return <span className="text-muted-foreground">—</span>;
+  const value = row[column.key]
+  const type = column.type ?? "text"
+  if (value === undefined || value === null || value === "")
+    return <span className="text-muted-foreground">—</span>
 
   switch (type) {
     case "boolean":
@@ -64,114 +82,246 @@ function renderCell(column: CrudColumn, row: Record<string, unknown>) {
         <Badge variant={value ? "default" : "secondary"}>
           {value ? "Sí" : "No"}
         </Badge>
-      );
+      )
     case "money":
-      return <span className="tabular-nums">{money(Number(value))}</span>;
+      return <span className="tabular-nums">{money(Number(value))}</span>
     case "percent":
-      return <span className="tabular-nums">{(Number(value) * 100).toFixed(2)}%</span>;
+      return (
+        <span className="tabular-nums">
+          {(Number(value) * 100).toFixed(2)}%
+        </span>
+      )
     case "count":
-      return <span className="tabular-nums text-muted-foreground">{Number(value)}</span>;
+      return (
+        <span className="tabular-nums text-muted-foreground">
+          {Number(value)}
+        </span>
+      )
     case "code":
-      return <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{String(value)}</code>;
+      return (
+        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+          {String(value)}
+        </code>
+      )
     case "badge":
     default:
       return (
         <Badge variant="secondary">
-          {column.displayMap && value != null ? column.displayMap[String(value)] ?? String(value) : String(value)}
+          {column.displayMap && value != null
+            ? (column.displayMap[String(value)] ?? String(value))
+            : String(value)}
         </Badge>
-      );
+      )
   }
 }
 
 function useDebounce<T>(value: T, delay = 350): T {
-  const [debounced, setDebounced] = useState(value);
+  const [debounced, setDebounced] = useState(value)
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return debounced;
+    const t = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(t)
+  }, [value, delay])
+  return debounced
 }
 
-export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProps) {
-  const config = useMemo<CrudUiConfig | null>(() => (isProducts(moduleKey) ? null : getCrudUi(moduleKey) ?? null), [moduleKey]);
-  const meta = isProducts(moduleKey) ? CRUD_PRODUCTS_TITLE : config ?? { module: moduleKey, title: "Módulo", description: "" };
+export function CrudPage({
+  moduleKey,
+  canManage,
+  canDelete,
+  icon,
+}: CrudPageProps) {
+  const config = useMemo<CrudUiConfig | null>(
+    () => (isProducts(moduleKey) ? null : (getCrudUi(moduleKey) ?? null)),
+    [moduleKey]
+  )
+  const meta = isProducts(moduleKey)
+    ? CRUD_PRODUCTS_TITLE
+    : (config ?? { module: moduleKey, title: "Módulo", description: "" })
   const searchPlaceholder = isProducts(moduleKey)
     ? CRUD_PRODUCTS_TITLE.searchPlaceholder
-    : config?.searchPlaceholder ?? "Buscar…";
+    : (config?.searchPlaceholder ?? "Buscar…")
 
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
-  const [q, setQ] = useState("");
-  const debouncedQ = useDebounce(q);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
-  const [formSaving, setFormSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [excelBusy, setExcelBusy] = useState<"export" | "import" | null>(null);
-  const [preview, setPreview] = useState<ExcelPreviewResult | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [activity, setActivity] = useState<CustomerActivityData | null>(null);
-  const [activityLoading, setActivityLoading] = useState(false);
-  const [activityCustomer, setActivityCustomer] = useState<Record<string, unknown> | null>(null);
-  const [variantsProduct, setVariantsProduct] = useState<Record<string, unknown> | null>(null);
-  const [bulkImagesOpen, setBulkImagesOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [rows, setRows] = useState<Record<string, unknown>[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(20)
+  const [q, setQ] = useState("")
+  const debouncedQ = useDebounce(q)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<Record<string, unknown> | null>(null)
+  const [formSaving, setFormSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [excelBusy, setExcelBusy] = useState<"export" | "import" | null>(null)
+  const [preview, setPreview] = useState<ExcelPreviewResult | null>(null)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [activity, setActivity] = useState<CustomerActivityData | null>(null)
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [activityCustomer, setActivityCustomer] = useState<Record<
+    string,
+    unknown
+  > | null>(null)
+  const [variantsProduct, setVariantsProduct] = useState<Record<
+    string,
+    unknown
+  > | null>(null)
+  const [recipeProduct, setRecipeProduct] = useState<Record<
+    string,
+    unknown
+  > | null>(null)
+  const [bulkImagesOpen, setBulkImagesOpen] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
-      setLoading(true);
+      setLoading(true)
       try {
-        const res = await crudApi.list(moduleKey, { page, pageSize, q: debouncedQ });
-        if (signal?.aborted) return;
-        setRows(res.rows);
-        setTotal(res.total);
+        const res = await crudApi.list(moduleKey, {
+          page,
+          pageSize,
+          q: debouncedQ,
+        })
+        if (signal?.aborted) return
+        setRows(res.rows)
+        setTotal(res.total)
       } catch (err) {
-        if (signal?.aborted) return;
-        swalError("Error al cargar", err instanceof Error ? err.message : undefined);
+        if (signal?.aborted) return
+        swalError(
+          "Error al cargar",
+          err instanceof Error ? err.message : undefined
+        )
       } finally {
-        if (!signal?.aborted) setLoading(false);
+        if (!signal?.aborted) setLoading(false)
       }
     },
     [moduleKey, page, pageSize, debouncedQ]
-  );
+  )
 
   useEffect(() => {
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    load(ctrl.signal);
-    return () => ctrl.abort();
-  }, [load]);
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    load(ctrl.signal)
+    return () => ctrl.abort()
+  }, [load])
 
   useEffect(() => {
-    setPage(1);
-  }, [debouncedQ]);
+    setPage(1)
+  }, [debouncedQ])
 
-  const isDebouncing = q !== debouncedQ;
+  const isDebouncing = q !== debouncedQ
+
+  const toggleActive = useCallback(
+    async (row: Record<string, unknown>, checked: boolean) => {
+      if (!canManage) return
+      const id = String(row.id)
+      setRows((current) =>
+        current.map((item) =>
+          String(item.id) === id
+            ? { ...item, isActive: checked, active: checked }
+            : item
+        )
+      )
+      try {
+        await crudApi.update(moduleKey, id, { isActive: checked })
+      } catch (error) {
+        setRows((current) =>
+          current.map((item) =>
+            String(item.id) === id
+              ? { ...item, isActive: row.isActive, active: row.active }
+              : item
+          )
+        )
+        swalError(
+          "No se pudo cambiar el estado",
+          error instanceof Error ? error.message : undefined
+        )
+      }
+    },
+    [canManage, moduleKey]
+  )
+
+  const toggleProductAvailability = useCallback(
+    async (row: Record<string, unknown>, checked: boolean) => {
+      if (!canManage) return
+      const id = String(row.id)
+      setRows((current) =>
+        current.map((item) =>
+          String(item.id) === id ? { ...item, isAvailable: checked } : item
+        )
+      )
+      try {
+        await crudApi.update("products", id, {
+          isAvailable: checked,
+          availabilityNote: checked
+            ? null
+            : (row.availabilityNote ?? "Agotado temporalmente"),
+        })
+      } catch (error) {
+        setRows((current) =>
+          current.map((item) =>
+            String(item.id) === id
+              ? { ...item, isAvailable: row.isAvailable }
+              : item
+          )
+        )
+        swalError(
+          "No se pudo cambiar la disponibilidad",
+          error instanceof Error ? error.message : undefined
+        )
+      }
+    },
+    [canManage]
+  )
 
   const columns = useMemo(() => {
-    if (!config) return [];
-    return config.columns.map<ColumnDef<Record<string, unknown>, unknown>>((col) => ({
-      id: col.key,
-      header: col.label,
-      accessorKey: col.key,
-      cell: ({ row }) => renderCell(col, row.original),
-    }));
-  }, [config]);
+    if (!config) return []
+    return config.columns.map<ColumnDef<Record<string, unknown>, unknown>>(
+      (col) => ({
+        id: col.key,
+        header: col.label,
+        accessorKey: col.key,
+        cell: ({ row }) =>
+          col.key === "isActive" || col.key === "active" ? (
+            <div
+              className="flex items-center gap-2"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Switch
+                checked={Boolean(row.original[col.key])}
+                disabled={!canManage}
+                onCheckedChange={(checked) =>
+                  void toggleActive(row.original, checked)
+                }
+                aria-label={`${Boolean(row.original[col.key]) ? "Desactivar" : "Activar"} ${String(row.original.name ?? "registro")}`}
+              />
+              <span className="text-xs text-muted-foreground">
+                {Boolean(row.original[col.key]) ? "Activo" : "Inactivo"}
+              </span>
+            </div>
+          ) : (
+            renderCell(col, row.original)
+          ),
+      })
+    )
+  }, [canManage, config, toggleActive])
 
-  const productsColumns = useMemo<ColumnDef<Record<string, unknown>, unknown>[]>(
+  const productsColumns = useMemo<
+    ColumnDef<Record<string, unknown>, unknown>[]
+  >(
     () => [
       {
         id: "image",
         header: "",
         cell: ({ row }) => {
-          const img = String(row.original.imageUrl ?? "");
+          const img = String(row.original.imageUrl ?? "")
           return img ? (
-            <ThumbImage src={img} alt="" className="size-10 rounded-md object-cover" />
+            <ThumbImage
+              src={img}
+              alt=""
+              className="size-10 rounded-md object-cover"
+            />
           ) : (
             // Sin foto real: anillo + icono con el color de la categoría, el
             // mismo lenguaje visual que las imágenes placeholder generadas.
@@ -192,7 +342,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
             >
               <Package className="size-4" />
             </span>
-          );
+          )
         },
       },
       { id: "name", header: "Nombre", accessorKey: "name" },
@@ -201,7 +351,13 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         header: "Categoría",
         accessorKey: "categoryName",
         cell: ({ row }) =>
-          row.original.categoryName ? <Badge variant="secondary">{String(row.original.categoryName)}</Badge> : <span className="text-muted-foreground">—</span>,
+          row.original.categoryName ? (
+            <Badge variant="secondary">
+              {String(row.original.categoryName)}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
       },
       {
         id: "productType",
@@ -209,11 +365,26 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         accessorKey: "productType",
         cell: ({ row }) => {
           const t = row.original.productType
-          const label = t === "bulk" ? "Granel" : t === "custom" ? "Personalizado" : "Estándar"
+          const label =
+            t === "bulk"
+              ? "Granel"
+              : t === "custom"
+                ? "Personalizado"
+                : "Estándar"
           return (
             <Badge
-              variant={t === "bulk" ? "outline" : t === "custom" ? "default" : "secondary"}
-              className={t === "custom" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : undefined}
+              variant={
+                t === "bulk"
+                  ? "outline"
+                  : t === "custom"
+                    ? "default"
+                    : "secondary"
+              }
+              className={
+                t === "custom"
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                  : undefined
+              }
             >
               {label}
             </Badge>
@@ -224,13 +395,14 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         id: "price",
         header: "Precio",
         cell: ({ row }) => {
-          const variants = (row.original.variants as { price: number }[] | undefined) ?? [];
-          const price = variants[0]?.price;
+          const variants =
+            (row.original.variants as { price: number }[] | undefined) ?? []
+          const price = variants[0]?.price
           return price !== undefined ? (
             <span className="tabular-nums">{money(Number(price))}</span>
           ) : (
             <span className="text-muted-foreground">—</span>
-          );
+          )
         },
       },
       {
@@ -243,159 +415,229 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         ),
       },
       {
+        id: "isAvailable",
+        header: "Venta",
+        accessorKey: "isAvailable",
+        cell: ({ row }) => (
+          <div
+            className="flex items-center gap-2"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Switch
+              checked={row.original.isAvailable !== false}
+              disabled={!canManage || row.original.isActive === false}
+              onCheckedChange={(checked) =>
+                void toggleProductAvailability(row.original, checked)
+              }
+              aria-label={`${row.original.isAvailable !== false ? "Marcar agotado" : "Marcar disponible"} ${String(row.original.name ?? "producto")}`}
+            />
+            <span className="text-xs text-muted-foreground">
+              {row.original.isAvailable !== false ? "Disponible" : "Ya no hay"}
+            </span>
+          </div>
+        ),
+      },
+      {
         id: "isActive",
         header: "Estado",
         accessorKey: "isActive",
         cell: ({ row }) => (
-          <Badge variant={row.original.isActive ? "default" : "secondary"}>
-            {row.original.isActive ? "Activo" : "Inactivo"}
-          </Badge>
+          <div
+            className="flex items-center gap-2"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Switch
+              checked={Boolean(row.original.isActive)}
+              disabled={!canManage}
+              onCheckedChange={(checked) =>
+                void toggleActive(row.original, checked)
+              }
+              aria-label={`${Boolean(row.original.isActive) ? "Desactivar" : "Activar"} ${String(row.original.name ?? "producto")}`}
+            />
+            <span className="text-xs text-muted-foreground">
+              {row.original.isActive ? "Activo" : "Inactivo"}
+            </span>
+          </div>
         ),
       },
     ],
-    []
-  );
+    [canManage, toggleActive, toggleProductAvailability]
+  )
 
   const openCreate = () => {
-    setEditing(null);
-    setDialogOpen(true);
-  };
+    setEditing(null)
+    setDialogOpen(true)
+  }
   const openEdit = (row: Record<string, unknown>) => {
-    setEditing(row);
-    setDialogOpen(true);
-  };
+    setEditing(row)
+    setDialogOpen(true)
+  }
 
   const openActivity = async (row: Record<string, unknown>) => {
-    setActivityCustomer(row);
-    setActivity(null);
-    setActivityLoading(true);
+    setActivityCustomer(row)
+    setActivity(null)
+    setActivityLoading(true)
     try {
-      const data = await getCustomerActivity(String(row.id));
-      setActivity(data);
+      const data = await getCustomerActivity(String(row.id))
+      setActivity(data)
     } catch (err) {
-      swalError("No se pudo cargar el historial", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo cargar el historial",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setActivityLoading(false);
+      setActivityLoading(false)
     }
-  };
+  }
 
   const handleDelete = async (row: Record<string, unknown>) => {
-    const ok = await swalConfirm("Eliminar", "Esta acción no se puede deshacer.", {
-      confirmText: "Eliminar",
-      danger: true,
-    });
-    if (!ok) return;
-    setDeletingId(String(row.id));
+    const ok = await swalConfirm(
+      "Eliminar",
+      "Esta acción no se puede deshacer.",
+      {
+        confirmText: "Eliminar",
+        danger: true,
+      }
+    )
+    if (!ok) return
+    setDeletingId(String(row.id))
     try {
-      await crudApi.remove(moduleKey, String(row.id));
-      swalToast("Eliminado");
-      load();
+      await crudApi.remove(moduleKey, String(row.id))
+      swalToast("Eliminado")
+      load()
     } catch (err) {
-      swalError("No se pudo eliminar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo eliminar",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setDeletingId(null);
+      setDeletingId(null)
     }
-  };
+  }
 
   const handleSubmit = async (values: Record<string, unknown>) => {
     if (editing) {
-      await crudApi.update(moduleKey, String(editing.id), values);
-      swalToast("Cambios guardados");
+      await crudApi.update(moduleKey, String(editing.id), values)
+      swalToast("Cambios guardados")
     } else {
-      await crudApi.create(moduleKey, values);
-      swalToast("Registro creado");
+      await crudApi.create(moduleKey, values)
+      swalToast("Registro creado")
     }
-    setDialogOpen(false);
-    await load();
-  };
+    setDialogOpen(false)
+    await load()
+  }
 
   const handleExport = async () => {
-    if (excelBusy) return;
-    setExcelBusy("export");
+    if (excelBusy) return
+    setExcelBusy("export")
     try {
-      await exportExcel(moduleKey);
-      swalToast("Archivo exportado");
+      await exportExcel(moduleKey)
+      swalToast("Archivo exportado")
     } catch (err) {
-      swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo exportar",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setExcelBusy(null);
+      setExcelBusy(null)
     }
-  };
+  }
 
   const handleTemplate = async () => {
-    if (excelBusy) return;
-    setExcelBusy("export");
+    if (excelBusy) return
+    setExcelBusy("export")
     try {
-      await exportTemplate(moduleKey);
-      swalToast("Plantilla descargada");
+      await exportTemplate(moduleKey)
+      swalToast("Plantilla descargada")
     } catch (err) {
-      swalError("No se pudo descargar la plantilla", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo descargar la plantilla",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setExcelBusy(null);
+      setExcelBusy(null)
     }
-  };
+  }
 
   const handleImportFile = async (file: File) => {
-    setExcelBusy("import");
+    setExcelBusy("import")
     try {
-      const result = await previewExcel(moduleKey, file);
-      setPendingFile(file);
-      setPreview(result);
+      const result = await previewExcel(moduleKey, file)
+      setPendingFile(file)
+      setPreview(result)
     } catch (err) {
-      swalError("No se pudo analizar el archivo", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo analizar el archivo",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setExcelBusy(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setExcelBusy(null)
+      if (fileInputRef.current) fileInputRef.current.value = ""
     }
-  };
+  }
 
   const confirmImport = async () => {
-    if (!pendingFile) return;
-    setExcelBusy("import");
+    if (!pendingFile) return
+    setExcelBusy("import")
     try {
-      const result = await importExcel(moduleKey, pendingFile);
-      const errors = result.errors;
+      const result = await importExcel(moduleKey, pendingFile)
+      const errors = result.errors
       if (errors.length > 0) {
-        const first = errors.slice(0, 5).map((e) => `Fila ${e.row}: ${e.message}`).join("  |  ");
-        const extra = errors.length > 5 ? `  (+${errors.length - 5} más)` : "";
+        const first = errors
+          .slice(0, 5)
+          .map((e) => `Fila ${e.row}: ${e.message}`)
+          .join("  |  ")
+        const extra = errors.length > 5 ? `  (+${errors.length - 5} más)` : ""
         swalError(
           "Importación con errores",
           `Se importaron ${result.imported} de ${result.imported + errors.length}. ${first}${extra}`
-        );
+        )
       } else {
-        swalToast(`${result.imported} registros importados`);
+        swalToast(`${result.imported} registros importados`)
       }
-      setPreview(null);
-      setPendingFile(null);
-      await load();
+      setPreview(null)
+      setPendingFile(null)
+      await load()
     } catch (err) {
-      swalError("No se pudo importar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo importar",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setExcelBusy(null);
+      setExcelBusy(null)
     }
-  };
+  }
 
-  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [restoringId, setRestoringId] = useState<string | null>(null)
 
   const handleRestore = async (row: Record<string, unknown>) => {
-    const ok = await swalConfirm("Restaurar", "¿Reactivar este registro? Aparecerá de nuevo en la lista.", {
-      confirmText: "Restaurar",
-    });
-    if (!ok) return;
-    setRestoringId(String(row.id));
+    const ok = await swalConfirm(
+      "Restaurar",
+      "¿Reactivar este registro? Aparecerá de nuevo en la lista.",
+      {
+        confirmText: "Restaurar",
+      }
+    )
+    if (!ok) return
+    setRestoringId(String(row.id))
     try {
-      await crudApi.restore(moduleKey, String(row.id));
-      swalToast("Registro restaurado");
-      load();
+      await crudApi.restore(moduleKey, String(row.id))
+      swalToast("Registro restaurado")
+      load()
     } catch (err) {
-      swalError("No se pudo restaurar", err instanceof Error ? err.message : undefined);
+      swalError(
+        "No se pudo restaurar",
+        err instanceof Error ? err.message : undefined
+      )
     } finally {
-      setRestoringId(null);
+      setRestoringId(null)
     }
-  };
+  }
 
-  const actionColumns = useMemo<ColumnDef<Record<string, unknown>, unknown>[]>(() => {
-    if (!canManage) return [];
+  const actionColumns = useMemo<
+    ColumnDef<Record<string, unknown>, unknown>[]
+  >(() => {
+    if (!canManage) return []
     return [
       {
         id: "actions",
@@ -403,9 +645,12 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         enableSorting: false,
         enableHiding: false,
         cell: ({ row }) => {
-          const isInactive = row.original.isActive === false;
+          const isInactive = row.original.isActive === false
           return (
-            <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex items-center justify-end gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
               {isInactive ? (
                 <Button
                   variant="ghost"
@@ -413,7 +658,11 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                   className="h-7 gap-1.5 text-emerald-600 hover:text-emerald-700"
                   disabled={restoringId === String(row.original.id)}
                   onClick={() => handleRestore(row.original)}
-                  title={restoringId === String(row.original.id) ? "Restaurando…" : "Restaurar"}
+                  title={
+                    restoringId === String(row.original.id)
+                      ? "Restaurando…"
+                      : "Restaurar"
+                  }
                 >
                   {restoringId === String(row.original.id) ? (
                     <Loader2 className="size-3.5 animate-spin" />
@@ -425,17 +674,45 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
               ) : (
                 <>
                   {moduleKey === "customers" && (
-                    <Button variant="ghost" size="icon" className="size-8" onClick={() => openActivity(row.original)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => openActivity(row.original)}
+                    >
                       <Eye className="size-4" />
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" className="size-8" onClick={() => openEdit(row.original)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => openEdit(row.original)}
+                  >
                     <Pencil className="size-4" />
                   </Button>
                   {(row.original.productType === "standard" ||
                     row.original.productType === "custom") && (
-                    <Button variant="ghost" size="icon" className="size-8" title="Variantes" data-guide="variants-btn" onClick={() => setVariantsProduct(row.original)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      title="Variantes"
+                      data-guide="variants-btn"
+                      onClick={() => setVariantsProduct(row.original)}
+                    >
                       <Layers className="size-4" />
+                    </Button>
+                  )}
+                  {moduleKey === "products" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      title="Receta e insumos"
+                      onClick={() => setRecipeProduct(row.original)}
+                    >
+                      <CookingPot className="size-4" />
                     </Button>
                   )}
                   {canDelete && (
@@ -445,7 +722,11 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                       className="size-8 text-destructive"
                       disabled={deletingId === String(row.original.id)}
                       onClick={() => handleDelete(row.original)}
-                      title={deletingId === String(row.original.id) ? "Eliminando…" : "Eliminar"}
+                      title={
+                        deletingId === String(row.original.id)
+                          ? "Eliminando…"
+                          : "Eliminar"
+                      }
                     >
                       {deletingId === String(row.original.id) ? (
                         <Loader2 className="size-4 animate-spin" />
@@ -457,19 +738,21 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                 </>
               )}
             </div>
-          );
+          )
         },
       },
-    ];
+    ]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, canDelete, moduleKey, restoringId]);
+  }, [canManage, canDelete, moduleKey, restoringId])
 
-  const activeColumns = isProducts(moduleKey) ? productsColumns : columns;
-  const tableColumns = canManage ? [...activeColumns, ...actionColumns] : activeColumns;
+  const activeColumns = isProducts(moduleKey) ? productsColumns : columns
+  const tableColumns = canManage
+    ? [...activeColumns, ...actionColumns]
+    : activeColumns
 
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const to = Math.min(page * pageSize, total)
 
   return (
     <>
@@ -493,8 +776,17 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
               )}
               {isExcelModule(moduleKey) && (
                 <>
-                  <Button variant="outline" size="sm" onClick={handleExport} disabled={excelBusy !== null}>
-                    {excelBusy === "export" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExport}
+                    disabled={excelBusy !== null}
+                  >
+                    {excelBusy === "export" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Download className="size-4" />
+                    )}
                     {excelBusy === "export" ? "Exportando…" : "Exportar"}
                   </Button>
                   <TooltipButton
@@ -515,7 +807,11 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                     disabled={excelBusy !== null}
                     side="bottom"
                   >
-                    {excelBusy === "import" ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                    {excelBusy === "import" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Upload className="size-4" />
+                    )}
                     {excelBusy === "import" ? "Importando…" : "Importar"}
                   </TooltipButton>
                   <input
@@ -524,8 +820,8 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                     accept=".xlsx"
                     className="hidden"
                     onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handleImportFile(f);
+                      const f = e.target.files?.[0]
+                      if (f) handleImportFile(f)
                     }}
                   />
                 </>
@@ -538,7 +834,7 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         }
       />
 
-      <Card>
+      <Card data-guide="crud-table">
         <CardContent className="space-y-2 pt-5">
           <DataTable
             columns={tableColumns}
@@ -566,7 +862,9 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                     <Loader2 className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 animate-spin text-muted-foreground" />
                   )}
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">{total} reg.</span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {total} reg.
+                </span>
               </div>
             }
           />
@@ -577,13 +875,25 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
                 {from}–{to} de {total}
               </span>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
                   <ChevronLeft className="size-3.5" />
                 </Button>
                 <span className="px-1.5 text-xs tabular-nums text-muted-foreground">
                   {page} / {pageCount}
                 </span>
-                <Button variant="ghost" size="icon" className="h-7 w-7" disabled={page >= pageCount || loading} onClick={() => setPage((p) => p + 1)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={page >= pageCount || loading}
+                  onClick={() => setPage((p) => p + 1)}
+                >
                   <ChevronRight className="size-3.5" />
                 </Button>
               </div>
@@ -599,40 +909,59 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         description={meta.title}
         className="max-w-[90vw]"
         footerClassName="gap-2"
+        dataGuide={`${moduleKey}-dialog`}
         footer={
           <>
-            <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)} disabled={formSaving}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDialogOpen(false)}
+              disabled={formSaving}
+            >
               Cancelar
             </Button>
             <Button
               type="submit"
+              data-guide="crud-submit"
               form={isProducts(moduleKey) ? "product-form" : "crud-form"}
               disabled={formSaving}
             >
               {formSaving && <Loader2 className="size-4 animate-spin" />}
-              {editing ? (formSaving ? "Guardando…" : "Guardar cambios") : isProducts(moduleKey) ? (formSaving ? "Creando…" : "Crear producto") : (formSaving ? "Creando…" : "Crear")}
+              {editing
+                ? formSaving
+                  ? "Guardando…"
+                  : "Guardar cambios"
+                : isProducts(moduleKey)
+                  ? formSaving
+                    ? "Creando…"
+                    : "Crear producto"
+                  : formSaving
+                    ? "Creando…"
+                    : "Crear"}
             </Button>
           </>
         }
       >
-          {isProducts(moduleKey) ? (
-            <ProductsForm
-              key={editing ? String(editing.id) : "new"}
-              initial={editing}
-              onSubmit={handleSubmit}
-              onSavingChange={setFormSaving}
-            />
-          ) : config ? (
-            <CrudForm
-              key={editing ? String(editing.id) : "new"}
-              config={config}
-              initial={editing}
-              onSubmit={handleSubmit}
-              onSavingChange={setFormSaving}
-              afterFields={config.afterFields}
-            />
-          ) : null}
-          {loading && <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />}
+        {isProducts(moduleKey) ? (
+          <ProductsForm
+            key={editing ? String(editing.id) : "new"}
+            initial={editing}
+            onSubmit={handleSubmit}
+            onSavingChange={setFormSaving}
+          />
+        ) : config ? (
+          <CrudForm
+            key={editing ? String(editing.id) : "new"}
+            config={config}
+            initial={editing}
+            onSubmit={handleSubmit}
+            onSavingChange={setFormSaving}
+            afterFields={config.afterFields}
+          />
+        ) : null}
+        {loading && (
+          <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+        )}
       </DialogComponent>
 
       <CustomerActivityDialog
@@ -658,14 +987,32 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
           productImage={String(variantsProduct.imageUrl ?? "") || null}
           categoryName={String(variantsProduct.categoryName ?? "") || null}
           defaults={{
-            sku: String((variantsProduct.variants as { sku?: string }[])?.[0]?.sku ?? ""),
-            barcode: String((variantsProduct.variants as { barcode?: string }[])?.[0]?.barcode ?? ""),
-            price: Number((variantsProduct.variants as { price?: number }[])?.[0]?.price ?? 0),
-            cost: Number((variantsProduct.variants as { cost?: number }[])?.[0]?.cost ?? 0),
+            sku: String(
+              (variantsProduct.variants as { sku?: string }[])?.[0]?.sku ?? ""
+            ),
+            barcode: String(
+              (variantsProduct.variants as { barcode?: string }[])?.[0]
+                ?.barcode ?? ""
+            ),
+            price: Number(
+              (variantsProduct.variants as { price?: number }[])?.[0]?.price ??
+                0
+            ),
+            cost: Number(
+              (variantsProduct.variants as { cost?: number }[])?.[0]?.cost ?? 0
+            ),
           }}
           onClose={() => setVariantsProduct(null)}
         />
       )}
+
+      <RecipeDialog
+        product={recipeProduct as RecipeProduct | null}
+        open={Boolean(recipeProduct)}
+        onOpenChange={(next) => {
+          if (!next) setRecipeProduct(null)
+        }}
+      />
 
       <DialogComponent
         open={preview !== null}
@@ -675,64 +1022,82 @@ export function CrudPage({ moduleKey, canManage, canDelete, icon }: CrudPageProp
         className="max-w-[90vw]"
         footer={
           <>
-            <Button variant="outline" onClick={() => (setPreview(null), setPendingFile(null))}>
+            <Button
+              variant="outline"
+              onClick={() => (setPreview(null), setPendingFile(null))}
+            >
               Cancelar
             </Button>
             <Button
               onClick={confirmImport}
-              disabled={excelBusy !== null || (preview?.missingColumns.length ?? 0) > 0}
+              disabled={
+                excelBusy !== null || (preview?.missingColumns.length ?? 0) > 0
+              }
             >
-              {excelBusy === "import" ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+              {excelBusy === "import" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Upload className="size-4" />
+              )}
               Confirmar importación
             </Button>
           </>
         }
       >
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700">
+          Descarga la plantilla cada vez que vayas a importar: los catálogos
+          (categorías, unidades, etc.) pueden tener valores nuevos que no están
+          en una plantilla descargada anteriormente.
+        </div>
 
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700">
-            Descarga la plantilla cada vez que vayas a importar: los catálogos (categorías, unidades, etc.)
-            pueden tener valores nuevos que no están en una plantilla descargada anteriormente.
+        {preview && preview.missingColumns.length > 0 && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+            Faltan columnas requeridas: {preview.missingColumns.join(", ")}
           </div>
+        )}
 
-          {preview && preview.missingColumns.length > 0 && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              Faltan columnas requeridas: {preview.missingColumns.join(", ")}
-            </div>
-          )}
+        {preview && preview.total === 0 && (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No se detectaron filas de datos en el archivo.
+          </p>
+        )}
 
-          {preview && preview.total === 0 && (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No se detectaron filas de datos en el archivo.
-            </p>
-          )}
-
-          {preview && preview.sample.length > 0 && (
-            <div className="max-h-72 overflow-auto rounded-lg border">
-              <table className="w-full text-left text-sm">
-                <thead className="sticky top-0 bg-muted">
-                  <tr>
-                    <th className="px-2 py-1.5 font-medium">Fila</th>
-                    {preview.headers.map((h) => (
-                      <th key={h} className="whitespace-nowrap px-2 py-1.5 font-medium">{h}</th>
+        {preview && preview.sample.length > 0 && (
+          <div className="max-h-72 overflow-auto rounded-lg border">
+            <table className="w-full text-left text-sm">
+              <thead className="sticky top-0 bg-muted">
+                <tr>
+                  <th className="px-2 py-1.5 font-medium">Fila</th>
+                  {preview.headers.map((h) => (
+                    <th
+                      key={h}
+                      className="whitespace-nowrap px-2 py-1.5 font-medium"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {preview.sample.map((r) => (
+                  <tr key={r.line} className="border-t">
+                    <td className="px-2 py-1 text-muted-foreground">
+                      {r.line}
+                    </td>
+                    {r.cells.map((c, i) => (
+                      <td key={i} className="max-w-40 truncate px-2 py-1">
+                        {c}
+                      </td>
                     ))}
                   </tr>
-                </thead>
-                <tbody>
-                  {preview.sample.map((r) => (
-                    <tr key={r.line} className="border-t">
-                      <td className="px-2 py-1 text-muted-foreground">{r.line}</td>
-                      {r.cells.map((c, i) => (
-                        <td key={i} className="max-w-40 truncate px-2 py-1">{c}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </DialogComponent>
     </>
-  );
+  )
 }
 
 function CustomerActivityDialog({
@@ -742,11 +1107,11 @@ function CustomerActivityDialog({
   loading,
   onClose,
 }: {
-  open: boolean;
-  customer: Record<string, unknown> | null;
-  activity: CustomerActivityData | null;
-  loading: boolean;
-  onClose: () => void;
+  open: boolean
+  customer: Record<string, unknown> | null
+  activity: CustomerActivityData | null
+  loading: boolean
+  onClose: () => void
 }) {
   return (
     <DialogComponent
@@ -755,8 +1120,12 @@ function CustomerActivityDialog({
       title={customer ? String(customer.fullName) : "Cliente"}
       description={
         <>
-          {customer?.customerCode ? <code className="text-xs">{String(customer.customerCode)}</code> : null}
-          <span className="ml-2">{customer?.phone ? String(customer.phone) : ""}</span>
+          {customer?.customerCode ? (
+            <code className="text-xs">{String(customer.customerCode)}</code>
+          ) : null}
+          <span className="ml-2">
+            {customer?.phone ? String(customer.phone) : ""}
+          </span>
           {activity && (
             <span className="ml-2 font-medium text-foreground">
               · {activity.points.toFixed(2)} puntos
@@ -766,146 +1135,220 @@ function CustomerActivityDialog({
       }
       className="max-w-[90vw]"
     >
-        {loading ? (
-          <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
-        ) : !activity ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Sin historial.</p>
-        ) : (
-          <Tabs defaultValue="loyalty">
-            <TabsList>
-              <TabsTrigger value="loyalty">Puntos ({activity.loyalty.length})</TabsTrigger>
-              <TabsTrigger value="sales">Compras ({activity.sales.length})</TabsTrigger>
-              <TabsTrigger value="orders">Pedidos ({activity.orders.length})</TabsTrigger>
-              <TabsTrigger value="favorites">Favoritos ({activity.favorites.length})</TabsTrigger>
-              <TabsTrigger value="payments">Pagos</TabsTrigger>
-            </TabsList>
+      {loading ? (
+        <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
+      ) : !activity ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          Sin historial.
+        </p>
+      ) : (
+        <Tabs defaultValue="loyalty">
+          <TabsList>
+            <TabsTrigger value="loyalty">
+              Puntos ({activity.loyalty.length})
+            </TabsTrigger>
+            <TabsTrigger value="sales">
+              Compras ({activity.sales.length})
+            </TabsTrigger>
+            <TabsTrigger value="orders">
+              Pedidos ({activity.orders.length})
+            </TabsTrigger>
+            <TabsTrigger value="favorites">
+              Favoritos ({activity.favorites.length})
+            </TabsTrigger>
+            <TabsTrigger value="payments">Pagos</TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="loyalty">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="py-1.5 pr-3 font-medium">Fecha</th>
-                    <th className="py-1.5 pr-3 font-medium">Tipo</th>
-                    <th className="py-1.5 pr-3 text-right font-medium">Puntos</th>
-                    <th className="py-1.5 font-medium">Nota</th>
+          <TabsContent value="loyalty">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-1.5 pr-3 font-medium">Fecha</th>
+                  <th className="py-1.5 pr-3 font-medium">Tipo</th>
+                  <th className="py-1.5 pr-3 text-right font-medium">Puntos</th>
+                  <th className="py-1.5 font-medium">Nota</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activity.loyalty.map((l) => (
+                  <tr key={l.id} className="border-b last:border-0">
+                    <td className="py-1.5 pr-3 text-muted-foreground">
+                      {new Date(l.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="py-1.5 pr-3 uppercase text-xs">{l.kind}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">
+                      <span
+                        className={
+                          l.points >= 0
+                            ? "text-emerald-600"
+                            : "text-destructive"
+                        }
+                      >
+                        {l.points > 0 ? `+${l.points}` : l.points}
+                      </span>
+                    </td>
+                    <td className="py-1.5">{l.note ?? "—"}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {activity.loyalty.map((l) => (
-                    <tr key={l.id} className="border-b last:border-0">
-                      <td className="py-1.5 pr-3 text-muted-foreground">{new Date(l.createdAt).toLocaleDateString()}</td>
-                      <td className="py-1.5 pr-3 uppercase text-xs">{l.kind}</td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums">
-                        <span className={l.points >= 0 ? "text-emerald-600" : "text-destructive"}>
-                          {l.points > 0 ? `+${l.points}` : l.points}
-                        </span>
-                      </td>
-                      <td className="py-1.5">{l.note ?? "—"}</td>
-                    </tr>
-                  ))}
-                  {activity.loyalty.length === 0 && (
-                    <tr><td colSpan={4} className="py-4 text-center text-muted-foreground">Sin movimientos de puntos.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </TabsContent>
-
-            <TabsContent value="sales">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="py-1.5 pr-3 font-medium">Folio</th>
-                    <th className="py-1.5 pr-3 font-medium">Fecha</th>
-                    <th className="py-1.5 pr-3 text-right font-medium">Artículos</th>
-                    <th className="py-1.5 text-right font-medium">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activity.sales.map((s) => (
-                    <tr key={s.id} className="border-b last:border-0">
-                      <td className="py-1.5 pr-3 tabular-nums">#{s.saleNumber}</td>
-                      <td className="py-1.5 pr-3 text-muted-foreground">{new Date(s.createdAt).toLocaleString()}</td>
-                      <td className="py-1.5 pr-3 text-right tabular-nums">{s.itemCount}</td>
-                      <td className="py-1.5 text-right tabular-nums font-medium">{money(s.total)}</td>
-                    </tr>
-                  ))}
-                  {activity.sales.length === 0 && (
-                    <tr><td colSpan={4} className="py-4 text-center text-muted-foreground">Sin compras.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </TabsContent>
-
-            <TabsContent value="orders">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="py-1.5 pr-3 font-medium">Pedido</th>
-                    <th className="py-1.5 pr-3 font-medium">Fecha</th>
-                    <th className="py-1.5 pr-3 font-medium">Estatus</th>
-                    <th className="py-1.5 text-right font-medium">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activity.orders.map((o) => (
-                    <tr key={o.id} className="border-b last:border-0">
-                      <td className="py-1.5 pr-3 tabular-nums">#{o.orderNumber}</td>
-                      <td className="py-1.5 pr-3 text-muted-foreground">{new Date(o.createdAt).toLocaleString()}</td>
-                      <td className="py-1.5 pr-3">
-                        <Badge variant="secondary">{o.status}</Badge>
-                      </td>
-                      <td className="py-1.5 text-right tabular-nums font-medium">{money(o.total)}</td>
-                    </tr>
-                  ))}
-                  {activity.orders.length === 0 && (
-                    <tr><td colSpan={4} className="py-4 text-center text-muted-foreground">Sin pedidos.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </TabsContent>
-
-            <TabsContent value="favorites">
-              <ul className="space-y-1.5">
-                {activity.favorites.map((f) => (
-                  <li key={f.id} className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-1.5 text-sm">
-                    <span>
-                      {f.productName}
-                      {f.variantName && <span className="text-muted-foreground"> · {f.variantName}</span>}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{new Date(f.createdAt).toLocaleDateString()}</span>
-                  </li>
                 ))}
-                {activity.favorites.length === 0 && (
-                  <li className="py-4 text-center text-sm text-muted-foreground">Sin favoritos.</li>
+                {activity.loyalty.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="py-4 text-center text-muted-foreground"
+                    >
+                      Sin movimientos de puntos.
+                    </td>
+                  </tr>
                 )}
-              </ul>
-            </TabsContent>
+              </tbody>
+            </table>
+          </TabsContent>
 
-            <TabsContent value="payments">
-              <ul className="space-y-1.5">
-                {activity.paymentMethods.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-1.5 text-sm">
-                    <span>
-                      {p.brand ?? "Tarjeta"}{" "}
-                      {p.last4 ? (
-                        <span className="font-medium">···· {p.last4}</span>
-                      ) : null}
-                      {p.expMonth && p.expYear ? (
-                        <span className="text-muted-foreground">
-                          {" "}· vence {String(p.expMonth).padStart(2, "0")}/{p.expYear}
-                        </span>
-                      ) : null}
-                    </span>
-                    {p.isDefault && <Badge>Principal</Badge>}
-                  </li>
+          <TabsContent value="sales">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-1.5 pr-3 font-medium">Folio</th>
+                  <th className="py-1.5 pr-3 font-medium">Fecha</th>
+                  <th className="py-1.5 pr-3 text-right font-medium">
+                    Artículos
+                  </th>
+                  <th className="py-1.5 text-right font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activity.sales.map((s) => (
+                  <tr key={s.id} className="border-b last:border-0">
+                    <td className="py-1.5 pr-3 tabular-nums">
+                      #{s.saleNumber}
+                    </td>
+                    <td className="py-1.5 pr-3 text-muted-foreground">
+                      {new Date(s.createdAt).toLocaleString()}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">
+                      {s.itemCount}
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums font-medium">
+                      {money(s.total)}
+                    </td>
+                  </tr>
                 ))}
-                {activity.paymentMethods.length === 0 && (
-                  <li className="py-4 text-center text-sm text-muted-foreground">Sin métodos de pago guardados.</li>
+                {activity.sales.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="py-4 text-center text-muted-foreground"
+                    >
+                      Sin compras.
+                    </td>
+                  </tr>
                 )}
-              </ul>
-            </TabsContent>
-          </Tabs>
-        )}
+              </tbody>
+            </table>
+          </TabsContent>
+
+          <TabsContent value="orders">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-1.5 pr-3 font-medium">Pedido</th>
+                  <th className="py-1.5 pr-3 font-medium">Fecha</th>
+                  <th className="py-1.5 pr-3 font-medium">Estatus</th>
+                  <th className="py-1.5 text-right font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activity.orders.map((o) => (
+                  <tr key={o.id} className="border-b last:border-0">
+                    <td className="py-1.5 pr-3 tabular-nums">
+                      #{o.orderNumber}
+                    </td>
+                    <td className="py-1.5 pr-3 text-muted-foreground">
+                      {new Date(o.createdAt).toLocaleString()}
+                    </td>
+                    <td className="py-1.5 pr-3">
+                      <Badge variant="secondary">{o.status}</Badge>
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums font-medium">
+                      {money(o.total)}
+                    </td>
+                  </tr>
+                ))}
+                {activity.orders.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="py-4 text-center text-muted-foreground"
+                    >
+                      Sin pedidos.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </TabsContent>
+
+          <TabsContent value="favorites">
+            <ul className="space-y-1.5">
+              {activity.favorites.map((f) => (
+                <li
+                  key={f.id}
+                  className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-1.5 text-sm"
+                >
+                  <span>
+                    {f.productName}
+                    {f.variantName && (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {f.variantName}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(f.createdAt).toLocaleDateString()}
+                  </span>
+                </li>
+              ))}
+              {activity.favorites.length === 0 && (
+                <li className="py-4 text-center text-sm text-muted-foreground">
+                  Sin favoritos.
+                </li>
+              )}
+            </ul>
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <ul className="space-y-1.5">
+              {activity.paymentMethods.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-1.5 text-sm"
+                >
+                  <span>
+                    {p.brand ?? "Tarjeta"}{" "}
+                    {p.last4 ? (
+                      <span className="font-medium">···· {p.last4}</span>
+                    ) : null}
+                    {p.expMonth && p.expYear ? (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · vence {String(p.expMonth).padStart(2, "0")}/
+                        {p.expYear}
+                      </span>
+                    ) : null}
+                  </span>
+                  {p.isDefault && <Badge>Principal</Badge>}
+                </li>
+              ))}
+              {activity.paymentMethods.length === 0 && (
+                <li className="py-4 text-center text-sm text-muted-foreground">
+                  Sin métodos de pago guardados.
+                </li>
+              )}
+            </ul>
+          </TabsContent>
+        </Tabs>
+      )}
     </DialogComponent>
-  );
+  )
 }

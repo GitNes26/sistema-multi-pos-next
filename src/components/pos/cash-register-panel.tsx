@@ -22,7 +22,7 @@ interface CashRegisterPanelProps {
 interface SessionStats {
   todaySales: number;
   todayCount: number;
-  session: { sales: number; cashPayments: number; changeGiven: number } | null;
+  session: { sales: number; cashPayments: number; changeGiven: number; cashRefunds: number } | null;
 }
 
 export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
@@ -112,7 +112,8 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
   const expected = stats?.session
     ? stats.session.cashPayments +
       (session?.openingCash ?? 0) -
-      stats.session.changeGiven
+      stats.session.changeGiven -
+      stats.session.cashRefunds
     : 0;
 
   return (

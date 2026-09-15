@@ -415,6 +415,7 @@ export function TicketPanel({
               <Button
                 variant={selectedTable ? "default" : "outline"}
                 size="sm"
+                data-guide="pos-table"
                 onClick={() => setTableDialogOpen(true)}
                 className="h-9 flex-1"
               >
@@ -478,6 +479,7 @@ export function TicketPanel({
                   {unsentLines.length > 0 ? (
                     <Button
                       size="lg"
+                      data-guide="pos-send-kitchen"
                       disabled={sendingKitchen}
                       onClick={sendToKitchen}
                       className="h-11 w-full bg-amber-500 font-bold text-white shadow-md shadow-amber-500/25 hover:bg-amber-600"
@@ -562,6 +564,7 @@ export function TicketPanel({
         {/* Checkout button */}
         <Button
           size="lg"
+          data-guide="pos-checkout"
           disabled={!items.length || t.payable <= 0}
           onClick={onCheckout}
           className={cn(

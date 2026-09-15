@@ -19,8 +19,9 @@ más usa.
 
 ## 7.2 Tienda y carrito
 
-1. Explora por categorías o busca. Cada producto muestra precio, stock y si tiene
+1. Explora por categorías o busca. Cada producto muestra su descripción breve, precio, stock y si tiene
    **variantes** ("2 variantes") o es **a granel** ($/kg).
+   Al seleccionar la tarjeta se abre la ficha con la descripción completa.
 2. **Agregar** suma directo al carrito. En productos con variantes, el botón dice
    **Elegir** y abre las opciones de tamaño.
 3. En restaurantes, los productos **personalizados** (nieves, cafés, papas) abren el
@@ -31,7 +32,7 @@ más usa.
 
 ## 7.3 Checkout (finalizar compra)
 
-1. Elige **Recoger** en tienda o **Domicilio** (con costo de envío si aplica).
+1. Elige **Recoger** en tienda o **Domicilio**. Si el envío se cobra por distancia, verás los kilómetros desde la sucursal más cercana, el precio por kilómetro y el total calculado; si es fijo, verás esa tarifa antes de pagar.
 2. Revisa el resumen: subtotal, descuentos de promociones aplicadas, envío y total.
 3. Elige el **método de pago** (aparecen solo los disponibles):
    - **Pagar al repartidor** (domicilio) o **Pagar en sucursal** (recoger) — en efectivo.
@@ -44,10 +45,11 @@ más usa.
 ## 7.4 Pedidos y seguimiento
 
 - En **Pedidos** ves el historial y el detalle de cada uno.
-- Un pedido a domicilio muestra el **estado en vivo**: Confirmado → Preparando → Listo →
+- Un pedido muestra una animación Lottie y la **línea de tiempo siempre visible**: Confirmado → Preparando → Listo →
   **En camino** con el **mapa** del repartidor → Entregado. Para recoger: aviso cuando
   está listo.
 - Al entregar, si el negocio lo pide, muestras tu **código QR o PIN** para confirmar.
+- En tránsito o al llegar a domicilio, el mapa crece para facilitar el seguimiento. **Ver toda la información del pedido** abre una hoja inferior con productos, cobro, entrega y notas.
 - Puedes **cancelar** un pedido mientras no esté preparado.
 - **Volver a pedir:** desde el detalle, agrega lo mismo al carrito con un toque.
 

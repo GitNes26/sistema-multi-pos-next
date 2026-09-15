@@ -1,4 +1,4 @@
-import type { Prisma, $Enums } from "@prisma/client";
+import { Prisma, type $Enums } from "@prisma/client";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/db";
 import { CrudError } from "@/lib/crud/types";
@@ -9,6 +9,28 @@ import { persistNotification } from "@/lib/notifications/helpers";
 
 type Dec = { toNumber(): number } | number;
 const num = (v: Dec): number => (typeof v === "number" ? v : v.toNumber());
+
+async function assertInventoryLocation(
+  organizationId: string,
+  locationType: $Enums.LocationType,
+  locationId: string
+) {
+  if (locationType !== "location" && locationType !== "cedis") {
+    throw new CrudError("Tipo de ubicación inválido", 400, "locationType");
+  }
+  const row = locationType === "location"
+    ? await prisma.location.findFirst({
+        where: { id: locationId, organizationId, isActive: true },
+        select: { id: true },
+      })
+    : await prisma.cedi.findFirst({
+        where: { id: locationId, organizationId, isActive: true },
+        select: { id: true },
+      });
+  if (!row) {
+    throw new CrudError("La ubicación no existe o no pertenece a la organización", 404, "locationId");
+  }
+}
 
 export interface InventorySnapshotRow {
   id: string;
@@ -45,6 +67,7 @@ export async function ensureInventoryRows(
   locationType: $Enums.LocationType,
   locationId: string
 ) {
+  await assertInventoryLocation(organizationId, locationType, locationId);
   const products = await prisma.product.findMany({
     where: { organizationId, isActive: true },
     select: { id: true, productType: true, trackInventory: true, bulkUnitId: true, variants: { select: { id: true } } },
@@ -255,14 +278,20 @@ export async function registerMovement(
   const delta = type === "adjustment" ? quantity : Math.abs(quantity) * signs[type];
   if (delta === 0) throw new CrudError("La cantidad no puede ser 0", 400, "quantity");
 
-  const current = num(row.quantity);
-  const next = Math.round((current + delta) * 1000) / 1000;
-  if (next < 0) throw new CrudError("No hay suficiente stock para este movimiento", 409);
-
   const employee = await performerFor(userId);
-  await prisma.$transaction([
-    prisma.inventory.update({ where: { id: inventoryId }, data: { quantity: next } }),
-    prisma.inventoryMovement.create({
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.inventory.updateMany({
+      where: {
+        id: inventoryId,
+        organizationId,
+        ...(delta < 0 ? { quantity: { gte: Math.abs(delta) } } : {}),
+      },
+      data: { quantity: { increment: delta } },
+    });
+    if (updated.count !== 1) {
+      throw new CrudError("No hay suficiente stock para este movimiento", 409);
+    }
+    await tx.inventoryMovement.create({
       data: {
         organizationId,
         productId: row.productId,
@@ -277,8 +306,8 @@ export async function registerMovement(
         employeeId: employee?.id ?? null,
         userId,
       },
-    }),
-  ]);
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
   await maybeNotifyLowStock(organizationId, inventoryId, {
     userId,
     employeeId: employee?.id ?? null,
@@ -337,43 +366,52 @@ export async function transferStock(
   const from = await findInventory(organizationId, fromInventoryId);
   const qty = Math.abs(Number(quantity) || 0);
   if (qty === 0) throw new CrudError("La cantidad no puede ser 0", 400, "quantity");
-  if (num(from.quantity) < qty) throw new CrudError("No hay suficiente stock en el origen", 409);
-
-  // Destino: fila equivalente (misma variante/producto) en la otra ubicación.
-  const dest = await prisma.inventory.findFirst({
-    where: {
-      organizationId,
-      locationId: toLocationId,
-      locationType: toLocationType,
-      variantId: from.variantId,
-    },
-  });
-  let destId = dest?.id ?? null;
-  if (!dest) {
-    const created = await prisma.inventory.create({
-      data: {
-        organizationId,
-        productId: from.productId,
-        variantId: from.variantId,
-        locationId: toLocationId,
-        locationType: toLocationType,
-        quantity: 0,
-        unitId: from.unitId,
-        minThreshold: 0,
-      },
-    });
-    destId = created.id;
+  if (from.locationType === toLocationType && from.locationId === toLocationId) {
+    throw new CrudError("El origen y el destino deben ser distintos", 400, "toLocationId");
   }
 
-  const employee = await performerFor(userId);
-  const originNext = Math.round((num(from.quantity) - qty) * 1000) / 1000;
-  const destCurrent = dest ? num(dest.quantity) : 0;
-  const destNext = Math.round((destCurrent + qty) * 1000) / 1000;
+  await assertInventoryLocation(organizationId, toLocationType, toLocationId);
 
-  await prisma.$transaction([
-    prisma.inventory.update({ where: { id: from.id }, data: { quantity: originNext } }),
-    prisma.inventory.update({ where: { id: destId! }, data: { quantity: destNext } }),
-    prisma.inventoryMovement.createMany({
+  const employee = await performerFor(userId);
+  const result = await prisma.$transaction(async (tx) => {
+    const originUpdated = await tx.inventory.updateMany({
+      where: { id: from.id, organizationId, quantity: { gte: qty } },
+      data: { quantity: { decrement: qty } },
+    });
+    if (originUpdated.count !== 1) {
+      throw new CrudError("No hay suficiente stock en el origen", 409);
+    }
+
+    let dest = await tx.inventory.findFirst({
+      where: {
+        organizationId,
+        locationId: toLocationId,
+        locationType: toLocationType,
+        variantId: from.variantId,
+        productId: from.productId,
+      },
+    });
+    if (dest) {
+      dest = await tx.inventory.update({
+        where: { id: dest.id },
+        data: { quantity: { increment: qty } },
+      });
+    } else {
+      dest = await tx.inventory.create({
+        data: {
+          organizationId,
+          productId: from.productId,
+          variantId: from.variantId,
+          locationId: toLocationId,
+          locationType: toLocationType,
+          quantity: qty,
+          unitId: from.unitId,
+          minThreshold: 0,
+        },
+      });
+    }
+
+    await tx.inventoryMovement.createMany({
       data: [
         {
           organizationId,
@@ -399,16 +437,19 @@ export async function transferStock(
           quantity: qty,
           unitId: from.unitId,
           reason: reason ?? null,
-          referenceId: destId!,
+          referenceId: dest.id,
           employeeId: employee?.id ?? null,
           userId,
         },
       ],
-    }),
-  ]);
+    });
+
+    const origin = await tx.inventory.findUniqueOrThrow({ where: { id: from.id }, select: { quantity: true } });
+    return { from: num(origin.quantity), to: num(dest.quantity) };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
   await maybeNotifyLowStock(organizationId, from.id);
-  return { ok: true, from: originNext, to: destNext };
+  return { ok: true, ...result };
 }
 
 export const MOVEMENT_TYPE_LABELS: Record<$Enums.MovementType, string> = {
@@ -595,6 +636,88 @@ export async function exportInventoryXlsx(
 
   const buffer = Buffer.from(await wb.xlsx.writeBuffer());
   return { buffer, filename: `inventario-${new Date().toISOString().slice(0, 10)}.xlsx` };
+}
+
+/** Plantilla guiada para ajustar existencias desde Excel. */
+export async function exportInventoryImportTemplate(organizationId: string) {
+  const [variants, bulkProducts] = await Promise.all([
+    prisma.productVariant.findMany({
+      where: { organizationId, isActive: true, product: { isActive: true, trackInventory: true } },
+      orderBy: [{ product: { name: "asc" } }, { name: "asc" }],
+      select: { sku: true, barcode: true, name: true, product: { select: { name: true } } },
+    }),
+    prisma.product.findMany({
+      where: { organizationId, isActive: true, trackInventory: true, productType: "bulk" },
+      orderBy: { name: "asc" },
+      select: { name: true },
+    }),
+  ]);
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Multi-POS";
+  const input = wb.addWorksheet("Importar existencias");
+  input.columns = [
+    { header: "SKU", width: 20 },
+    { header: "Código de barras", width: 24 },
+    { header: "Nombre", width: 34 },
+    { header: "Cantidad", width: 16 },
+  ];
+  input.views = [{ state: "frozen", ySplit: 1 }];
+  input.autoFilter = "A1:D1";
+  input.getRow(1).height = 24;
+  input.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  input.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+  input.getRow(1).alignment = { vertical: "middle" };
+  for (let row = 2; row <= 1001; row += 1) {
+    input.getCell(`D${row}`).dataValidation = {
+      type: "decimal",
+      operator: "greaterThanOrEqual",
+      formulae: [0],
+      allowBlank: false,
+      showErrorMessage: true,
+      errorTitle: "Cantidad inválida",
+      error: "Escribe un número igual o mayor que cero.",
+    };
+  }
+
+  const instructions = wb.addWorksheet("Instrucciones");
+  instructions.columns = [{ width: 24 }, { width: 100 }];
+  instructions.addRows([
+    ["PLANTILLA DE INVENTARIO", "Descarga una plantilla nueva antes de cada importación para tener el catálogo actualizado."],
+    ["1. Identifica", "Para productos estándar usa SKU o Código de barras. Basta con llenar uno de los dos."],
+    ["2. Productos a granel", "Deja SKU y Código de barras vacíos y copia exactamente el Nombre desde la hoja Catálogo."],
+    ["3. Cantidad", "Escribe la existencia final deseada, no la cantidad que se suma. Admite hasta tres decimales y nunca valores negativos."],
+    ["4. Revisa", "No cambies los encabezados ni el nombre de la primera hoja. Elimina filas de ejemplo antes de subir el archivo."],
+    ["5. Importa", "Selecciona primero la sucursal o CEDIS correcto en Multi-POS y luego sube este archivo."],
+  ]);
+  instructions.getRow(1).font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+  instructions.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+  instructions.getColumn(2).alignment = { wrapText: true, vertical: "top" };
+  instructions.eachRow((row) => { row.height = 34; });
+
+  const catalog = wb.addWorksheet("Catálogo");
+  catalog.columns = [
+    { header: "Tipo", width: 14 },
+    { header: "Producto", width: 34 },
+    { header: "Variante", width: 24 },
+    { header: "SKU", width: 20 },
+    { header: "Código de barras", width: 24 },
+    { header: "Nombre para importar", width: 34 },
+  ];
+  for (const variant of variants) {
+    catalog.addRow(["Estándar", variant.product.name, variant.name, variant.sku ?? "", variant.barcode ?? "", ""]);
+  }
+  for (const product of bulkProducts) {
+    catalog.addRow(["Granel", product.name, "", "", "", product.name]);
+  }
+  catalog.views = [{ state: "frozen", ySplit: 1 }];
+  catalog.autoFilter = `A1:F${Math.max(1, catalog.rowCount)}`;
+  catalog.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  catalog.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF334155" } };
+  await catalog.protect("", { selectLockedCells: true, selectUnlockedCells: true, autoFilter: true });
+
+  const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+  return { buffer, filename: `plantilla-inventario-${new Date().toISOString().slice(0, 10)}.xlsx` };
 }
 
 // ── Revisiones físicas (FASE 8.5) ─────────────────────────────────────────────
@@ -851,14 +974,24 @@ export async function updateRevisionNotes(
 }
 
 export async function completeRevision(organizationId: string, userId: string, revisionId: string) {
-  const revision = await findRevision(organizationId, revisionId);
-  if (revision.status === "completed" || revision.status === "cancelled") {
-    throw new CrudError("La revisión ya fue finalizada", 409);
-  }
-
   const employee = await performerFor(userId);
+  const notifyIds = await prisma.$transaction(async (tx) => {
+    const revision = await tx.inventoryRevision.findFirst({
+      where: { id: revisionId, organizationId },
+      include: { items: true },
+    });
+    if (!revision) throw new CrudError("Revisión no encontrada", 404);
+    if (revision.status === "completed" || revision.status === "cancelled") {
+      throw new CrudError("La revisión ya fue finalizada", 409);
+    }
 
-  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.inventoryRevision.updateMany({
+      where: { id: revision.id, organizationId, status: { in: ["draft", "in_progress"] } },
+      data: { status: "completed", completedAt: new Date() },
+    });
+    if (claimed.count !== 1) throw new CrudError("La revisión ya fue finalizada", 409);
+
+    const changedInventoryIds: string[] = [];
     for (const item of revision.items) {
       const expected = item.expectedQuantity != null ? num(item.expectedQuantity) : 0;
       const counted = item.countedQuantity != null ? num(item.countedQuantity) : null;
@@ -876,13 +1009,18 @@ export async function completeRevision(organizationId: string, userId: string, r
       if (!inventoryRow) continue;
 
       const delta = Math.round((counted - expected) * 1000) / 1000;
-      const next = Math.round((num(inventoryRow.quantity) + delta) * 1000) / 1000;
-
-      await tx.inventory.update({
-        where: { id: inventoryRow.id },
-        data: { quantity: Math.max(0, next) },
+      const updated = await tx.inventory.updateMany({
+        where: {
+          id: inventoryRow.id,
+          organizationId,
+          ...(delta < 0 ? { quantity: { gte: Math.abs(delta) } } : {}),
+        },
+        data: { quantity: { increment: delta } },
       });
-      await maybeNotifyLowStock(organizationId, inventoryRow.id);
+      if (updated.count !== 1) {
+        throw new CrudError("El stock cambió durante la revisión; actualiza el conteo antes de finalizar", 409);
+      }
+      changedInventoryIds.push(inventoryRow.id);
       await tx.inventoryMovement.create({
         data: {
           organizationId,
@@ -901,13 +1039,12 @@ export async function completeRevision(organizationId: string, userId: string, r
       });
     }
 
-    await tx.inventoryRevision.update({
-      where: { id: revision.id },
-      data: { status: "completed", completedAt: new Date() },
-    });
+    return changedInventoryIds;
   });
 
-  return { ok: true, id: revision.id };
+  await Promise.all(notifyIds.map((inventoryId) => maybeNotifyLowStock(organizationId, inventoryId)));
+
+  return { ok: true, id: revisionId };
 }
 
 export async function cancelRevision(organizationId: string, revisionId: string) {

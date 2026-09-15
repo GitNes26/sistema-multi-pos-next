@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { X, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { useGuideStore } from "@/stores/guide-store";
 import { GUIDES } from "@/lib/guides";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 // FASE — Guía inmersiva del panel: spotlight sobre el elemento real de la página
@@ -101,7 +100,8 @@ export function GuideCoach() {
 
   // El paso ya está listo cuando el selector aparece (o falló → centro) y la ruta coincide.
   const routeOk = !step?.route || pathname === step.route;
-  const resolved = routeOk && (!step?.selector || target?.found);
+  // Un selector ausente degrada a una explicación centrada después del timeout.
+  const resolved = routeOk && (!step?.selector || target !== null);
 
   // Reset por cambio de paso / guía + encendido cuando el paso está resuelto.
   // Depende de [guideId, stepIndex, resolved]: `resolved` puede seguir siendo
@@ -129,6 +129,9 @@ export function GuideCoach() {
   // Medir + reposicionar (scroll, resize, re-render).
   useEffect(() => {
     if (!ready || !step?.selector || !target) return;
+    if (target.found && target.el !== document.body) {
+      target.el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    }
     const update = () => {
       if (target.found && target.el !== document.body) {
         const r = measure(target.el);
@@ -161,7 +164,7 @@ export function GuideCoach() {
   if (!guide || !step) return null;
 
   const total = guide.steps.length;
-  const progress = Math.round(((stepIndex + (ready ? 1 : 0)) / total) * 100);
+  const progress = Math.round(((stepIndex + 1) / total) * 100);
 
   // Posición del tooltip respecto al elemento resaltado.
   let tooltipStyle: React.CSSProperties | undefined;
@@ -238,7 +241,7 @@ export function GuideCoach() {
             boxShadow: "0 0 0 9999px rgba(2,6,23,0.72)",
             zIndex: 9998,
             pointerEvents: "none",
-            transition: "top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease",
+            transition: "opacity 0.2s ease",
           }}
         />
       )}
@@ -260,9 +263,7 @@ export function GuideCoach() {
           <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-black tracking-wide text-primary uppercase">
             <Sparkles className="size-3" /> Paso {stepIndex + 1} de {total}
           </span>
-          {step.route && pathname !== step.route && (
-            <span className="text-[10px] text-muted-foreground">· sección {step.route}</span>
-          )}
+          <span className="truncate text-[10px] text-muted-foreground">{guide.title}</span>
         </div>
         <h3 className="text-base font-black tracking-tight">{step.title}</h3>
         <div className="mt-1 text-sm leading-relaxed text-muted-foreground">{step.body}</div>
@@ -276,7 +277,7 @@ export function GuideCoach() {
           </div>
           {stepIndex < total - 1 ? (
             <Button type="button" size="sm" onClick={next} className="gap-1">
-              {step.advanceOnClick ? "Entendido" : "Siguiente"}
+              {step.advanceOnClick ? "Ya lo hice" : "Siguiente"}
               <ChevronRight className="size-4" />
             </Button>
           ) : (
@@ -295,7 +296,8 @@ export function GuideCoach() {
                 variant={a.primary ? "default" : "outline"}
                 onClick={() => {
                   close();
-                  if (a.href.startsWith("/")) router.push(a.href);
+                  if (a.newTab) window.open(a.href, "_blank", "noopener,noreferrer");
+                  else if (a.href.startsWith("/")) router.push(a.href);
                 }}
               >
                 {a.label}

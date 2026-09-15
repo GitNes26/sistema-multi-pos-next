@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { uploadFile } from "@/lib/uploads";
-import { swalError } from "@/lib/swal";
 import { useImageDropzone } from "@/hooks/use-image-dropzone";
 
 /**
@@ -27,7 +26,7 @@ export function ImageDropzoneField({
   widthClass?: string;
 }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string>();
 
   const dropzone = useImageDropzone({
     subject: "la imagen",
@@ -36,16 +35,12 @@ export function ImageDropzoneField({
 
   const change = async (file: File) => {
     setBusy(true);
-    setError(false);
+    setError(undefined);
     try {
       const url = await uploadFile(file);
       onChange(url);
     } catch (err) {
-      setError(true);
-      swalError(
-        "No se pudo subir la imagen",
-        err instanceof Error ? err.message : undefined
-      );
+      setError(err instanceof Error ? err.message : "No se pudo subir la imagen");
     } finally {
       setBusy(false);
     }
@@ -56,7 +51,8 @@ export function ImageDropzoneField({
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-3">
       {dropzone.inputs.image}
       <button
         type="button"
@@ -93,6 +89,8 @@ export function ImageDropzoneField({
       <p className="text-xs text-muted-foreground">
         {value ? "Clic o arrastra para cambiar" : "Clic o arrastra una foto aquí"}
       </p>
+      </div>
+      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

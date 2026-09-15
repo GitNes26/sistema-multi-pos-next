@@ -681,6 +681,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
           <Button
             variant={view === "plan" ? "default" : "outline"}
             size="sm"
+            data-guide="tables-plan"
             onClick={() => setView("plan")}
             className="text-xs"
           >
@@ -724,13 +725,13 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
           Actualizar
         </Button>
         {canManage && (
-          <Button variant="outline" size="sm" onClick={() => setPolicyOpen(true)} title="Reglas que se aplican al reservar (portal, invitado y panel)">
+          <Button variant="outline" size="sm" data-guide="tables-policy" onClick={() => setPolicyOpen(true)} title="Reglas que se aplican al reservar (portal, invitado y panel)">
             <Settings2 className="w-4 h-4 mr-1" />
             Política de reservación
           </Button>
         )}
         {canManage && (
-          <Button size="sm" onClick={() => setWizardOpen(true)}>
+          <Button size="sm" data-guide="tables-reservation" onClick={() => setWizardOpen(true)}>
             <CalendarPlus className="w-4 h-4 mr-1" />
             Nueva reservación
           </Button>

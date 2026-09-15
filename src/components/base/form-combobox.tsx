@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown, Loader2, Plus, RefreshCw, X } from "lucide-react"
+import { Check, ChevronsUpDown, ListFilter, Loader2, Plus, RefreshCw, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -32,7 +32,10 @@ export interface FormComboboxProps {
   onCreate?: () => void
   id?: string
   label?: string
+  ariaLabel?: string
   helper?: React.ReactNode
+  infoTooltip?: React.ReactNode | null
+  icon?: React.ReactNode
   required?: boolean
   placeholder?: string
   searchPlaceholder?: string
@@ -57,7 +60,10 @@ export function FormCombobox({
   onCreate,
   id,
   label,
+  ariaLabel,
   helper,
+  infoTooltip,
+  icon,
   required,
   placeholder = "Seleccionar…",
   searchPlaceholder = "Buscar…",
@@ -71,6 +77,8 @@ export function FormCombobox({
   contentClassName,
   renderOption,
 }: FormComboboxProps) {
+  const autoId = React.useId().replace(/:/g, "")
+  const comboboxId = id ?? `combobox-${autoId}`
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
   const [syncing, setSyncing] = React.useState(false)
@@ -99,11 +107,11 @@ export function FormCombobox({
     <div className={cn("space-y-2", className)}>
       {label && (
         <div className="flex items-center gap-1.5">
-          <Label className="leading-none">
+          <Label htmlFor={comboboxId} className="cursor-pointer leading-none">
             {label}
             {required && <span className="text-destructive"> *</span>}
           </Label>
-          {helper && <InfoTooltip text={helper} />}
+          {(infoTooltip ?? helper) && <InfoTooltip text={infoTooltip ?? helper} />}
         </div>
       )}
 
@@ -113,8 +121,11 @@ export function FormCombobox({
             type="button"
             variant="outline"
             role="combobox"
-            id={id}
+            aria-label={ariaLabel}
+            id={comboboxId}
             aria-expanded={open}
+            aria-invalid={Boolean(error) || undefined}
+            aria-describedby={error ? `${comboboxId}-error` : undefined}
             disabled={disabled}
             data-slot="form-combobox-trigger"
             className={cn(
@@ -123,7 +134,8 @@ export function FormCombobox({
               !selected && "text-muted-foreground"
             )}
           >
-            <span className="truncate">
+            <span className="flex min-w-0 items-center gap-2 truncate">
+              <span className="shrink-0 text-muted-foreground">{icon ?? <ListFilter className="size-4" />}</span>
               {selected ? selected.label : placeholder}
             </span>
             <span className="flex shrink-0 items-center gap-1">
@@ -287,7 +299,7 @@ export function FormCombobox({
       </Popover>
 
       {error && (
-        <p className="text-xs leading-relaxed text-destructive">{error}</p>
+        <p id={`${comboboxId}-error`} role="alert" className="text-xs leading-relaxed text-destructive">{error}</p>
       )}
     </div>
   )

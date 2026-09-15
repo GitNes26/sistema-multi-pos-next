@@ -104,30 +104,38 @@ const SIZE_MAP: Record<TimePickerSize, {
 }
 
 export interface TimePickerProps {
+  id?: string
   value?: string | null
   onChange?: (time: string | null) => void
   label?: string
+  required?: boolean
   helper?: React.ReactNode
   disabled?: boolean
   clearable?: boolean
   error?: string
+  showError?: boolean
   className?: string
   size?: TimePickerSize | `${number}`
 }
 
 export function TimePicker({
+  id,
   value,
   onChange,
   label,
+  required,
   helper,
   disabled,
   clearable = true,
   error,
+  showError = true,
   className,
   size = "default",
 }: TimePickerProps) {
   const parts = React.useMemo(() => parseTime(value), [value])
   const s = SIZE_MAP[size as TimePickerSize] ?? SIZE_MAP.default
+  const autoId = React.useId().replace(/:/g, "")
+  const pickerId = id ?? `time-${autoId}`
 
   const emit = (
     h: number | null,
@@ -150,7 +158,10 @@ export function TimePicker({
     <div className={cn("space-y-2", className)}>
       {label && (
         <div className="flex items-center gap-1.5">
-          <Label className="leading-none">{label}</Label>
+          <Label htmlFor={`${pickerId}-hour`} className="cursor-pointer leading-none">
+            {label}
+            {required && <span className="text-destructive"> *</span>}
+          </Label>
           {helper && <InfoTooltip text={helper} />}
         </div>
       )}
@@ -169,12 +180,15 @@ export function TimePicker({
           onValueChange={(v) => emit(Number(v), null, null)}
         >
           <SelectTrigger
+            id={`${pickerId}-hour`}
             data-slot="time-picker-part"
             className={cn(
               "border-0 bg-transparent px-1 text-center shadow-none focus-visible:ring-0",
               s.trigger
             )}
             aria-label="Hora"
+            aria-invalid={Boolean(error) || undefined}
+            aria-describedby={error && showError ? `${pickerId}-error` : undefined}
           >
             <SelectValue placeholder="Hora" className={s.placeholder} />
           </SelectTrigger>
@@ -199,6 +213,7 @@ export function TimePicker({
               s.trigger
             )}
             aria-label="Minuto"
+            aria-invalid={Boolean(error) || undefined}
           >
             <SelectValue placeholder="Min" className={s.placeholder} />
           </SelectTrigger>
@@ -222,6 +237,7 @@ export function TimePicker({
               s.trigger
             )}
             aria-label="Periodo"
+            aria-invalid={Boolean(error) || undefined}
           >
             <SelectValue placeholder="AM/PM" className={s.placeholder} />
           </SelectTrigger>
@@ -244,7 +260,7 @@ export function TimePicker({
         )}
       </div>
 
-      {error && <p className="text-xs leading-relaxed text-destructive">{error}</p>}
+      {error && showError && <p id={`${pickerId}-error`} role="alert" className="text-xs leading-relaxed text-destructive">{error}</p>}
     </div>
   )
 }

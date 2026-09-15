@@ -45,6 +45,14 @@ function serialize(r: CashRegisterRow): CashRegisterDto {
   };
 }
 
+function buildPrefix(location: { code: string | null; name: string }, registerName: string) {
+  const loc = (location.code || location.name).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z0-9]/g, "").slice(0, 6) || "SUC";
+  const clean = registerName.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z0-9 ]/g, " ").trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  const abbreviation = (words.length > 1 ? words.map((word) => word[0]).join("") : clean.slice(0, 3)).slice(0, 4) || "CJ";
+  return `${loc}-${abbreviation}`.slice(0, 10);
+}
+
 export const cashRegistersModule: CrudModule<CashRegisterDto> = {
   key: "cashRegisters",
 
@@ -96,9 +104,7 @@ export const cashRegistersModule: CrudModule<CashRegisterDto> = {
     // Auto-generate folioPrefix: [locationCode]-[Caja#] if not provided
     let folioPrefix = data.folioPrefix ? String(data.folioPrefix).trim() : null;
     if (!folioPrefix) {
-      const locCode = (location.code || location.name.substring(0, 3)).toUpperCase().replace(/[^A-Z0-9]/g, "").substring(0, 6);
-      const cajaNum = name.replace(/[^0-9]/g, "") || "1";
-      folioPrefix = `${locCode}-C${cajaNum}`;
+      folioPrefix = buildPrefix(location, name);
     }
 
     const r = await prisma.cashRegister.create({
@@ -119,19 +125,24 @@ export const cashRegistersModule: CrudModule<CashRegisterDto> = {
     const existing = await prisma.cashRegister.findFirst({ where: { id, organizationId } });
     if (!existing) throw new CrudError("Caja no encontrada", 404);
 
+    let targetLocation = await prisma.location.findFirst({ where: { id: existing.locationId, organizationId } });
     if (data.locationId) {
-      const location = await prisma.location.findFirst({
+      targetLocation = await prisma.location.findFirst({
         where: { id: String(data.locationId), organizationId },
       });
-      if (!location) throw new CrudError("La sucursal no existe", 400, "locationId");
+      if (!targetLocation) throw new CrudError("La sucursal no existe", 400, "locationId");
     }
+    const nextName = data.name !== undefined ? String(data.name).trim() || existing.name : existing.name;
+    const nextPrefix = data.folioPrefix !== undefined
+      ? (data.folioPrefix ? String(data.folioPrefix).trim().toUpperCase() : null)
+      : targetLocation ? buildPrefix(targetLocation, nextName) : existing.folioPrefix;
 
     const r = await prisma.cashRegister.update({
       where: { id },
       data: {
-        ...(data.name !== undefined ? { name: String(data.name).trim() || existing.name } : {}),
+        ...(data.name !== undefined ? { name: nextName } : {}),
         ...(data.locationId !== undefined ? { locationId: String(data.locationId) } : {}),
-        ...(data.folioPrefix !== undefined ? { folioPrefix: data.folioPrefix ? String(data.folioPrefix) : null } : {}),
+        ...((data.folioPrefix !== undefined || data.name !== undefined || data.locationId !== undefined) ? { folioPrefix: nextPrefix } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive !== false } : {}),
       },
       select,

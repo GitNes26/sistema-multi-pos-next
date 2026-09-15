@@ -130,7 +130,7 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
   };
 
   return (
-    <Card className={cn("transition-all duration-300", urgencyBorder)}>
+    <Card className={cn("overflow-hidden border-2 bg-card shadow-sm transition-all duration-300", urgencyBorder)}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -157,7 +157,7 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
               {formatElapsed(order.elapsedSeconds)}
             </div>
             {urgency === "critical" && (
-              <AlertTriangle className="w-5 h-5 text-red-500 animate-bounce" />
+              <AlertTriangle className="w-5 h-5 text-red-500 animate-pulse" />
             )}
           </div>
         </div>
@@ -179,14 +179,14 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
               <div
                 key={item.id}
                 className={cn(
-                  "flex items-center justify-between p-2 rounded-lg border transition-all",
+                  "flex flex-col gap-3 rounded-xl border p-3 transition-all sm:flex-row sm:items-center sm:justify-between",
                   isReady ? "bg-emerald-50 border-emerald-200" :
                   isPreparing ? "bg-amber-50 border-amber-200" :
                   "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-sm w-8 text-center">
+                <div className="flex min-w-0 items-start gap-2">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-sm font-black text-background">
                     {Number(item.quantity)}x
                   </span>
                   <div>
@@ -214,12 +214,12 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
                 </div>
 
                 {/* Item status buttons */}
-                <div className="flex gap-1">
+                <div className="flex w-full gap-2 sm:w-auto">
                   {item.itemStatus === "pending" && (
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-7 text-xs"
+                      className="h-11 flex-1 px-4 text-sm sm:flex-none"
                       onClick={() => handleItemStatus(item.id, "preparing")}
                       disabled={updating === item.id}
                     >
@@ -230,7 +230,7 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
                   {(item.itemStatus === "pending" || item.itemStatus === "preparing") && (
                     <Button
                       size="sm"
-                      className="h-7 text-xs bg-emerald-500 hover:bg-emerald-600"
+                      className="h-11 flex-1 bg-emerald-600 px-4 text-sm hover:bg-emerald-700 sm:flex-none"
                       onClick={() => handleItemStatus(item.id, "ready")}
                       disabled={updating === item.id}
                     >
@@ -254,7 +254,7 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
           {order.status === "pending" && (
             <Button
               size="sm"
-              className="flex-1"
+              className="h-12 flex-1 text-base font-bold"
               onClick={() => handleOrderAction("start")}
               disabled={updating === "order"}
             >
@@ -265,7 +265,7 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
           {order.status === "preparing" && (
             <Button
               size="sm"
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+              className="h-12 flex-1 bg-emerald-600 text-base font-bold hover:bg-emerald-700"
               onClick={() => handleOrderAction("ready")}
               disabled={updating === "order"}
             >
@@ -276,7 +276,7 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
           {order.status === "ready" && (
             <Button
               size="sm"
-              className="flex-1 bg-blue-500 hover:bg-blue-600"
+              className="h-12 flex-1 bg-blue-600 text-base font-bold hover:bg-blue-700"
               onClick={() => handleOrderAction("complete")}
               disabled={updating === "order"}
             >
@@ -523,10 +523,10 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-h-[70vh] space-y-5 rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-950/50 sm:p-5">
       {/* Header bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <ChefHat className="w-7 h-7" />
             Cocina
@@ -544,7 +544,7 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           {/* Operador de la sesión: demo walkers saben qué rol está activo. */}
           {session?.user?.name || session?.user?.roleName ? (
             <div className="hidden items-center gap-1.5 rounded-md bg-slate-100 py-0.5 pl-2 pr-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300 md:flex">
@@ -571,6 +571,14 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
       </div>
 
       <StaleBanner show={dataStale} />
+
+      {stats && (
+        <div className="grid grid-cols-3 gap-2" aria-label="Resumen de cocina">
+          {[["Por iniciar", stats.pending + stats.confirmed, "text-amber-700 bg-amber-100"], ["Preparando", stats.preparing, "text-blue-700 bg-blue-100"], ["Artículos listos", stats.readyItems, "text-emerald-700 bg-emerald-100"]].map(([label, value, tone]) => (
+            <div key={String(label)} className={cn("rounded-xl p-3 text-center", tone)}><strong className="block text-2xl tabular-nums">{value}</strong><span className="text-xs font-semibold">{label}</span></div>
+          ))}
+        </div>
+      )}
 
       {/* Campana visual: nueva reservación próxima confirmada (auto-desaparece). */}
       {arrivalAlert && (
@@ -626,7 +634,7 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
           <p className="text-sm">Las nuevas órdenes aparecerán aquí automáticamente.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {orders.map((order) => (
             <OrderCard key={order.id} order={order} onUpdate={load} />
           ))}

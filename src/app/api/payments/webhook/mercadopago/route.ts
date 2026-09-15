@@ -20,6 +20,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  const result = await processMercadoPagoWebhook(organizationId, payload);
-  return NextResponse.json(result);
+  const result = await processMercadoPagoWebhook(organizationId, payload, {
+    signature: req.headers.get("x-signature"),
+    requestId: req.headers.get("x-request-id"),
+    dataId: url.searchParams.get("data.id"),
+  });
+  return NextResponse.json(result, { status: result.ok ? 200 : 400 });
 }

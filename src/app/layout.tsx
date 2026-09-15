@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/providers";
 import { HttpErrorToast } from "@/components/api/http-error-toast";
 import { SplashScreen } from "@/components/shared/splash-screen"
+import { GuideProvider } from "@/components/shared/guide/guide-provider"
 
 const montserrat = localFont({
   variable: "--font-montserrat",
@@ -68,6 +69,8 @@ export default function RootLayout({
           <SplashScreen />
           <HttpErrorToast />
           {children}
+          {/* La guía puede cruzar panel, POS, agenda, reservaciones, cocina y portal. */}
+          <GuideProvider />
         </Providers>
         {/* El service worker (push + caché) solo corre en builds de producción:
           en dev estorba con respuestas cacheadas viejas y jobs de push falsos. */}

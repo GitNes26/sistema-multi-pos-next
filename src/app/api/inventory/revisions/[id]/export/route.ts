@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { inventoryGuard, inventoryErrorResponse } from "../../../guard";
 import { getRevision } from "@/lib/inventory/server";
-import { buildRevisionPdf } from "@/lib/pdf";
+import { buildExecutiveReportPdf } from "@/lib/reports/pdf";
+import { getExecutivePdfBranding } from "@/lib/reports/branding";
 
 // Exportación de una revisión física en PDF profesional.
 // GET /api/inventory/revisions/[id]/export
@@ -26,26 +27,9 @@ export async function GET(req: NextRequest) {
         ? await prisma.location.findUnique({ where: { id: revision.locationId }, select: { name: true } })
         : await prisma.cedi.findUnique({ where: { id: revision.locationId }, select: { name: true } });
 
-    const buffer = await buildRevisionPdf({
-      organizationName: organization?.name ?? "Mi negocio",
-      locationName: location?.name ?? "Ubicación",
-      revisionNumber: revision.revisionNumber,
-      status: revision.status,
-      notes: revision.notes,
-      performedBy: revision.performedBy,
-      startedAt: revision.startedAt,
-      completedAt: revision.completedAt,
-      generatedAt: new Date(),
-      items: revision.items.map((i) => ({
-        productName: i.productName,
-        variantName: i.variantName,
-        sku: i.sku,
-        unit: i.unit,
-        expectedQuantity: i.expectedQuantity,
-        countedQuantity: i.countedQuantity,
-        difference: i.difference,
-      })),
-    });
+    const branding=await getExecutivePdfBranding(organizationId,revision.locationType==="location"?revision.locationId:undefined);
+    const counted=revision.items.filter(item=>item.countedQuantity!=null).length, differences=revision.items.filter(item=>item.difference!=null&&item.difference!==0).length;
+    const buffer = await buildExecutiveReportPdf({...branding,organizationName:branding.organizationName||organization?.name||"Mi negocio",locationName:location?.name??branding.locationName,period:revision.startedAt?new Date(revision.startedAt).toLocaleDateString("es-MX"):"Sin iniciar",filters:[`Estado: ${revision.status}`,`Responsable: ${revision.performedBy??"Sin asignar"}`],sections:[{title:`Revisión física #${revision.revisionNumber}`,description:revision.notes||"Conciliación de existencia esperada contra conteo físico.",metrics:[{label:"Registros",value:String(revision.items.length)},{label:"Contados",value:String(counted)},{label:"Con diferencia",value:String(differences)}],analysis:`Se han contado ${counted} de ${revision.items.length} registros; ${differences} presentan diferencias que requieren revisión.`,columns:[{key:"productName",label:"Producto"},{key:"variant",label:"Variante / SKU"},{key:"expected",label:"Esperado",align:"right"},{key:"counted",label:"Contado",align:"right"},{key:"difference",label:"Diferencia",align:"right"}],rows:revision.items.map(item=>({productName:item.productName,variant:[item.variantName,item.sku].filter(Boolean).join(" · ")||"—",expected:item.expectedQuantity,counted:item.countedQuantity??"—",difference:item.difference==null?"—":item.difference}))}]});
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,

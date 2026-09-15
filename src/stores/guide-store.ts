@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 // FASE — Guía inmersiva (coach marks): motor de pasos que navega entre páginas
 // reales del panel, resalta el elemento que hay que tocar y explica cada campo.
@@ -20,7 +21,7 @@ export interface GuideState {
   close: () => void;
 }
 
-export const useGuideStore = create<GuideState>()((set) => ({
+export const useGuideStore = create<GuideState>()(persist((set) => ({
   guideId: null,
   stepIndex: 0,
   originRoute: null,
@@ -31,4 +32,12 @@ export const useGuideStore = create<GuideState>()((set) => ({
   prev: () => set((s) => ({ stepIndex: Math.max(0, s.stepIndex - 1) })),
   jumpTo: (stepIndex) => set({ stepIndex }),
   close: () => set({ guideId: null, stepIndex: 0, originRoute: null }),
+}), {
+  name: "multi-pos-active-guide",
+  storage: createJSONStorage(() => sessionStorage),
+  partialize: (state) => ({
+    guideId: state.guideId,
+    stepIndex: state.stepIndex,
+    originRoute: state.originRoute,
+  }),
 }));

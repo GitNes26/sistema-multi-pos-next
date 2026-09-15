@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useThemeStore, STORAGE_KEY } from "@/stores/theme-store";
+import { useThemeStore } from "@/stores/theme-store";
 import { applyAppearanceToDom, resolveTheme } from "@/lib/appearance-apply";
 
 const MEDIA_DARK = "(prefers-color-scheme: dark)";
@@ -23,18 +23,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     media.addEventListener("change", handler);
     return () => media.removeEventListener("change", handler);
   }, [theme, tenant, overrides]);
-
-  React.useEffect(() => {
-    const handler = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) {
-        useThemeStore.persist.rehydrate();
-        const s = useThemeStore.getState();
-        applyAppearanceToDom(s.theme, s.tenant, s.overrides);
-      }
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, []);
 
   return <>{children}</>;
 }

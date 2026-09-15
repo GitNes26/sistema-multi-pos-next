@@ -105,9 +105,9 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
 
   // ── Datos por tab ──
   const [sales, setSales] = useState<SalesReportRow[]>([]);
-  const [salesTotals, setSalesTotals] = useState({ subtotal: 0, discount: 0, tax: 0, total: 0, pointsEarned: 0 });
+  const [salesTotals, setSalesTotals] = useState({ subtotal: 0, discount: 0, tax: 0, total: 0, refundsTotal: 0, netTotal: 0, pointsEarned: 0 });
   const [cash, setCash] = useState<CashReportRow[]>([]);
-  const [cashTotals, setCashTotals] = useState({ totalSales: 0, salesCount: 0, cashPayments: 0, expectedCash: 0 });
+  const [cashTotals, setCashTotals] = useState({ totalSales: 0, salesCount: 0, cashPayments: 0, cashRefunds: 0, expectedCash: 0 });
   const [orders, setOrders] = useState<OrdersReportRow[]>([]);
   const [ordersTotals, setOrdersTotals] = useState({ total: 0, delivery: 0, pickup: 0 });
   const [ordersByStatus, setOrdersByStatus] = useState<{ status: string; count: number }[]>([]);
@@ -304,7 +304,9 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                   <div className="h-full space-y-4 overflow-y-auto overscroll-contain">
                     <SummaryCards
                       items={[
-                        { label: "Total ventas", value: money(salesTotals.total), accent: true },
+                        { label: "Venta neta", value: money(salesTotals.netTotal), accent: true },
+                        { label: "Venta bruta", value: money(salesTotals.total) },
+                        { label: "Devoluciones", value: `-${money(salesTotals.refundsTotal)}` },
                         { label: "Nº de ventas", value: String(sales.length) },
                         { label: "Subtotal", value: money(salesTotals.subtotal) },
                         { label: "Descuentos", value: money(salesTotals.discount) },
@@ -368,6 +370,7 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                         { label: "Ventas en sesiones", value: money(cashTotals.totalSales), accent: true },
                         { label: "Sesiones", value: String(cashTotals.salesCount) },
                         { label: "Efectivo registrado", value: money(cashTotals.cashPayments) },
+                        { label: "Reembolsos en efectivo", value: money(cashTotals.cashRefunds) },
                         { label: "Esperado total", value: money(cashTotals.expectedCash) },
                       ]}
                     />
@@ -736,6 +739,7 @@ const cashColumns = [
   { id: "apertura", header: "Apertura", cell: ({ row }: { row: { original: CashReportRow } }) => (row.original.openedAt ? new Date(row.original.openedAt).toLocaleString("es-MX") : "—") },
   { id: "estado", header: "Estado", cell: ({ row }: { row: { original: CashReportRow } }) => (row.original.status === "open" ? <Badge className="bg-emerald-500 text-white">Abierta</Badge> : <Badge variant="secondary">Cerrada</Badge>) },
   { id: "ventas", header: "Ventas", cell: ({ row }: { row: { original: CashReportRow } }) => <span className="font-bold tabular-nums">{money(row.original.totalSales)}</span> },
+  { id: "reembolsos", header: "Reembolsos", cell: ({ row }: { row: { original: CashReportRow } }) => <span className="tabular-nums text-destructive">{money(row.original.cashRefunds)}</span> },
   { id: "esperado", header: "Esperado", cell: ({ row }: { row: { original: CashReportRow } }) => <span className="tabular-nums">{money(row.original.expectedCash)}</span> },
   {
     id: "diferencia",

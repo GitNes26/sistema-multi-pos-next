@@ -21,6 +21,7 @@ export interface CashCloseSummary {
   totalSales: number
   cashPayments: number
   changeGiven: number
+  cashRefunds: number
   openingCash: number
   systemCash: number
   closingCash: number
@@ -140,6 +141,12 @@ export function CashDiscrepancyDialog({ open, onClose, summary }: Props) {
           icon={<TrendingDown className="size-3.5" />}
           label="Cambio entregado"
           value={-summary.changeGiven}
+          className="text-red-500 dark:text-red-400"
+        />
+        <Row
+          icon={<CircleMinus className="size-3.5" />}
+          label="Reembolsos en efectivo"
+          value={-summary.cashRefunds}
           className="text-red-500 dark:text-red-400"
         />
         <div className="border-t pt-2">

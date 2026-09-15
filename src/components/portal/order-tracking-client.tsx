@@ -15,6 +15,7 @@ import {
   Truck,
   Navigation,
   RefreshCw,
+  ReceiptText,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { portalApi } from "@/lib/portal/client"
@@ -30,7 +31,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePortalStore } from "@/stores/portal-store"
 import { cn } from "@/lib/utils"
-import { StepIllustration } from "@/components/shared/step-illustration"
+import { OrderStatusLottie } from "@/components/portal/order-status-lottie"
+import { BottomSheet } from "@/components/portal/bottom-sheet"
 import { DeliveryConfirmPanel } from "@/components/portal/delivery-confirm-panel"
 import { DeliveryTrackingMap } from "@/components/portal/delivery-tracking-map-lazy"
 import { swalConfirm, swalError, swalToast } from "@/lib/swal"
@@ -64,12 +66,14 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<PortalOrderDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const [driverLoc, setDriverLoc] = useState<{
     lat: number
     lng: number
   } | null>(null)
 
   const load = useCallback(() => {
+    setError(null)
     portalApi
       .order(orderId)
       .then((d) => setOrder(d.order))
@@ -172,9 +176,10 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
     return (
       <div className="flex flex-col items-center gap-4 p-10 text-center">
         <p className="text-sm text-muted-foreground">{error}</p>
-        <Button variant="outline" onClick={() => router.push("/portal/orders")}>
-          Volver
-        </Button>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button variant="outline" onClick={load}><RefreshCw className="size-4" /> Volver a intentar</Button>
+          <Button variant="ghost" onClick={() => router.push("/portal/orders")}>Mis pedidos</Button>
+        </div>
       </div>
     )
   }
@@ -193,7 +198,8 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
   const isDelivery = order.deliveryMethod === "delivery"
   const isTransit =
     order.status === "in_transit" || order.status === "at_destination"
-  const cancellable = order.status === "pending" //|| order.status === "confirmed";
+  const cancellable = order.status === "pending" || order.status === "confirmed";
+  const calculatedTax = Math.max(0, order.total - order.subtotal + order.discount - order.deliveryFee - order.tip + order.pointsValue)
 
   // Filter delivery-only statuses from flow for pickup orders
   const visibleFlow = isDelivery
@@ -222,8 +228,10 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
       {/* Header */}
       <motion.div variants={fadeUp} className="flex items-center gap-3">
         <button
+          type="button"
+          aria-label="Volver a mis pedidos"
           onClick={() => router.back()}
-          className="flex size-10 items-center justify-center rounded-2xl bg-muted transition-colors hover:bg-muted/80 active:scale-95"
+          className="flex size-11 items-center justify-center rounded-2xl bg-muted transition-colors hover:bg-muted/80 active:scale-95"
         >
           <ArrowLeft className="size-5" />
         </button>
@@ -268,11 +276,11 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
           <>
             {/* Animated illustration */}
             <div className="flex justify-center py-2">
-              <StepIllustration step={order.status} size={100} />
+              <OrderStatusLottie status={order.status} />
             </div>
 
             {/* Status message */}
-            <p className="mb-4 text-center text-sm font-medium text-muted-foreground">
+            <p aria-live="polite" className="mb-4 text-center text-sm font-medium text-muted-foreground">
               {order.status === "pending" &&
                 "Tu pedido está esperando ser confirmado..."}
               {order.status === "confirmed" &&
@@ -294,7 +302,8 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
             </p>
 
             {/* Progress stepper */}
-            <div className="flex items-center">
+            <div className="overflow-x-auto pb-1">
+              <div className={cn("flex items-center", isDelivery ? "min-w-[34rem]" : "min-w-[24rem]")}>
               {visibleFlow.map((s, i) => (
                 <div
                   key={s}
@@ -303,7 +312,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
                     i < visibleFlow.length - 1 && "flex-1"
                   )}
                 >
-                  <div className="flex flex-col items-center overflow-x-auto">
+                  <div className="flex flex-col items-center">
                     <motion.div
                       initial={false}
                       animate={{
@@ -322,7 +331,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
                         FLOW_ICONS[s]
                       )}
                     </motion.div>
-                    <span className="mt-1.5 text-center text-[10px] leading-tight text-muted-foreground">
+                    <span className="mt-1.5 text-center text-xs leading-tight text-muted-foreground">
                       {ORDER_STATUS_LABELS[s]}
                     </span>
                   </div>
@@ -338,6 +347,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
                   )}
                 </div>
               ))}
+              </div>
             </div>
           </>
         )}
@@ -378,7 +388,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
               driver={driverLoc}
               destination={destination}
               origin={origin}
-              height={230}
+              height={360}
             />
             {/* Overlay */}
             <div className="border-t p-3">
@@ -399,6 +409,13 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Productos */}
+      <motion.div variants={fadeUp}>
+        <Button variant="outline" className="h-12 w-full rounded-2xl" onClick={() => setDetailsOpen(true)}>
+          <ReceiptText className="size-4" /> Ver toda la información del pedido
+        </Button>
+      </motion.div>
 
       {/* Productos */}
       <motion.section
@@ -444,6 +461,24 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
               <span>-{money(order.discount)}</span>
             </div>
           )}
+          {calculatedTax > 0 && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>Impuestos</span><span>{money(calculatedTax)}</span>
+            </div>
+          )}
+          {order.deliveryFee > 0 && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>{isDelivery ? "Envío" : "Cargo por recoger"}</span><span>{money(order.deliveryFee)}</span>
+            </div>
+          )}
+          {order.tip > 0 && (
+            <div className="flex justify-between text-muted-foreground"><span>Propina</span><span>{money(order.tip)}</span></div>
+          )}
+          {order.pointsValue > 0 && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>Puntos ({order.pointsRedeemed})</span><span>-{money(order.pointsValue)}</span>
+            </div>
+          )}
           <div className="flex justify-between border-t pt-1 text-base font-bold">
             <span>Total</span>
             <span>{money(order.total)}</span>
@@ -469,7 +504,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
             <p className="flex items-center gap-1.5">
               <CreditCard className="size-3.5" />
               {order.paymentMethod === "cash"
-                ? "Pago en sucursal"
+                ? isDelivery ? "Pago al repartidor" : "Pago en sucursal"
                 : `Tarjeta •••• ${order.paymentReference ?? ""}`}
             </p>
           )}
@@ -541,6 +576,38 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
           </Button>
         </div>
       )}
+
+      <BottomSheet
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        title={`Pedido #${order.orderNumber}`}
+        description="Productos, cobro, entrega y notas en un solo lugar"
+      >
+        <div className="space-y-5 pb-8">
+          <section className="space-y-3">
+            <h3 className="font-semibold">Productos</h3>
+            {order.items.map((item) => (
+              <div key={item.id} className="flex justify-between gap-3 rounded-xl bg-muted/50 p-3 text-sm">
+                <div><p className="font-medium">{item.quantity}× {item.productName}</p>{item.variantName && <p className="text-xs text-muted-foreground">{item.variantName}</p>}</div>
+                <span className="font-semibold tabular-nums">{money(item.lineTotal)}</span>
+              </div>
+            ))}
+          </section>
+          <section className="space-y-2 rounded-2xl border p-4 text-sm">
+            <div className="flex justify-between"><span>Subtotal</span><span>{money(order.subtotal)}</span></div>
+            {order.discount > 0 && <div className="flex justify-between"><span>Descuento</span><span>-{money(order.discount)}</span></div>}
+            {order.deliveryFee > 0 && <div className="flex justify-between"><span>Envío</span><span>{money(order.deliveryFee)}</span></div>}
+            {order.tip > 0 && <div className="flex justify-between"><span>Propina</span><span>{money(order.tip)}</span></div>}
+            <div className="flex justify-between border-t pt-2 text-base font-bold"><span>Total</span><span>{money(order.total)}</span></div>
+          </section>
+          <section className="rounded-2xl border p-4 text-sm">
+            <h3 className="mb-2 font-semibold">{isDelivery ? "Entrega a domicilio" : "Recoger en sucursal"}</h3>
+            {order.locationName && <p>{order.locationName}</p>}
+            {order.address && <p className="text-muted-foreground">{order.address}</p>}
+            {order.notes && <p className="mt-2 rounded-lg bg-muted p-2 text-muted-foreground">{order.notes}</p>}
+          </section>
+        </div>
+      </BottomSheet>
     </motion.div>
   )
 }

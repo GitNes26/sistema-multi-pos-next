@@ -106,7 +106,8 @@ function promoDiscountAmount(
   p: PortalPromotion,
   lines: PromoLine[],
 ): number {
-  if (p.requiresCustomer) return 0; // portal siempre tiene customer, pero lo validamos aparte
+  // El portal siempre requiere una sesión de cliente, por lo que también
+  // satisface las promociones restringidas a clientes identificados.
   if (p.maxUses != null && p.usesCount >= p.maxUses) return 0;
 
   const applicable = applicableLines(p, lines);

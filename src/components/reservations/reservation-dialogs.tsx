@@ -199,6 +199,7 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
       icon={<CalendarRange className="size-5 text-primary" />}
       title="Nueva reservación"
       description="Período de la renta y artículos por unidad. Se valida la disponibilidad de cada día."
+      dataGuide="reservation-dialog"
       className="sm:max-w-xl"
       bodyClassName="space-y-4"
       footer={

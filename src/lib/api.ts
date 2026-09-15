@@ -136,6 +136,13 @@ export interface SaleReturn {
   couponAmount: number | null;
   couponExpiresAt: string | null;
   pointsAwarded: number | null;
+  refundPayments: {
+    id: string;
+    method: "cash" | "card" | "wallet" | "other" | "points" | "credit";
+    amount: number;
+    reference: string | null;
+    createdAt: string;
+  }[];
   createdAt: string;
   items: SaleReturnItem[];
 }
@@ -153,6 +160,8 @@ export interface SaleReturnDetail extends SaleReturn {
   sale: SaleDetail;
   employee: { fullName: string } | null;
   user: { fullName: string } | null;
+  refundAvailability: { method: "cash" | "card" | "wallet" | "other"; amount: number }[];
+  openCashSessions: { id: string; label: string }[];
 }
 
 export type RevisionStatus = "draft" | "in_progress" | "completed" | "cancelled";
@@ -321,6 +330,8 @@ export const inventoryApi = {
     downloadInventoryExport({ ...params, format: "pdf" }, "inventario.pdf"),
   exportXlsx: (params: { locationType: string; locationId: string }) =>
     downloadInventoryExport({ ...params, format: "xlsx" }, "inventario.xlsx"),
+  exportImportTemplate: (params: { locationType: string; locationId: string }) =>
+    downloadInventoryExport({ ...params, format: "template" }, "plantilla-inventario.xlsx"),
   exportMovementsXlsx: (params: { locationType: string; locationId: string; type?: string; from?: string; to?: string }) =>
     downloadBlob(
       `/api/inventory/movements/export?${new URLSearchParams(
@@ -440,8 +451,11 @@ export const salesApi = {
     request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/approve`, { method: "PUT" }),
   rejectReturn: (returnId: string) =>
     request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/reject`, { method: "PUT" }),
-  completeReturn: (returnId: string) =>
-    request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/complete`, { method: "POST" }),
+  completeReturn: (returnId: string, refundPayments?: { method: "cash" | "card" | "wallet" | "other"; amount: number; reference?: string }[], cashSessionId?: string) =>
+    request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/complete`, {
+      method: "POST",
+      body: JSON.stringify({ refundPayments, cashSessionId }),
+    }),
   returnTicketUrl: (returnId: string) => `/api/sales/returns/${returnId}/ticket`,
 };
 
@@ -517,6 +531,7 @@ export interface CashReportRow {
   totalSales: number;
   cashPayments: number;
   changeGiven: number;
+  cashRefunds: number;
   expectedCash: number;
   closingCash: number | null;
   difference: number | null;
@@ -579,11 +594,11 @@ export const reportsApi = {
   dashboard: () =>
     request<{ ok: boolean; data: DashboardData }>(`/api/reports?type=dashboard`).then((r) => r.data),
   sales: (filters?: ReportFilters) =>
-    request<{ ok: boolean; rows: SalesReportRow[]; count: number; totals: { subtotal: number; discount: number; tax: number; total: number; pointsEarned: number } }>(
+    request<{ ok: boolean; rows: SalesReportRow[]; count: number; totals: { subtotal: number; discount: number; tax: number; total: number; refundsTotal: number; netTotal: number; pointsEarned: number } }>(
       `/api/reports?${reportParams("sales", filters)}`
     ),
   cash: (filters?: ReportFilters) =>
-    request<{ ok: boolean; rows: CashReportRow[]; count: number; totals: { totalSales: number; salesCount: number; cashPayments: number; expectedCash: number } }>(
+    request<{ ok: boolean; rows: CashReportRow[]; count: number; totals: { totalSales: number; salesCount: number; cashPayments: number; cashRefunds: number; expectedCash: number } }>(
       `/api/reports?${reportParams("cash", filters)}`
     ),
   orders: (filters?: ReportFilters) =>
@@ -725,6 +740,7 @@ export interface VariantRow {
   cost: number;
   imageUrl: string | null;
   isActive: boolean;
+  isAvailable: boolean;
   optionValues?: { optionId: string; optionName: string; valueId: string; value: string }[];
 }
 

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import type { $Enums } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { inventoryGuard } from "../guard";
-import { inventorySnapshot, exportInventoryXlsx } from "@/lib/inventory/server";
-import { buildInventoryPdf } from "@/lib/pdf";
+import { inventorySnapshot, exportInventoryImportTemplate, exportInventoryXlsx } from "@/lib/inventory/server";
+import { buildExecutiveReportPdf } from "@/lib/reports/pdf";
+import { getExecutivePdfBranding } from "@/lib/reports/branding";
 
 // FASE 8.7 — Exportación de inventario en PDF/XLSX profesional.
 // GET /api/inventory/export?locationType=location&locationId=xxx&format=pdf|xlsx
@@ -21,6 +22,16 @@ export async function GET(req: NextRequest) {
   const format = req.nextUrl.searchParams.get("format") ?? "pdf";
 
   try {
+    if (format === "template") {
+      const { buffer, filename } = await exportInventoryImportTemplate(organizationId);
+      return new NextResponse(new Uint8Array(buffer), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+        },
+      });
+    }
     if (format === "xlsx") {
       const { buffer, filename } = await exportInventoryXlsx(organizationId, {
         locationType,
@@ -46,20 +57,9 @@ export async function GET(req: NextRequest) {
         : prisma.cedi.findUnique({ where: { id: locationId }, select: { name: true } }),
     ]);
 
-    const buffer = await buildInventoryPdf({
-      organizationName: organization?.name ?? "Mi negocio",
-      locationName: location?.name ?? "Ubicación",
-      generatedAt: new Date(),
-      rows: snapshot.map((r) => ({
-        productName: r.productName,
-        variantName: r.variantName,
-        sku: r.sku,
-        unit: r.unit,
-        quantity: r.quantity,
-        minThreshold: r.minThreshold,
-        status: r.status,
-      })),
-    });
+    const branding=await getExecutivePdfBranding(organizationId,locationType==="location"?locationId:undefined);
+    const low=snapshot.filter(row=>row.status==="low").length, empty=snapshot.filter(row=>row.status==="empty").length;
+    const buffer = await buildExecutiveReportPdf({...branding,organizationName:branding.organizationName||organization?.name||"Mi negocio",locationName:location?.name??branding.locationName,period:new Date().toLocaleDateString("es-MX"),filters:[`Ubicación: ${location?.name??"Ubicación"}`],sections:[{title:"Inventario",description:"Existencias, mínimos y alertas de la ubicación seleccionada.",metrics:[{label:"Productos",value:String(snapshot.length)},{label:"Stock bajo",value:String(low)},{label:"Sin stock",value:String(empty)}],analysis:`De ${snapshot.length} registros, ${low} requieren reposición y ${empty} no tienen existencia disponible.`,columns:[{key:"productName",label:"Producto"},{key:"variant",label:"Variante / SKU"},{key:"unit",label:"Unidad"},{key:"quantity",label:"Existencia",align:"right"},{key:"minThreshold",label:"Mínimo",align:"right"},{key:"status",label:"Estado"}],rows:snapshot.map(row=>({productName:row.productName,variant:[row.variantName,row.sku].filter(Boolean).join(" · ")||"—",unit:row.unit??"pza",quantity:row.quantity,minThreshold:row.minThreshold,status:row.status==="empty"?"Sin stock":row.status==="low"?"Bajo":"Correcto"}))}]});
 
     const date = new Date().toISOString().slice(0, 10);
     return new NextResponse(new Uint8Array(buffer), {

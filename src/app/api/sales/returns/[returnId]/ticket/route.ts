@@ -30,6 +30,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ retu
       completed: "Procesada",
       rejected: "Rechazada",
     };
+    const PAYMENT_LABELS: Record<string, string> = {
+      cash: "Efectivo",
+      card: "Tarjeta",
+      wallet: "Wallet",
+      other: "Otro medio",
+    };
 
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       const doc = new PDFDocument({ size: [226, 400], margin: 20 }); // Thermal receipt 80mm
@@ -98,6 +104,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ retu
         doc.text(`Vence: ${new Date(ret.couponExpiresAt!).toLocaleDateString("es-MX")}`, cx, y, { width: W });
       } else if (ret.pointsAwarded) {
         doc.text(`Puntos bonificados: ${Number(ret.pointsAwarded)}`, cx, y, { width: W });
+      } else if (ret.returnType === "refund") {
+        for (const payment of ret.refundPayments) {
+          doc.text(
+            `${PAYMENT_LABELS[payment.method] ?? payment.method}: ${money(Number(payment.amount))}${payment.reference ? ` · Ref. ${payment.reference}` : ""}`,
+            cx,
+            y,
+            { width: W }
+          );
+          y += 10;
+        }
       }
 
       // Footer

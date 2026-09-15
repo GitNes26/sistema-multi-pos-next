@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import * as yup from "yup";
 import {
   ChevronDown,
   ChevronRight,
@@ -13,16 +14,18 @@ import {
   Menu,
   Plus,
   Search,
+  ShieldCheck,
   Tag,
   Trash2,
   Type,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { menusApi } from "@/lib/menus/client";
 import type { MenuNode, MenuInput } from "@/lib/menus/server";
 import { MENU_ICON_NAMES, resolveMenuIcon } from "@/lib/menu-icons";
 import { usePermissions } from "@/hooks/use-permissions";
-import { swalConfirm, swalError, swalToast, swalPrompt } from "@/lib/swal";
+import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,8 +35,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { FormCombobox } from "@/components/base/form-combobox";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { SwitchField } from "@/components/base/switch-field";
+import { DialogComponent } from "@/components/ui/dialog";
 import { TooltipButton } from "@/components/shared/tooltip-button";
 import { cn } from "@/lib/utils";
+import { useFocusInvalid } from "@/hooks/use-focus-invalid";
 
 const BADGE_VARIANTS = [
   { value: "default", label: "Default" },
@@ -62,6 +67,11 @@ export function MenusManager() {
   const [form, setForm] = useState<(MenuInput & { id?: string }) | null>(null);
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string>();
+  const [saving, setSaving] = useState(false);
+  const [permissionOpen, setPermissionOpen] = useState(false);
+  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
   const { allPermissions, addPermission } = usePermissions();
 
   const load = useCallback(() => {
@@ -152,10 +162,14 @@ export function MenusManager() {
   };
 
   const openCreate = (parentId: string | null, type: "section" | "item") => {
+    setFormErrors({});
+    setFormError(undefined);
     setForm({ ...EMPTY_FORM, id: undefined, parentId: parentId ?? "", type });
   };
 
   const openEdit = (node: MenuNode) => {
+    setFormErrors({});
+    setFormError(undefined);
     setForm({
       id: node.id,
       type: node.type,
@@ -171,12 +185,36 @@ export function MenusManager() {
     });
   };
 
+  const formIdentity = form ? form.id ?? "new" : null;
+  useEffect(() => {
+    if (!formIdentity) return;
+    const frame = window.requestAnimationFrame(() => focusFirstEnabled("menu-editor-form"));
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusFirstEnabled, formIdentity]);
+
   const submit = async () => {
     if (!form) return;
-    if (!form.label?.trim()) {
-      swalError("El label es obligatorio");
+    try {
+      await yup.object({
+        label: yup.string().trim().required("El nombre visible es obligatorio").max(80, "Máximo 80 caracteres"),
+        href: form.type === "item"
+          ? yup.string().trim().required("La ruta es obligatoria").matches(/^\//, "La ruta debe comenzar con /")
+          : yup.string(),
+        badge: yup.string().max(20, "Máximo 20 caracteres"),
+      }).validate(form, { abortEarly: false });
+      setFormErrors({});
+    } catch (error) {
+      if (error instanceof yup.ValidationError) {
+        const next: Record<string, string> = {};
+        for (const failure of error.inner) if (failure.path && !next[failure.path]) next[failure.path] = failure.message;
+        setFormErrors(next);
+        const focusErrors = Object.fromEntries(Object.entries(next).map(([key, message]) => [`menu-${key}`, message]));
+        window.requestAnimationFrame(() => focusFirstInvalid(focusErrors, "menu-editor-form"));
+      }
       return;
     }
+    setSaving(true);
+    setFormError(undefined);
     try {
       const payload: MenuInput = {
         type: form.type,
@@ -200,7 +238,9 @@ export function MenusManager() {
       setForm(null);
       load();
     } catch (err) {
-      swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudo guardar el menú");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -421,9 +461,12 @@ export function MenusManager() {
               </CardAction>
             </CardHeader>
             <Separator />
+            <form id="menu-editor-form" noValidate onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <CardContent className="space-y-3 pt-4">
+              {formError && <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"><AlertCircle className="mt-0.5 size-4 shrink-0" />{formError}</div>}
               <div className="grid grid-cols-2 gap-3">
                 <FormCombobox
+                  id="menu-type"
                   label="Tipo"
                   value={form.type}
                   onChange={(v) => setForm({ ...form, type: v as "section" | "item" })}
@@ -435,6 +478,7 @@ export function MenusManager() {
                   clearable={false}
                 />
                 <FormCombobox
+                  id="menu-parentId"
                   label="Menú padre"
                   value={form.parentId ?? ""}
                   onChange={(v) => setForm({ ...form, parentId: v || null })}
@@ -450,15 +494,19 @@ export function MenusManager() {
               </div>
 
               <InputGroupField
+                id="menu-label"
                 label="Label"
                 helper="Nombre visible en el menú."
                 leftIcon={<Type className="size-4" />}
                 value={form.label}
                 onChange={(e) => setForm({ ...form, label: e.target.value })}
+                required
+                error={formErrors.label}
               />
 
               <div className="grid grid-cols-2 gap-3">
                 <FormCombobox
+                  id="menu-icon"
                   label="Ícono"
                   value={form.icon ?? "Circle"}
                   onChange={(v) => setForm({ ...form, icon: v })}
@@ -492,23 +540,29 @@ export function MenusManager() {
 
               {form.type === "item" && (
                 <InputGroupField
+                  id="menu-href"
                   label="Ruta (href)"
                   placeholder="/admin/products"
                   leftIcon={<Link2 className="size-4" />}
                   value={form.href ?? ""}
                   onChange={(e) => setForm({ ...form, href: e.target.value })}
+                  required
+                  error={formErrors.href}
                 />
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <InputGroupField
+                  id="menu-badge"
                   label="Badge (opcional)"
                   placeholder="NEW"
                   leftIcon={<Tag className="size-4" />}
                   value={form.badge ?? ""}
                   onChange={(e) => setForm({ ...form, badge: e.target.value })}
+                  error={formErrors.badge}
                 />
                 <FormCombobox
+                  id="menu-badgeVariant"
                   label="Badge variante"
                   value={form.badgeVariant ?? "default"}
                   onChange={(v) => setForm({ ...form, badgeVariant: v })}
@@ -519,6 +573,7 @@ export function MenusManager() {
               </div>
 
               <FormCombobox
+                id="menu-permissionKey"
                 label="Permiso requerido"
                 value={form.permissionKey ?? ""}
                 onChange={(v) => setForm({ ...form, permissionKey: v || null })}
@@ -531,24 +586,11 @@ export function MenusManager() {
                   })),
                 ]}
                 clearable={false}
-                onCreate={async () => {
-                  const mod = await swalPrompt("Nuevo permiso", "Módulo (ej: reports, dashboard)");
-                  if (!mod) return;
-                  const action = await swalPrompt("Nuevo permiso", "Acción (ej: view, manage, export)");
-                  if (!action) return;
-                  const label = await swalPrompt("Nuevo permiso", "Etiqueta descriptiva (ej: Ver dashboard)");
-                  if (!label) return;
-                  const ok = addPermission(mod.trim(), action.trim(), label.trim());
-                  if (ok) {
-                    swalToast("Permiso creado");
-                    setForm({ ...form, permissionKey: `${mod.trim()}.${action.trim()}` });
-                  } else {
-                    swalError("Ese permiso ya existe");
-                  }
-                }}
+                onCreate={() => setPermissionOpen(true)}
               />
 
               <SwitchField
+                id="menu-active"
                 label="Activo"
                 description="Visible en el menú"
                 checked={form.isActive}
@@ -576,8 +618,9 @@ export function MenusManager() {
               <Button variant="outline" onClick={() => setForm(null)}>
                 Cancelar
               </Button>
-              <Button onClick={submit}>{form.id ? "Guardar cambios" : "Crear"}</Button>
+              <Button type="submit" disabled={saving}>{saving ? "Guardando…" : form.id ? "Guardar cambios" : "Crear"}</Button>
             </div>
+            </form>
           </Card>
         ) : (
           <Card className="flex flex-col items-center justify-center gap-3 border-dashed py-16 text-center">
@@ -596,6 +639,88 @@ export function MenusManager() {
           </Card>
         )}
       </div>
+      {permissionOpen && (
+        <CreatePermissionDialog
+          onClose={() => setPermissionOpen(false)}
+          onCreate={(module, action, label) => {
+            const ok = addPermission(module, action, label);
+            if (!ok) return false;
+            setForm((current) => current ? { ...current, permissionKey: `${module}.${action}` } : current);
+            swalToast("Permiso creado");
+            return true;
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function CreatePermissionDialog({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (module: string, action: string, label: string) => boolean;
+}) {
+  const [module, setModule] = useState("");
+  const [action, setAction] = useState("");
+  const [label, setLabel] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => focusFirstEnabled("create-permission-form"));
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusFirstEnabled]);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      await yup.object({
+        module: yup.string().trim().lowercase().matches(/^[a-z][a-z0-9_-]*$/, "Usa letras minúsculas, números, guion o guion bajo").required("El módulo es obligatorio"),
+        action: yup.string().trim().lowercase().matches(/^[a-z][a-z0-9_-]*$/, "Usa letras minúsculas, números, guion o guion bajo").required("La acción es obligatoria"),
+        label: yup.string().trim().required("La etiqueta es obligatoria").max(120, "Máximo 120 caracteres"),
+      }).validate({ module, action, label }, { abortEarly: false });
+      setErrors({});
+    } catch (error) {
+      if (error instanceof yup.ValidationError) {
+        const next: Record<string, string> = {};
+        for (const failure of error.inner) if (failure.path && !next[failure.path]) next[failure.path] = failure.message;
+        setErrors(next);
+        const focusErrors = Object.fromEntries(Object.entries(next).map(([key, message]) => [`permission-${key}`, message]));
+        window.requestAnimationFrame(() => focusFirstInvalid(focusErrors, "create-permission-form"));
+      }
+      return;
+    }
+    const normalizedModule = module.trim().toLowerCase();
+    const normalizedAction = action.trim().toLowerCase();
+    if (!onCreate(normalizedModule, normalizedAction, label.trim())) {
+      setErrors({ action: "Ese permiso ya existe" });
+      window.requestAnimationFrame(() => focusFirstInvalid({ "permission-action": true }, "create-permission-form"));
+      return;
+    }
+    onClose();
+  };
+
+  return (
+    <DialogComponent
+      open
+      onOpenChange={(next) => !next && onClose()}
+      title="Nuevo permiso"
+      description="Define una clave estable y una etiqueta comprensible para los administradores."
+      icon={<ShieldCheck className="size-5" />}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" form="create-permission-form">Crear permiso</Button>
+        </>
+      }
+    >
+      <form id="create-permission-form" noValidate onSubmit={submit} className="space-y-3">
+        <InputGroupField id="permission-module" label="Módulo" required placeholder="Ej. reports" value={module} onChange={(event) => setModule(event.target.value.toLowerCase())} error={errors.module} />
+        <InputGroupField id="permission-action" label="Acción" required placeholder="Ej. export" value={action} onChange={(event) => setAction(event.target.value.toLowerCase())} error={errors.action} />
+        <InputGroupField id="permission-label" label="Etiqueta" required placeholder="Ej. Exportar reportes" value={label} onChange={(event) => setLabel(event.target.value)} error={errors.label} />
+      </form>
+    </DialogComponent>
   );
 }

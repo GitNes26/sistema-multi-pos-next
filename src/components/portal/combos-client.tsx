@@ -8,7 +8,6 @@ import type { PortalCombo } from "@/lib/portal/server"
 import { usePortalStore } from "@/stores/portal-store"
 import { money } from "@/lib/pos/money"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TapScale } from "@/components/shared/tap-scale"
 import { ThumbImage } from "@/components/base/thumb-image"
@@ -42,31 +41,11 @@ export function CombosClient() {
     }
   }, [])
 
-  const addStandard = usePortalStore((s) => s.addStandard)
+  const addCombo = usePortalStore((s) => s.addCombo)
   const setCartOpen = usePortalStore((s) => s.setCartOpen)
 
   const handleAddCombo = (combo: PortalCombo) => {
-    // Add combo as a single product entry at the combo price
-    // Each item in the combo becomes a line in the cart
-    for (const ci of combo.items) {
-      const product = {
-        productId: combo.id + "-" + ci.id,
-        name: `${combo.name} — ${ci.productName}`,
-        imageUrl: null,
-        categoryId: "",
-        taxRate: 0,
-        trackInventory: false,
-      }
-      const variant = {
-        id: combo.id + "-" + ci.id,
-        name: ci.variantName || "Default",
-        price: ci.extraPrice, // Individual item extra price (combo discount applied at checkout)
-        imageUrl: null,
-        stock: 999,
-        isActive: true,
-      }
-      addStandard(product as never, variant as never, ci.quantity)
-    }
+    addCombo(combo)
     setAddedIds((prev) => new Set(prev).add(combo.id))
     setCartOpen(true)
     setTimeout(() => {
@@ -157,13 +136,13 @@ export function CombosClient() {
                   )}
                 >
                   {/* Combo badge */}
-                  <div className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                  <div className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
                     <Puzzle className="size-3" />
                     COMBO
                   </div>
 
                   {/* Item count */}
-                  <div className="absolute right-3 top-3 z-10 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white">
+                  <div className="absolute right-3 top-3 z-10 rounded-full bg-black/50 px-2 py-0.5 text-xs font-bold text-white">
                     {combo.items.length} productos
                   </div>
 
@@ -195,7 +174,7 @@ export function CombosClient() {
                     <div className="mt-3 space-y-1.5">
                       {combo.items.map((ci) => (
                         <div key={ci.id} className="flex items-center gap-2 text-xs">
-                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                             {ci.quantity}
                           </span>
                           <span className="text-foreground">
@@ -222,7 +201,7 @@ export function CombosClient() {
                           )}
                         </div>
                         {combo.savings > 0 && (
-                          <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-500">
+                          <div className="flex items-center gap-1 text-xs font-semibold text-emerald-500">
                             <Tag className="size-3" />
                             Ahorra {money(combo.savings)}
                           </div>

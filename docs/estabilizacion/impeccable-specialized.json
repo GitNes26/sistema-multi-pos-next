@@ -1,0 +1,24 @@
+[
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\admin\\crud\\bulk-images-dialog.tsx",
+    "line": 530,
+    "snippet": "text-[…] class: 9px is off the DESIGN.md type ramp",
+    "ignoreValue": "9px"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "C:\\Users\\Usuario\\Desktop\\Otros\\NESTOR\\NESSIK\\SISTEMA-MULTI-POS\\sistema-multi-pos-react-node-chadcnui\\src\\components\\admin\\tables\\reservation-policy-dialog.tsx",
+    "line": 252,
+    "snippet": "text-[…] class: 11px is off the DESIGN.md type ramp",
+    "ignoreValue": "11px"
+  }
+]

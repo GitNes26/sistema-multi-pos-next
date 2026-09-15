@@ -3,7 +3,7 @@
 > **Documento técnico interno (Fase 0).** No es parte del manual para el usuario final:
 > es la base que usa el agente (skill `manual-usuario`) para redactar y revalidar el manual.
 > Cuando el sistema cambie, actualiza este archivo primero.
-> Última revisión: contra el código del 9 de septiembre de 2026 (Multi-POS v0.17.0.0).
+> Última revisión: contra el código del 15 de septiembre de 2026 (Multi-POS v0.18.0.0).
 
 ---
 
@@ -19,9 +19,11 @@
 | **Portal Cliente** | `/portal` (app móvil/PWA) | Tienda, carrito, checkout con entrega a domicilio o recoger, pedidos con seguimiento, lealtad, crédito, listas, favoritos, reservación de mesas. |
 | **Menú digital** | `/portal/menu?table=...` | Menú para leer el QR de la mesa: ordenar desde la mesa. |
 | **Reserva pública de mesas** | `/reservar` (+ `/reservar/verificar`) | Flujo de invitado: elegir día/hora/sala y confirmar con código. |
-| **Onboarding** | `/onboarding` | Asistente de primer uso: elige tipo de negocio y acciones guiadas ("wizards"). |
+| **Onboarding y guías inmersivas** | `/onboarding` + recorridos desde `/admin` y `/pos` | El onboarding elige el tipo de negocio. Después, las acciones guiadas navegan entre las pantallas reales, resaltan botones, formularios y campos, y conservan el paso al cambiar de sección. |
 | **Notificaciones** | módulo transversal (`/admin/notifications`) | Eventos en vivo con sonido: ventas, pedidos, stock, crédito. |
 | **Pagos en línea** | Ajustes → Pagos | Conexión con Stripe o MercadoPago para el checkout del portal. |
+
+La navegación también se filtra por la empresa activa: el acceso global de SuperAdmin no hace visibles Agenda o Reservaciones cuando el tipo de negocio seleccionado no las incluye.
 
 **Superadmins** (`/admin/settings/organizations`): crean organizaciones, eligen su tipo de
 negocio y administran usuarios y roles. Un negocio real = una organización.
@@ -85,10 +87,14 @@ ver/crear/editar/borrar por catálogo). El menú del panel se filtra por permiso
 
 ## 5. Dependencias entre módulos
 
+- Las **acciones guiadas** no guardan datos ni replican formularios: dependen de los controles reales de cada módulo. El recorrido activo se conserva durante la navegación de la pestaña y puede pasar entre Panel, POS, Agenda, Reservaciones y KDS.
+
 - POS y Portal dependen de **catálogos** (productos/variantes/precios) y **promociones**.
-- POS/Portal/Agenda/Renta generan **ventas**; ventas mueven **inventario** y **lealtad**.
+- POS/Portal/Agenda/Renta generan **ventas**; ventas mueven **inventario**, consumos de recetas y **lealtad**.
 - Pedidos dependen del **portal** y alimentan **KDS** y el tablero de **Entregas**.
-- Crédito depende de la **política por organización** (Ajustes → Crédito) y escribe adeudos visibles en Portal → Mi Crédito y en Panel → Crédito.
+- Crédito depende de la **política por organización** (Ajustes → Crédito). Cada cliente puede heredar el límite general o tener una excepción individual, y su crédito puede bloquearse sin desactivar al cliente. Los adeudos son visibles en Portal → Mi Crédito y Panel → Crédito.
+- Los productos de alimentos y los servicios pueden tener una **receta de consumo**. La receta descuenta materias primas por producto, variante u opción elegida, con un porcentaje opcional de merma. El servicio no tiene stock: su capacidad se controla con duración, empleado y agenda; solo sus insumos se descuentan.
+- **Ya no hay** bloquea temporalmente un producto en POS y Portal sin modificar su existencia contable. Sirve cuando el consumo teórico no coincide con la disponibilidad real.
 - Notificaciones dependen de eventos de venta/pedido/inventario/crédito y llegan al panel con sonido y al portal según permisos.
 - Mesas generan **QR** apuntando al menú digital; reservaciones de mesa viven en `/admin/tables` (espera + reservas) y `/admin/reservaciones` es de renta (no confundir en el manual).
 - El tipo de negocio (elegido en onboarding o por superadmin) decide qué menús existen en panel, POS y portal.
@@ -119,3 +125,11 @@ ver/crear/editar/borrar por catálogo). El menú del panel se filtra por permiso
 - Onboarding interno del superadmin — no aplica al usuario de negocio.
 - Vista de monitoreo de pedidos (`/admin/orders/monitoring`) se menciona solo como parte de Pedidos (filtros/monitoreo), no como página separada para el usuario.
 - Combos del portal en retail (no existen por diseño).
+
+## 9. Identidad del cliente en varias empresas
+
+Una misma persona puede registrarse con el mismo correo en varias empresas. El sistema
+reutiliza su acceso al Portal, pero crea un registro de cliente separado por empresa:
+puntos, crédito, direcciones, favoritos, listas, pedidos e historial permanecen aislados.
+El selector de organización del Portal solo muestra empresas donde esa persona tiene un
+cliente activo; cambiar de empresa actualiza el catálogo, reglas y saldo visibles.

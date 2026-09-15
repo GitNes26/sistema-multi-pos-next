@@ -1,13 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback } from "react"
-import {
-  Check,
-  Minus,
-  Plus,
-  ShoppingCart,
-  X,
-} from "lucide-react"
+import { Check, Minus, Plus, ShoppingCart, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -45,7 +39,8 @@ interface PortalProductLike {
   id: string
   name: string
   imageUrl?: string | null
-  variants: { id: string; price: number; name?: string }[]
+  trackInventory?: boolean
+  variants: { id: string; price: number; name?: string; stock?: number; isAvailable?: boolean }[]
   options: {
     id: string
     name: string
@@ -94,7 +89,7 @@ function AnimatedPrice({
     <span
       className={cn(
         "tabular-nums transition-all duration-300 ease-out",
-        className,
+        className
       )}
       key={value}
     >
@@ -136,7 +131,7 @@ function OptionPill({
         sizeClasses[size],
         isSelected
           ? "border-emerald-600 bg-emerald-600 text-white shadow-lg shadow-emerald-600/25"
-          : "border-stone-200 bg-white text-stone-700 hover:border-emerald-300 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200",
+          : "border-stone-200 bg-white text-stone-700 hover:border-emerald-300 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
       )}
     >
       {/* Check indicator */}
@@ -145,7 +140,7 @@ function OptionPill({
           "flex size-4 items-center justify-center rounded-full transition-all duration-200",
           isSelected
             ? "bg-white/25 text-white"
-            : "bg-stone-100 text-transparent dark:bg-stone-700",
+            : "bg-stone-100 text-transparent dark:bg-stone-700"
         )}
       >
         <Check className="size-2.5" />
@@ -161,7 +156,7 @@ function OptionPill({
             "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
             isSelected
               ? "bg-white/20 text-white"
-              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
           )}
         >
           +{money(value.extraPrice)}
@@ -194,7 +189,11 @@ function OptionSection({
   const isValid = !option.required || selected.size >= option.minSelect
   const activeCount = selected.size
   const maxLabel =
-    option.maxSelect > 1 ? `hasta ${option.maxSelect}` : option.required ? "1" : "0-1"
+    option.maxSelect > 1
+      ? `hasta ${option.maxSelect}`
+      : option.required
+        ? "1"
+        : "0-1"
 
   return (
     <div className="space-y-3">
@@ -205,10 +204,7 @@ function OptionSection({
             {option.name}
           </h3>
           {option.required && (
-            <Badge
-              variant="destructive"
-              className="text-[10px] px-1.5 py-0"
-            >
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
               Requerido
             </Badge>
           )}
@@ -216,9 +212,7 @@ function OptionSection({
         <span
           className={cn(
             "text-xs font-medium tabular-nums transition-colors",
-            isValid
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-red-500",
+            isValid ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
           )}
         >
           {activeCount}/{maxLabel}
@@ -297,7 +291,7 @@ function NotesInput({
                 "rounded-full border px-2.5 py-1 text-xs transition-all duration-200 hover:shadow-sm active:scale-95",
                 isActive
                   ? "border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                  : "border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-300 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400",
+                  : "border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-300 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400"
               )}
             >
               {isActive && <Check className="mr-0.5 inline size-3" />}
@@ -378,7 +372,7 @@ export function ProductBuilder({
   // Normalize: use portalProduct if provided, else POS product
   const activeProduct = portalProduct ?? product ?? null
   const [selections, setSelections] = useState<Map<string, Set<string>>>(
-    new Map(),
+    new Map()
   )
   // Tamaño (variante) elegido — solo relevante en el portal, donde el builder
   // es la única pantalla y la variante no se eligió antes de abrir el panel.
@@ -426,7 +420,7 @@ export function ProductBuilder({
         return next
       })
     },
-    [],
+    []
   )
 
   // Si cambia el producto mientras el panel está abierto, empezar de cero
@@ -480,34 +474,37 @@ export function ProductBuilder({
     return result
   }, [activeProduct, selections])
 
-  const handleAdd = useCallback((e?: React.MouseEvent) => {
-    // En el portal el panel puede montarse dentro del <Link> de la card:
-    // sin esto, el clic en «Agregar» burbujea y navega al detalle.
-    e?.preventDefault()
-    e?.stopPropagation()
-    if (!activeProduct || !isValid) {
-      setShowValidation(true)
-      return
-    }
-    onAdd({
-      product: activeProduct,
-      variant: portalProduct ? selectedVariant : null,
-      selectedOptions: buildSelectedOptions(),
+  const handleAdd = useCallback(
+    (e?: React.MouseEvent) => {
+      // En el portal el panel puede montarse dentro del <Link> de la card:
+      // sin esto, el clic en «Agregar» burbujea y navega al detalle.
+      e?.preventDefault()
+      e?.stopPropagation()
+      if (!activeProduct || !isValid) {
+        setShowValidation(true)
+        return
+      }
+      onAdd({
+        product: activeProduct,
+        variant: portalProduct ? selectedVariant : null,
+        selectedOptions: buildSelectedOptions(),
+        totalExtraPrice,
+        notes,
+        quantity,
+      })
+      handleClose()
+    },
+    [
+      activeProduct,
+      isValid,
+      onAdd,
+      buildSelectedOptions,
       totalExtraPrice,
       notes,
       quantity,
-    })
-    handleClose()
-  }, [
-    activeProduct,
-    isValid,
-    onAdd,
-    buildSelectedOptions,
-    totalExtraPrice,
-    notes,
-    quantity,
-    handleClose,
-  ])
+      handleClose,
+    ]
+  )
 
   const handleClear = useCallback(() => {
     resetSelections()
@@ -527,9 +524,7 @@ export function ProductBuilder({
       <div
         className={cn(
           "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300",
-          open
-            ? "opacity-100"
-            : "pointer-events-none opacity-0",
+          open ? "opacity-100" : "pointer-events-none opacity-0"
         )}
         onClick={handleClose}
       />
@@ -540,16 +535,17 @@ export function ProductBuilder({
           "fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-white shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-stone-950",
           "max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:max-h-[90vh] max-md:rounded-t-3xl",
           "md:inset-y-0 md:right-0 md:bottom-0 md:left-auto md:w-[520px] md:rounded-l-3xl",
-          open ? "translate-x-0" : "translate-x-full",
+          open ? "translate-x-0" : "translate-x-full"
         )}
       >
         {/* Header */}
         <div className="relative flex items-center gap-4 border-b border-stone-200 px-6 py-4 dark:border-stone-800">
-          {/* Product image thumbnail */}            {activeProduct.imageUrl && (
-              <div className="relative size-14 shrink-0 overflow-hidden rounded-2xl border-2 border-stone-100 dark:border-stone-800">
-                <img
-                  src={activeProduct.imageUrl}
-                  alt={activeProduct.name}
+          {/* Product image thumbnail */}{" "}
+          {activeProduct.imageUrl && (
+            <div className="relative size-14 shrink-0 overflow-hidden rounded-2xl border-2 border-stone-100 dark:border-stone-800">
+              <img
+                src={activeProduct.imageUrl}
+                alt={activeProduct.name}
                 className="size-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
@@ -628,23 +624,33 @@ export function ProductBuilder({
                 <div className="flex flex-wrap items-center gap-2">
                   {portalVariants.map((v) => {
                     const active = selectedVariant?.id === v.id
+                    const unavailable =
+                      v.isAvailable === false ||
+                      (portalProduct.trackInventory && (v.stock ?? 0) <= 0)
                     const diff = v.price - (portalVariants[0]?.price ?? 0)
                     return (
                       <button
                         key={v.id}
                         type="button"
+                        disabled={unavailable}
                         onClick={() => setVariantId(v.id)}
                         className={cn(
                           "inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
                           active
                             ? "border-stone-900 bg-stone-900 text-white dark:border-white dark:bg-white dark:text-stone-900"
                             : "border-stone-200 bg-white text-stone-700 hover:border-stone-400 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300",
+                          unavailable && "cursor-not-allowed opacity-45"
                         )}
                       >
                         {v.name ?? "Regular"}
+                        {unavailable && (
+                          <span className="ml-1 text-xs">· Ya no hay</span>
+                        )}
                         {diff !== 0 && (
                           <span className="ml-1 text-xs opacity-70">
-                            {diff > 0 ? `+$${diff.toFixed(2)}` : `-$${Math.abs(diff).toFixed(2)}`}
+                            {diff > 0
+                              ? `+$${diff.toFixed(2)}`
+                              : `-$${Math.abs(diff).toFixed(2)}`}
                           </span>
                         )}
                       </button>
@@ -678,7 +684,7 @@ export function ProductBuilder({
                           </span>
                         )}
                       </Badge>
-                    )),
+                    ))
                   )}
                 </div>
               </div>
@@ -751,7 +757,9 @@ export function ProductBuilder({
       </div>
 
       {/* Keyframes */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         @keyframes pricePop {
           0% { transform: scale(0.8); opacity: 0; }
           50% { transform: scale(1.05); }
@@ -765,7 +773,9 @@ export function ProductBuilder({
           from { transform: translateY(20px); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
         }
-      ` }} />
+      `,
+        }}
+      />
     </>
   )
 }

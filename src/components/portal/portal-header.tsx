@@ -3,12 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState, useRef } from "react"
-import {
-  ChevronLeft,
-  ShoppingCart,
-  Bell,
-  BellRing,
-} from "lucide-react"
+import { ChevronLeft, ShoppingCart, Bell, BellRing } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePortalStore } from "@/stores/portal-store"
 import { Button } from "@/components/ui/button"
@@ -16,6 +11,8 @@ import { TapScale } from "@/components/shared/tap-scale"
 import { Logo } from "@/components/layout/logo"
 import { playSound } from "@/lib/sounds"
 import { usePushSound } from "@/hooks/use-push-sound"
+import { OrgSwitcher } from "@/components/layout/org-switcher"
+import { useSession } from "next-auth/react"
 
 const PAGE_TITLES: Record<string, string> = {
   "/portal": "",
@@ -53,7 +50,10 @@ export function PortalHeader({
 }) {
   const pathname = usePathname()
   const router = useRouter()
-  const itemCount = usePortalStore((s) => s.items.reduce((a, i) => a + i.qty, 0))
+  const { data: session } = useSession()
+  const itemCount = usePortalStore((s) =>
+    s.items.reduce((a, i) => a + i.qty, 0)
+  )
   const setCartOpen = usePortalStore((s) => s.setCartOpen)
   usePushSound()
 
@@ -65,14 +65,19 @@ export function PortalHeader({
     let active = true
     const fetchUnread = async () => {
       try {
-        const res = await fetch("/api/portal/notifications", { credentials: "include" })
+        const res = await fetch("/api/portal/notifications", {
+          credentials: "include",
+        })
         if (!res.ok) return
         const data = await res.json()
         const items = data.notifications ?? []
         const unread = items.filter((n: { readAt: string | null }) => !n.readAt)
 
         if (initialLoadDone.current && prevIdsRef.current.size > 0) {
-          const newItems = items.filter((n: { id: string; readAt: string | null }) => !prevIdsRef.current.has(n.id) && !n.readAt)
+          const newItems = items.filter(
+            (n: { id: string; readAt: string | null }) =>
+              !prevIdsRef.current.has(n.id) && !n.readAt
+          )
           if (newItems.length > 0) playSound("notification")
         }
 
@@ -83,7 +88,10 @@ export function PortalHeader({
     }
     fetchUnread()
     const interval = setInterval(fetchUnread, 30_000)
-    return () => { active = false; clearInterval(interval) }
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
   }, [])
 
   const showBack = isSubPage(pathname)
@@ -106,19 +114,32 @@ export function PortalHeader({
                 <ChevronLeft className="size-5" />
               </Button>
               {pageTitle && (
-                <h1 className="truncate text-base font-semibold">{pageTitle}</h1>
+                <h1 className="truncate text-base font-semibold">
+                  {pageTitle}
+                </h1>
               )}
             </>
           ) : (
-            <Link href="/portal" className="flex items-center gap-2.5">
+            <Link href="/portal" className="flex min-w-0 items-center gap-2.5">
               <Logo size={24} logoUrl={logoUrl} className="rounded-xl" />
-              <span className="truncate text-sm font-bold tracking-tight">{storeName}</span>
+              <span className="truncate text-sm font-bold tracking-tight">
+                {storeName}
+              </span>
             </Link>
           )}
         </div>
 
         {/* Right — Cart (conditional) → Notifications → Avatar */}
         <div className="flex items-center gap-1">
+          {session?.user && (
+            <OrgSwitcher
+              scope="portal"
+              activeOrganizationId={
+                session.user.activeOrganizationId ?? session.user.organizationId
+              }
+              variant="header"
+            />
+          )}
           <AnimatePresence>
             {itemCount > 0 && (
               <motion.div
@@ -177,7 +198,11 @@ export function PortalHeader({
             >
               {user.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.image} alt={user.name ?? ""} className="size-full object-cover" />
+                <img
+                  src={user.image}
+                  alt={user.name ?? ""}
+                  className="size-full object-cover"
+                />
               ) : (
                 <span className="text-xs font-bold text-primary">
                   {(user.name ?? "?")[0]?.toUpperCase()}

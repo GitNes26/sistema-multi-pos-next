@@ -80,6 +80,19 @@ function serialize(l: LocationRow): LocationDto {
 export const locationsModule: CrudModule<LocationDto> = {
   key: "locations",
 
+  async createDefaults(organizationId) {
+    const profile = await prisma.companyProfile.findUnique({ where: { organizationId } });
+    return {
+      address: profile?.address ?? "",
+      phone: profile?.phone ?? "",
+      email: profile?.email ?? "",
+      imageUrl: profile?.logoUrl ?? "",
+      timezone: "America/Mexico_City",
+      isActive: true,
+      allowsPickup: true,
+    };
+  },
+
   async list(organizationId, params: ListParams): Promise<CrudListResult<LocationDto>> {
     const page = Math.max(1, params.page ?? 1);
     const pageSize = Math.min(100, params.pageSize ?? 20);
@@ -127,18 +140,21 @@ export const locationsModule: CrudModule<LocationDto> = {
     const name = data.name ? String(data.name).trim() : "";
     if (!name) throw new CrudError("El nombre es obligatorio", 400, "name");
 
-    const code = data.code ? String(data.code).trim() : null;
+    const normalized = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    const code = data.code ? String(data.code).trim().toUpperCase() : normalized.slice(0, 6) || "SUC";
     if (code) {
       const dup = await prisma.location.findFirst({ where: { organizationId, code } });
       if (dup) throw new CrudError("Ese código de sucursal ya existe", 400, "code");
     }
 
-    const location = await prisma.location.create({
-      data: {
+    const profile = await prisma.companyProfile.findUnique({ where: { organizationId } });
+    const location = await prisma.$transaction(async (tx) => {
+      const created = await tx.location.create({
+        data: {
         organizationId,
         name,
         code,
-        address: data.address ? String(data.address) : null,
+        address: data.address ? String(data.address) : profile?.address ?? null,
         latitude: data.latitude !== undefined && data.latitude !== null && data.latitude !== ""
           ? Number(data.latitude)
           : null,
@@ -146,18 +162,31 @@ export const locationsModule: CrudModule<LocationDto> = {
           ? Number(data.longitude)
           : null,
         managerName: data.managerName ? String(data.managerName) : null,
-        phone: data.phone ? String(data.phone) : null,
-        email: data.email ? String(data.email) : null,
+        phone: data.phone ? String(data.phone) : profile?.phone ?? null,
+        email: data.email ? String(data.email) : profile?.email ?? null,
         openingHours: data.openingHours ? String(data.openingHours) : null,
         openingScheduleJson: data.openingScheduleJson ? String(data.openingScheduleJson) : null,
-        imageUrl: data.imageUrl ? String(data.imageUrl) : null,
+        imageUrl: data.imageUrl ? String(data.imageUrl) : profile?.logoUrl ?? null,
         notes: data.notes ? String(data.notes) : null,
         timezone: data.timezone ? String(data.timezone) : "America/Mexico_City",
         allowsPickup: data.allowsPickup !== false,
         allowsDelivery: data.allowsDelivery === true,
         isActive: data.isActive !== false,
-      },
-      include: { _count: { select: { cashRegisters: true, sales: true } } },
+        },
+      });
+      await tx.cashRegister.create({
+        data: {
+          organizationId,
+          locationId: created.id,
+          name: "Caja principal",
+          folioPrefix: `${code}-CP`,
+          isActive: true,
+        },
+      });
+      return tx.location.findUniqueOrThrow({
+        where: { id: created.id },
+        include: { _count: { select: { cashRegisters: true, sales: true } } },
+      });
     });
     return serialize(location);
   },

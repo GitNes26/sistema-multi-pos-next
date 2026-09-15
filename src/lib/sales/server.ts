@@ -279,10 +279,11 @@ export async function exportSalesXlsx(organizationId: string, query: SalesListQu
 export async function exportSalesPdf(
   organizationId: string,
   organizationName: string,
-  query: SalesListQuery
+  query: SalesListQuery,
+  branding?: import("@/lib/reports/pdf").ExecutivePdfBranding
 ) {
   const { rows } = await listSales(organizationId, { ...query, page: 1, pageSize: 100000 });
-  const buffer = await buildSalesPdf({ organizationName, rows });
+  const buffer = await buildSalesPdf({ organizationName, rows, branding });
   return { buffer, filename: `ventas-${new Date().toISOString().slice(0, 10)}.pdf` };
 }
 

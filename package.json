@@ -1,6 +1,6 @@
 {
   "name": "sistema-multi-pos-react-node-chadcnui",
-  "version": "0.18.0.0",
+  "version": "0.18.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -8,7 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/permissions.test.mjs",
+    "test": "node --import tsx --test --test-concurrency=1 tests/unit/*.test.mjs",
+    "test:unit": "node --import tsx --test --test-concurrency=1 tests/unit/*.test.mjs",
+    "test:prepare": "node scripts/test-env.mjs prepare",
+    "test:serve": "node scripts/test-env.mjs serve",
+    "test:integration": "node scripts/test-env.mjs integration",
+    "test:e2e": "node scripts/test-env.mjs e2e",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -45,6 +50,7 @@
     "input-otp": "^1.4.2",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
+    "lottie-react": "^2.4.2",
     "lucide-react": "^1.31.0",
     "next": "15.5.23",
     "next-auth": "^4.24.15",
@@ -73,6 +79,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { salesGuard, salesErrorResponse } from "../guard";
 import { exportSalesPdf, exportSalesXlsx, type SalesListQuery } from "@/lib/sales/server";
 import { prisma } from "@/lib/db";
+import { getExecutivePdfBranding } from "@/lib/reports/branding";
 
 // FASE 9.6 — Exportación de ventas (Excel + PDF).
 
@@ -25,14 +26,14 @@ export async function GET(req: NextRequest) {
 
   try {
     if (format === "pdf") {
-      const org = await prisma.organization.findUnique({
+      const [org, branding] = await Promise.all([prisma.organization.findUnique({
         where: { id: guard.organizationId },
         select: { name: true },
-      });
+      }), getExecutivePdfBranding(guard.organizationId, parseQuery(req.nextUrl.searchParams).locationId)]);
       const { buffer, filename } = await exportSalesPdf(
         guard.organizationId,
         org?.name ?? "Reporte",
-        parseQuery(req.nextUrl.searchParams)
+        parseQuery(req.nextUrl.searchParams), branding
       );
       return new NextResponse(new Uint8Array(buffer), {
         headers: {

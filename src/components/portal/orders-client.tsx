@@ -10,6 +10,7 @@ import { money } from "@/lib/pos/money";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, type OrderStatusKey } from "@/lib/orders/client";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { STAGGER, DURATION } from "@/lib/animation-tokens";
 import { PullToRefresh } from "@/components/shared/pull-to-refresh";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -20,6 +21,7 @@ export function OrdersClient() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     try {
       const d = await portalApi.listOrders();
       setOrders(d.orders);
@@ -32,7 +34,12 @@ export function OrdersClient() {
     load();
   }, [load]);
 
-  if (error) return <p className="p-6 text-center text-sm text-muted-foreground">{error}</p>;
+  if (error) return (
+    <div role="alert" className="flex flex-col items-center gap-3 p-6 text-center">
+      <p className="text-sm text-muted-foreground">{error}</p>
+      <Button variant="outline" onClick={load}>Volver a intentar</Button>
+    </div>
+  );
 
   return (
     <PullToRefresh onRefresh={load}>

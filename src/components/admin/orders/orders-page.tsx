@@ -225,23 +225,23 @@ export function OrdersPage({
         }
       />
 
-      <ResizableSplit
+      {/* <ResizableSplit
         prefix="orders"
         locationId={locationId === "all" ? "all" : locationId}
         wide={isWide}
         defaultSizes={isWide ? [28, 72] : [42, 58]}
         minSizes={isWide ? [20, 45] : [30, 35]}
         maxSizes={isWide ? [50, 80] : [65, 70]}
-        first={
-          <Card className="h-full overflow-y-auto overscroll-contain">
-            <CardContent className="space-y-3 pt-5">
+        first={ */}
+          <Card className="h-full overflow-y-auto overscroll-contain mb-3">
+            <CardContent className="space-y-3 pt-0">
               <div className="flex flex-wrap items-center gap-2">
                 <InputGroupField
                   placeholder="Buscar # o cliente"
                   leftIcon={<Search className="size-4" />}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-8 w-56"
+                  // className="h-8 w-56"
                 />
                 <DatePicker
                   value={from ? new Date(from + "T00:00:00") : null}
@@ -267,7 +267,7 @@ export function OrdersPage({
                   ]}
                   clearable={false}
                   searchable={false}
-                  className="w-44"
+                  className="w-52"
                 />
                 <FormCombobox
                   value={locationId}
@@ -278,7 +278,7 @@ export function OrdersPage({
                   ]}
                   clearable={false}
                   searchable={locations.length > 5}
-                  className="w-44"
+                  className="w-52"
                 />
                 <SwitchField
                   label="Activos"
@@ -289,7 +289,7 @@ export function OrdersPage({
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5 border rounded-lg bg-muted/50 px-2 py-1 text-xs font-semibold ">
+              <div className="flex flex-wrap items-center gap-2 border rounded-lg bg-muted/50 px-2 py-1 text-xs font-semibold ">
                 {STATUS_TABS.map((t) => {
                   const count = t.value === "all" ? total : (counts[t.value] ?? 0)
                   return (
@@ -307,8 +307,8 @@ export function OrdersPage({
               </div>
             </CardContent>
           </Card>
-        }
-        second={
+         {/* }
+         second={ */}
           <Card className="h-full overflow-y-auto overscroll-contain">
             <CardContent className="space-y-3 pt-5">
               <DataTable
@@ -325,8 +325,8 @@ export function OrdersPage({
               />
             </CardContent>
           </Card>
-        }
-      />
+         {/* }
+       /> */}
 
       {detailId && (
         <OrderDetailDialog

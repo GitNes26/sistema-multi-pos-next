@@ -359,6 +359,13 @@
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+/* Hover belongs to precise pointers; touch keeps immediate press feedback. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .ui-button-motion:hover:not(:disabled) {
+    transform: scale(1.05);
+  }
+}
+
 /* === Shimmer animation for skeleton loading === */
 @keyframes shimmer {
   100% {

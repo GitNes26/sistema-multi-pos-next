@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { BarChart3, Globe, Clock, Package, Trophy, Users, Download, FileText, UserCheck, Star, AlertTriangle, Tag, Truck, ShoppingCart, PieChart, TrendingUp, CreditCard, ArrowRightLeft, Layers, Target } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { BarChart3, Globe, Clock, Package, Trophy, Users, Download, FileText, UserCheck, Star, AlertTriangle, Tag, Truck, ShoppingCart, PieChart, TrendingUp, CreditCard, ArrowRightLeft, Layers, Target, Store, CalendarCheck2, Boxes, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { OmnichannelReport } from "./omnichannel-report"
@@ -24,6 +24,9 @@ import { TransfersReport } from "./transfers-report"
 import { FillRateReport } from "./fill-rate-report"
 import { EmployeeMarginReport } from "./employee-margin-report"
 import { ForecastReport } from "./forecast-report"
+import { OperationalReport } from "./operational-report"
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import type { BiReportDefinition, BiReportId } from "@/lib/reports/bi-catalog"
 
 type Tab =
   | "omnichannel" | "heatmap" | "inventory" | "ranking" | "cohorts"
@@ -31,6 +34,7 @@ type Tab =
   | "delivery" | "low_stock" | "segmentation" | "margin"
   | "daily_trend" | "payment_mix" | "product_pairs" | "transfers"
   | "fill_rate" | "employee_margin" | "forecast"
+  | "table_performance" | "appointments" | "rentals"
 
 const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
   { value: "omnichannel", label: "Omnicanal", icon: <Globe className="size-4" /> },
@@ -53,6 +57,9 @@ const TABS: { value: Tab; label: string; icon: React.ReactNode }[] = [
   { value: "fill_rate", label: "Fill Rate", icon: <Target className="size-4" /> },
   { value: "employee_margin", label: "Margen Emp.", icon: <UserCheck className="size-4" /> },
   { value: "forecast", label: "Pronóstico", icon: <TrendingUp className="size-4" /> },
+  { value: "table_performance", label: "Mesas", icon: <Store className="size-4" /> },
+  { value: "appointments", label: "Citas", icon: <CalendarCheck2 className="size-4" /> },
+  { value: "rentals", label: "Rentas", icon: <Boxes className="size-4" /> },
 ]
 
 interface Props { canView: boolean }
@@ -61,6 +68,13 @@ export function BiReportsPage({ canView }: Props) {
   const [tab, setTab] = useState<Tab>("omnichannel")
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
+  const [catalog, setCatalog] = useState<BiReportDefinition[]>([])
+  const [exportOpen, setExportOpen] = useState(false)
+  const [selected, setSelected] = useState<BiReportId[]>([])
+
+  useEffect(() => { fetch("/api/reports/bi?report=catalog").then(r=>r.json()).then(data=>{const reports=data.reports??[];setCatalog(reports);setSelected(reports.map((item:BiReportDefinition)=>item.id))}).catch(()=>setCatalog([])) }, [])
+  const availableTabs = useMemo(() => catalog.length ? TABS.filter(item => catalog.some(report => report.id === item.value)) : TABS.filter(item => !["table_performance","appointments","rentals"].includes(item.value)), [catalog])
+  useEffect(() => { if (!availableTabs.some(item=>item.value===tab)) setTab(availableTabs[0]?.value??"omnichannel") }, [availableTabs,tab])
 
   const exportReport = (format: "xlsx" | "pdf") => {
     const params = new URLSearchParams({ type: tab, format })
@@ -68,6 +82,7 @@ export function BiReportsPage({ canView }: Props) {
     if (to) params.set("to", to)
     window.open(`/api/reports/export?${params}`, "_blank")
   }
+  const exportPortfolio = () => { const params=new URLSearchParams({format:"pdf",types:selected.join(",")});if(from)params.set("from",from);if(to)params.set("to",to);window.open(`/api/reports/export?${params}`,"_blank");setExportOpen(false) }
 
   if (!canView) {
     return <div className="py-10 text-center text-muted-foreground">No tienes permiso para ver reportes</div>
@@ -87,15 +102,15 @@ export function BiReportsPage({ canView }: Props) {
           <Button variant="outline" size="sm" className="h-8" onClick={() => exportReport("xlsx")}>
             <Download className="size-3" /> Excel
           </Button>
-          <Button variant="outline" size="sm" className="h-8" onClick={() => exportReport("pdf")}>
-            <FileText className="size-3" /> PDF
+          <Button variant="outline" size="sm" className="h-8" onClick={() => setExportOpen(true)}>
+            <FileText className="size-3" /> PDF profesional
           </Button>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto rounded-xl bg-muted p-1">
-        {TABS.map((t) => (
+        {availableTabs.map((t) => (
           <button
             key={t.value}
             type="button"
@@ -131,6 +146,11 @@ export function BiReportsPage({ canView }: Props) {
       {tab === "fill_rate" && <FillRateReport from={from} to={to} />}
       {tab === "employee_margin" && <EmployeeMarginReport from={from} to={to} />}
       {tab === "forecast" && <ForecastReport from={from} to={to} />}
+      {tab === "table_performance" && <OperationalReport kind="table_performance" from={from} to={to} />}
+      {tab === "appointments" && <OperationalReport kind="appointments" from={from} to={to} />}
+      {tab === "rentals" && <OperationalReport kind="rentals" from={from} to={to} />}
+
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}><DialogContent className="sm:max-w-3xl"><DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="size-5"/>Crear informe ejecutivo PDF</DialogTitle><DialogDescription>Selecciona un reporte o reúne varios en un solo documento con portada, identidad de empresa, filtros, indicadores, análisis y tablas.</DialogDescription></DialogHeader><DialogBody className="max-h-[60vh] space-y-4"><div className="flex gap-2"><Button type="button" size="sm" variant="outline" onClick={()=>setSelected(catalog.map(r=>r.id))}>Seleccionar todos</Button><Button type="button" size="sm" variant="ghost" onClick={()=>setSelected([])}>Limpiar</Button></div>{[...new Set(catalog.map(r=>r.group))].map(group=><section key={group}><h3 className="mb-2 text-sm font-semibold">{group}</h3><div className="grid gap-2 sm:grid-cols-2">{catalog.filter(r=>r.group===group).map(report=>{const checked=selected.includes(report.id);return <button type="button" key={report.id} onClick={()=>setSelected(current=>checked?current.filter(id=>id!==report.id):[...current,report.id])} className={cn("flex min-h-16 items-start gap-3 rounded-xl border p-3 text-left transition-colors",checked?"border-primary bg-primary/5":"hover:bg-muted")}><span className={cn("mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border",checked&&"bg-primary text-primary-foreground")}><Check className={cn("size-3",!checked&&"opacity-0")}/></span><span><strong className="block text-sm">{report.label}</strong><span className="line-clamp-2 text-xs text-muted-foreground">{report.description}</span></span></button>})}</div></section>)}</DialogBody><DialogFooter showCloseButton><Button disabled={!selected.length} onClick={exportPortfolio}><Download className="size-4"/>Exportar {selected.length} {selected.length===1?"reporte":"reportes"}</Button></DialogFooter></DialogContent></Dialog>
     </div>
   )
 }

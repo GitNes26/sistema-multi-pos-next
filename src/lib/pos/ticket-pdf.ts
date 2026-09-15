@@ -31,13 +31,18 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
   });
   if (!sale) throw new Error("Venta no encontrada");
 
-  const company = await prisma.companyProfile.findUnique({
-    where: { organizationId },
-    select: { tradeName: true, legalName: true, logoUrl: true, address: true, city: true, phone: true, ticketFooter: true },
-  });
+  const [company, organization] = await Promise.all([
+    prisma.companyProfile.findUnique({
+      where: { organizationId },
+      select: { tradeName: true, legalName: true, logoUrl: true, address: true, city: true, phone: true, ticketFooter: true },
+    }),
+    prisma.organization.findUnique({ where: { id: organizationId }, select: { pointValue: true } }),
+  ]);
+
+  const estimatedHeight = Math.max(360, 285 + sale.items.length * 34 + sale.discounts.length * 12 + sale.payments.length * 12 + (company?.ticketFooter ? 28 : 0));
 
   const doc = new PDFDocument({
-    size: [226.77, 840],
+    size: [226.77, estimatedHeight],
     margin: 12,
     font: "Courier",
   });
@@ -75,7 +80,8 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
 
   // Encabezado — monospace to match receipt
   doc.font("Courier-Bold");
-  doc.fontSize(10).text(`${company?.tradeName ?? company?.legalName ?? "Empresa"} - ${sale.location.name}`, 12, doc.y, { align: "center", width: 200 });
+  doc.fontSize(12).text(company?.tradeName ?? company?.legalName ?? "Empresa", 12, doc.y, { align: "center", width: 200 });
+  doc.fontSize(8).text(sale.location.name, { align: "center", width: 200 });
   doc.font("Courier").fontSize(7);
   if (company?.address) doc.text([company.address, company.city].filter(Boolean).join(", "), { align: "center", width: 200 });
   if (company?.phone) doc.text(`Tel: ${company.phone}`, { align: "center", width: 200 });
@@ -111,8 +117,12 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
   line("Subtotal", MXN(Number(sale.subtotal)));
   for (const d of sale.discounts) line(d.label, `-${MXN(Number(d.amount))}`);
   line("Impuestos", MXN(Number(sale.tax)));
-  if (Number(sale.pointsRedeemed) > 0) line(`Puntos canjeados (${sale.pointsRedeemed})`, `-${MXN(Number(sale.pointsRedeemed ?? 0))}`);
-  doc.font("Courier-Bold").fontSize(10);
+  if (Number(sale.pointsRedeemed) > 0) {
+    const redeemedValue = Number(sale.pointsRedeemed) * Number(organization?.pointValue ?? 0);
+    line(`Puntos canjeados (${Math.floor(Number(sale.pointsRedeemed))})`, `-${MXN(redeemedValue)}`);
+  }
+  doc.moveDown(0.25);
+  doc.font("Courier-Bold").fontSize(11);
   line("TOTAL", MXN(Number(sale.total)));
   doc.font("Courier").fontSize(8);
   if (Number(sale.changeGiven) > 0) line("Cambio", MXN(Number(sale.changeGiven)));

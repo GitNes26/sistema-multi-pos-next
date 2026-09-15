@@ -132,7 +132,7 @@ export const FEATURE_FLAGS: Record<FeatureKey, FeatureFlag> = {
   // ── Rental ─────────────────────────────────────────────────────
   reservations: {
     label: "Reservaciones",
-    modes: ["food_service", "rental", "hybrid"],
+    modes: ["rental", "hybrid"],
   },
   calendar: {
     label: "Calendario",
@@ -190,4 +190,6 @@ export const NAV_HREF_TO_FEATURE: Record<string, FeatureKey> = {
   "/admin/locations": "locations",
   "/admin/settings": "settings",
   "/kds": "kds",
+  "/agenda": "appointments",
+  "/reservaciones": "reservations",
 }

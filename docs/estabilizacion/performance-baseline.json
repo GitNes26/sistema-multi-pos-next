@@ -1,0 +1,61 @@
+{
+  "generatedAt": "2026-09-12T20:15:26.707Z",
+  "baseUrl": "http://127.0.0.1:3107",
+  "routes": [
+    {
+      "path": "/",
+      "status": 200,
+      "durationMs": 7296.86
+    },
+    {
+      "path": "/auth/login",
+      "status": 200,
+      "durationMs": 4015.42
+    },
+    {
+      "path": "/portal/auth/login",
+      "status": 200,
+      "durationMs": 2722.71
+    },
+    {
+      "path": "/portal",
+      "status": 200,
+      "durationMs": 200.63
+    },
+    {
+      "path": "/portal/store",
+      "status": 200,
+      "durationMs": 216.66
+    },
+    {
+      "path": "/portal/orders",
+      "status": 200,
+      "durationMs": 223.24
+    },
+    {
+      "path": "/portal/reservations",
+      "status": 200,
+      "durationMs": 223.93
+    },
+    {
+      "path": "/reservar/verificar",
+      "status": 200,
+      "durationMs": 3203.64
+    },
+    {
+      "path": "/admin",
+      "status": 200,
+      "durationMs": 346.97
+    },
+    {
+      "path": "/pos",
+      "status": 200,
+      "durationMs": 254.96
+    },
+    {
+      "path": "/kds",
+      "status": 200,
+      "durationMs": 230.22
+    }
+  ]
+}

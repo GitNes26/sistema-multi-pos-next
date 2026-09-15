@@ -245,7 +245,8 @@ export function StoreClient() {
               config.quantity,
               config.totalExtraPrice,
               selectedOptionsKey(config.selectedOptions),
-              comment || undefined
+              comment || undefined,
+              config.selectedOptions
             )
             if (res.added <= 0) {
               swalToast("Sin stock disponible", "info")

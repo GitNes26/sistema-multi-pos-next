@@ -62,12 +62,23 @@ function serialize(c: CustomerRow): CustomerDto {
 }
 
 async function nextCustomerCode(organizationId: string): Promise<string> {
-  const count = await prisma.customer.count({ where: { organizationId } });
-  return `CLI-${String(count + 1).padStart(4, "0")}`;
+  const rows = await prisma.customer.findMany({
+    where: { organizationId, customerCode: { startsWith: "CLI-" } },
+    select: { customerCode: true },
+  });
+  const max = rows.reduce((current, row) => {
+    const value = Number(row.customerCode?.slice(4));
+    return Number.isInteger(value) ? Math.max(current, value) : current;
+  }, 0);
+  return `CLI-${String(max + 1).padStart(4, "0")}`;
 }
 
 export const customersModule: CrudModule<CustomerDto> = {
   key: "customers",
+
+  async createDefaults(organizationId) {
+    return { customerCode: await nextCustomerCode(organizationId), isActive: true };
+  },
 
   async list(organizationId, params: ListParams): Promise<CrudListResult<CustomerDto>> {
     const page = Math.max(1, params.page ?? 1);

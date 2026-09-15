@@ -1,6 +1,7 @@
 "use client"
 
-import { useId, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useState } from "react"
+import * as yup from "yup"
 import {
   Barcode,
   Check,
@@ -12,6 +13,12 @@ import {
   Trash2,
   Type,
   X,
+  AlertCircle,
+  Boxes,
+  FileText,
+  ImageIcon,
+  ListTree,
+  MessageSquareText,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,13 +27,15 @@ import { Label } from "@/components/ui/label"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { cn } from "@/lib/utils"
 import { optionsApi, type ProductOption } from "@/lib/api"
-import { swalError, swalToast } from "@/lib/swal"
+import { swalToast } from "@/lib/swal"
 import { OptionSelect } from "./option-select"
 import { Attachment } from "@/components/base/attachment"
 import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads"
 import type { CrudField } from "./crud-config"
-import { InfoTooltip, SwitchField } from "@/components/base"
+import { SwitchField } from "@/components/base"
+import { Switch } from "@/components/ui/switch"
 import { useBusinessMode } from "@/hooks/use-business-mode"
+import { useFocusInvalid } from "@/hooks/use-focus-invalid"
 
 interface ProductFormProps {
   initial: Record<string, unknown> | null
@@ -39,17 +48,24 @@ function FieldRow({
   children,
   full,
   htmlFor,
+  icon,
 }: {
   label: string
   children: React.ReactNode
   full?: boolean
   htmlFor?: string
+  icon?: React.ReactNode
 }) {
   return (
     <div className={cn("space-y-1.5", full && "sm:col-span-2")}>
-      <Label htmlFor={htmlFor} className="text-sm">
-        {label}
-      </Label>
+      <div className="flex items-center gap-1.5">
+        <span className="text-muted-foreground">
+          {icon ?? <Type className="size-4" />}
+        </span>
+        <Label htmlFor={htmlFor} className="cursor-pointer text-sm">
+          {label}
+        </Label>
+      </div>
       {children}
     </div>
   )
@@ -65,6 +81,7 @@ function InputField({
   label: string
   icon?: React.ReactNode
   full?: boolean
+  error?: string
 } & React.ComponentProps<typeof Input>) {
   const autoId = useId()
   return (
@@ -79,11 +96,13 @@ function InputField({
 }
 
 function TypeToggle({
+  id,
   value,
   onChange,
   disabled,
   showCustom,
 }: {
+  id?: string
   value: "standard" | "bulk" | "custom"
   onChange: (v: "standard" | "bulk" | "custom") => void
   disabled?: boolean
@@ -100,10 +119,12 @@ function TypeToggle({
     <div className="flex rounded-lg border bg-muted/40 p-1">
       {options.map((opt) => (
         <button
+          id={opt.value === options[0]?.value ? id : undefined}
           key={opt.value}
           type="button"
           disabled={disabled}
           onClick={() => onChange(opt.value)}
+          aria-pressed={value === opt.value}
           className={cn(
             "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition hover:cursor-pointer",
             value === opt.value
@@ -122,6 +143,12 @@ function TypeToggle({
 function numOrEmpty(v: string): number | "" {
   return v === "" || v === undefined || v === null ? "" : Number(v)
 }
+
+const optionalNumber = () =>
+  yup
+    .number()
+    .transform((value, original) => (original === "" ? undefined : value))
+    .typeError("Ingresa un número válido")
 
 export function ProductsForm({
   initial,
@@ -156,12 +183,16 @@ export function ProductsForm({
   const [isActive, setIsActive] = useState(
     (initial?.isActive as boolean) ?? true
   )
+  const [isAvailable, setIsAvailable] = useState(
+    (initial?.isAvailable as boolean) ?? true
+  )
+  const [availabilityNote, setAvailabilityNote] = useState(
+    (initial?.availabilityNote as string) ?? ""
+  )
   const [trackInventory, setTrackInventory] = useState(
     (initial?.trackInventory as boolean) ?? true
   )
-  const [isNew, setIsNew] = useState(
-    (initial?.isNew as boolean) ?? false
-  )
+  const [isNew, setIsNew] = useState((initial?.isNew as boolean) ?? false)
 
   const [bulkUnitId, setBulkUnitId] = useState(
     (initial?.bulkUnitId as string) ?? ""
@@ -228,6 +259,57 @@ export function ProductsForm({
     (initial?.options as ProductOption[]) ?? []
   )
   const [optionsBusy, setOptionsBusy] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [serverError, setServerError] = useState<string>()
+  const [optionsError, setOptionsError] = useState<string>()
+  const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid()
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() =>
+      focusFirstEnabled("product-form")
+    )
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusFirstEnabled])
+
+  const schema = useMemo(() => {
+    const shape: Record<string, yup.AnySchema> = {
+      name: yup
+        .string()
+        .trim()
+        .required("El nombre del producto es obligatorio")
+        .max(255, "Máximo 255 caracteres"),
+      taxRate: optionalNumber().min(0, "El impuesto no puede ser negativo"),
+      variantPrice: optionalNumber().min(0, "El precio no puede ser negativo"),
+      variantCost: optionalNumber().min(0, "El costo no puede ser negativo"),
+    }
+    if (productType === "bulk") {
+      shape.bulkUnitId = yup.string().required("Selecciona la unidad de medida")
+      shape.bulkPricePerUnit = optionalNumber()
+        .required("El precio por unidad es obligatorio")
+        .moreThan(0, "El precio debe ser mayor que cero")
+      shape.bulkMinQuantity = optionalNumber().min(
+        0,
+        "La cantidad mínima no puede ser negativa"
+      )
+      shape.bulkStep = optionalNumber().moreThan(
+        0,
+        "El incremento debe ser mayor que cero"
+      )
+      shape.bulkMaxQuantity = optionalNumber().min(
+        0,
+        "La cantidad máxima no puede ser negativa"
+      )
+      if (allowSplit) {
+        shape.splitUnitId = yup
+          .string()
+          .required("Selecciona la unidad por pieza")
+        shape.splitPricePerUnit = optionalNumber()
+          .required("El precio por pieza es obligatorio")
+          .moreThan(0, "El precio debe ser mayor que cero")
+      }
+    }
+    return yup.object(shape)
+  }, [allowSplit, productType])
 
   const categoryField = useMemo<CrudField>(
     () => ({
@@ -254,8 +336,53 @@ export function ProductsForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim()) {
-      swalError("Campo obligatorio", "El nombre del producto es obligatorio.")
+    const validationValues = {
+      name,
+      taxRate,
+      variantPrice,
+      variantCost,
+      bulkUnitId,
+      bulkPricePerUnit,
+      bulkMinQuantity,
+      bulkStep,
+      bulkMaxQuantity,
+      splitUnitId,
+      splitPricePerUnit,
+    }
+    try {
+      await schema.validate(validationValues, { abortEarly: false })
+      if (
+        productType === "bulk" &&
+        bulkMaxQuantity !== "" &&
+        bulkMinQuantity !== "" &&
+        Number(bulkMaxQuantity) < Number(bulkMinQuantity)
+      ) {
+        throw new yup.ValidationError(
+          "La cantidad máxima debe ser igual o mayor que la mínima",
+          bulkMaxQuantity,
+          "bulkMaxQuantity"
+        )
+      }
+      setErrors({})
+    } catch (error) {
+      if (error instanceof yup.ValidationError) {
+        const next: Record<string, string> = {}
+        const failures = error.inner.length ? error.inner : [error]
+        for (const failure of failures) {
+          if (failure.path && !next[failure.path])
+            next[failure.path] = failure.message
+        }
+        setErrors(next)
+        const focusErrors = Object.fromEntries(
+          Object.entries(next).map(([key, message]) => [
+            `product-${key}`,
+            message,
+          ])
+        )
+        window.requestAnimationFrame(() =>
+          focusFirstInvalid(focusErrors, "product-form")
+        )
+      }
       return
     }
     const payload: Record<string, unknown> = {
@@ -265,6 +392,8 @@ export function ProductsForm({
       imageUrl: imageUrl || null,
       taxRate: numOrEmpty(taxRate),
       isActive,
+      isAvailable,
+      availabilityNote: availabilityNote.trim() || null,
       trackInventory,
       isNew,
       productType,
@@ -319,12 +448,13 @@ export function ProductsForm({
     }
 
     onSavingChange?.(true)
+    setServerError(undefined)
+    setOptionsError(undefined)
     try {
       await onSubmit(payload)
     } catch (err) {
-      swalError(
-        "No se pudo guardar",
-        err instanceof Error ? err.message : undefined
+      setServerError(
+        err instanceof Error ? err.message : "No se pudo guardar el producto"
       )
     } finally {
       onSavingChange?.(false)
@@ -334,6 +464,7 @@ export function ProductsForm({
   const saveOptions = async () => {
     if (!initial?.id) return
     setOptionsBusy(true)
+    setOptionsError(undefined)
     try {
       const cleaned = options
         .filter((o) => o.name.trim())
@@ -359,9 +490,10 @@ export function ProductsForm({
       setOptions(res.rows)
       swalToast("Tópicos guardados")
     } catch (err) {
-      swalError(
-        "No se pudieron guardar los tópicos",
-        err instanceof Error ? err.message : undefined
+      setOptionsError(
+        err instanceof Error
+          ? err.message
+          : "No se pudieron guardar los tópicos"
       )
     } finally {
       setOptionsBusy(false)
@@ -423,6 +555,24 @@ export function ProductsForm({
       )
     )
   }
+  const updateValueAvailability = (
+    i: number,
+    vi: number,
+    isActive: boolean
+  ) => {
+    setOptions((prev) =>
+      prev.map((option, optionIndex) =>
+        optionIndex === i
+          ? {
+              ...option,
+              values: option.values.map((value, valueIndex) =>
+                valueIndex === vi ? { ...value, isActive } : value
+              ),
+            }
+          : option
+      )
+    )
+  }
   const removeValue = (i: number, vi: number) => {
     setOptions((prev) =>
       prev.map((o, idx) =>
@@ -441,10 +591,26 @@ export function ProductsForm({
     <form
       id="product-form"
       onSubmit={handleSubmit}
+      noValidate
       className="grid gap-4 sm:grid-cols-2"
     >
-      <FieldRow label="Tipo de producto" full>
+      {(serverError || optionsError) && (
+        <div
+          role="alert"
+          className="sm:col-span-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <span>{serverError ?? optionsError}</span>
+        </div>
+      )}
+      <FieldRow
+        label="Tipo de producto"
+        htmlFor="product-productType"
+        icon={<Boxes className="size-4" />}
+        full
+      >
         <TypeToggle
+          id="product-productType"
           value={productType}
           onChange={setProductType}
           showCustom={isFoodService}
@@ -458,6 +624,7 @@ export function ProductsForm({
       </FieldRow>
 
       <InputField
+        id="product-name"
         label="Nombre"
         full
         required
@@ -465,9 +632,15 @@ export function ProductsForm({
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Ej. Arroz 1kg"
+        error={errors.name}
       />
 
-      <FieldRow label="Descripción" full htmlFor="product-description">
+      <FieldRow
+        label="Descripción"
+        icon={<FileText className="size-4" />}
+        full
+        htmlFor="product-description"
+      >
         <Textarea
           id="product-description"
           rows={2}
@@ -483,10 +656,12 @@ export function ProductsForm({
         field={categoryField}
         value={categoryId}
         onChange={setCategoryId}
+        icon={<ListTree className="size-4" />}
       />
       {/* </FieldRow> */}
 
       <InputField
+        id="product-taxRate"
         label="IVA / Impuesto (%)"
         icon={<Percent className="size-4" />}
         type="number"
@@ -494,9 +669,10 @@ export function ProductsForm({
         value={taxRate}
         onChange={(e) => setTaxRate(e.target.value)}
         placeholder="0.16"
+        error={errors.taxRate}
       />
 
-      <FieldRow label="Imagen" full>
+      <FieldRow label="Imagen" icon={<ImageIcon className="size-4" />} full>
         <Attachment
           value={imageUrl || null}
           onChange={(v) => setImageUrl(v ?? "")}
@@ -524,11 +700,34 @@ export function ProductsForm({
           onCheckedChange={setTrackInventory}
         />
         <SwitchField
+          id="prod-available"
+          label="Disponible para venta"
+          description={
+            isAvailable
+              ? "Puede agregarse en POS y portal"
+              : "Se muestra como Ya no hay y no puede venderse"
+          }
+          checked={isAvailable}
+          onCheckedChange={setIsAvailable}
+          infoTooltip="Úsalo como pausa operativa cuando se termine un producto o preparación. No modifica el inventario contable."
+        />
+        {!isAvailable && (
+          <InputField
+            id="product-availabilityNote"
+            label="Motivo de no disponibilidad"
+            icon={<MessageSquareText className="size-4" />}
+            value={availabilityNote}
+            onChange={(event) => setAvailabilityNote(event.target.value)}
+            placeholder="Ej. Se terminó el guiso de hoy"
+          />
+        )}
+        <SwitchField
           id="prod-new"
           label="Producto nuevo"
           description="Genera publicación automática"
           checked={isNew}
           onCheckedChange={setIsNew}
+          className="w-full"
         />
         {/* <div className="flex items-center justify-between gap-2  border border-input rounded-md p-3">
           <Switch
@@ -556,14 +755,16 @@ export function ProductsForm({
         <>
           {/* <FieldRow label="Unidad de medida" htmlFor="product-unit"> */}
           <OptionSelect
-            id="product-unit"
+            id="product-bulkUnitId"
             field={unitField}
             value={bulkUnitId}
             onChange={setBulkUnitId}
+            error={errors.bulkUnitId}
+            infoTooltip="Unidad en la que se controla y vende este producto, por ejemplo kg, L o m."
           />
-          <InfoTooltip text="UNIDAD DE MEDIDA - La unidad de medida es la unidad en la que se venderá el producto, por ejemplo, kg, L, m, etc." />
           {/* </FieldRow> */}
           <InputField
+            id="product-bulkPricePerUnit"
             label="Precio por unidad ($)"
             icon={<DollarSign className="size-4" />}
             type="number"
@@ -571,8 +772,10 @@ export function ProductsForm({
             value={bulkPricePerUnit}
             onChange={(e) => setBulkPrice(e.target.value)}
             placeholder="0.00"
+            error={errors.bulkPricePerUnit}
           />
           <InputField
+            id="product-bulkMinQuantity"
             label="Cantidad mínima"
             icon={<Hash className="size-4" />}
             type="number"
@@ -580,8 +783,10 @@ export function ProductsForm({
             value={bulkMinQuantity}
             onChange={(e) => setBulkMin(e.target.value)}
             placeholder="0"
+            error={errors.bulkMinQuantity}
           />
           <InputField
+            id="product-bulkMaxQuantity"
             label="Cantidad máxima"
             icon={<Hash className="size-4" />}
             type="number"
@@ -589,8 +794,10 @@ export function ProductsForm({
             value={bulkMaxQuantity}
             onChange={(e) => setBulkMax(e.target.value)}
             placeholder="0"
+            error={errors.bulkMaxQuantity}
           />
           <InputField
+            id="product-bulkStep"
             label="Incremento sugerido"
             icon={<Hash className="size-4" />}
             type="number"
@@ -598,6 +805,7 @@ export function ProductsForm({
             value={bulkStep}
             onChange={(e) => setBulkStep(e.target.value)}
             placeholder="0.01"
+            error={errors.bulkStep}
           />
           <SwitchField
             id="prod-split"
@@ -605,6 +813,7 @@ export function ProductsForm({
             description="Permite vender el producto en cantidades menores a la unidad de medida, por ejemplo, 0.5kg o 0.25L."
             checked={allowSplit}
             onCheckedChange={setAllowSplit}
+            infoTooltip="Actívalo para vender fracciones de la unidad principal, por ejemplo 0.5 kg o 0.25 L."
           />
           {/* <div className="flex items-center justify-between gap-2 sm:col-span-2 border border-input rounded-md p-3">
             <Switch
@@ -620,14 +829,16 @@ export function ProductsForm({
             <>
               {/* <FieldRow label="Unidad por pieza" htmlFor="product-split-unit"> */}
               <OptionSelect
-                id="product-split-unit"
+                id="product-splitUnitId"
                 field={unitField}
                 value={splitUnitId}
                 onChange={setSplitUnitId}
+                error={errors.splitUnitId}
+                infoTooltip="Unidad usada para cada pieza o fracción cuando la venta dividida está activa."
               />
-              <InfoTooltip text="UNIDAD POR PIEZA - La unidad por pieza es la unidad de medida en la que se venderá el producto si se permite la venta dividida." />
               {/* </FieldRow> */}
               <InputField
+                id="product-splitPricePerUnit"
                 label="Precio por pieza ($)"
                 icon={<DollarSign className="size-4" />}
                 type="number"
@@ -635,6 +846,7 @@ export function ProductsForm({
                 value={splitPricePerUnit}
                 onChange={(e) => setSplitPrice(e.target.value)}
                 placeholder="0.00"
+                error={errors.splitPricePerUnit}
               />
             </>
           )}
@@ -650,20 +862,24 @@ export function ProductsForm({
             </p>
           </FieldRow>
           <InputField
+            id="product-variantPrice"
             label="Precio de venta ($)"
             icon={<DollarSign className="size-4" />}
             type="number"
             step="0.01"
             value={variantPrice}
             onChange={(e) => setVariantPrice(e.target.value)}
+            error={errors.variantPrice}
           />
           <InputField
+            id="product-variantCost"
             label="Costo ($)"
             icon={<DollarSign className="size-4" />}
             type="number"
             step="0.01"
             value={variantCost}
             onChange={(e) => setVariantCost(e.target.value)}
+            error={errors.variantCost}
           />
           <InputField
             label="SKU"
@@ -770,7 +986,7 @@ export function ProductsForm({
                           aria-label="Valor del tópico"
                           className="h-6 flex-1 border-0 bg-transparent px-1 text-xs focus-visible:ring-0"
                         />
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           +$
                         </span>
                         <Input
@@ -784,6 +1000,16 @@ export function ProductsForm({
                           aria-label="Precio extra"
                           className="h-6 w-16 border-0 bg-transparent px-1 text-xs tabular-nums focus-visible:ring-0"
                         />
+                        <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+                          <Switch
+                            checked={v.isActive !== false}
+                            onCheckedChange={(checked) =>
+                              updateValueAvailability(i, vi, checked)
+                            }
+                            aria-label={`${v.isActive !== false ? "Marcar ya no hay" : "Marcar disponible"} ${v.value || "opción"}`}
+                          />
+                          {v.isActive !== false ? "Disponible" : "Ya no hay"}
+                        </label>
                         <Button
                           type="button"
                           variant="ghost"
@@ -852,20 +1078,24 @@ export function ProductsForm({
             </p>
           </FieldRow>
           <InputField
+            id="product-variantPrice"
             label="Precio de venta ($)"
             icon={<DollarSign className="size-4" />}
             type="number"
             step="0.01"
             value={variantPrice}
             onChange={(e) => setVariantPrice(e.target.value)}
+            error={errors.variantPrice}
           />
           <InputField
+            id="product-variantCost"
             label="Costo ($)"
             icon={<DollarSign className="size-4" />}
             type="number"
             step="0.01"
             value={variantCost}
             onChange={(e) => setVariantCost(e.target.value)}
+            error={errors.variantCost}
           />
           {!hasOptions && (
             <>

@@ -10,7 +10,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ret
 
   try {
     const { returnId } = await params;
-    const ret = await completeReturn(guard.organizationId, returnId, guard.userId);
+    const body = await req.json().catch(() => ({}));
+    const ret = await completeReturn(guard.organizationId, returnId, guard.userId, {
+      refundPayments: body.refundPayments,
+      cashSessionId: body.cashSessionId,
+    });
     return jsonResponse({ ok: true, return: ret });
   } catch (err) {
     return salesErrorResponse(err);

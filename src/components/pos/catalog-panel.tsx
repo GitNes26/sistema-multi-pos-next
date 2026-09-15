@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { ThumbImage } from "@/components/base/thumb-image"
 
 const COMBOS_CATEGORY_ID = "__combos__"
+const UNCATEGORIZED_CATEGORY_ID = "__uncategorized__"
 
 interface CatalogPanelProps {
   onSelect: (product: PosProduct) => void
@@ -53,7 +54,8 @@ export function CatalogPanel({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return products.filter((p) => {
-      if (activeCategory && p.categoryId !== activeCategory) return false
+      if (activeCategory === UNCATEGORIZED_CATEGORY_ID && p.categoryId) return false
+      if (activeCategory && activeCategory !== UNCATEGORIZED_CATEGORY_ID && p.categoryId !== activeCategory) return false
       if (!q) return true
       return (
         p.name.toLowerCase().includes(q) ||
@@ -108,6 +110,9 @@ export function CatalogPanel({
   const withCount = [
     { id: "", name: "Todos", imageUrl: null, productCount: products.length },
     ...categories,
+    ...(products.some((product) => !product.categoryId)
+      ? [{ id: UNCATEGORIZED_CATEGORY_ID, name: "Sin categoría", imageUrl: null, productCount: products.filter((product) => !product.categoryId).length }]
+      : []),
     ...(combos.length > 0 ? [{ id: COMBOS_CATEGORY_ID, name: "Combos", imageUrl: null, productCount: combos.length }] : []),
   ]
 

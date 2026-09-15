@@ -1,5 +1,21 @@
 # Arquitectura de Reportes y Business Intelligence
 
+## Cobertura dinámica por tipo de negocio
+
+El catálogo de BI se obtiene desde `/api/reports/bi?report=catalog` y respeta la empresa activa. Los indicadores comerciales, clientes, pagos, empleados e inventario son compartidos. Los indicadores operativos aparecen cuando existe el flujo que los alimenta:
+
+| Modo | Reportes operativos adicionales |
+|---|---|
+| Retail | Entregas, transferencias y canasta de productos |
+| Restaurante | Mesas, entregas, canasta y transferencias |
+| Servicios | Citas, asistencia y facturación por empleado |
+| Rentas | Reservaciones, unidades rentadas e ingreso por sucursal |
+| Híbrido | Mesas, citas, rentas y todos los indicadores compartidos |
+
+La exportación PDF acepta `types=id1,id2,...` y genera un informe ejecutivo único. Usa el logo, los datos fiscales y de contacto, los colores, la escala, la densidad y el radio configurados para la empresa. La composición es compacta: cada sección comienza directamente con sus indicadores, lectura, comparativo y tabla; solo crea páginas de continuación cuando las filas no caben. La API vuelve a validar la compatibilidad con el modo de negocio para impedir exportaciones fuera de contexto.
+
+El panel administrativo también se exporta mediante `type=dashboard&format=pdf`. Resume ventas, margen, operaciones, ticket, clientes, tendencia reciente y productos principales. Las exportaciones tabulares de ventas, caja, pedidos, clientes, inventario y revisiones físicas reutilizan el mismo formato ejecutivo y la misma identidad de empresa. Los tickets de venta y devolución conservan el formato térmico propio de un comprobante.
+
 ## PUNTO 1 — Estado del Modelo de Datos
 
 ### 1.1 Modelos existentes que YA cubren los reportes

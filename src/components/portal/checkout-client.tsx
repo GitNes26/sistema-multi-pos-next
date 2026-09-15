@@ -8,11 +8,11 @@ import { usePortalStore, cartSubtotal, cartTax } from "@/stores/portal-store";
 import { portalApi, type LoyaltyData, type PortalPromotionPreview } from "@/lib/portal/client";
 import { evaluatePortalPromotions } from "@/lib/portal/promo-engine";
 import { paymentsApi } from "@/lib/payments/client";
-import type { PortalLocation, PaymentMethodView, CustomerAddressView } from "@/lib/portal/server";
+import type { PortalLocation, PaymentMethodView, CustomerAddressView, PortalOrderInput } from "@/lib/portal/server";
 import type { DeliveryPolicyData } from "@/lib/orders/server";
 import { money } from "@/lib/pos/money";
 import { isScheduleOpenNow } from "@/lib/schedule";
-import { swalError, swalLoading, swalClose, swalPrompt, swalConfirm } from "@/lib/swal";
+import { swalError, swalPrompt, swalConfirm } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -46,7 +46,12 @@ export function CheckoutClient() {
   const [policy, setPolicy] = useState<DeliveryPolicyData | null>(null);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ location?: string; address?: string }>({});
 
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("pickup");
   const [locationId, setLocationId] = useState<string>("");
@@ -64,26 +69,65 @@ export function CheckoutClient() {
   const [tipMode, setTipMode] = useState<"none" | "percent" | "custom">("none");
   const [tipPercent, setTipPercent] = useState(15);
   const [tipCustom, setTipCustom] = useState("");
+  const [idempotencyKey] = useState(() => crypto.randomUUID().replace(/-/g, ""));
 
   const subtotal = cartSubtotal(items);
   const tax = cartTax(items);
+  const coords = useMemo(() => (gps ? { lat: gps.lat, lng: gps.lon } : null), [gps]);
+  const nearestDeliveryBranch = useMemo(() => {
+    if (deliveryMethod !== "delivery" || !coords) return null;
+    return locations
+      .filter((location) => location.allowsDelivery && location.latitude != null && location.longitude != null)
+      .map((location) => ({
+        ...location,
+        dist: distanceKm(coords.lat, coords.lng, location.latitude!, location.longitude!),
+      }))
+      .sort((a, b) => a.dist - b.dist)[0] ?? null;
+  }, [deliveryMethod, coords, locations]);
+
+  const checkoutItems = useMemo<PortalOrderInput["items"]>(() => items.flatMap((item): PortalOrderInput["items"] => {
+    if (item.comboId && item.comboItems) {
+      return item.comboItems.map((comboItem) => ({
+        productId: comboItem.productId,
+        variantId: comboItem.variantId,
+        productType: comboItem.productType,
+        productName: comboItem.productName,
+        variantName: comboItem.variantName,
+        quantity: comboItem.quantity * item.qty,
+        unitId: null,
+        unitPrice: comboItem.unitPrice,
+        lineTotal: comboItem.unitPrice * comboItem.quantity * item.qty,
+        categoryId: comboItem.categoryId,
+        extraPrice: comboItem.extraPrice,
+        comboId: item.comboId,
+        comboItemId: comboItem.id,
+        comboQuantity: item.qty,
+        comment: `Combo: ${item.name}`,
+      }));
+    }
+    return [{
+      productId: item.productId,
+      variantId: item.variantId,
+      productType: item.kind,
+      productName: item.name,
+      variantName: item.variantName,
+      quantity: item.qty,
+      unitId: item.unitId,
+      unitPrice: item.unitPrice,
+      lineTotal: item.unitPrice * item.qty,
+      categoryId: item.categoryId,
+      bulkQuantityDisplay: item.bulkQuantityDisplay ?? null,
+      comment: item.comment ?? null,
+      selectedOptions: item.selectedOptions,
+      extraPrice: item.extraPrice ?? 0,
+    }];
+  }), [items]);
 
   // Evaluar promociones en tiempo real sobre los items del carrito
   const promoPreview = useMemo(() => {
     if (!promotions.length) return { discount: 0, label: "" };
-    return evaluatePortalPromotions(promotions, items.map((i) => ({
-      productId: i.productId,
-      variantId: i.variantId,
-      productType: i.kind,
-      productName: i.name,
-      variantName: i.variantName,
-      quantity: i.qty,
-      unitId: i.unitId,
-      unitPrice: i.unitPrice,
-      lineTotal: i.unitPrice * i.qty,
-      categoryId: i.categoryId,
-    })));
-  }, [promotions, items]);
+    return evaluatePortalPromotions(promotions, checkoutItems);
+  }, [promotions, checkoutItems]);
 
   const deliveryFee = useMemo(() => {
     if (!policy) return 0;
@@ -92,11 +136,14 @@ export function CheckoutClient() {
       return policy.pickupFee;
     }
     if (!policy.deliveryFeeEnabled) return 0;
+    if (policy.deliveryFeeType === "per_km") {
+      return Math.round((nearestDeliveryBranch?.dist ?? 0) * policy.deliveryFeePerKm * 100) / 100;
+    }
     return policy.deliveryFee;
-  }, [policy, deliveryMethod]);
+  }, [policy, deliveryMethod, nearestDeliveryBranch]);
 
   const tipAmount = tipMode === "percent" ? Math.round(subtotal * (tipPercent / 100) * 100) / 100 : tipMode === "custom" ? parseFloat(tipCustom.replace(",", ".")) || 0 : 0;
-  const total = subtotal + tax + deliveryFee - promoPreview.discount + tipAmount;
+  const total = Math.max(0, subtotal + tax + deliveryFee - promoPreview.discount + tipAmount);
 
   const pointsValue = loyalty ? Math.min(pointsToRedeem * loyalty.pointValue, total) : 0;
   const payableTotal = Math.max(0, total - pointsValue);
@@ -111,6 +158,7 @@ export function CheckoutClient() {
   const scheduleInfo = useMemo(() => {
     if (!policy) return null;
     const schedule = deliveryMethod === "pickup" ? policy.pickupSchedule : policy.deliverySchedule;
+    if (!schedule?.length) return null;
     return isScheduleOpenNow(schedule);
   }, [policy, deliveryMethod]);
 
@@ -121,11 +169,13 @@ export function CheckoutClient() {
 
   const minAmountError = useMemo(() => {
     if (!minAmount || subtotal >= minAmount) return null;
-    return `Monto minimo: ${money(minAmount)}`;
+    return `Monto mínimo: ${money(minAmount)}`;
   }, [minAmount, subtotal]);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setLoadError(null);
     Promise.all([portalApi.locations(), portalApi.paymentMethods(), portalApi.deliveryPolicy(), portalApi.addresses(), portalApi.loyalty(), portalApi.promotions()])
       .then(([l, m, p, a, ly, pr]) => {
         if (!active) return;
@@ -140,12 +190,23 @@ export function CheckoutClient() {
         setLocationId(pickupLoc?.id ?? "");
         if (l.locations.every((x) => !x.allowsPickup)) setDeliveryMethod("delivery");
       })
-      .catch(() => undefined)
+      .catch((error) => {
+        if (!active) return;
+        setLoadError(error instanceof Error ? error.message : "No fue posible cargar los datos del pedido");
+      })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadAttempt]);
+
+  useEffect(() => {
+    if (loading || loadError) return;
+    const firstId = locations.some((location) => location.allowsPickup) && policy?.pickupEnabled !== false
+      ? "delivery-method-pickup"
+      : "delivery-method-delivery";
+    requestAnimationFrame(() => document.getElementById(firstId)?.focus());
+  }, [loading, loadError, locations, policy?.pickupEnabled]);
 
   const pickupLocations = useMemo(() => locations.filter((l) => l.allowsPickup), [locations]);
 
@@ -155,8 +216,6 @@ export function CheckoutClient() {
   useEffect(() => {
     if (!cardId && methods.length) setCardId(methods[0].id);
   }, [methods, cardId]);
-
-  const coords = useMemo(() => (gps ? { lat: gps.lat, lng: gps.lon } : null), [gps]);
 
   // ── Nearest branch computation ──────────────────────────────
   const pickupWithDistance = useMemo(() => {
@@ -176,18 +235,30 @@ export function CheckoutClient() {
 
   const nearestPickup = pickupWithDistance.find((l) => l.distanceKm != null);
 
-  // Nearest branch for delivery fulfillment
-  const nearestDeliveryBranch = useMemo(() => {
-    if (deliveryMethod !== "delivery" || !coords) return null;
-    const withDist = locations
-      .filter((l) => l.allowsDelivery && l.latitude != null && l.longitude != null)
-      .map((l) => ({
-        ...l,
-        dist: distanceKm(coords.lat, coords.lng, l.latitude!, l.longitude!),
-      }))
-      .sort((a, b) => a.dist - b.dist);
-    return withDist[0] ?? null;
-  }, [deliveryMethod, coords, locations]);
+  const effectiveBranchId = deliveryMethod === "pickup"
+    ? locationId
+    : nearestDeliveryBranch?.id ?? locations.find((location) => location.allowsDelivery)?.id ?? "";
+
+  useEffect(() => {
+    if (loading || !effectiveBranchId) return;
+    let active = true;
+    setPolicyLoading(true);
+    portalApi.deliveryPolicy(effectiveBranchId)
+      .then((result) => {
+        if (!active) return;
+        setPolicy(result.policy);
+        setOnlinePaymentEnabled(result.onlinePaymentEnabled);
+      })
+      .catch((error) => {
+        if (active) setSubmitError(error instanceof Error ? error.message : "No se pudo actualizar la política de entrega");
+      })
+      .finally(() => {
+        if (active) setPolicyLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [effectiveBranchId, loading]);
 
   function composeAddress(g: GpsValue): string {
     const parts = [
@@ -204,11 +275,13 @@ export function CheckoutClient() {
     setGps(g);
     setSelectedAddressId(null);
     setAddress(g ? composeAddress(g) : "");
+    if (g) setFieldErrors((current) => ({ ...current, address: undefined }));
   };
 
   const selectSavedAddress = (a: CustomerAddressView) => {
     setSelectedAddressId(a.id);
     setAddress(a.address);
+    setFieldErrors((current) => ({ ...current, address: undefined }));
     if (a.latitude != null && a.longitude != null) {
       setGps({ lat: a.latitude, lon: a.longitude });
     }
@@ -216,7 +289,8 @@ export function CheckoutClient() {
 
   const saveCurrentAddress = async () => {
     if (!address.trim()) {
-      swalError("Primero captura o escribe una dirección");
+      setFieldErrors((current) => ({ ...current, address: "Primero captura o escribe una dirección" }));
+      requestAnimationFrame(() => document.getElementById("delivery-address")?.focus());
       return;
     }
     const label = await swalPrompt("Guardar destino", "Nombre del destino (ej. Casa de mis padres)…");
@@ -242,8 +316,8 @@ export function CheckoutClient() {
       await portalApi.removeAddress(id);
       setAddresses((prev) => prev.filter((a) => a.id !== id));
       if (selectedAddressId === id) setSelectedAddressId(null);
-    } catch {
-      // silent
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "No se pudo eliminar el destino");
     }
   };
 
@@ -254,7 +328,7 @@ export function CheckoutClient() {
     if (closest && closest.id !== locationId) {
       setLocationId(closest.id);
     }
-  }, [coords, deliveryMethod]);
+  }, [coords, deliveryMethod, locationId, pickupWithDistance]);
 
   // Validación de radio de entrega (distancia a la sucursal más cercana).
   const radiusError = useMemo(() => {
@@ -274,43 +348,38 @@ export function CheckoutClient() {
   }, [deliveryMethod, policy, coords, locations]);
 
   const submit = async () => {
+    setSubmitError(null);
+    const nextErrors: { location?: string; address?: string } = {};
     if (deliveryMethod === "pickup" && !locationId) {
-      swalError("Selecciona una sucursal");
-      return;
+      nextErrors.location = "Selecciona una sucursal";
     }
     if (deliveryMethod === "delivery" && !address.trim()) {
-      swalError("Ingresa una dirección de entrega");
+      nextErrors.address = "Ingresa una dirección de entrega";
+    }
+    setFieldErrors(nextErrors);
+    if (nextErrors.location || nextErrors.address) {
+      const targetId = nextErrors.location
+        ? (pickupWithDistance[0] ? `loc-${pickupWithDistance[0].id}` : "delivery-method-pickup")
+        : "delivery-address";
+      requestAnimationFrame(() => document.getElementById(targetId)?.focus());
       return;
     }
     if (deliveryMethod === "delivery" && radiusError) {
-      swalError(radiusError);
+      setSubmitError(radiusError);
       return;
     }
     if (scheduleInfo && !scheduleInfo.open) {
-      swalError(scheduleInfo.message);
+      setSubmitError(scheduleInfo.message);
       return;
     }
 
-    swalLoading("Creando pedido…");
     setSubmitting(true);
     try {
       const order = await portalApi.createOrder({
-        items: items.map((i) => ({
-          productId: i.productId,
-          variantId: i.variantId,
-          productType: i.kind,
-          productName: i.name,
-          variantName: i.variantName,
-          quantity: i.qty,
-          unitId: i.unitId,
-          unitPrice: i.unitPrice,
-          lineTotal: i.unitPrice * i.qty,
-          categoryId: i.categoryId,
-          bulkQuantityDisplay: i.bulkQuantityDisplay ?? null,
-          comment: i.comment ?? null,
-        })),
+        idempotencyKey,
+        items: checkoutItems,
         deliveryMethod,
-        locationId: deliveryMethod === "pickup" ? locationId : null,
+        locationId: effectiveBranchId || null,
         address: deliveryMethod === "delivery" ? address : null,
         latitude: coords?.lat ?? null,
         longitude: coords?.lng ?? null,
@@ -329,17 +398,14 @@ export function CheckoutClient() {
       if (payMethod === "online") {
         const pay = await paymentsApi.payOrder(order.order.id);
         clearCart();
-        swalClose();
         window.location.assign(pay.url);
         return;
       }
 
       clearCart();
-      swalClose();
       router.push(`/portal/orders/${order.order.id}`);
     } catch (err) {
-      swalClose();
-      swalError("No se pudo crear el pedido", err instanceof Error ? err.message : undefined);
+      setSubmitError(err instanceof Error ? err.message : "No se pudo crear el pedido");
     } finally {
       setSubmitting(false);
     }
@@ -367,8 +433,11 @@ export function CheckoutClient() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
+          id="checkout-back"
+          type="button"
+          aria-label="Volver al carrito"
           onClick={() => router.back()}
-          className="flex size-10 items-center justify-center rounded-full bg-muted transition-colors hover:bg-muted/80 active:scale-95"
+          className="flex size-11 items-center justify-center rounded-full bg-muted transition-colors hover:bg-muted/80 active:scale-95"
         >
           <ArrowLeft className="size-5" />
         </button>
@@ -384,6 +453,15 @@ export function CheckoutClient() {
           <Skeleton className="h-28 w-full rounded-2xl" />
           <Skeleton className="h-36 w-full rounded-2xl" />
         </div>
+      ) : loadError ? (
+        <div role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-center">
+          <AlertTriangle className="mx-auto size-7 text-destructive" />
+          <p className="mt-3 font-semibold">No pudimos preparar el checkout</p>
+          <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
+          <Button className="mt-4 min-h-11" variant="outline" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
+            Volver a intentar
+          </Button>
+        </div>
       ) : (
         <>
           {/* Entrega */}
@@ -393,6 +471,7 @@ export function CheckoutClient() {
             </h2>
             <div className="grid grid-cols-2 gap-2">
               <button
+                id="delivery-method-pickup"
                 type="button"
                 onClick={() => setDeliveryMethod("pickup")}
                 disabled={pickupLocations.length === 0 || (policy !== null && !policy.pickupEnabled)}
@@ -405,10 +484,11 @@ export function CheckoutClient() {
               >
                 <Store className="size-6" /> Recoger
                 {policy?.pickupFeeEnabled && policy.pickupFee > 0 && (
-                  <span className="text-[11px] text-muted-foreground">{money(policy.pickupFee)}</span>
+                  <span className="text-xs text-muted-foreground">{money(policy.pickupFee)}</span>
                 )}
               </button>
               <button
+                id="delivery-method-delivery"
                 type="button"
                 onClick={() => setDeliveryMethod("delivery")}
                 disabled={policy !== null && !policy.deliveryEnabled}
@@ -420,11 +500,21 @@ export function CheckoutClient() {
                 )}
               >
                 <Truck className="size-6" /> Domicilio
-                {policy?.deliveryFeeEnabled && policy.deliveryFee > 0 && (
-                  <span className="text-[11px] text-muted-foreground">{money(policy.deliveryFee)}</span>
+                {policy?.deliveryFeeEnabled && (policy.deliveryFeeType === "per_km" ? policy.deliveryFeePerKm > 0 : policy.deliveryFee > 0) && (
+                  <span className="text-xs text-muted-foreground">{policy.deliveryFeeType === "per_km" ? `${money(policy.deliveryFeePerKm)}/km` : money(policy.deliveryFee)}</span>
                 )}
               </button>
             </div>
+
+            {deliveryMethod === "delivery" && policy?.deliveryFeeEnabled && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
+                {policy.deliveryFeeType === "per_km" ? (
+                  <p><strong>Envío por distancia:</strong> {nearestDeliveryBranch?.dist.toFixed(1) ?? "0.0"} km × {money(policy.deliveryFeePerKm)} = <strong>{money(deliveryFee)}</strong>. Se usa la sucursal habilitada más cercana.</p>
+                ) : (
+                  <p><strong>Tarifa fija:</strong> pagarás {money(policy.deliveryFee)} por el envío, sin importar la distancia dentro del radio permitido.</p>
+                )}
+              </div>
+            )}
 
             <AnimatePresence mode="wait">
               {deliveryMethod === "pickup" && (
@@ -435,8 +525,17 @@ export function CheckoutClient() {
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                 >
-                  <RadioGroup value={locationId} onValueChange={setLocationId} className="space-y-2 pt-1">
-                    {pickupWithDistance.map((l, idx) => {
+                  <RadioGroup
+                    value={locationId}
+                    onValueChange={(value) => {
+                      setLocationId(value);
+                      setFieldErrors((current) => ({ ...current, location: undefined }));
+                    }}
+                    aria-invalid={Boolean(fieldErrors.location) || undefined}
+                    aria-describedby={fieldErrors.location ? "pickup-location-error" : undefined}
+                    className="space-y-2 pt-1"
+                  >
+                    {pickupWithDistance.map((l) => {
                       const isNearest = nearestPickup?.id === l.id && l.distanceKm != null;
                       return (
                         <Label
@@ -456,13 +555,13 @@ export function CheckoutClient() {
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium">{l.name}</span>
                               {isNearest && (
-                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
+                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
                                   <Navigation className="size-2.5" />
                                   Más cercana
                                 </span>
                               )}
                               {l.distanceKm != null && (
-                                <span className="text-[11px] tabular-nums text-muted-foreground">
+                                <span className="text-xs tabular-nums text-muted-foreground">
                                   {l.distanceKm < 1
                                     ? `${Math.round(l.distanceKm * 1000)} m`
                                     : `${l.distanceKm.toFixed(1)} km`}
@@ -476,6 +575,11 @@ export function CheckoutClient() {
                       );
                     })}
                   </RadioGroup>
+                  {fieldErrors.location && (
+                    <p id="pickup-location-error" role="alert" className="mt-2 flex items-center gap-1.5 text-xs text-destructive">
+                      <AlertTriangle className="size-3.5" /> {fieldErrors.location}
+                    </p>
+                  )}
                 </motion.div>
               )}
 
@@ -498,7 +602,7 @@ export function CheckoutClient() {
                             type="button"
                             onClick={() => selectSavedAddress(a)}
                             className={cn(
-                              "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                              "flex min-h-11 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
                               selectedAddressId === a.id
                                 ? "border-primary bg-primary/10 text-primary"
                                 : "text-muted-foreground hover:bg-muted"
@@ -517,13 +621,18 @@ export function CheckoutClient() {
 
                   {/* Dirección manual */}
                   <InputGroupField
+                    id="delivery-address"
+                    label="Dirección de entrega"
+                    required
                     placeholder="Calle, número, colonia, ciudad…"
                     leftIcon={<MapPin className="size-4" />}
                     value={address}
                     onChange={(e) => {
                       setAddress(e.target.value);
                       setSelectedAddressId(null);
+                      if (e.target.value.trim()) setFieldErrors((current) => ({ ...current, address: undefined }));
                     }}
+                    error={fieldErrors.address}
                   />
 
                   <div className="flex items-center gap-2">
@@ -535,7 +644,8 @@ export function CheckoutClient() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-destructive"
+                        className="min-h-11 min-w-11 text-destructive"
+                        aria-label="Eliminar destino seleccionado"
                         onClick={() => removeSavedAddress(selectedAddressId)}
                       >
                         <Trash2 className="size-4" />
@@ -548,7 +658,7 @@ export function CheckoutClient() {
                       <Store className="size-4 shrink-0 text-primary" />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium">Se surtirá desde: {nearestDeliveryBranch.name}</p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {nearestDeliveryBranch.dist < 1
                             ? `${Math.round(nearestDeliveryBranch.dist * 1000)} m de distancia`
                             : `${nearestDeliveryBranch.dist.toFixed(1)} km de distancia`}
@@ -666,12 +776,12 @@ export function CheckoutClient() {
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               💰 Propina (opcional)
             </h2>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
               <button
                 type="button"
                 onClick={() => setTipMode("none")}
                 className={cn(
-                  "rounded-xl border px-2 py-2.5 text-xs font-semibold transition",
+                  "min-h-11 rounded-xl border px-2 py-2.5 text-xs font-semibold transition",
                   tipMode === "none"
                     ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                     : "border-muted-foreground/20 text-muted-foreground hover:border-emerald-500/50"
@@ -688,7 +798,7 @@ export function CheckoutClient() {
                     setTipPercent(pct)
                   }}
                   className={cn(
-                    "rounded-xl border px-2 py-2.5 text-xs font-semibold transition",
+                    "min-h-11 rounded-xl border px-2 py-2.5 text-xs font-semibold transition",
                     tipMode === "percent" && tipPercent === pct
                       ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                       : "border-muted-foreground/20 text-muted-foreground hover:border-emerald-500/50"
@@ -804,8 +914,9 @@ export function CheckoutClient() {
           </section>
 
           <div className="space-y-2">
-            <Label>Notas para tu pedido (opcional)</Label>
+            <Label htmlFor="checkout-notes">Notas para tu pedido (opcional)</Label>
             <Textarea
+              id="checkout-notes"
               placeholder="Notas para tu pedido (opcional)…"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -815,13 +926,18 @@ export function CheckoutClient() {
 
           {/* Submit — fixed at bottom on mobile */}
           <div className="sticky bottom-0 -mx-4 bg-background px-4 pt-3 pb-4">
+            {submitError && (
+              <p role="alert" className="mb-2 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {submitError}
+              </p>
+            )}
             <Button
               className="h-14 w-full rounded-2xl text-base font-bold shadow-lg"
               onClick={submit}
-              disabled={submitting || !!minAmountError || !!radiusError || (scheduleInfo != null && !scheduleInfo.open)}
+              disabled={submitting || policyLoading || !!minAmountError || !!radiusError || (scheduleInfo != null && !scheduleInfo.open)}
             >
               <CircleCheck className="mr-2 size-5" />
-              {submitting ? "Procesando…" : `Confirmar pedido · ${money(payableTotal)}`}
+              {submitting ? "Procesando…" : policyLoading ? "Actualizando condiciones…" : `Confirmar pedido · ${money(payableTotal)}`}
             </Button>
           </div>
         </>

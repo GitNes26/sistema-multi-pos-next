@@ -30,8 +30,8 @@ export default async function ReservacionesPage() {
     where: { id: organizationId },
     select: { businessMode: true, name: true },
   });
-  if (!org || !RESERVATION_MODES.includes(org.businessMode)) redirect("/pos");
-  if (!hasPermission(session, "reservations.view")) redirect("/pos");
+  if (!org || !RESERVATION_MODES.includes(org.businessMode)) redirect("/admin");
+  if (!hasPermission(session, "reservations.view")) redirect("/admin");
 
   const canManage = hasPermission(session, "reservations.manage");
   const tenant = await getAppSettings(organizationId);

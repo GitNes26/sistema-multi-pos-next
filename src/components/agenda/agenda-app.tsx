@@ -155,7 +155,7 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
         </div>
         <div className="ml-auto flex items-center gap-2">
           {canManage && (
-            <Button size="sm" onClick={() => { setCreateSlot({ employeeId: null, time: "10:00" }); setCreateOpen(true); }}>
+            <Button size="sm" data-guide="agenda-new" onClick={() => { setCreateSlot({ employeeId: null, time: "10:00" }); setCreateOpen(true); }}>
               <Plus className="size-4" /> <span className="hidden sm:inline">Nueva cita</span>
             </Button>
           )}
@@ -164,7 +164,7 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mx-auto w-full max-w-6xl flex-1 px-3 py-4 lg:px-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <TabsList>
+          <TabsList data-guide="agenda-tabs">
             <TabsTrigger value="agenda">
               <CalendarDays className="size-4" /> Agenda
             </TabsTrigger>
@@ -222,6 +222,7 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
               <Loader2 className="size-6 animate-spin" />
             </div>
           ) : (
+            <div data-guide="agenda-calendar">
             <DayGrid
               day={day}
               data={data}
@@ -229,6 +230,7 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
               onSlotClick={openSlot}
               onBlockClick={openBlock}
             />
+            </div>
           )}
 
           {canManage && data?.staff.length === 0 && !loading && (

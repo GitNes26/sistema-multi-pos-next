@@ -198,8 +198,8 @@ export function PosApp({
   }, [catalog]);
 
   const selectProduct = (product: PosProduct) => {
-    if (product.trackInventory && product.stock <= 0) {
-      swalError("Sin stock", `${product.name} no tiene existencias en esta sucursal.`);
+    if (!product.isAvailable || (product.trackInventory && product.stock <= 0)) {
+      swalError("Ya no hay", product.availabilityNote || `${product.name} no está disponible por el momento.`);
       return;
     }
     if (product.bulk) {

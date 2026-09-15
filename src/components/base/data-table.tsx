@@ -260,7 +260,7 @@ export function DataTable<TData, TValue>({
               type="search"
               placeholder={searchPlaceholder}
               leftIcon={<Search className="size-4" />}
-              className="w-full max-w-56"
+              className="w-full md:max-w-80"
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
             />

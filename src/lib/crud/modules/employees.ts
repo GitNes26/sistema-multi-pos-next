@@ -66,8 +66,24 @@ function serialize(e: EmployeeRow): EmployeeDto {
   };
 }
 
+async function nextEmployeeCode(organizationId: string): Promise<string> {
+  const rows = await prisma.employee.findMany({
+    where: { organizationId, employeeCode: { startsWith: "EMP-" } },
+    select: { employeeCode: true },
+  });
+  const max = rows.reduce((current, row) => {
+    const value = Number(row.employeeCode?.slice(4));
+    return Number.isInteger(value) ? Math.max(current, value) : current;
+  }, 0);
+  return `EMP-${String(max + 1).padStart(4, "0")}`;
+}
+
 export const employeesModule: CrudModule<EmployeeDto> = {
   key: "employees",
+
+  async createDefaults(organizationId) {
+    return { employeeCode: await nextEmployeeCode(organizationId), isActive: true };
+  },
 
   async list(organizationId, params: ListParams): Promise<CrudListResult<EmployeeDto>> {
     const page = Math.max(1, params.page ?? 1);
@@ -130,8 +146,9 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     const data = input as Record<string, unknown>;
     const fullName = data.fullName ? String(data.fullName).trim() : "";
     if (!fullName) throw new CrudError("El nombre es obligatorio", 400, "fullName");
-    const employeeCode = data.employeeCode ? String(data.employeeCode).trim().toUpperCase() : "";
-    if (!employeeCode) throw new CrudError("El código de nómina es obligatorio", 400, "employeeCode");
+    const employeeCode = data.employeeCode
+      ? String(data.employeeCode).trim().toUpperCase()
+      : await nextEmployeeCode(organizationId);
 
     const dupCode = await prisma.employee.findFirst({ where: { organizationId, employeeCode } });
     if (dupCode) throw new CrudError("Ese código de nómina ya existe", 400, "employeeCode");

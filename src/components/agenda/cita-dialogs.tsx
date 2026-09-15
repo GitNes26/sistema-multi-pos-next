@@ -201,6 +201,7 @@ export function CitaCreateDialog({
       icon={<CalendarPlus className="size-5 text-primary" />}
       title="Agendar cita"
       description="Cliente, personal y servicio. El horario se valida contra la agenda del empleado."
+      dataGuide="agenda-dialog"
       className="sm:max-w-lg"
       footer={
         <>

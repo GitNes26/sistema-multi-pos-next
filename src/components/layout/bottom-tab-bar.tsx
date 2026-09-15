@@ -39,7 +39,10 @@ export function BottomTabBar({ items, permissions = [], role }: BottomTabBarProp
       aria-label="Navegación principal"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
-      <ul className="mx-auto grid h-14 max-w-lg grid-cols-5">
+      <ul
+        className="mx-auto grid h-14 max-w-lg"
+        style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(visible.length, 5))}, minmax(0, 1fr))` }}
+      >
         {visible.map((item) => {
           const active = isNavActive(item, pathname);
           const Icon = item.icon;
@@ -49,7 +52,7 @@ export function BottomTabBar({ items, permissions = [], role }: BottomTabBarProp
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex h-full flex-col items-center justify-center gap-0.5 text-[0.65rem] font-medium text-muted-foreground transition-colors",
+                  "relative flex h-full flex-col items-center justify-center gap-0.5 text-xs font-medium text-muted-foreground transition-colors",
                   active && "text-foreground"
                 )}
               >
@@ -68,7 +71,7 @@ export function BottomTabBar({ items, permissions = [], role }: BottomTabBarProp
                     <span className="absolute -right-1.5 -top-1 size-2 rounded-full bg-destructive" />
                   )}
                 </span>
-                <span>{item.label}</span>
+                <span className="max-w-full truncate px-1">{item.label}</span>
               </Link>
             </li>
           );

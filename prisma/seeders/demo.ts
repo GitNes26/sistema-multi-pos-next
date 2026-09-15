@@ -45,7 +45,13 @@ const REST_CUSTOMERS = [
 // Menú del restaurante (categoría → productos con precio en MXN).
 // Los platos del menú llevan descripción e imagen (emoji sobre gradiente de la
 // categoría) para que el menú digital y el catálogo se vean completos.
-type MenuDef = { category: string; name: string; price: number; emoji: string; desc: string }
+type MenuDef = {
+  category: string
+  name: string
+  price: number
+  emoji: string
+  desc: string
+}
 
 const REST_PRODUCTS: MenuDef[] = [
   // Desayunos
@@ -290,7 +296,9 @@ async function ensureTableRoom(
   key: TableRoomKey
 ): Promise<string> {
   const name = ROOM_NAMES[key]
-  const existing = await prisma.tableRoom.findFirst({ where: { organizationId, name } })
+  const existing = await prisma.tableRoom.findFirst({
+    where: { organizationId, name },
+  })
   if (existing) return existing.id
   const room = await prisma.tableRoom.create({
     data: { organizationId, locationId, name, sortOrder: ROOM_ORDER[key] },
@@ -310,14 +318,102 @@ const REST_TABLES: {
   width: number
   height: number
 }[] = [
-  { number: 1, capacity: 2, x: 1, y: 1, id: "demo-rest-t1", qrToken: "demo-rest-qr-t1", room: "principal", shape: "round", width: 72, height: 72 },
-  { number: 2, capacity: 2, x: 3, y: 1, id: "demo-rest-t2", qrToken: "demo-rest-qr-t2", room: "principal", shape: "round", width: 72, height: 72 },
-  { number: 3, capacity: 4, x: 1, y: 2, id: "demo-rest-t3", qrToken: "demo-rest-qr-t3", room: "principal", shape: "round", width: 84, height: 84 },
-  { number: 4, capacity: 4, x: 3, y: 2, id: "demo-rest-t4", qrToken: "demo-rest-qr-t4", room: "principal", shape: "round", width: 84, height: 84 },
-  { number: 5, capacity: 6, x: 2, y: 3, id: "demo-rest-t5", qrToken: "demo-rest-qr-t5", room: "bar", shape: "bar", width: 160, height: 56 },
-  { number: 6, capacity: 4, x: 1, y: 4, id: "demo-rest-t6", qrToken: "demo-rest-qr-t6", room: "terraza", shape: "round", width: 84, height: 84 },
-  { number: 7, capacity: 4, x: 3, y: 4, id: "demo-rest-t7", qrToken: "demo-rest-qr-t7", room: "terraza", shape: "round", width: 84, height: 84 },
-  { number: 8, capacity: 8, x: 2, y: 5, id: "demo-rest-t8", qrToken: "demo-rest-qr-t8", room: "terraza", shape: "rectangle", width: 160, height: 84 },
+  {
+    number: 1,
+    capacity: 2,
+    x: 1,
+    y: 1,
+    id: "demo-rest-t1",
+    qrToken: "demo-rest-qr-t1",
+    room: "principal",
+    shape: "round",
+    width: 72,
+    height: 72,
+  },
+  {
+    number: 2,
+    capacity: 2,
+    x: 3,
+    y: 1,
+    id: "demo-rest-t2",
+    qrToken: "demo-rest-qr-t2",
+    room: "principal",
+    shape: "round",
+    width: 72,
+    height: 72,
+  },
+  {
+    number: 3,
+    capacity: 4,
+    x: 1,
+    y: 2,
+    id: "demo-rest-t3",
+    qrToken: "demo-rest-qr-t3",
+    room: "principal",
+    shape: "round",
+    width: 84,
+    height: 84,
+  },
+  {
+    number: 4,
+    capacity: 4,
+    x: 3,
+    y: 2,
+    id: "demo-rest-t4",
+    qrToken: "demo-rest-qr-t4",
+    room: "principal",
+    shape: "round",
+    width: 84,
+    height: 84,
+  },
+  {
+    number: 5,
+    capacity: 6,
+    x: 2,
+    y: 3,
+    id: "demo-rest-t5",
+    qrToken: "demo-rest-qr-t5",
+    room: "bar",
+    shape: "bar",
+    width: 160,
+    height: 56,
+  },
+  {
+    number: 6,
+    capacity: 4,
+    x: 1,
+    y: 4,
+    id: "demo-rest-t6",
+    qrToken: "demo-rest-qr-t6",
+    room: "terraza",
+    shape: "round",
+    width: 84,
+    height: 84,
+  },
+  {
+    number: 7,
+    capacity: 4,
+    x: 3,
+    y: 4,
+    id: "demo-rest-t7",
+    qrToken: "demo-rest-qr-t7",
+    room: "terraza",
+    shape: "round",
+    width: 84,
+    height: 84,
+  },
+  {
+    number: 8,
+    capacity: 8,
+    x: 2,
+    y: 5,
+    id: "demo-rest-t8",
+    qrToken: "demo-rest-qr-t8",
+    room: "terraza",
+    shape: "rectangle",
+    width: 160,
+    height: 84,
+  },
 ]
 
 type ProductDef = {
@@ -719,7 +815,11 @@ const PRODUCTS: ProductDef[] = [
 // Combos del Supermercado Demo (retail): paquetes con precio especial, igual
 // que REST_COMBOS en el restaurante. Cada ítem referencia un producto del
 // catálogo por nombre (se usa la primera variante creada del producto).
-const SUPER_COMBOS: { name: string; price: number; items: [string, number][] }[] = [
+const SUPER_COMBOS: {
+  name: string
+  price: number
+  items: [string, number][]
+}[] = [
   {
     name: "Despensa para toda la semana",
     price: 129,
@@ -875,12 +975,15 @@ async function cleanupDemo(orgIds: string[], emails: string[]) {
   await d.order.deleteMany()
   await d.tableSession.deleteMany()
   await d.table.deleteMany()
+  await d.tableRoom.deleteMany()
+  await d.reservationPolicy.deleteMany()
+  await d.saleReturnPayment.deleteMany()
+  await d.saleReturnItem.deleteMany()
+  await d.saleReturn.deleteMany()
   await d.saleDiscount.deleteMany()
   await d.salePayment.deleteMany()
   await d.saleItem.deleteMany()
   await d.sale.deleteMany()
-  await d.saleReturnItem.deleteMany()
-  await d.saleReturn.deleteMany()
   await d.employeeCommission.deleteMany()
   await d.coupon.deleteMany()
   await d.loyaltyTransaction.deleteMany()
@@ -904,6 +1007,8 @@ async function cleanupDemo(orgIds: string[], emails: string[]) {
   await d.branchDeliveryPolicy.deleteMany()
   await d.deliveryPolicy.deleteMany()
   await d.variantOptionValue.deleteMany()
+  // Recetas: los detalles no tienen que quedar huérfanos al recrear productos.
+  await d.productRecipeItem.deleteMany()
   await d.shoppingListItem.deleteMany()
   await d.shoppingList.deleteMany()
   await d.customerFavorite.deleteMany()
@@ -960,14 +1065,35 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
     const user = await d.user.upsert({
       where: { email: t.email },
       update: { passwordHash, fullName: t.fullName, isActive: true },
-      create: { email: t.email, passwordHash, fullName: t.fullName, isActive: true },
+      create: {
+        email: t.email,
+        passwordHash,
+        fullName: t.fullName,
+        isActive: true,
+      },
     })
     teamUsers.set(user.id, t.fullName)
   }
-  const gerenteId = (await d.user.findUniqueOrThrow({ where: { email: "gerente-rest@demo.multi-pos.com" } })).id
-  const cajeroId = (await d.user.findUniqueOrThrow({ where: { email: "cajero-rest@demo.multi-pos.com" } })).id
-  const meseroId = (await d.user.findUniqueOrThrow({ where: { email: "mesero@demo.multi-pos.com" } })).id
-  const cocinaId = (await d.user.findUniqueOrThrow({ where: { email: "cocina@demo.multi-pos.com" } })).id
+  const gerenteId = (
+    await d.user.findUniqueOrThrow({
+      where: { email: "gerente-rest@demo.multi-pos.com" },
+    })
+  ).id
+  const cajeroId = (
+    await d.user.findUniqueOrThrow({
+      where: { email: "cajero-rest@demo.multi-pos.com" },
+    })
+  ).id
+  const meseroId = (
+    await d.user.findUniqueOrThrow({
+      where: { email: "mesero@demo.multi-pos.com" },
+    })
+  ).id
+  const cocinaId = (
+    await d.user.findUniqueOrThrow({
+      where: { email: "cocina@demo.multi-pos.com" },
+    })
+  ).id
 
   // Organización (food_service)
   const org = await d.organization.create({
@@ -1070,11 +1196,41 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
     })
     employees[userId] = emp.id
   }
-  await makeEmployee(ownerUserId, "EMP-200", "Ana López", "Supervisor", "5512341000")
-  await makeEmployee(gerenteId, "EMP-201", "Sofía Ramírez", "Gerente", "5512341001")
-  await makeEmployee(cajeroId, "EMP-202", "Diego Torres", "Cajero", "5512341002")
-  await makeEmployee(meseroId, "EMP-203", "Valentina Flores", "Mesero", "5512341003")
-  await makeEmployee(cocinaId, "EMP-204", "Ricardo Núñez", "Cocina", "5512341004")
+  await makeEmployee(
+    ownerUserId,
+    "EMP-200",
+    "Ana López",
+    "Supervisor",
+    "5512341000"
+  )
+  await makeEmployee(
+    gerenteId,
+    "EMP-201",
+    "Sofía Ramírez",
+    "Gerente",
+    "5512341001"
+  )
+  await makeEmployee(
+    cajeroId,
+    "EMP-202",
+    "Diego Torres",
+    "Cajero",
+    "5512341002"
+  )
+  await makeEmployee(
+    meseroId,
+    "EMP-203",
+    "Valentina Flores",
+    "Mesero",
+    "5512341003"
+  )
+  await makeEmployee(
+    cocinaId,
+    "EMP-204",
+    "Ricardo Núñez",
+    "Cocina",
+    "5512341004"
+  )
 
   // Sucursal + cajas
   const location = await d.location.create({
@@ -1098,13 +1254,20 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
     ["Caja 2", "RC2"],
   ] as const) {
     const r = await d.cashRegister.create({
-      data: { locationId: location.id, organizationId: org.id, name, folioPrefix: prefix },
+      data: {
+        locationId: location.id,
+        organizationId: org.id,
+        name,
+        folioPrefix: prefix,
+      },
     })
     registerIds.push(r.id)
   }
 
   // Unidades del sistema
-  const units = await d.unitOfMeasure.findMany({ where: { organizationId: null } })
+  const units = await d.unitOfMeasure.findMany({
+    where: { organizationId: null },
+  })
   const unitPza = units.find((u) => u.abbreviation === "pza")
 
   // Categorías del menú
@@ -1393,6 +1556,65 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
     }
   }
 
+  // Receta demo: una venta de producto personalizado descuenta materias
+  // primas reales. Mantiene un escenario reproducible para food_service y
+  // permite probar el bloqueo por falta de insumos.
+  const recipeProductId = productIdByName.get(
+    REST_CUSTOM_PRODUCTS[0]?.name ?? ""
+  )
+  const recipeVariantId = variantByProduct.get(
+    REST_CUSTOM_PRODUCTS[0]?.name ?? ""
+  )
+  if (recipeProductId && recipeVariantId) {
+    const ingredients = [
+      { name: "Masa preparada (insumo)", quantity: 180, stock: 12000 },
+      { name: "Guiso base (insumo)", quantity: 90, stock: 6000 },
+    ]
+    for (const ingredient of ingredients) {
+      const raw = await d.product.create({
+        data: {
+          organizationId: org.id,
+          name: ingredient.name,
+          description: "Materia prima para demostrar consumo por receta.",
+          taxRate: 0,
+          trackInventory: true,
+          productType: "standard",
+          isActive: true,
+        },
+      })
+      const rawVariant = await d.productVariant.create({
+        data: {
+          organizationId: org.id,
+          productId: raw.id,
+          name: "Default",
+          price: 0,
+          cost: 1,
+        },
+      })
+      await d.inventory.create({
+        data: {
+          organizationId: org.id,
+          locationId: location.id,
+          locationType: "location",
+          variantId: rawVariant.id,
+          quantity: ingredient.stock,
+          unitId: unitPza?.id,
+          minThreshold: 100,
+        },
+      })
+      await d.productRecipeItem.create({
+        data: {
+          organizationId: org.id,
+          productId: recipeProductId,
+          variantId: recipeVariantId,
+          ingredientVariantId: rawVariant.id,
+          quantity: ingredient.quantity,
+          wastePercent: 5,
+        },
+      })
+    }
+  }
+
   // Combos (constructor de producto)
   for (const comboDef of REST_COMBOS) {
     const combo = await d.productCombo.create({
@@ -1446,7 +1668,8 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
   const rooms: Partial<Record<TableRoomKey, string>> = {}
   for (const t of REST_TABLES) {
     // id + qrToken fijos (ver nota en REST_TABLES): enlaces QR documentados.
-    if (!rooms[t.room]) rooms[t.room] = await ensureTableRoom(org.id, location.id, t.room)
+    if (!rooms[t.room])
+      rooms[t.room] = await ensureTableRoom(org.id, location.id, t.room)
     const table = await d.table.create({
       data: {
         id: t.id,
@@ -1490,7 +1713,8 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
   const lineTotal = (names: string[]) =>
     round2(
       names.reduce(
-        (acc, n) => acc + (menuVariants.find((m) => m.productName === n)?.price ?? 0),
+        (acc, n) =>
+          acc + (menuVariants.find((m) => m.productName === n)?.price ?? 0),
         0
       )
     )
@@ -1569,9 +1793,7 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
         createdAt: at,
         updatedAt: at,
         paidAt:
-          input.status === "delivered" || input.status === "ready"
-            ? at
-            : null,
+          input.status === "delivered" || input.status === "ready" ? at : null,
         items: { create: orderItemsData(input.names, input.comment) },
       },
       include: { items: true },
@@ -1597,7 +1819,11 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
       })
     }
     if (input.status === "cancelled") {
-      steps.push({ status: "cancelled", at: new Date(at.getTime() + 10 * 60000), by: meseroId })
+      steps.push({
+        status: "cancelled",
+        at: new Date(at.getTime() + 10 * 60000),
+        by: meseroId,
+      })
     }
     await statusHistory(order.id, steps)
 
@@ -1615,7 +1841,10 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
 
   // ── Pedidos en curso (KDS + Mesas) ──────────────────────────────────────
   // Mesa 1: ocupada con pedido en preparación
-  await d.table.update({ where: { id: tables[1].id }, data: { status: "occupied" } })
+  await d.table.update({
+    where: { id: tables[1].id },
+    data: { status: "occupied" },
+  })
   await d.tableSession.create({
     data: {
       tableId: tables[1].id,
@@ -1638,7 +1867,10 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
   })
 
   // Mesa 2: ocupada, pedido confirmado (aún no en cocina)
-  await d.table.update({ where: { id: tables[2].id }, data: { status: "occupied" } })
+  await d.table.update({
+    where: { id: tables[2].id },
+    data: { status: "occupied" },
+  })
   await d.tableSession.create({
     data: {
       tableId: tables[2].id,
@@ -1663,7 +1895,10 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
   // una mesa cuyo ticket el mesero ya limpió sin cobrar. Guion demo:
   // a) cobrarla desde el POS (Mesa 3 + artículos → la orden sale del KDS) o
   // b) regresarla: Catálogos → Pedidos → pedido de mesa → "Cancelar orden".
-  await d.table.update({ where: { id: tables[3].id }, data: { status: "occupied" } })
+  await d.table.update({
+    where: { id: tables[3].id },
+    data: { status: "occupied" },
+  })
   await d.tableSession.create({
     data: {
       tableId: tables[3].id,
@@ -1681,7 +1916,10 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
   })
 
   // Mesa 4: reservada
-  await d.table.update({ where: { id: tables[4].id }, data: { status: "reserved" } })
+  await d.table.update({
+    where: { id: tables[4].id },
+    data: { status: "reserved" },
+  })
 
   // Delivery y pickup en curso
   await makeOrder({
@@ -1854,8 +2092,7 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
     {
       organizationId: org.id,
       title: "Combo Familiar por $349",
-      content:
-        "2 hamburguesas, 2 refrescos y nachos con queso por solo $349.",
+      content: "2 hamburguesas, 2 refrescos y nachos con queso por solo $349.",
       type: "promotion",
       isActive: true,
       publishedAt: new Date(now - 3 * 86400000),
@@ -1928,10 +2165,32 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
 
 // Equipo de la fonda-tienda (además del owner compartido demo@multi-pos.com).
 const HYB_TEAM = [
-  { email: "gerente-hib@demo.multi-pos.com", fullName: "Claudia Monroy", role: "manager" as const, position: "Gerente" },
-  { email: "cajero-hib@demo.multi-pos.com", fullName: "Hugo Paredes", role: "cashier" as const, position: "Cajero" },
-  { email: "mesero-hib@demo.multi-pos.com", fullName: "Renata Aguilar", role: "cashier" as const, roleId: "system-hybrid-waiter", position: "Mesero" },
-  { email: "cocina-hib@demo.multi-pos.com", fullName: "Iván Robles", role: "cashier" as const, roleId: "system-hybrid-kitchen", position: "Cocina" },
+  {
+    email: "gerente-hib@demo.multi-pos.com",
+    fullName: "Claudia Monroy",
+    role: "manager" as const,
+    position: "Gerente",
+  },
+  {
+    email: "cajero-hib@demo.multi-pos.com",
+    fullName: "Hugo Paredes",
+    role: "cashier" as const,
+    position: "Cajero",
+  },
+  {
+    email: "mesero-hib@demo.multi-pos.com",
+    fullName: "Renata Aguilar",
+    role: "cashier" as const,
+    roleId: "system-hybrid-waiter",
+    position: "Mesero",
+  },
+  {
+    email: "cocina-hib@demo.multi-pos.com",
+    fullName: "Iván Robles",
+    role: "cashier" as const,
+    roleId: "system-hybrid-kitchen",
+    position: "Cocina",
+  },
 ] as const
 
 // Clientes frecuentes (portal del cliente: piden a domicilio y compran).
@@ -2131,33 +2390,34 @@ const HYB_PRODUCTS: MenuDef[] = [
 ]
 
 // Combos (constructor de producto): los items referencian nombres del catálogo.
-const HYB_COMBOS: { name: string; price: number; items: [string, number][] }[] = [
-  {
-    name: "Combo Torta",
-    price: 89,
-    items: [
-      ["Torta de milanesa", 1],
-      ["Refresco de vidrio 355ml", 1],
-    ],
-  },
-  {
-    name: "Combo Mañanero",
-    price: 79,
-    items: [
-      ["Molletes", 1],
-      ["Café de olla", 1],
-    ],
-  },
-  {
-    name: "Combo Familiar",
-    price: 229,
-    items: [
-      ["Torta de milanesa", 2],
-      ["Refresco de vidrio 355ml", 2],
-      ["Gelatina de fresa", 1],
-    ],
-  },
-]
+const HYB_COMBOS: { name: string; price: number; items: [string, number][] }[] =
+  [
+    {
+      name: "Combo Torta",
+      price: 89,
+      items: [
+        ["Torta de milanesa", 1],
+        ["Refresco de vidrio 355ml", 1],
+      ],
+    },
+    {
+      name: "Combo Mañanero",
+      price: 79,
+      items: [
+        ["Molletes", 1],
+        ["Café de olla", 1],
+      ],
+    },
+    {
+      name: "Combo Familiar",
+      price: 229,
+      items: [
+        ["Torta de milanesa", 2],
+        ["Refresco de vidrio 355ml", 2],
+        ["Gelatina de fresa", 1],
+      ],
+    },
+  ]
 
 // Mesas del comedor (número, capacidad, posición en el mapa).
 const HYB_TABLES: {
@@ -2172,10 +2432,54 @@ const HYB_TABLES: {
   width: number
   height: number
 }[] = [
-  { number: 1, capacity: 2, x: 1, y: 1, id: "demo-hyb-t1", qrToken: "demo-hyb-qr-t1", room: "principal", shape: "round", width: 72, height: 72 },
-  { number: 2, capacity: 2, x: 3, y: 1, id: "demo-hyb-t2", qrToken: "demo-hyb-qr-t2", room: "principal", shape: "round", width: 72, height: 72 },
-  { number: 3, capacity: 4, x: 2, y: 2, id: "demo-hyb-t3", qrToken: "demo-hyb-qr-t3", room: "principal", shape: "rectangle", width: 140, height: 72 },
-  { number: 4, capacity: 4, x: 2, y: 3, id: "demo-hyb-t4", qrToken: "demo-hyb-qr-t4", room: "principal", shape: "rectangle", width: 140, height: 72 },
+  {
+    number: 1,
+    capacity: 2,
+    x: 1,
+    y: 1,
+    id: "demo-hyb-t1",
+    qrToken: "demo-hyb-qr-t1",
+    room: "principal",
+    shape: "round",
+    width: 72,
+    height: 72,
+  },
+  {
+    number: 2,
+    capacity: 2,
+    x: 3,
+    y: 1,
+    id: "demo-hyb-t2",
+    qrToken: "demo-hyb-qr-t2",
+    room: "principal",
+    shape: "round",
+    width: 72,
+    height: 72,
+  },
+  {
+    number: 3,
+    capacity: 4,
+    x: 2,
+    y: 2,
+    id: "demo-hyb-t3",
+    qrToken: "demo-hyb-qr-t3",
+    room: "principal",
+    shape: "rectangle",
+    width: 140,
+    height: 72,
+  },
+  {
+    number: 4,
+    capacity: 4,
+    x: 2,
+    y: 3,
+    id: "demo-hyb-t4",
+    qrToken: "demo-hyb-qr-t4",
+    room: "principal",
+    shape: "rectangle",
+    width: 140,
+    height: 72,
+  },
 ]
 
 async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
@@ -2190,14 +2494,35 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
     const user = await d.user.upsert({
       where: { email: t.email },
       update: { passwordHash, fullName: t.fullName, isActive: true },
-      create: { email: t.email, passwordHash, fullName: t.fullName, isActive: true },
+      create: {
+        email: t.email,
+        passwordHash,
+        fullName: t.fullName,
+        isActive: true,
+      },
     })
     teamUsers.set(user.id, t.fullName)
   }
-  const gerenteId = (await d.user.findUniqueOrThrow({ where: { email: "gerente-hib@demo.multi-pos.com" } })).id
-  const cajeroId = (await d.user.findUniqueOrThrow({ where: { email: "cajero-hib@demo.multi-pos.com" } })).id
-  const meseroId = (await d.user.findUniqueOrThrow({ where: { email: "mesero-hib@demo.multi-pos.com" } })).id
-  const cocinaId = (await d.user.findUniqueOrThrow({ where: { email: "cocina-hib@demo.multi-pos.com" } })).id
+  const gerenteId = (
+    await d.user.findUniqueOrThrow({
+      where: { email: "gerente-hib@demo.multi-pos.com" },
+    })
+  ).id
+  const cajeroId = (
+    await d.user.findUniqueOrThrow({
+      where: { email: "cajero-hib@demo.multi-pos.com" },
+    })
+  ).id
+  const meseroId = (
+    await d.user.findUniqueOrThrow({
+      where: { email: "mesero-hib@demo.multi-pos.com" },
+    })
+  ).id
+  const cocinaId = (
+    await d.user.findUniqueOrThrow({
+      where: { email: "cocina-hib@demo.multi-pos.com" },
+    })
+  ).id
 
   // Organización (hybrid)
   const org = await d.organization.create({
@@ -2301,10 +2626,34 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
     })
     employees[userId] = emp.id
   }
-  await makeEmployee(ownerUserId, "EMP-500", "Ana López", "Supervisor", "5512344400")
-  await makeEmployee(gerenteId, "EMP-501", "Claudia Monroy", "Gerente", "5512344401")
-  await makeEmployee(cajeroId, "EMP-502", "Hugo Paredes", "Cajero", "5512344402")
-  await makeEmployee(meseroId, "EMP-503", "Renata Aguilar", "Mesero", "5512344403")
+  await makeEmployee(
+    ownerUserId,
+    "EMP-500",
+    "Ana López",
+    "Supervisor",
+    "5512344400"
+  )
+  await makeEmployee(
+    gerenteId,
+    "EMP-501",
+    "Claudia Monroy",
+    "Gerente",
+    "5512344401"
+  )
+  await makeEmployee(
+    cajeroId,
+    "EMP-502",
+    "Hugo Paredes",
+    "Cajero",
+    "5512344402"
+  )
+  await makeEmployee(
+    meseroId,
+    "EMP-503",
+    "Renata Aguilar",
+    "Mesero",
+    "5512344403"
+  )
   await makeEmployee(cocinaId, "EMP-504", "Iván Robles", "Cocina", "5512344404")
 
   // Sucursal + cajas
@@ -2329,13 +2678,20 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
     ["Caja 2", "HC2"],
   ] as const) {
     const r = await d.cashRegister.create({
-      data: { locationId: location.id, organizationId: org.id, name, folioPrefix: prefix },
+      data: {
+        locationId: location.id,
+        organizationId: org.id,
+        name,
+        folioPrefix: prefix,
+      },
     })
     registerIds.push(r.id)
   }
 
   // Unidades del sistema
-  const units = await d.unitOfMeasure.findMany({ where: { organizationId: null } })
+  const units = await d.unitOfMeasure.findMany({
+    where: { organizationId: null },
+  })
   const unitPza = units.find((u) => u.abbreviation === "pza")
 
   // Categorías (retail + food_service)
@@ -2363,7 +2719,14 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
   }[] = []
   const productIdByName = new Map<string, string>()
   const variantByProduct = new Map<string, string>()
-  const hybNewProducts: { id: string; name: string; desc: string; emoji: string; category: string; price: number }[] = []
+  const hybNewProducts: {
+    id: string
+    name: string
+    desc: string
+    emoji: string
+    category: string
+    price: number
+  }[] = []
   for (let i = 0; i < HYB_PRODUCTS.length; i++) {
     const def = HYB_PRODUCTS[i]
     const markNew = i === 0 || i === 5
@@ -2383,7 +2746,14 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
     })
     productIdByName.set(def.name, product.id)
     if (markNew) {
-      hybNewProducts.push({ id: product.id, name: def.name, desc: def.desc, emoji: def.emoji, category: def.category, price: def.price })
+      hybNewProducts.push({
+        id: product.id,
+        name: def.name,
+        desc: def.desc,
+        emoji: def.emoji,
+        category: def.category,
+        price: def.price,
+      })
     }
     const variant = await d.productVariant.create({
       data: {
@@ -2469,7 +2839,8 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
   const rooms: Partial<Record<TableRoomKey, string>> = {}
   for (const t of HYB_TABLES) {
     // id + qrToken fijos (ver nota en HYB_TABLES): enlaces QR documentados.
-    if (!rooms[t.room]) rooms[t.room] = await ensureTableRoom(org.id, location.id, t.room)
+    if (!rooms[t.room])
+      rooms[t.room] = await ensureTableRoom(org.id, location.id, t.room)
     const table = await d.table.create({
       data: {
         id: t.id,
@@ -2513,7 +2884,8 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
   const lineTotal = (names: string[]) =>
     round2(
       names.reduce(
-        (acc, n) => acc + (menuVariants.find((m) => m.productName === n)?.price ?? 0),
+        (acc, n) =>
+          acc + (menuVariants.find((m) => m.productName === n)?.price ?? 0),
         0
       )
     )
@@ -2592,9 +2964,7 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
         createdAt: at,
         updatedAt: at,
         paidAt:
-          input.status === "delivered" || input.status === "ready"
-            ? at
-            : null,
+          input.status === "delivered" || input.status === "ready" ? at : null,
         items: { create: orderItemsData(input.names, input.comment) },
       },
       include: { items: true },
@@ -2620,7 +2990,11 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
       })
     }
     if (input.status === "cancelled") {
-      steps.push({ status: "cancelled", at: new Date(at.getTime() + 10 * 60000), by: meseroId })
+      steps.push({
+        status: "cancelled",
+        at: new Date(at.getTime() + 10 * 60000),
+        by: meseroId,
+      })
     }
     await statusHistory(order.id, steps)
 
@@ -2638,7 +3012,10 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
 
   // ── Pedidos en curso (KDS + Mesas) ──────────────────────────────────────
   // Mesa 1: ocupada con pedido en preparación (cocina híbrida)
-  await d.table.update({ where: { id: tables[1].id }, data: { status: "occupied" } })
+  await d.table.update({
+    where: { id: tables[1].id },
+    data: { status: "occupied" },
+  })
   await d.tableSession.create({
     data: {
       tableId: tables[1].id,
@@ -2651,7 +3028,11 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
     deliveryMethod: "pickup",
     tableId: tables[1].id,
     minutesAgo: 12,
-    names: ["Guisado del día con arroz", "Refresco de vidrio 355ml", "Gelatina de fresa"],
+    names: [
+      "Guisado del día con arroz",
+      "Refresco de vidrio 355ml",
+      "Gelatina de fresa",
+    ],
     comment: "Poco picante",
     prepStatus: "active",
   })
@@ -2661,7 +3042,10 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
   })
 
   // Mesa 2: ocupada, pedido confirmado (aún no en cocina)
-  await d.table.update({ where: { id: tables[2].id }, data: { status: "occupied" } })
+  await d.table.update({
+    where: { id: tables[2].id },
+    data: { status: "occupied" },
+  })
   await d.tableSession.create({
     data: {
       tableId: tables[2].id,
@@ -2683,7 +3067,10 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
   })
 
   // Mesa 3: ocupada, pedido recién tomado
-  await d.table.update({ where: { id: tables[3].id }, data: { status: "occupied" } })
+  await d.table.update({
+    where: { id: tables[3].id },
+    data: { status: "occupied" },
+  })
   await d.tableSession.create({
     data: { tableId: tables[3].id, startedAt: new Date(now - 5 * 60000) },
   })
@@ -2701,7 +3088,10 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
   })
 
   // Mesa 4: reservada
-  await d.table.update({ where: { id: tables[4].id }, data: { status: "reserved" } })
+  await d.table.update({
+    where: { id: tables[4].id },
+    data: { status: "reserved" },
+  })
 
   // Delivery y pickup en curso (portal del cliente)
   await makeOrder({
@@ -2709,7 +3099,11 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
     deliveryMethod: "delivery",
     customerId: hybCustomers[0].id,
     minutesAgo: 18,
-    names: ["Torta de milanesa", "Refresco de vidrio 355ml", "Gelatina de fresa"],
+    names: [
+      "Torta de milanesa",
+      "Refresco de vidrio 355ml",
+      "Gelatina de fresa",
+    ],
     address: "Calle Córdoba 210, Col. Roma Norte, CDMX",
     deliveryFee: 25,
     comment: "Toca el timbre",
@@ -2720,7 +3114,11 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
     deliveryMethod: "pickup",
     customerId: hybCustomers[1].id,
     minutesAgo: 4,
-    names: ["Papas fritas 45g", "Refresco de vidrio 355ml", "Cacahuate garapiñado"],
+    names: [
+      "Papas fritas 45g",
+      "Refresco de vidrio 355ml",
+      "Cacahuate garapiñado",
+    ],
     prepStatus: "none",
   })
 
@@ -2874,8 +3272,7 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
     {
       organizationId: org.id,
       title: "Combo Familiar por $229",
-      content:
-        "2 tortas de milanesa, 2 refrescos y gelatina por solo $229.",
+      content: "2 tortas de milanesa, 2 refrescos y gelatina por solo $229.",
       type: "promotion",
       isActive: true,
       publishedAt: new Date(now - 3 * 86400000),
@@ -3107,37 +3504,214 @@ const ESTETICA_SEED: VerticalSeed = {
   ],
   products: [
     // Cortes (servicio)
-    { category: "Cortes", name: "Corte de cabello mujer", price: 180, emoji: "💇‍♀️", desc: "Corte personalizado con lavado y asesoría de estilo según tu tipo de cabello.", trackInventory: false },
-    { category: "Cortes", name: "Corte de cabello hombre", price: 150, emoji: "💈", desc: "Corte clásico o degradado con lavado y arreglo de contornos.", trackInventory: false },
-    { category: "Cortes", name: "Corte infantil", price: 130, emoji: "🧒", desc: "Corte a medida para los peques, con paciencia y mucho estilo.", trackInventory: false },
-    { category: "Cortes", name: "Corte y barba", price: 210, emoji: "🧔", desc: "Corte más perfilado de barba con toalla caliente y bálsamo hidratante.", trackInventory: false },
+    {
+      category: "Cortes",
+      name: "Corte de cabello mujer",
+      price: 180,
+      emoji: "💇‍♀️",
+      desc: "Corte personalizado con lavado y asesoría de estilo según tu tipo de cabello.",
+      trackInventory: false,
+    },
+    {
+      category: "Cortes",
+      name: "Corte de cabello hombre",
+      price: 150,
+      emoji: "💈",
+      desc: "Corte clásico o degradado con lavado y arreglo de contornos.",
+      trackInventory: false,
+    },
+    {
+      category: "Cortes",
+      name: "Corte infantil",
+      price: 130,
+      emoji: "🧒",
+      desc: "Corte a medida para los peques, con paciencia y mucho estilo.",
+      trackInventory: false,
+    },
+    {
+      category: "Cortes",
+      name: "Corte y barba",
+      price: 210,
+      emoji: "🧔",
+      desc: "Corte más perfilado de barba con toalla caliente y bálsamo hidratante.",
+      trackInventory: false,
+    },
     // Color (servicio)
-    { category: "Color", name: "Tinte completo", price: 450, emoji: "🎨", desc: "Color uniforme de raíz a puntas con productos profesionales y sellado de brillo.", trackInventory: false },
-    { category: "Color", name: "Baño de color", price: 280, emoji: "🌈", desc: "Baño de color semipermanente que reaviva el tono y da brillo espejo.", trackInventory: false },
-    { category: "Color", name: "Reflejos y mechas", price: 560, emoji: "✨", desc: "Mechas californianas o babylights para dar luz y dimensión a tu cabello.", trackInventory: false },
-    { category: "Color", name: "Retoque de raíz", price: 220, emoji: "🌱", desc: "Retoca y unifica el color de la raíz para un acabado fresco entre tintes.", trackInventory: false },
+    {
+      category: "Color",
+      name: "Tinte completo",
+      price: 450,
+      emoji: "🎨",
+      desc: "Color uniforme de raíz a puntas con productos profesionales y sellado de brillo.",
+      trackInventory: false,
+    },
+    {
+      category: "Color",
+      name: "Baño de color",
+      price: 280,
+      emoji: "🌈",
+      desc: "Baño de color semipermanente que reaviva el tono y da brillo espejo.",
+      trackInventory: false,
+    },
+    {
+      category: "Color",
+      name: "Reflejos y mechas",
+      price: 560,
+      emoji: "✨",
+      desc: "Mechas californianas o babylights para dar luz y dimensión a tu cabello.",
+      trackInventory: false,
+    },
+    {
+      category: "Color",
+      name: "Retoque de raíz",
+      price: 220,
+      emoji: "🌱",
+      desc: "Retoca y unifica el color de la raíz para un acabado fresco entre tintes.",
+      trackInventory: false,
+    },
     // Manicure y Pedicure (servicio)
-    { category: "Manicure y Pedicure", name: "Manicure clásico", price: 120, emoji: "💅", desc: "Limpieza, corte y esmaltado tradicional con el color que elijas.", trackInventory: false },
-    { category: "Manicure y Pedicure", name: "Manicure en gel", price: 200, emoji: "💎", desc: "Esmaltado semipermanente en gel con secado en lámpara y brillo de larga duración.", trackInventory: false },
-    { category: "Manicure y Pedicure", name: "Pedicure clásico", price: 160, emoji: "🦶", desc: "Cuidado completo de pies: exfoliación, limpieza y esmaltado al detalle.", trackInventory: false },
-    { category: "Manicure y Pedicure", name: "Pedicure spa", price: 260, emoji: "🛁", desc: "Remojo relajante, exfoliación con sales y masaje, terminado con esmaltado.", trackInventory: false },
-    { category: "Manicure y Pedicure", name: "Uñas acrílicas", price: 380, emoji: "🌟", desc: "Extensión de uñas en acrílico con el largo y diseño que quieras lucir.", trackInventory: false },
+    {
+      category: "Manicure y Pedicure",
+      name: "Manicure clásico",
+      price: 120,
+      emoji: "💅",
+      desc: "Limpieza, corte y esmaltado tradicional con el color que elijas.",
+      trackInventory: false,
+    },
+    {
+      category: "Manicure y Pedicure",
+      name: "Manicure en gel",
+      price: 200,
+      emoji: "💎",
+      desc: "Esmaltado semipermanente en gel con secado en lámpara y brillo de larga duración.",
+      trackInventory: false,
+    },
+    {
+      category: "Manicure y Pedicure",
+      name: "Pedicure clásico",
+      price: 160,
+      emoji: "🦶",
+      desc: "Cuidado completo de pies: exfoliación, limpieza y esmaltado al detalle.",
+      trackInventory: false,
+    },
+    {
+      category: "Manicure y Pedicure",
+      name: "Pedicure spa",
+      price: 260,
+      emoji: "🛁",
+      desc: "Remojo relajante, exfoliación con sales y masaje, terminado con esmaltado.",
+      trackInventory: false,
+    },
+    {
+      category: "Manicure y Pedicure",
+      name: "Uñas acrílicas",
+      price: 380,
+      emoji: "🌟",
+      desc: "Extensión de uñas en acrílico con el largo y diseño que quieras lucir.",
+      trackInventory: false,
+    },
     // Tratamientos (servicio)
-    { category: "Tratamientos", name: "Limpieza facial profunda", price: 400, emoji: "🧖‍♀️", desc: "Limpieza de poros, extracción suave y mascarilla para una piel renovada.", trackInventory: false },
-    { category: "Tratamientos", name: "Exfoliación corporal", price: 450, emoji: "🌿", desc: "Exfoliación con sales y aceites que deja la piel suave e hidratada.", trackInventory: false },
-    { category: "Tratamientos", name: "Mascarilla capilar", price: 180, emoji: "🧴", desc: "Tratamiento de hidratación profunda que repara y da suavidad al cabello.", trackInventory: false },
-    { category: "Tratamientos", name: "Masaje relajante", price: 550, emoji: "💆‍♀️", desc: "Masaje de cuerpo completo con presión suave para liberar tensión y estrés.", trackInventory: false },
+    {
+      category: "Tratamientos",
+      name: "Limpieza facial profunda",
+      price: 400,
+      emoji: "🧖‍♀️",
+      desc: "Limpieza de poros, extracción suave y mascarilla para una piel renovada.",
+      trackInventory: false,
+    },
+    {
+      category: "Tratamientos",
+      name: "Exfoliación corporal",
+      price: 450,
+      emoji: "🌿",
+      desc: "Exfoliación con sales y aceites que deja la piel suave e hidratada.",
+      trackInventory: false,
+    },
+    {
+      category: "Tratamientos",
+      name: "Mascarilla capilar",
+      price: 180,
+      emoji: "🧴",
+      desc: "Tratamiento de hidratación profunda que repara y da suavidad al cabello.",
+      trackInventory: false,
+    },
+    {
+      category: "Tratamientos",
+      name: "Masaje relajante",
+      price: 550,
+      emoji: "💆‍♀️",
+      desc: "Masaje de cuerpo completo con presión suave para liberar tensión y estrés.",
+      trackInventory: false,
+    },
     // Maquillaje y Peinado (servicio)
-    { category: "Maquillaje y Peinado", name: "Maquillaje social", price: 420, emoji: "💄", desc: "Maquillaje profesional para fiestas y eventos, con productos de larga duración.", trackInventory: false },
-    { category: "Maquillaje y Peinado", name: "Maquillaje de novia", price: 950, emoji: "👰", desc: "Maquillaje de novia con prueba previa, acabado HD y retoque el día del evento.", trackInventory: false },
-    { category: "Maquillaje y Peinado", name: "Peinado para evento", price: 300, emoji: "🎀", desc: "Recogidos, ondas o trenzas diseñadas para acompañar tu look del evento.", trackInventory: false },
-    { category: "Maquillaje y Peinado", name: "Peinado de novia", price: 650, emoji: "💍", desc: "Peinado de novia con prueba previa y fijación de larga duración.", trackInventory: false },
+    {
+      category: "Maquillaje y Peinado",
+      name: "Maquillaje social",
+      price: 420,
+      emoji: "💄",
+      desc: "Maquillaje profesional para fiestas y eventos, con productos de larga duración.",
+      trackInventory: false,
+    },
+    {
+      category: "Maquillaje y Peinado",
+      name: "Maquillaje de novia",
+      price: 950,
+      emoji: "👰",
+      desc: "Maquillaje de novia con prueba previa, acabado HD y retoque el día del evento.",
+      trackInventory: false,
+    },
+    {
+      category: "Maquillaje y Peinado",
+      name: "Peinado para evento",
+      price: 300,
+      emoji: "🎀",
+      desc: "Recogidos, ondas o trenzas diseñadas para acompañar tu look del evento.",
+      trackInventory: false,
+    },
+    {
+      category: "Maquillaje y Peinado",
+      name: "Peinado de novia",
+      price: 650,
+      emoji: "💍",
+      desc: "Peinado de novia con prueba previa y fijación de larga duración.",
+      trackInventory: false,
+    },
     // Productos (retail, con inventario)
-    { category: "Productos", name: "Shampoo profesional", price: 190, emoji: "🧴", desc: "Shampoo de uso profesional para limpieza profunda sin resecar el cabello." },
-    { category: "Productos", name: "Acondicionador profesional", price: 190, emoji: "🫧", desc: "Acondicionador que desenreda y da suavidad desde la mitad a las puntas." },
-    { category: "Productos", name: "Mascarilla capilar profesional", price: 210, emoji: "🥣", desc: "Mascarilla de tratamiento intensivo para cabello dañado o teñido." },
-    { category: "Productos", name: "Aceite de argán", price: 160, emoji: "🧪", desc: "Aceite de argán puro que nutre puntas y aporta brillo sin dejar grasa." },
-    { category: "Productos", name: "Spray fijador", price: 150, emoji: "💨", desc: "Spray de fijación flexible que mantiene el peinado sin apelmazar." },
+    {
+      category: "Productos",
+      name: "Shampoo profesional",
+      price: 190,
+      emoji: "🧴",
+      desc: "Shampoo de uso profesional para limpieza profunda sin resecar el cabello.",
+    },
+    {
+      category: "Productos",
+      name: "Acondicionador profesional",
+      price: 190,
+      emoji: "🫧",
+      desc: "Acondicionador que desenreda y da suavidad desde la mitad a las puntas.",
+    },
+    {
+      category: "Productos",
+      name: "Mascarilla capilar profesional",
+      price: 210,
+      emoji: "🥣",
+      desc: "Mascarilla de tratamiento intensivo para cabello dañado o teñido.",
+    },
+    {
+      category: "Productos",
+      name: "Aceite de argán",
+      price: 160,
+      emoji: "🧪",
+      desc: "Aceite de argán puro que nutre puntas y aporta brillo sin dejar grasa.",
+    },
+    {
+      category: "Productos",
+      name: "Spray fijador",
+      price: 150,
+      emoji: "💨",
+      desc: "Spray de fijación flexible que mantiene el peinado sin apelmazar.",
+    },
   ],
   customers: [
     { name: "Mónica Delgado", phone: "5500112233" },
@@ -3190,7 +3764,8 @@ const ESTETICA_SEED: VerticalSeed = {
   publications: [
     {
       title: "Mes de la belleza",
-      content: "20% de descuento en tintes y baños de color durante septiembre.",
+      content:
+        "20% de descuento en tintes y baños de color durante septiembre.",
       type: "promotion",
       daysAgo: 4,
     },
@@ -3226,13 +3801,7 @@ const FIESTAS_SEED: VerticalSeed = {
   rndSeed: 6023,
   empCodeStart: 400,
   locationCode: "LOC-F1",
-  positions: [
-    "Supervisor",
-    "Gerente",
-    "Cajero",
-    "Agente de renta",
-    "Operador",
-  ],
+  positions: ["Supervisor", "Gerente", "Cajero", "Agente de renta", "Operador"],
   team: [
     {
       email: "gerente-fie@demo.multi-pos.com",
@@ -3275,32 +3844,164 @@ const FIESTAS_SEED: VerticalSeed = {
   ],
   products: [
     // Brincolines
-    { category: "Brincolines", name: "Brincolín castillo 3x3 m", price: 650, emoji: "🏰", desc: "Inflable tipo castillo con paredes altas y red de seguridad, para hasta 6 niños." },
-    { category: "Brincolines", name: "Brincolín resbaladilla 4 m", price: 750, emoji: "🛝", desc: "Brincolín con resbaladilla integrada de 4 metros, el favorito de las fiestas." },
-    { category: "Brincolines", name: "Brincolín futbol", price: 700, emoji: "⚽", desc: "Inflable con porterías y balones incluidos para torneos dentro del brincolín." },
-    { category: "Brincolines", name: "Brincolín combinado", price: 950, emoji: "🎪", desc: "Cajón, resbaladilla y obstáculos en un solo inflable para diversión larga." },
-    { category: "Brincolines", name: "Brincolín casa de muñecas", price: 850, emoji: "🏠", desc: "Inflable temático con casita de muñecas, ideal para fiestas infantiles." },
+    {
+      category: "Brincolines",
+      name: "Brincolín castillo 3x3 m",
+      price: 650,
+      emoji: "🏰",
+      desc: "Inflable tipo castillo con paredes altas y red de seguridad, para hasta 6 niños.",
+    },
+    {
+      category: "Brincolines",
+      name: "Brincolín resbaladilla 4 m",
+      price: 750,
+      emoji: "🛝",
+      desc: "Brincolín con resbaladilla integrada de 4 metros, el favorito de las fiestas.",
+    },
+    {
+      category: "Brincolines",
+      name: "Brincolín futbol",
+      price: 700,
+      emoji: "⚽",
+      desc: "Inflable con porterías y balones incluidos para torneos dentro del brincolín.",
+    },
+    {
+      category: "Brincolines",
+      name: "Brincolín combinado",
+      price: 950,
+      emoji: "🎪",
+      desc: "Cajón, resbaladilla y obstáculos en un solo inflable para diversión larga.",
+    },
+    {
+      category: "Brincolines",
+      name: "Brincolín casa de muñecas",
+      price: 850,
+      emoji: "🏠",
+      desc: "Inflable temático con casita de muñecas, ideal para fiestas infantiles.",
+    },
     // Mobiliario y Carpas
-    { category: "Mobiliario y Carpas", name: "Mesa plegable", price: 90, emoji: "🪑", desc: "Mesa rectangular plegable para 8 personas, resistente y fácil de trasladar." },
-    { category: "Mobiliario y Carpas", name: "Silla plegable", price: 15, emoji: "🪑", desc: "Silla plegable de plástico reforzado, cómoda y lista para cualquier evento." },
-    { category: "Mobiliario y Carpas", name: "Mantelería por mesa", price: 60, emoji: "🍽️", desc: "Manteles de tela en colores a juego con el tema de tu fiesta." },
-    { category: "Mobiliario y Carpas", name: "Carpa 3x3 m", price: 380, emoji: "⛺", desc: "Carpa impermeable de 3x3 m con armazón de acero, ideal para tomar el sol." },
-    { category: "Mobiliario y Carpas", name: "Carpa 6x6 m", price: 900, emoji: "⛺", desc: "Carpa de 6x6 m para proteger a tus invitados del sol o la lluvia." },
-    { category: "Mobiliario y Carpas", name: "Pista de baile 3x3 m", price: 650, emoji: "🕺", desc: "Piso modular tipo hardwood para montar la pista de baile en cualquier jardín." },
+    {
+      category: "Mobiliario y Carpas",
+      name: "Mesa plegable",
+      price: 90,
+      emoji: "🪑",
+      desc: "Mesa rectangular plegable para 8 personas, resistente y fácil de trasladar.",
+    },
+    {
+      category: "Mobiliario y Carpas",
+      name: "Silla plegable",
+      price: 15,
+      emoji: "🪑",
+      desc: "Silla plegable de plástico reforzado, cómoda y lista para cualquier evento.",
+    },
+    {
+      category: "Mobiliario y Carpas",
+      name: "Mantelería por mesa",
+      price: 60,
+      emoji: "🍽️",
+      desc: "Manteles de tela en colores a juego con el tema de tu fiesta.",
+    },
+    {
+      category: "Mobiliario y Carpas",
+      name: "Carpa 3x3 m",
+      price: 380,
+      emoji: "⛺",
+      desc: "Carpa impermeable de 3x3 m con armazón de acero, ideal para tomar el sol.",
+    },
+    {
+      category: "Mobiliario y Carpas",
+      name: "Carpa 6x6 m",
+      price: 900,
+      emoji: "⛺",
+      desc: "Carpa de 6x6 m para proteger a tus invitados del sol o la lluvia.",
+    },
+    {
+      category: "Mobiliario y Carpas",
+      name: "Pista de baile 3x3 m",
+      price: 650,
+      emoji: "🕺",
+      desc: "Piso modular tipo hardwood para montar la pista de baile en cualquier jardín.",
+    },
     // Fotografía
-    { category: "Fotografía", name: "Fotocabina clásica", price: 900, emoji: "📸", desc: "Cabina de fotos con impresión al instante, accesorios y operador incluido." },
-    { category: "Fotografía", name: "Fotocabina 360", price: 1300, emoji: "🎥", desc: "Cabina giratoria 360° para videos espectaculares que se comparten al momento." },
-    { category: "Fotografía", name: "Rincón de fotos con props", price: 300, emoji: "🎭", desc: "Fondo decorativo con marcos, sombreros y props para fotos grupales." },
+    {
+      category: "Fotografía",
+      name: "Fotocabina clásica",
+      price: 900,
+      emoji: "📸",
+      desc: "Cabina de fotos con impresión al instante, accesorios y operador incluido.",
+    },
+    {
+      category: "Fotografía",
+      name: "Fotocabina 360",
+      price: 1300,
+      emoji: "🎥",
+      desc: "Cabina giratoria 360° para videos espectaculares que se comparten al momento.",
+    },
+    {
+      category: "Fotografía",
+      name: "Rincón de fotos con props",
+      price: 300,
+      emoji: "🎭",
+      desc: "Fondo decorativo con marcos, sombreros y props para fotos grupales.",
+    },
     // Audio e Iluminación
-    { category: "Audio e Iluminación", name: "Bocina profesional c/ micrófono", price: 550, emoji: "🎤", desc: "Bocina potente con micrófono inalámbrico para música y animación del evento." },
-    { category: "Audio e Iluminación", name: "Bocina DJ doble", price: 950, emoji: "🔊", desc: "Sistema de audio doble con bajos potentes, ideal para fiestas grandes." },
-    { category: "Audio e Iluminación", name: "Kit de iluminación LED", price: 400, emoji: "💡", desc: "Reflector LED multicolor con efectos sincronizados al ritmo de la música." },
-    { category: "Audio e Iluminación", name: "Máquina de humo", price: 300, emoji: "🌫️", desc: "Máquina de humo para dar ambiente a la pista de baile y las fotos." },
+    {
+      category: "Audio e Iluminación",
+      name: "Bocina profesional c/ micrófono",
+      price: 550,
+      emoji: "🎤",
+      desc: "Bocina potente con micrófono inalámbrico para música y animación del evento.",
+    },
+    {
+      category: "Audio e Iluminación",
+      name: "Bocina DJ doble",
+      price: 950,
+      emoji: "🔊",
+      desc: "Sistema de audio doble con bajos potentes, ideal para fiestas grandes.",
+    },
+    {
+      category: "Audio e Iluminación",
+      name: "Kit de iluminación LED",
+      price: 400,
+      emoji: "💡",
+      desc: "Reflector LED multicolor con efectos sincronizados al ritmo de la música.",
+    },
+    {
+      category: "Audio e Iluminación",
+      name: "Máquina de humo",
+      price: 300,
+      emoji: "🌫️",
+      desc: "Máquina de humo para dar ambiente a la pista de baile y las fotos.",
+    },
     // Juegos y Extras
-    { category: "Juegos y Extras", name: "Fuente de chocolate", price: 450, emoji: "🍫", desc: "Fuente de chocolate con frutas y marshmallows para acompañar durante 2 horas." },
-    { category: "Juegos y Extras", name: "Máquina de algodón de azúcar", price: 500, emoji: "🍬", desc: "Máquina de algodón de azúcar con operador y refacciones ilimitadas." },
-    { category: "Juegos y Extras", name: "Máquina de palomitas", price: 350, emoji: "🍿", desc: "Carrito de palomitas recién hechas, con bolsas para servir a los invitados." },
-    { category: "Juegos y Extras", name: "Mini golf inflable", price: 800, emoji: "⛳", desc: "Circuito de mini golf inflable de 6 hoyos con palos y pelotas incluidos." },
+    {
+      category: "Juegos y Extras",
+      name: "Fuente de chocolate",
+      price: 450,
+      emoji: "🍫",
+      desc: "Fuente de chocolate con frutas y marshmallows para acompañar durante 2 horas.",
+    },
+    {
+      category: "Juegos y Extras",
+      name: "Máquina de algodón de azúcar",
+      price: 500,
+      emoji: "🍬",
+      desc: "Máquina de algodón de azúcar con operador y refacciones ilimitadas.",
+    },
+    {
+      category: "Juegos y Extras",
+      name: "Máquina de palomitas",
+      price: 350,
+      emoji: "🍿",
+      desc: "Carrito de palomitas recién hechas, con bolsas para servir a los invitados.",
+    },
+    {
+      category: "Juegos y Extras",
+      name: "Mini golf inflable",
+      price: 800,
+      emoji: "⛳",
+      desc: "Circuito de mini golf inflable de 6 hoyos con palos y pelotas incluidos.",
+    },
   ],
   customers: [
     { name: "Fernanda Lima", phone: "5577990011" },
@@ -3313,7 +4014,13 @@ const FIESTAS_SEED: VerticalSeed = {
   customerEmailPrefix: "fcli",
   customerDomain: "fiestas.local",
   customerCodePrefix: "CLI-",
-  delivery: { enabled: true, fee: 150, minAmount: 0, radiusKm: 25, estimatedMins: 90 },
+  delivery: {
+    enabled: true,
+    fee: 150,
+    minAmount: 0,
+    radiusKm: 25,
+    estimatedMins: 90,
+  },
   registers: ["Caja 1", "Caja 2"],
   salesCount: 30,
   salesDaysBack: 60,
@@ -3523,7 +4230,9 @@ async function seedVerticalOrgDemo(
   }
 
   // Unidades del sistema
-  const units = await d.unitOfMeasure.findMany({ where: { organizationId: null } })
+  const units = await d.unitOfMeasure.findMany({
+    where: { organizationId: null },
+  })
   const unitPza = units.find((u) => u.abbreviation === "pza")
 
   // Categorías (con imagen placeholder propia para chips/tarjetas del catálogo)
@@ -3542,7 +4251,14 @@ async function seedVerticalOrgDemo(
     productName: string
     price: number
   }[] = []
-  const verticalNewProducts: { id: string; name: string; desc: string; emoji: string; category: string; price: number }[] = []
+  const verticalNewProducts: {
+    id: string
+    name: string
+    desc: string
+    emoji: string
+    category: string
+    price: number
+  }[] = []
   for (let i = 0; i < cfg.products.length; i++) {
     const def = cfg.products[i]
     const trackInventory = def.trackInventory ?? true
@@ -3562,7 +4278,14 @@ async function seedVerticalOrgDemo(
       },
     })
     if (markNew) {
-      verticalNewProducts.push({ id: product.id, name: def.name, desc: def.desc, emoji: def.emoji, category: def.category, price: def.price })
+      verticalNewProducts.push({
+        id: product.id,
+        name: def.name,
+        desc: def.desc,
+        emoji: def.emoji,
+        category: def.category,
+        price: def.price,
+      })
     }
     const variant = await d.productVariant.create({
       data: {
@@ -3639,7 +4362,9 @@ async function seedVerticalOrgDemo(
     const reg = registerIds[s % registerIds.length]
     const cashierId = pick(cashierIds, rnd)
     const customer = rnd() < 0.7 ? pick(customers, rnd) : null
-    const saleDate = new Date(now - Math.floor(rnd() * cfg.salesDaysBack) * 86400000)
+    const saleDate = new Date(
+      now - Math.floor(rnd() * cfg.salesDaysBack) * 86400000
+    )
     saleDate.setHours(9 + Math.floor(rnd() * 10), Math.floor(rnd() * 60), 0, 0)
 
     const itemCount = 1 + Math.floor(rnd() * 3)
@@ -3806,14 +4531,18 @@ async function seedVerticalOrgDemo(
         })
         .filter((x): x is readonly [string, string] => x !== null)
     )
-    const variantByName = new Map(
-      variants.map((v) => [v.productName, v])
-    )
+    const variantByName = new Map(variants.map((v) => [v.productName, v]))
 
     // Asignación de servicios por empleado (EmployeeService).
     const staffPools: {
       employeeId: string
-      services: { name: string; durationMin: number; variantId: string; productId: string; price: number }[]
+      services: {
+        name: string
+        durationMin: number
+        variantId: string
+        productId: string
+        price: number
+      }[]
     }[] = []
     for (const entry of cfg.staffServices) {
       const employeeId = employeeIdByEmail.get(entry.email)
@@ -3821,7 +4550,9 @@ async function seedVerticalOrgDemo(
       const services = entry.services
         .map((s) => {
           const v = variantByName.get(s.name)
-          return v ? { ...s, variantId: v.id, productId: v.productId, price: v.price } : null
+          return v
+            ? { ...s, variantId: v.id, productId: v.productId, price: v.price }
+            : null
         })
         .filter((x): x is NonNullable<typeof x> => x !== null)
       if (!services.length) continue
@@ -3856,7 +4587,11 @@ async function seedVerticalOrgDemo(
 
       for (const pool of staffPools) {
         const visits =
-          off === 0 ? 4 : off < 0 ? 2 + Math.floor(rnd() * 3) : 2 + Math.floor(rnd() * 2)
+          off === 0
+            ? 4
+            : off < 0
+              ? 2 + Math.floor(rnd() * 3)
+              : 2 + Math.floor(rnd() * 2)
         let cursor = new Date(day)
         cursor.setHours(9, 30, 0, 0)
         let made = 0
@@ -3905,7 +4640,9 @@ async function seedVerticalOrgDemo(
             const tax = round2(subtotal * 0.16)
             const total = round2(subtotal + tax)
             const tip =
-              rnd() < 0.18 && svc.name.includes("novia") ? round2(total * 0.1) : 0
+              rnd() < 0.18 && svc.name.includes("novia")
+                ? round2(total * 0.1)
+                : 0
             const sale = await d.sale.create({
               data: {
                 organizationId: org.id,
@@ -3984,15 +4721,23 @@ async function seedVerticalOrgDemo(
   // sobre-reservar; las completadas quedan ligadas a su venta (checkout).
   if (cfg.mode === "rental") {
     const inv = await d.inventory.findMany({
-      where: { organizationId: org.id, locationId: location.id, locationType: "location" },
+      where: {
+        organizationId: org.id,
+        locationId: location.id,
+        locationType: "location",
+      },
       select: { variantId: true, quantity: true },
     })
-    const totalUnits = new Map(inv.map((i) => [i.variantId, Number(i.quantity)]))
+    const totalUnits = new Map(
+      inv.map((i) => [i.variantId, Number(i.quantity)])
+    )
     const booked: Record<string, Record<string, number>> = {}
-    const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 5 || d.getDay() === 6
+    const isWeekend = (d: Date) =>
+      d.getDay() === 0 || d.getDay() === 5 || d.getDay() === 6
 
     // Unidades ya apartadas del artículo en el día.
-    const bookedOn = (variantId: string, day: Date) => booked[variantId]?.[ymdKey(day)] ?? 0
+    const bookedOn = (variantId: string, day: Date) =>
+      booked[variantId]?.[ymdKey(day)] ?? 0
 
     let reservationSeq = 0
     const todayStart = new Date(now)
@@ -4022,7 +4767,9 @@ async function seedVerticalOrgDemo(
           sd.setDate(sd.getDate() + k)
           spanDays.push(sd)
         }
-        const free = Math.min(...spanDays.map((sd) => units - bookedOn(v.id, sd)))
+        const free = Math.min(
+          ...spanDays.map((sd) => units - bookedOn(v.id, sd))
+        )
         if (free <= 0) continue
         const maxQty = v.productName.toLowerCase().includes("silla")
           ? Math.min(8, units)
@@ -4177,7 +4924,7 @@ export async function seedDemo() {
   // de tablas de demo.
   if (!isDemoSeedingEnabled()) {
     console.log(
-      "ℹ️  Seed de demo omitido (requiere SEED_DEMO=\"true\" y NODE_ENV != production)"
+      'ℹ️  Seed de demo omitido (requiere SEED_DEMO="true" y NODE_ENV != production)'
     )
     return
   }
@@ -4190,7 +4937,13 @@ export async function seedDemo() {
   const existingOrgs = await prisma.organization.findMany({
     where: {
       name: {
-        in: [DEMO_ORG_NAME, REST_ORG_NAME, EST_ORG_NAME, FIE_ORG_NAME, HYB_ORG_NAME],
+        in: [
+          DEMO_ORG_NAME,
+          REST_ORG_NAME,
+          EST_ORG_NAME,
+          FIE_ORG_NAME,
+          HYB_ORG_NAME,
+        ],
       },
     },
     select: { id: true },
@@ -4455,7 +5208,14 @@ export async function seedDemo() {
       address: "Parque Industrial Norte",
       managerName: "Almacenero Demo",
       openingHours: "Lun-Vie 08:00-17:00",
-      openingScheduleJson: JSON.stringify(emptySchedule().map((d, i) => ({ ...d, enabled: i >= 1 && i <= 5, open: "08:00", close: "17:00" }))),
+      openingScheduleJson: JSON.stringify(
+        emptySchedule().map((d, i) => ({
+          ...d,
+          enabled: i >= 1 && i <= 5,
+          open: "08:00",
+          close: "17:00",
+        }))
+      ),
     },
   })
 
@@ -4476,11 +5236,36 @@ export async function seedDemo() {
 
   // ── Direcciones de clientes ────────────────────────────────────────────
   const addressData = [
-    { label: "Casa", address: "Av. Reforma 123, Col. Centro, CDMX", lat: 19.4326, lng: -99.1332 },
-    { label: "Oficina", address: "Blvd. Insurgentes 456, Del. Miguel Hidalgo, CDMX", lat: 19.4350, lng: -99.1700 },
-    { label: "Casa", address: "Calle Durango 789, Col. Roma Norte, CDMX", lat: 19.4195, lng: -99.1620 },
-    { label: "Casa", address: "Calzada de Tlalpan 1010, Del. Coyoacán, CDMX", lat: 19.3000, lng: -99.1500 },
-    { label: "Trabajo", address: "Av. Insurgentes Sur 2000, Del. Álvaro Obregón, CDMX", lat: 19.3500, lng: -99.2000 },
+    {
+      label: "Casa",
+      address: "Av. Reforma 123, Col. Centro, CDMX",
+      lat: 19.4326,
+      lng: -99.1332,
+    },
+    {
+      label: "Oficina",
+      address: "Blvd. Insurgentes 456, Del. Miguel Hidalgo, CDMX",
+      lat: 19.435,
+      lng: -99.17,
+    },
+    {
+      label: "Casa",
+      address: "Calle Durango 789, Col. Roma Norte, CDMX",
+      lat: 19.4195,
+      lng: -99.162,
+    },
+    {
+      label: "Casa",
+      address: "Calzada de Tlalpan 1010, Del. Coyoacán, CDMX",
+      lat: 19.3,
+      lng: -99.15,
+    },
+    {
+      label: "Trabajo",
+      address: "Av. Insurgentes Sur 2000, Del. Álvaro Obregón, CDMX",
+      lat: 19.35,
+      lng: -99.2,
+    },
   ]
 
   // ── Clientes ─────────────────────────────────────────────────────────────
@@ -4532,10 +5317,18 @@ export async function seedDemo() {
 
   // ── Categorías (jerarquía) ───────────────────────────────────────────────
   const catAbarrotes = await prisma.category.create({
-    data: { organizationId: org.id, name: "Abarrotes", imageUrl: categoryImageUrl("Abarrotes") },
+    data: {
+      organizationId: org.id,
+      name: "Abarrotes",
+      imageUrl: categoryImageUrl("Abarrotes"),
+    },
   })
   const catFrutas = await prisma.category.create({
-    data: { organizationId: org.id, name: "Frutas y Verduras", imageUrl: categoryImageUrl("Frutas y Verduras") },
+    data: {
+      organizationId: org.id,
+      name: "Frutas y Verduras",
+      imageUrl: categoryImageUrl("Frutas y Verduras"),
+    },
   })
   const categoryIds: Record<string, string> = {
     Abarrotes: catAbarrotes.id,
@@ -4588,7 +5381,14 @@ export async function seedDemo() {
     bulk: boolean
   }[] = []
   const bulkProducts: { id: string; name: string; price: number }[] = []
-  const retailNewProductIds: { id: string; name: string; desc: string; emoji: string; category: string; price: number }[] = []
+  const retailNewProductIds: {
+    id: string
+    name: string
+    desc: string
+    emoji: string
+    category: string
+    price: number
+  }[] = []
 
   for (let i = 0; i < PRODUCTS.length; i++) {
     const def = PRODUCTS[i]
@@ -4620,7 +5420,14 @@ export async function seedDemo() {
     }
 
     if (i === 0 || i === 10) {
-      retailNewProductIds.push({ id: product.id, name: def.name, desc: def.desc, emoji: def.emoji, category: def.category, price: def.price })
+      retailNewProductIds.push({
+        id: product.id,
+        name: def.name,
+        desc: def.desc,
+        emoji: def.emoji,
+        category: def.category,
+        price: def.price,
+      })
     }
 
     const variantDefs = def.variants ?? [{ name: "Default", price: def.price }]
@@ -5024,10 +5831,14 @@ export async function seedDemo() {
     const total = round2(subtotal * 1.16)
     const isDelivery = deliveryMethod === "delivery"
     const paymentMethod = pick(["cash", "card", "card"], rnd) as "cash" | "card"
-    const isPaid = status === "delivered" || status === "ready" || (status === "confirmed" && rnd() < 0.5)
-    const deliveryPin = isDelivery && (status === "ready" || status === "delivered")
-      ? String(Math.floor(100000 + rnd() * 900000))
-      : null
+    const isPaid =
+      status === "delivered" ||
+      status === "ready" ||
+      (status === "confirmed" && rnd() < 0.5)
+    const deliveryPin =
+      isDelivery && (status === "ready" || status === "delivered")
+        ? String(Math.floor(100000 + rnd() * 900000))
+        : null
     const pointsRedeemed = rnd() < 0.2 ? round2(Math.floor(rnd() * 50)) : 0
     const pointsValue = pointsRedeemed > 0 ? round2(pointsRedeemed * 0.1) : 0
 
@@ -5041,7 +5852,9 @@ export async function seedDemo() {
         subtotal,
         discount: 0,
         total,
-        address: isDelivery ? addressData[o % addressData.length].address : null,
+        address: isDelivery
+          ? addressData[o % addressData.length].address
+          : null,
         latitude: isDelivery ? addressData[o % addressData.length].lat : null,
         longitude: isDelivery ? addressData[o % addressData.length].lng : null,
         paymentMethod,

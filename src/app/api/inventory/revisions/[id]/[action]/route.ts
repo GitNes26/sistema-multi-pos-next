@@ -14,6 +14,9 @@ export async function POST(
   const { id, action } = await context.params;
 
   try {
+    if (action !== "complete" && action !== "cancel") {
+      return NextResponse.json({ ok: false, error: "Acción inválida" }, { status: 400 });
+    }
     const result =
       action === "complete"
         ? await completeRevision(organizationId, userId, id)

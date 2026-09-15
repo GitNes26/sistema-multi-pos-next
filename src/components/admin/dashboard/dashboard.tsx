@@ -9,6 +9,7 @@ import {
   Users,
   Package,
   Trophy,
+  FileDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -137,6 +138,13 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button asChild variant="outline" size="sm">
+          <a href="/api/reports/export?type=dashboard&format=pdf" download>
+            <FileDown className="size-4" /> Exportar panel a PDF
+          </a>
+        </Button>
+      </div>
       {/* Onboarding prompt */}
       {data.orgName === "Mi Empresa" && (
         <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30">

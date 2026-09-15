@@ -4,14 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, FileArchive, Images, ImagePlus, Loader2, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FormCombobox } from "@/components/base/form-combobox";
+import { InputGroupField } from "@/components/base/input-group-field";
 import { crudApi } from "@/lib/api";
 import { uploadFile } from "@/lib/uploads";
 import { categoryAccent } from "@/lib/catalog/placeholder";
@@ -22,7 +16,8 @@ import {
   type ExtractedImage,
 } from "@/hooks/use-image-dropzone";
 import { cn } from "@/lib/utils";
-import { swalError, swalToast } from "@/lib/swal";
+import { swalToast } from "@/lib/swal";
+import { useFocusInvalid } from "@/hooks/use-focus-invalid";
 
 /**
  * Carga masiva de imágenes de productos desde una sola pantalla.
@@ -67,6 +62,9 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
 
   const [saving, setSaving] = useState(false);
   const [results, setResults] = useState<Record<string, "ok" | "error">>({});
+  const [formError, setFormError] = useState<string>();
+  const { focusFirstEnabled } = useFocusInvalid();
+  const focusedOnOpenRef = useRef(false);
 
   const previewsRef = useRef<Record<string, string>>({});
   previewsRef.current = previews;
@@ -96,7 +94,7 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
         }))
       );
     } catch (err) {
-      swalError("Error al cargar productos", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudieron cargar los productos");
     } finally {
       setLoading(false);
     }
@@ -113,6 +111,17 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
     if (!open) return;
     loadProducts();
   }, [open, loadProducts, debouncedQuery]);
+
+  useEffect(() => {
+    if (!open) {
+      focusedOnOpenRef.current = false;
+      return;
+    }
+    if (loading || focusedOnOpenRef.current) return;
+    focusedOnOpenRef.current = true;
+    const frame = window.requestAnimationFrame(() => focusFirstEnabled("bulk-images-form"));
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusFirstEnabled, loading, open]);
 
   // Catálogo de categorías para el filtro (una sola vez por apertura).
   useEffect(() => {
@@ -136,6 +145,7 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
     setDebouncedQuery("");
     setCategoryId("all");
     setUnmatched([]);
+    setFormError(undefined);
   }, [open]);
 
   // Y al desmontar.
@@ -229,17 +239,14 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
             `${matched.length} imagen${matched.length !== 1 ? "es" : ""} emparejada${matched.length !== 1 ? "s" : ""}`
           );
         } else if (matched.length === 0 && misses.length > 0) {
-          swalError(
-            "Sin coincidencias",
-            "Ningún archivo coincidió con un producto por nombre, SKU o código de barras. Renómbralos o arrástralos sobre la tarjeta del producto."
-          );
+          setFormError("Ningún archivo coincidió con un producto por nombre, SKU o código de barras. Renómbralos o arrástralos sobre la tarjeta del producto.");
         } else {
           swalToast(
             `${matched.length} emparejada${matched.length !== 1 ? "s" : ""} · ${misses.length} sin coincidencia`
           );
         }
       } else if (rejected > 0) {
-        swalError("Archivos omitidos", `${rejected} archivo${rejected !== 1 ? "s" : ""} con formato o tamaño no permitido.`);
+        setFormError(`${rejected} archivo${rejected !== 1 ? "s" : ""} con formato o tamaño no permitido.`);
       }
     },
     []
@@ -279,10 +286,12 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
 
   const pendingCount = useMemo(() => Object.keys(files).length, [files]);
 
-  const handleSave = async () => {
+  const handleSave = async (event?: React.FormEvent) => {
+    event?.preventDefault();
     const entries = Object.entries(files);
     if (entries.length === 0) return;
     setSaving(true);
+    setFormError(undefined);
     setResults({});
     const finalResults: Record<string, "ok" | "error"> = {};
     // Secuencial (no en paralelo) para no saturar el servidor de archivos con
@@ -308,15 +317,16 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
     if (failed === 0) {
       swalToast(`${ok} imagen${ok !== 1 ? "es" : ""} aplicada${ok !== 1 ? "s" : ""}`);
     } else {
-      swalError(
-        "Algunas imágenes no se pudieron guardar",
-        `${ok} aplicadas · ${failed} con error (revísalas y reintenta).`
-      );
+      setFormError(`${ok} aplicadas · ${failed} con error. Revisa las tarjetas marcadas y vuelve a intentarlo.`);
     }
     onApplied();
   };
 
   const assignedCount = products.filter((p) => files[p.id]).length;
+  const categoryOptions = [
+    { value: "all", label: "Todas las categorías" },
+    ...categories.map((category) => ({ value: category.id, label: category.name })),
+  ];
 
   return (
     <>
@@ -324,6 +334,7 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
         open={open}
         onOpenChange={(o) => !saving && onOpenChange(o)}
         title="Imágenes de productos"
+        icon={<Images className="size-5" />}
         description="Arrastra una foto sobre cada producto o haz clic para elegirla; al confirmar se suben y se aplican todas."
         className="max-w-4xl"
         footerClassName="gap-2"
@@ -337,14 +348,19 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
               {saving ? "Ocultar" : "Cerrar"}
             </Button>
-            <Button type="button" onClick={handleSave} disabled={saving || pendingCount === 0}>
+            <Button type="submit" form="bulk-images-form" disabled={saving || pendingCount === 0}>
               {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
               {saving ? "Aplicando…" : `Aplicar ${pendingCount > 0 ? `(${pendingCount})` : ""}`}
             </Button>
           </>
         }
       >
-        <div className="space-y-3">
+        <form id="bulk-images-form" noValidate onSubmit={handleSave} className="space-y-3">
+          {formError && (
+            <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {formError}
+            </div>
+          )}
           {/* Zona de lote: emparejamiento automático por nombre/SKU/código */}
           <div
             {...dropzone.dragHandlers}
@@ -392,28 +408,28 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
 
           {/* Filtros */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-full max-w-64">
-              <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
-              <Input
+            <div className="w-full max-w-64">
+              <InputGroupField
+                id="bulk-images-search"
+                aria-label="Buscar productos"
+                leftIcon={<Search className="size-4" />}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar por nombre o SKU…"
-                className="h-9 pl-9"
+                className="h-9"
               />
             </div>
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger className="h-9 w-48">
-                <SelectValue placeholder="Todas las categorías" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las categorías</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FormCombobox
+              id="bulk-images-category"
+              ariaLabel="Filtrar por categoría"
+              options={categoryOptions}
+              value={categoryId}
+              onChange={setCategoryId}
+              searchable={categories.length > 8}
+              clearable={false}
+              className="w-48"
+              placeholder="Todas las categorías"
+            />
             <Button variant="ghost" size="icon" className="size-9" onClick={() => loadProducts()} disabled={loading}>
               <RefreshCw className={cn("size-4", loading && "animate-spin")} />
             </Button>
@@ -511,7 +527,7 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
                         </span>
                       )}
                       {hasImage && !preview && (
-                        <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white">
+                        <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 py-0.5 text-xs font-medium text-white">
                           actual
                         </span>
                       )}
@@ -528,7 +544,7 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
               Mostrando los primeros 200 productos — usa el buscador o el filtro de categoría para llegar al resto.
             </p>
           )}
-        </div>
+        </form>
       </DialogComponent>
 
       {/* Inputs ocultos del hook: un picker único para todas las tarjetas + ZIP. */}

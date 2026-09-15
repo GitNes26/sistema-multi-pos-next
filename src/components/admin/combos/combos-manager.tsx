@@ -623,7 +623,7 @@ export function CombosManager() {
         <p className="text-sm text-muted-foreground">
           {combos.length} combo{combos.length !== 1 ? "s" : ""}
         </p>
-        <Button onClick={() => setFormOpen(true)}>
+        <Button onClick={() => setFormOpen(true)} data-guide="combo-new">
           <Plus className="mr-1 size-4" />
           Nuevo combo
         </Button>
@@ -726,6 +726,7 @@ export function CombosManager() {
         title={editingCombo ? "Editar combo" : "Nuevo combo"}
         description="Agrupa productos con un precio especial"
         size="2xl"
+        dataGuide="combo-dialog"
       >
         <ScrollArea className="max-h-[70vh]">
           <ComboForm

@@ -38,6 +38,10 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
+import { assertTestEnvironment, assertTestServer } from "../scripts/test-safety.mjs";
+
+assertTestEnvironment();
+await assertTestServer();
 
 const BASE = process.env.TEST_BASE_URL ?? "http://localhost:3000";
 const PASSWORD = "demo1234";
@@ -82,10 +86,12 @@ const ctx = {
   dish: null, // { id, name, price } de un platillo real del menú
   createdOrderIds: [],
   createdSaleIds: [],
+  createdLoyaltyTransactionIds: [],
   // Escenario del Híbrido Demo (roles system-hybrid-*): mesa 4 del seed está
   // reservada y sin órdenes → lienzo limpio para el flujo; se restaura en after().
   hybOrgId: null,
   hybLocationId: null,
+  hybRegisterId: null,
   hybTableId: null,
   hybDish: null,
   // Org del repartidor (Supermercado Demo) para el flujo de entrega SSE.
@@ -374,6 +380,12 @@ before(async () => {
     select: { id: true },
   });
   assert.ok(hybLoc, "Híbrido Demo no tiene sucursales.");
+  const hybReg = await prisma.cashRegister.findFirst({
+    where: { organizationId: hybOrg.id },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  assert.ok(hybReg, "Híbrido Demo no tiene cajas registradoras.");
   // Mesa 4 del híbrido: reservada y sin órdenes sembradas (mesas 1-3 tienen
   // pedidos en curso del KDS que no debe tocar la prueba).
   const hybTable = await prisma.table.findFirst({
@@ -394,6 +406,7 @@ before(async () => {
   assert.ok(hybPrice > 0, `El platillo híbrido ${hybDish.name} debe tener precio`);
   ctx.hybOrgId = hybOrg.id;
   ctx.hybLocationId = hybLoc.id;
+  ctx.hybRegisterId = hybReg.id;
   ctx.hybTableId = hybTable.id;
   ctx.hybDish = { id: hybDish.id, name: hybDish.name, price: hybPrice };
 
@@ -422,6 +435,9 @@ before(async () => {
 });
 
 after(async () => {
+  if (ctx.createdLoyaltyTransactionIds.length > 0) {
+    await prisma.loyaltyTransaction.deleteMany({ where: { id: { in: ctx.createdLoyaltyTransactionIds } } });
+  }
   // Barrido best-effort: nunca dejar sesiones de caja abiertas de la prueba.
   await prisma.cashSession.deleteMany({ where: { organizationId: ctx.orgId, status: "open" } });
   // El DELETE del CRUD es soft-delete (desactiva); borrado físico aquí para no
@@ -530,6 +546,190 @@ test("mesero: sin caja ni CRUD create; /admin redirige a /pos", async () => {
   assert.equal(create.status, 403, "CRUD create debe ser 403 para mesero");
 });
 
+test("aislamiento de superficies: operador no entra al portal y cliente no entra al POS", async () => {
+  const operator = await login(ACCOUNTS.managerHib.email);
+  const operatorPortal = await api("/portal", { cookie: operator.cookie });
+  assert.equal(operatorPortal.status, 307, "una sesión de app debe salir del portal");
+  assert.match(
+    operatorPortal.headers.get("location") ?? "",
+    /\/portal\/auth\/login\?callbackUrl=%2Fportal/,
+    "el portal debe enviar la sesión de app a su entrada controlada"
+  );
+
+  const customer = await login(ACCOUNTS.waitlistCustomer.email);
+  const customerPortal = await api("/portal", { cookie: customer.cookie });
+  assert.equal(customerPortal.status, 200, "una sesión customer debe abrir el portal");
+
+  const customerPos = await api("/pos", { cookie: customer.cookie });
+  assert.equal(customerPos.status, 307, "una sesión customer debe salir del POS");
+  assert.match(
+    customerPos.headers.get("location") ?? "",
+    /\/auth\/login\?callbackUrl=%2Fpos/,
+    "el POS debe redirigir clientes al acceso de la aplicación"
+  );
+});
+
+test("portal checkout: importes confiables e idempotencia ante doble envío", async () => {
+  const customer = await login(ACCOUNTS.waitlistCustomer.email);
+  const pickupResponse = await api("/api/portal/locations", { cookie: customer.cookie });
+  assert.equal(pickupResponse.status, 200);
+  const pickupBody = await pickupResponse.json();
+  const pickup = pickupBody.locations.find((location) => location.allowsPickup);
+  assert.ok(pickup, "Híbrido Demo debe tener una sucursal con recolección");
+
+  const inventory = await prisma.inventory.findFirst({
+    where: {
+      organizationId: ctx.hybOrgId,
+      locationId: pickup.id,
+      quantity: { gt: 0 },
+      variant: { isActive: true, product: { isActive: true, productType: "standard" } },
+    },
+    include: { variant: { include: { product: true } } },
+  });
+  assert.ok(inventory?.variant, "Híbrido Demo necesita una variante estándar con inventario para checkout");
+
+  const variant = inventory.variant;
+  const product = variant.product;
+  const price = Number(variant.price);
+  const idempotencyKey = `portaltest${Date.now()}`;
+  const payload = {
+    idempotencyKey,
+    items: [{
+      productId: product.id,
+      variantId: variant.id,
+      productType: "standard",
+      productName: "Nombre alterado por cliente",
+      variantName: "Variante alterada",
+      quantity: 1,
+      unitId: null,
+      unitPrice: price,
+      lineTotal: price,
+      categoryId: "categoria-ajena",
+      extraPrice: 0,
+    }],
+    deliveryMethod: "pickup",
+    locationId: pickup.id,
+    paymentMethod: "cash",
+    pointsRedeemed: 0,
+    subtotal: price,
+    discount: 999999,
+    deliveryFee: 999999,
+    tip: 0,
+    total: 0.01,
+  };
+
+  const [first, second] = await Promise.all([
+    api("/api/portal/orders", { cookie: customer.cookie, method: "POST", body: payload }),
+    api("/api/portal/orders", { cookie: customer.cookie, method: "POST", body: payload }),
+  ]);
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  const [firstBody, secondBody] = await Promise.all([first.json(), second.json()]);
+  assert.equal(firstBody.order.id, secondBody.order.id, "el reintento debe devolver el mismo pedido");
+  ctx.createdOrderIds.push(firstBody.order.id);
+
+  const stored = await prisma.order.findUniqueOrThrow({
+    where: { id: firstBody.order.id },
+    include: { items: true },
+  });
+  assert.equal(await prisma.order.count({ where: { organizationId: ctx.hybOrgId, customerId: stored.customerId, idempotencyKey } }), 1);
+  assert.equal(Number(stored.subtotal), price);
+  assert.notEqual(Number(stored.deliveryFee), 999999);
+  assert.notEqual(Number(stored.discount), 999999);
+  assert.notEqual(Number(stored.total), 0.01);
+  assert.equal(stored.items[0].productName, product.name, "el nombre debe resolverse desde catálogo");
+  assert.equal(stored.items[0].variantName, variant.name, "la variante debe resolverse desde catálogo");
+
+  const foreignLocation = await prisma.location.findFirstOrThrow({
+    where: { organizationId: ctx.orgId, allowsPickup: true },
+    select: { id: true },
+  });
+  const crossOrg = await api("/api/portal/orders", {
+    cookie: customer.cookie,
+    method: "POST",
+    body: { ...payload, idempotencyKey: `${idempotencyKey}x`, locationId: foreignLocation.id },
+  });
+  assert.equal(crossOrg.status, 400, "una sucursal de otra organización debe rechazarse");
+
+  const combosResponse = await api("/api/portal/combos", { cookie: customer.cookie });
+  assert.equal(combosResponse.status, 200);
+  const combosBody = await combosResponse.json();
+  const combo = combosBody.combos[0];
+  assert.ok(combo?.items.length, "Híbrido Demo debe publicar al menos un combo con productos reales");
+  const comboPayload = {
+    ...payload,
+    idempotencyKey: `combotest${Date.now()}`,
+    subtotal: combo.comboPrice,
+    discount: 0,
+    pointsRedeemed: 1,
+    deliveryFee: 0,
+    total: combo.comboPrice,
+    items: combo.items.map((item) => ({
+      productId: item.productId,
+      variantId: item.variantId,
+      productType: item.productType,
+      productName: item.productName,
+      variantName: item.variantName,
+      quantity: item.quantity,
+      unitId: null,
+      unitPrice: item.unitPrice,
+      lineTotal: item.unitPrice * item.quantity,
+      categoryId: item.categoryId,
+      extraPrice: item.extraPrice,
+      comboId: combo.id,
+      comboItemId: item.id,
+      comboQuantity: 1,
+    })),
+  };
+  const pointsBeforeCombo = Number((await prisma.customer.findUniqueOrThrow({ where: { id: stored.customerId } })).points);
+  assert.ok(pointsBeforeCombo >= 1, "el cliente demo necesita al menos un punto para probar el reintegro");
+  const comboOrderResponse = await api("/api/portal/orders", {
+    cookie: customer.cookie,
+    method: "POST",
+    body: comboPayload,
+  });
+  assert.equal(comboOrderResponse.status, 200);
+  const comboOrderBody = await comboOrderResponse.json();
+  ctx.createdOrderIds.push(comboOrderBody.order.id);
+  const comboOrder = await prisma.order.findUniqueOrThrow({ where: { id: comboOrderBody.order.id } });
+  assert.equal(Number(comboOrder.subtotal), combo.originalPrice);
+  assert.ok(Number(comboOrder.discount) >= combo.savings, "el servidor debe aplicar al menos el ahorro del combo");
+  assert.equal(
+    Number((await prisma.customer.findUniqueOrThrow({ where: { id: stored.customerId } })).points),
+    pointsBeforeCombo - 1,
+    "crear el pedido debe descontar el punto una vez",
+  );
+
+  const [cancelA, cancelB] = await Promise.all([
+    api(`/api/portal/orders/${comboOrderBody.order.id}/cancel`, { cookie: customer.cookie, method: "POST" }),
+    api(`/api/portal/orders/${comboOrderBody.order.id}/cancel`, { cookie: customer.cookie, method: "POST" }),
+  ]);
+  assert.equal([cancelA.status, cancelB.status].filter((status) => status === 200).length, 1, "solo una cancelación debe ganar");
+  assert.ok([cancelA.status, cancelB.status].some((status) => status === 400 || status === 409));
+  assert.equal(
+    Number((await prisma.customer.findUniqueOrThrow({ where: { id: stored.customerId } })).points),
+    pointsBeforeCombo,
+    "cancelar debe reintegrar los puntos exactamente una vez",
+  );
+  const loyaltyRows = await prisma.loyaltyTransaction.findMany({
+    where: { customerId: stored.customerId, note: { contains: `pedido #${Number(comboOrder.orderNumber)}` } },
+    select: { id: true, kind: true, points: true },
+  });
+  ctx.createdLoyaltyTransactionIds.push(...loyaltyRows.map((row) => row.id));
+  assert.equal(loyaltyRows.filter((row) => row.kind === "adjust" && Number(row.points) === 1).length, 1);
+
+  const incompleteCombo = await api("/api/portal/orders", {
+    cookie: customer.cookie,
+    method: "POST",
+    body: {
+      ...comboPayload,
+      idempotencyKey: `${comboPayload.idempotencyKey}x`,
+      items: comboPayload.items.slice(0, -1),
+    },
+  });
+  assert.equal(incompleteCombo.status, 400, "un combo incompleto debe rechazarse");
+});
+
 test("cajero: opera POS (catalog 200, cash open/close 200, /pos 200), CRUD create 403", async () => {
   const s = await login(ACCOUNTS.cashier.email);
 
@@ -624,6 +824,267 @@ test("reservaciones: agente de renta 200; cajero del mismo modo 403; cajero de o
   assert.equal(cross.status, 403, "reservaciones GET debe ser 403 para un cajero de otro modo");
 });
 
+test("agenda y rentas: checkout concurrente crea una sola venta", async () => {
+  const attendant = await login(ACCOUNTS.attendant.email);
+  const rentalAgent = await login(ACCOUNTS.rentalAgent.email);
+  const appointment = await prisma.appointment.findFirst({
+    where: { organization: { businessMode: "services" }, status: { in: ["pending", "confirmed"] } },
+    select: { id: true, status: true, saleId: true, organizationId: true, locationId: true },
+  });
+  const reservation = await prisma.reservation.findFirst({
+    where: { organization: { businessMode: "rental" }, status: { in: ["pending", "confirmed"] } },
+    select: { id: true, status: true, saleId: true, organizationId: true, locationId: true },
+  });
+  assert.ok(appointment, "la demo debe contener una cita disponible");
+  assert.ok(reservation, "la demo debe contener una reservación disponible");
+
+  const saleIds = [];
+  try {
+    const [a1, a2] = await Promise.all([
+      api(`/api/agenda/${appointment.id}/checkout`, { cookie: attendant.cookie, method: "POST", body: { method: "card" } }),
+      api(`/api/agenda/${appointment.id}/checkout`, { cookie: attendant.cookie, method: "POST", body: { method: "card" } }),
+    ]);
+    assert.deepEqual([a1.status, a2.status].sort((x, y) => x - y), [200, 409], "la cita debe aceptar un solo cobro");
+    for (const response of [a1, a2]) if (response.status === 200) saleIds.push((await response.json()).saleId);
+
+    const [r1, r2] = await Promise.all([
+      api(`/api/reservaciones/${reservation.id}/checkout`, { cookie: rentalAgent.cookie, method: "POST", body: { method: "card" } }),
+      api(`/api/reservaciones/${reservation.id}/checkout`, { cookie: rentalAgent.cookie, method: "POST", body: { method: "card" } }),
+    ]);
+    assert.deepEqual([r1.status, r2.status].sort((x, y) => x - y), [200, 409], "la renta debe aceptar un solo cobro");
+    for (const response of [r1, r2]) if (response.status === 200) saleIds.push((await response.json()).saleId);
+    assert.equal(new Set(saleIds).size, 2, "cada recurso debe quedar ligado a una sola venta");
+  } finally {
+    if (saleIds.length) {
+      await prisma.saleItem.deleteMany({ where: { saleId: { in: saleIds } } });
+      await prisma.salePayment.deleteMany({ where: { saleId: { in: saleIds } } });
+      await prisma.saleDiscount.deleteMany({ where: { saleId: { in: saleIds } } });
+      await prisma.sale.deleteMany({ where: { id: { in: saleIds } } });
+    }
+    await prisma.appointment.updateMany({ where: { id: appointment.id, organizationId: appointment.organizationId }, data: { status: appointment.status, saleId: appointment.saleId } });
+    await prisma.reservation.updateMany({ where: { id: reservation.id, organizationId: reservation.organizationId }, data: { status: reservation.status, saleId: reservation.saleId } });
+  }
+});
+
+test("agenda y rentas: creación concurrente no sobreasigna horario ni unidades", async () => {
+  const attendant = await login(ACCOUNTS.attendant.email);
+  const rentalAgent = await login(ACCOUNTS.rentalAgent.email);
+  const appointmentFixture = await prisma.appointment.findFirst({
+    where: { organization: { businessMode: "services" }, customerId: { not: null } },
+    select: { customerId: true, employeeId: true, variantId: true, durationMin: true },
+  });
+  const reservationFixture = await prisma.reservation.findFirst({
+    where: { organization: { businessMode: "rental" }, customerId: { not: null }, items: { some: {} } },
+    select: {
+      customerId: true,
+      organizationId: true,
+      items: { take: 1, select: { variantId: true } },
+    },
+  });
+  assert.ok(appointmentFixture?.customerId, "la demo debe contener una cita con cliente");
+  assert.ok(reservationFixture?.customerId && reservationFixture.items[0], "la demo debe contener una renta con cliente y artículo");
+
+  const rentableInventory = await prisma.inventory.findFirst({
+    where: {
+      organizationId: reservationFixture.organizationId,
+      variantId: reservationFixture.items[0].variantId,
+      locationType: "location",
+      quantity: { gt: 0 },
+    },
+    select: { quantity: true },
+  });
+  assert.ok(rentableInventory, "el artículo demo debe tener unidades rentables");
+
+  const marker = Date.now();
+  const appointmentStart = new Date(Date.now() + 400 * 24 * 60 * 60 * 1000);
+  appointmentStart.setUTCHours(16, marker % 50, 0, 0);
+  const rentalStart = new Date(Date.now() + 410 * 24 * 60 * 60 * 1000);
+  rentalStart.setUTCHours(12, marker % 50, 0, 0);
+  const rentalEnd = new Date(rentalStart.getTime() + 24 * 60 * 60 * 1000);
+  const createdAppointmentIds = [];
+  const createdReservationIds = [];
+
+  try {
+    const appointmentBody = {
+      customerId: appointmentFixture.customerId,
+      employeeId: appointmentFixture.employeeId,
+      variantId: appointmentFixture.variantId,
+      startsAt: appointmentStart.toISOString(),
+      durationMin: appointmentFixture.durationMin,
+      notes: `TEST-CONCURRENCY-${marker}`,
+    };
+    const [a1, a2] = await Promise.all([
+      api("/api/agenda", { cookie: attendant.cookie, method: "POST", body: appointmentBody }),
+      api("/api/agenda", { cookie: attendant.cookie, method: "POST", body: appointmentBody }),
+    ]);
+    assert.deepEqual([a1.status, a2.status].sort((x, y) => x - y), [201, 409], "un horario debe asignarse una sola vez");
+    for (const response of [a1, a2]) if (response.status === 201) createdAppointmentIds.push((await response.json()).id);
+
+    const reservationBody = {
+      customerId: reservationFixture.customerId,
+      items: [{ variantId: reservationFixture.items[0].variantId, quantity: Math.floor(Number(rentableInventory.quantity)) }],
+      startsAt: rentalStart.toISOString(),
+      endsAt: rentalEnd.toISOString(),
+      notes: `TEST-CONCURRENCY-${marker}`,
+    };
+    const [r1, r2] = await Promise.all([
+      api("/api/reservaciones", { cookie: rentalAgent.cookie, method: "POST", body: reservationBody }),
+      api("/api/reservaciones", { cookie: rentalAgent.cookie, method: "POST", body: reservationBody }),
+    ]);
+    assert.deepEqual([r1.status, r2.status].sort((x, y) => x - y), [201, 409], "las mismas unidades no deben reservarse dos veces");
+    for (const response of [r1, r2]) if (response.status === 201) createdReservationIds.push((await response.json()).id);
+    assert.equal(createdAppointmentIds.length, 1);
+    assert.equal(createdReservationIds.length, 1);
+  } finally {
+    if (createdReservationIds.length) {
+      await prisma.reservationItem.deleteMany({ where: { reservationId: { in: createdReservationIds } } });
+      await prisma.reservation.deleteMany({ where: { id: { in: createdReservationIds } } });
+    }
+    if (createdAppointmentIds.length) {
+      await prisma.appointment.deleteMany({ where: { id: { in: createdAppointmentIds } } });
+    }
+  }
+});
+
+test("agenda y rentas: estados terminales y reprogramación respetan el flujo", async () => {
+  const attendant = await login(ACCOUNTS.attendant.email);
+  const rentalAgent = await login(ACCOUNTS.rentalAgent.email);
+  const appointmentFixture = await prisma.appointment.findFirst({
+    where: { organization: { businessMode: "services" }, customerId: { not: null } },
+    select: { customerId: true, employeeId: true, variantId: true, durationMin: true },
+  });
+  const reservationFixture = await prisma.reservation.findFirst({
+    where: { organization: { businessMode: "rental" }, customerId: { not: null }, items: { some: {} } },
+    select: { customerId: true, items: { take: 1, select: { variantId: true } } },
+  });
+  assert.ok(appointmentFixture?.customerId);
+  assert.ok(reservationFixture?.customerId && reservationFixture.items[0]);
+
+  const marker = Date.now();
+  const firstStart = new Date(Date.now() + 430 * 86400000);
+  firstStart.setUTCHours(14, marker % 40, 0, 0);
+  const occupiedStart = new Date(firstStart.getTime() + 3 * 60 * 60 * 1000);
+  const rentalStart = new Date(Date.now() + 440 * 86400000);
+  rentalStart.setUTCHours(12, marker % 40, 0, 0);
+  const rentalEnd = new Date(rentalStart.getTime() + 86400000);
+  const appointmentIds = [];
+  const reservationIds = [];
+
+  try {
+    const baseAppointment = {
+      customerId: appointmentFixture.customerId,
+      employeeId: appointmentFixture.employeeId,
+      variantId: appointmentFixture.variantId,
+      durationMin: appointmentFixture.durationMin,
+      notes: `TEST-STATES-${marker}`,
+    };
+    for (const startsAt of [firstStart, occupiedStart]) {
+      const response = await api("/api/agenda", {
+        cookie: attendant.cookie,
+        method: "POST",
+        body: { ...baseAppointment, startsAt: startsAt.toISOString() },
+      });
+      assert.equal(response.status, 201);
+      appointmentIds.push((await response.json()).id);
+    }
+    const completedDirectly = await api(`/api/agenda/${appointmentIds[0]}`, {
+      cookie: attendant.cookie, method: "PATCH", body: { status: "completed" },
+    });
+    assert.equal(completedDirectly.status, 400, "completed solo debe lograrse mediante checkout");
+    const confirmed = await api(`/api/agenda/${appointmentIds[0]}`, {
+      cookie: attendant.cookie, method: "PATCH", body: { status: "confirmed" },
+    });
+    assert.equal(confirmed.status, 200);
+    const conflict = await api(`/api/agenda/${appointmentIds[0]}`, {
+      cookie: attendant.cookie, method: "PATCH", body: { startsAt: occupiedStart.toISOString() },
+    });
+    assert.equal(conflict.status, 409, "no debe reprogramarse sobre otra cita");
+    const noShow = await api(`/api/agenda/${appointmentIds[0]}`, {
+      cookie: attendant.cookie, method: "PATCH", body: { status: "no_show" },
+    });
+    assert.equal(noShow.status, 200);
+    const reopenAppointment = await api(`/api/agenda/${appointmentIds[0]}`, {
+      cookie: attendant.cookie, method: "PATCH", body: { status: "pending" },
+    });
+    assert.equal(reopenAppointment.status, 409, "una ausencia no debe reabrirse");
+    const chargeNoShow = await api(`/api/agenda/${appointmentIds[0]}/checkout`, {
+      cookie: attendant.cookie, method: "POST", body: { method: "card" },
+    });
+    assert.equal(chargeNoShow.status, 409, "una ausencia no debe cobrarse");
+
+    const createdRental = await api("/api/reservaciones", {
+      cookie: rentalAgent.cookie,
+      method: "POST",
+      body: {
+        customerId: reservationFixture.customerId,
+        items: [{ variantId: reservationFixture.items[0].variantId, quantity: 1 }],
+        startsAt: rentalStart.toISOString(),
+        endsAt: rentalEnd.toISOString(),
+        notes: `TEST-STATES-${marker}`,
+      },
+    });
+    assert.equal(createdRental.status, 201);
+    reservationIds.push((await createdRental.json()).id);
+    const confirmedRental = await api(`/api/reservaciones/${reservationIds[0]}`, {
+      cookie: rentalAgent.cookie, method: "PATCH", body: { status: "confirmed" },
+    });
+    assert.equal(confirmedRental.status, 200);
+    const invalidPeriod = await api(`/api/reservaciones/${reservationIds[0]}`, {
+      cookie: rentalAgent.cookie, method: "PATCH", body: { endsAt: "fecha-invalida" },
+    });
+    assert.equal(invalidPeriod.status, 400);
+    const cancelled = await api(`/api/reservaciones/${reservationIds[0]}`, {
+      cookie: rentalAgent.cookie, method: "PATCH", body: { status: "cancelled" },
+    });
+    assert.equal(cancelled.status, 200);
+    const reopenRental = await api(`/api/reservaciones/${reservationIds[0]}`, {
+      cookie: rentalAgent.cookie, method: "PATCH", body: { status: "pending" },
+    });
+    assert.equal(reopenRental.status, 409, "una renta cancelada no debe reabrirse");
+    const chargeCancelled = await api(`/api/reservaciones/${reservationIds[0]}/checkout`, {
+      cookie: rentalAgent.cookie, method: "POST", body: { method: "card" },
+    });
+    assert.equal(chargeCancelled.status, 409, "una renta cancelada no debe cobrarse");
+  } finally {
+    if (reservationIds.length) {
+      await prisma.reservationItem.deleteMany({ where: { reservationId: { in: reservationIds } } });
+      await prisma.reservation.deleteMany({ where: { id: { in: reservationIds } } });
+    }
+    if (appointmentIds.length) await prisma.appointment.deleteMany({ where: { id: { in: appointmentIds } } });
+  }
+});
+
+test("reportes BI: métricas contables usan ventas completadas sin duplicar portal", async () => {
+  const manager = await login(ACCOUNTS.manager.email);
+  for (const report of ["omnichannel", "inventory", "cohorts", "loyalty", "segmentation", "margin", "employee_margin", "delivery", "product_pairs", "forecast"]) {
+    const response = await api(`/api/reports/bi?report=${report}`, { cookie: manager.cookie });
+    assert.equal(response.status, 200, `BI ${report} debe responder 200`);
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    if (report === "omnichannel") {
+      assert.ok(
+        Math.abs(body.totals.total - (body.totals.posSales + body.totals.portalSales)) < 0.009,
+        "omnicanal debe clasificar una única fuente contable"
+      );
+    }
+    if (report === "inventory") {
+      assert.ok(body.rows.every((row) => Number.isFinite(row.rotation) && row.rotation >= 0), "rotación debe ser calculable");
+    }
+    if (["loyalty", "segmentation", "margin", "employee_margin"].includes(report)) {
+      assert.ok(body.rows.every((row) => Object.values(row).every((value) => typeof value !== "number" || Number.isFinite(value))));
+    }
+    if (report === "delivery") {
+      assert.ok(body.rows.every((row) => row.onTimeRate === null && (row.avgPrepMinutes === null || row.avgPrepMinutes >= 0) && (row.avgDeliveryMinutes === null || row.avgDeliveryMinutes >= 0)));
+    }
+    if (report === "product_pairs") {
+      assert.ok(body.rows.every((row) => row.timesTogether > 0 && row.avgRevenue >= 0));
+    }
+    if (report === "forecast") {
+      assert.ok(body.rows.every((row) => row.sampleSize > 0 && row.confidence >= 10 && row.confidence <= 90));
+    }
+  }
+});
+
 test("gerente: abre y cierra caja (200), entra a /admin, CRUD create 201 y limpia", async () => {
   const s = await login(ACCOUNTS.manager.email);
 
@@ -645,9 +1106,457 @@ test("gerente: abre y cierra caja (200), entra a /admin, CRUD create 201 y limpi
   assert.equal(del.status, 200, "el producto de prueba debe eliminarse");
 });
 
+test("defaults, apariencia y categorías respetan la empresa activa", async () => {
+  const manager = await login(ACCOUNTS.manager.email);
+
+  for (const module of ["customers", "employees"]) {
+    const response = await api(`/api/crud/${module}?defaults=1`, { cookie: manager.cookie });
+    assert.equal(response.status, 200, `${module} debe entregar defaults`);
+    const body = await response.json();
+    assert.equal(body.defaults.isActive, true);
+    assert.match(
+      module === "customers" ? body.defaults.customerCode : body.defaults.employeeCode,
+      module === "customers" ? /^CLI-\d{4,}$/ : /^EMP-\d{4,}$/,
+    );
+  }
+
+  const previousAppearance = await api("/api/settings/appearance", { cookie: manager.cookie });
+  assert.equal(previousAppearance.status, 200);
+  const previousSettings = (await previousAppearance.json()).settings;
+  const hue = previousSettings.primaryHue === 195 ? 245 : 195;
+  const saved = await api("/api/settings/appearance", {
+    cookie: manager.cookie,
+    method: "PATCH",
+    body: { primaryHue: hue, accentHue: 165 },
+  });
+  assert.equal(saved.status, 200);
+  const persisted = await api("/api/settings/appearance", { cookie: manager.cookie });
+  assert.equal((await persisted.json()).settings.primaryHue, hue);
+  await api("/api/settings/appearance", { cookie: manager.cookie, method: "PATCH", body: previousSettings });
+
+  const foreignCategory = await prisma.category.findFirst({
+    where: { organizationId: { not: ctx.orgId } },
+    select: { id: true },
+  });
+  assert.ok(foreignCategory, "la demo debe incluir una categoría de otra empresa");
+  const rejected = await api("/api/crud/products", {
+    cookie: manager.cookie,
+    method: "POST",
+    body: {
+      name: `TEST-CROSS-CATEGORY ${Date.now()}`,
+      categoryId: foreignCategory.id,
+      taxRate: 0.16,
+      initialVariant: { price: 10 },
+    },
+  });
+  assert.equal(rejected.status, 400, "una categoría ajena debe rechazarse");
+  assert.equal((await rejected.json()).field, "categoryId");
+});
+
+test("inventario: la plantilla incluye instrucciones, columnas y catálogo actualizado", async () => {
+  const manager = await login(ACCOUNTS.manager.email);
+  const response = await api(
+    `/api/inventory/export?locationType=location&locationId=${ctx.locationId}&format=template`,
+    { cookie: manager.cookie },
+  );
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /spreadsheetml/);
+  const { default: ExcelJS } = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(Buffer.from(await response.arrayBuffer()));
+  assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), ["Importar existencias", "Instrucciones", "Catálogo"]);
+  const input = workbook.getWorksheet("Importar existencias");
+  assert.deepEqual(
+    [1, 2, 3, 4].map((column) => input.getCell(1, column).text),
+    ["SKU", "Código de barras", "Nombre", "Cantidad"],
+  );
+  assert.ok(workbook.getWorksheet("Catálogo").rowCount > 1, "la plantilla debe incluir productos de la empresa");
+});
+
+test("inventario: salidas concurrentes no pisan saldo y transferencia rechaza destino de otra organización", async () => {
+  const manager = await login(ACCOUNTS.manager.email);
+  const inventory = await prisma.inventory.findFirst({
+    where: {
+      organizationId: ctx.orgId,
+      quantity: { gt: 4 },
+    },
+    orderBy: { quantity: "desc" },
+    select: { id: true, productId: true, variantId: true, quantity: true, minThreshold: true },
+  });
+  assert.ok(inventory, "se necesita una fila con stock para probar concurrencia");
+
+  const original = Number(inventory.quantity);
+  const originalMinThreshold = Number(inventory.minThreshold);
+  const concurrentQty = Math.ceil(original * 0.6 * 1000) / 1000;
+  const reason = `test-concurrency-${Date.now()}`;
+  let testCediId = null;
+  let testDestInventoryId = null;
+  try {
+    await prisma.inventory.update({ where: { id: inventory.id }, data: { minThreshold: 0 } });
+    const [first, second] = await Promise.all([
+      api("/api/inventory/movements", {
+        cookie: manager.cookie,
+        method: "POST",
+        body: { inventoryId: inventory.id, type: "sale", quantity: concurrentQty, reason },
+      }),
+      api("/api/inventory/movements", {
+        cookie: manager.cookie,
+        method: "POST",
+        body: { inventoryId: inventory.id, type: "sale", quantity: concurrentQty, reason },
+      }),
+    ]);
+    assert.deepEqual(
+      [first.status, second.status].sort((a, b) => a - b),
+      [201, 409],
+      "solo una salida concurrente debe aplicarse"
+    );
+
+    const afterRace = await prisma.inventory.findUniqueOrThrow({
+      where: { id: inventory.id },
+      select: { quantity: true },
+    });
+    assert.ok(
+      Math.abs(Number(afterRace.quantity) - (original - concurrentQty)) < 0.000001,
+      "el saldo debe reflejar una sola salida"
+    );
+
+    const foreignLocation = await prisma.location.findFirst({
+      where: { organizationId: { not: ctx.orgId }, isActive: true },
+      select: { id: true },
+    });
+    assert.ok(foreignLocation, "se necesita una ubicación de otra organización");
+    const foreignTransfer = await api("/api/inventory/transfers", {
+      cookie: manager.cookie,
+      method: "POST",
+      body: {
+        fromInventoryId: inventory.id,
+        toLocationType: "location",
+        toLocationId: foreignLocation.id,
+        quantity: 1,
+        reason,
+      },
+    });
+    assert.equal(foreignTransfer.status, 404, "el destino ajeno debe rechazarse");
+
+    const testCedi = await prisma.cedi.create({
+      data: { organizationId: ctx.orgId, name: `CEDIS prueba ${Date.now()}`, isActive: true },
+      select: { id: true },
+    });
+    testCediId = testCedi.id;
+    const transfer = await api("/api/inventory/transfers", {
+      cookie: manager.cookie,
+      method: "POST",
+      body: {
+        fromInventoryId: inventory.id,
+        toLocationType: "cedis",
+        toLocationId: testCedi.id,
+        quantity: 1,
+        reason,
+      },
+    });
+    assert.equal(transfer.status, 201, "el traslado válido debe completarse");
+    const transferBody = await transfer.json();
+    assert.ok(Math.abs(transferBody.from - (original - concurrentQty - 1)) < 0.000001, "el origen debe descontar el traslado");
+    assert.equal(transferBody.to, 1, "el destino nuevo debe recibir el traslado");
+    const destination = await prisma.inventory.findFirstOrThrow({
+      where: {
+        organizationId: ctx.orgId,
+        locationType: "cedis",
+        locationId: testCedi.id,
+        variantId: inventory.variantId,
+        productId: inventory.productId,
+      },
+      select: { id: true, quantity: true },
+    });
+    testDestInventoryId = destination.id;
+    assert.equal(Number(destination.quantity), 1, "el saldo persistido del destino debe concordar");
+    const transferMovements = await prisma.inventoryMovement.count({
+      where: { organizationId: ctx.orgId, reason, type: { in: ["transfer_in", "transfer_out"] } },
+    });
+    assert.equal(transferMovements, 2, "el traslado debe registrar entrada y salida");
+  } finally {
+    await prisma.inventory.update({
+      where: { id: inventory.id },
+      data: { quantity: original, minThreshold: originalMinThreshold },
+    });
+    await prisma.inventoryMovement.deleteMany({ where: { organizationId: ctx.orgId, reason } });
+    if (testDestInventoryId) await prisma.inventory.delete({ where: { id: testDestInventoryId } });
+    if (testCediId) await prisma.cedi.delete({ where: { id: testCediId } });
+  }
+});
+
+test("inventario: revisión física se aplica una vez y rechaza ubicación ajena", async () => {
+  const manager = await login(ACCOUNTS.manager.email);
+  const inventory = await prisma.inventory.findFirst({
+    where: { organizationId: ctx.orgId, locationId: ctx.locationId },
+    orderBy: { quantity: "desc" },
+    select: { id: true, productId: true, variantId: true, quantity: true },
+  });
+  assert.ok(inventory, "se necesita inventario para la revisión física");
+  const original = Number(inventory.quantity);
+  let revisionId = null;
+
+  try {
+    const foreignLocation = await prisma.location.findFirst({
+      where: { organizationId: { not: ctx.orgId }, isActive: true },
+      select: { id: true },
+    });
+    assert.ok(foreignLocation, "se necesita una ubicación de otra organización");
+    const foreignRevision = await api("/api/inventory/revisions", {
+      cookie: manager.cookie,
+      method: "POST",
+      body: { locationType: "location", locationId: foreignLocation.id },
+    });
+    assert.equal(foreignRevision.status, 404, "una revisión no puede usar una ubicación ajena");
+
+    const create = await api("/api/inventory/revisions", {
+      cookie: manager.cookie,
+      method: "POST",
+      body: { locationType: "location", locationId: ctx.locationId, notes: "Prueba de integración" },
+    });
+    assert.equal(create.status, 201, "la revisión debe crearse");
+    const revision = (await create.json()).revision;
+    revisionId = revision.id;
+    const item = revision.items.find(
+      (candidate) => candidate.productId === inventory.productId && candidate.variantId === inventory.variantId
+    );
+    assert.ok(item, "la revisión debe contener la fila seleccionada");
+
+    const count = await api(`/api/inventory/revisions/${revisionId}/items/${item.id}`, {
+      cookie: manager.cookie,
+      method: "PATCH",
+      body: { countedQuantity: original + 1, scanned: true },
+    });
+    assert.equal(count.status, 200, "el conteo debe guardarse");
+
+    const [first, second] = await Promise.all([
+      api(`/api/inventory/revisions/${revisionId}/complete`, { cookie: manager.cookie, method: "POST" }),
+      api(`/api/inventory/revisions/${revisionId}/complete`, { cookie: manager.cookie, method: "POST" }),
+    ]);
+    assert.deepEqual(
+      [first.status, second.status].sort((a, b) => a - b),
+      [200, 409],
+      "solo una finalización debe aplicar el ajuste"
+    );
+
+    const after = await prisma.inventory.findUniqueOrThrow({ where: { id: inventory.id }, select: { quantity: true } });
+    assert.ok(Math.abs(Number(after.quantity) - (original + 1)) < 0.000001, "el ajuste debe aplicarse una vez");
+    const movements = await prisma.inventoryMovement.count({
+      where: { organizationId: ctx.orgId, referenceId: revisionId, type: "adjustment" },
+    });
+    assert.equal(movements, 1, "la revisión debe generar un solo movimiento");
+  } finally {
+    await prisma.inventory.update({ where: { id: inventory.id }, data: { quantity: original } });
+    if (revisionId) {
+      await prisma.inventoryMovement.deleteMany({ where: { organizationId: ctx.orgId, referenceId: revisionId } });
+      await prisma.inventoryRevisionItem.deleteMany({ where: { revisionId } });
+      await prisma.inventoryRevision.deleteMany({ where: { id: revisionId, organizationId: ctx.orgId } });
+    }
+  }
+});
+
+test("devolución: valida cantidades y repone inventario una sola vez", async () => {
+  const manager = await login(ACCOUNTS.manager.email);
+  const sales = await prisma.sale.findMany({
+    where: {
+      organizationId: ctx.orgId,
+      status: "completed",
+      payments: { some: { method: "cash" } },
+      returns: { none: {} },
+      items: { some: { OR: [{ productId: { not: null } }, { variantId: { not: null } }] } },
+    },
+    orderBy: { createdAt: "asc" },
+    take: 100,
+    include: { items: true, payments: true },
+  });
+  assert.ok(sales.length > 0, "se necesita una venta completada sin devoluciones");
+  let sale = null;
+  let saleItem = null;
+  let inventory = null;
+  let createdInventoryId = null;
+  for (const candidateSale of sales) {
+    for (const candidateItem of candidateSale.items) {
+      const cashAvailable = candidateSale.payments
+        .filter((payment) => payment.method === "cash")
+        .reduce((sum, payment) => sum + Number(payment.amount), -Number(candidateSale.changeGiven));
+      const itemTotal = Number(candidateItem.quantity) * Number(candidateItem.unitPrice) * (1 + Number(candidateItem.taxRate));
+      if (itemTotal - cashAvailable > 0.009) continue;
+      const row = await prisma.inventory.findFirst({
+        where: {
+          organizationId: ctx.orgId,
+          locationId: candidateSale.locationId,
+          locationType: "location",
+          ...(candidateItem.variantId
+            ? { variantId: candidateItem.variantId }
+            : { productId: candidateItem.productId, variantId: null }),
+        },
+        select: { id: true, quantity: true },
+      });
+      if (row) {
+        sale = candidateSale;
+        saleItem = candidateItem;
+        inventory = row;
+        break;
+      }
+    }
+    if (sale) break;
+  }
+  if (!sale) {
+    for (const candidateSale of sales) {
+      const cashAvailable = candidateSale.payments
+        .filter((payment) => payment.method === "cash")
+        .reduce((sum, payment) => sum + Number(payment.amount), -Number(candidateSale.changeGiven));
+      const candidateItem = candidateSale.items.find((item) =>
+        Number(item.quantity) * Number(item.unitPrice) * (1 + Number(item.taxRate)) - cashAvailable <= 0.009
+      );
+      if (candidateItem) {
+        sale = candidateSale;
+        saleItem = candidateItem;
+        break;
+      }
+    }
+    assert.ok(sale && saleItem, "se necesita un artículo cubierto por el pago en efectivo");
+    inventory = await prisma.inventory.create({
+      data: {
+        organizationId: ctx.orgId,
+        locationId: sale.locationId,
+        locationType: "location",
+        productId: saleItem.productId,
+        variantId: saleItem.variantId,
+        quantity: 5,
+        minThreshold: 0,
+      },
+      select: { id: true, quantity: true },
+    });
+    createdInventoryId = inventory.id;
+  }
+  assert.ok(sale && saleItem && inventory, "debe prepararse un artículo con inventario en su sucursal");
+  const original = Number(inventory.quantity);
+  const startedAt = new Date();
+  let returnId = null;
+  let cashSessionId = null;
+
+  try {
+    const invalid = await api(`/api/sales/${sale.id}/return`, {
+      cookie: manager.cookie,
+      method: "POST",
+      body: { returnType: "refund", items: [{ saleItemId: saleItem.id, quantity: 0 }] },
+    });
+    assert.equal(invalid.status, 400, "una cantidad cero debe rechazarse");
+
+    const requestReturn = () => api(`/api/sales/${sale.id}/return`, {
+      cookie: manager.cookie,
+      method: "POST",
+      body: {
+        returnType: "refund",
+        reason: "Prueba de reposición",
+        items: [{ saleItemId: saleItem.id, quantity: Number(saleItem.quantity), restockable: true }],
+      },
+    });
+    const attempts = await Promise.all([requestReturn(), requestReturn()]);
+    assert.deepEqual(
+      attempts.map((response) => response.status).sort((a, b) => a - b),
+      [200, 400],
+      "dos solicitudes simultáneas no deben devolver más de lo vendido"
+    );
+    const create = attempts.find((response) => response.status === 200);
+    const createdReturn = (await create.json()).return;
+    returnId = createdReturn?.id;
+    assert.ok(returnId, "la devolución debe devolver su id");
+
+    const approve = await api(`/api/sales/returns/${returnId}/approve`, {
+      cookie: manager.cookie,
+      method: "PUT",
+    });
+    assert.equal(approve.status, 200, "la devolución debe aprobarse");
+
+    const missingPayment = await api(`/api/sales/returns/${returnId}/complete`, {
+      cookie: manager.cookie,
+      method: "POST",
+      body: {},
+    });
+    assert.equal(missingPayment.status, 400, "un reembolso monetario debe indicar cómo se entregó");
+
+    const cash = await openCash(manager.cookie, ctx.registerId);
+    assert.equal(cash.status, 200, "debe abrirse una caja para entregar efectivo");
+    cashSessionId = (await cash.json())?.session?.id;
+    assert.ok(cashSessionId, "la apertura debe devolver la sesión de caja");
+    const refundPayments = [{ method: "cash", amount: Number(createdReturn.total) }];
+
+    const [first, second] = await Promise.all([
+      api(`/api/sales/returns/${returnId}/complete`, {
+        cookie: manager.cookie, method: "POST", body: { refundPayments, cashSessionId },
+      }),
+      api(`/api/sales/returns/${returnId}/complete`, {
+        cookie: manager.cookie, method: "POST", body: { refundPayments, cashSessionId },
+      }),
+    ]);
+    assert.deepEqual(
+      [first.status, second.status].sort((a, b) => a - b),
+      [200, 409],
+      "solo un proceso debe completar la devolución"
+    );
+
+    const after = await prisma.inventory.findUniqueOrThrow({ where: { id: inventory.id }, select: { quantity: true } });
+    assert.ok(
+      Math.abs(Number(after.quantity) - (original + Number(saleItem.quantity))) < 0.000001,
+      "el stock debe reponerse una vez"
+    );
+    const movements = await prisma.inventoryMovement.count({
+      where: { organizationId: ctx.orgId, referenceId: returnId, type: "return" },
+    });
+    assert.equal(movements, 1, "debe existir un solo movimiento de devolución");
+    const recordedRefunds = await prisma.saleReturnPayment.findMany({ where: { returnId } });
+    assert.equal(recordedRefunds.length, 1, "debe persistirse un solo movimiento financiero");
+    assert.equal(recordedRefunds[0].method, "cash", "el movimiento debe conservar el medio");
+
+    const close = await closeCash(manager.cookie, cashSessionId);
+    assert.equal(close.status, 200, "la caja debe cerrar después del reembolso");
+    const closeSummary = (await close.json()).summary;
+    assert.equal(closeSummary.cashRefunds, Number(createdReturn.total), "el corte debe mostrar el efectivo reembolsado");
+    assert.ok(
+      Math.abs(closeSummary.systemCash - (100 - Number(createdReturn.total))) < 0.009,
+      "el efectivo esperado debe descontar el reembolso"
+    );
+    const cashReport = await api(`/api/reports?type=cash&locationId=${ctx.locationId}`, { cookie: manager.cookie });
+    assert.equal(cashReport.status, 200, "el reporte de caja debe estar disponible");
+    const reportBody = await cashReport.json();
+    const reportRow = reportBody.rows.find((row) => row.id === cashSessionId);
+    assert.ok(reportRow, "el reporte debe incluir la sesión del reembolso");
+    assert.equal(reportRow.cashRefunds, Number(createdReturn.total), "el reporte debe conciliar el reembolso en efectivo");
+    assert.ok(
+      Math.abs(reportRow.expectedCash - closeSummary.systemCash) < 0.009,
+      "reporte y corte deben calcular el mismo efectivo esperado"
+    );
+    const salesReport = await api(`/api/reports?type=sales&locationId=${ctx.locationId}`, { cookie: manager.cookie });
+    assert.equal(salesReport.status, 200, "el reporte de ventas debe estar disponible");
+    const salesTotals = (await salesReport.json()).totals;
+    assert.ok(salesTotals.refundsTotal >= Number(createdReturn.total), "ventas debe incluir la devolución completada");
+    assert.ok(
+      Math.abs(salesTotals.netTotal - (salesTotals.total - salesTotals.refundsTotal)) < 0.009,
+      "la venta neta debe ser venta bruta menos devoluciones"
+    );
+  } finally {
+    await prisma.inventory.update({ where: { id: inventory.id }, data: { quantity: original } });
+    if (returnId) {
+      await prisma.inventoryMovement.deleteMany({ where: { organizationId: ctx.orgId, referenceId: returnId } });
+      await prisma.saleReturnItem.deleteMany({ where: { returnId } });
+      await prisma.saleReturn.deleteMany({ where: { id: returnId, organizationId: ctx.orgId } });
+    }
+    if (cashSessionId) await prisma.cashSession.deleteMany({ where: { id: cashSessionId, organizationId: ctx.orgId } });
+    await prisma.notification.deleteMany({
+      where: { organizationId: ctx.orgId, createdAt: { gte: startedAt }, title: { startsWith: "Nueva devolución" } },
+    });
+    if (createdInventoryId) await prisma.inventory.delete({ where: { id: createdInventoryId } });
+  }
+});
+
 test("flujo mesa: mesero ocupa → envía a cocina (KDS la ve) → gerente cobra → orden cerrada y mesa libre", async () => {
   const mesero = await login(ACCOUNTS.mesero.email);
   const gerente = await login(ACCOUNTS.manager.email);
+  const cash = await openCash(gerente.cookie, ctx.registerId);
+  assert.equal(cash.status, 200, "gerente debe abrir caja antes de cobrar mesa");
+  const cashSessionId = (await cash.json())?.session?.id;
   const { dish } = ctx;
   const qty = 2;
   const subtotal = round2(qty * dish.price);
@@ -777,6 +1686,7 @@ test("flujo mesa: mesero ocupa → envía a cocina (KDS la ve) → gerente cobra
         payments: [{ method: "cash", amount: total }],
         discounts: [],
         tableId: ctx.tableId,
+        cashSessionId,
       },
     },
   });
@@ -963,6 +1873,9 @@ test("flujo mesa híbrido: mesero/cocina del modo híbrido ejecutan el ciclo com
   const mesero = await login(ACCOUNTS.meseroHib.email);
   const gerente = await login(ACCOUNTS.managerHib.email);
   const cocina = await login(ACCOUNTS.cocinaHib.email);
+  const cash = await openCash(gerente.cookie, ctx.hybRegisterId);
+  assert.equal(cash.status, 200, "gerente híbrido debe abrir caja antes de cobrar mesa");
+  const cashSessionId = (await cash.json())?.session?.id;
   const { dish } = { dish: ctx.hybDish };
   const qty = 1;
   const subtotal = round2(qty * dish.price);
@@ -1063,6 +1976,7 @@ test("flujo mesa híbrido: mesero/cocina del modo híbrido ejecutan el ciclo com
         payments: [{ method: "cash", amount: total }],
         discounts: [],
         tableId: ctx.hybTableId,
+        cashSessionId,
       },
     },
   });
@@ -1602,10 +2516,17 @@ test("reservación sin cuenta: nombre+teléfono crean reservación de invitado v
   // La ruta pública NO exige sesión: se resuelve la org desde el QR de mesa
   // (par table+token del seed) y basta nombre+teléfono en el body.
   const qr = "table=demo-hyb-t4&token=demo-hyb-qr-t4";
+  // Mantener la fecha dentro de la ventana de política (60 días por defecto)
+  // y en un día laboral del horario demo, sin depender de una fecha histórica.
+  const reservationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  // 19:00Z corresponde a las 13:00 en la zona demo America/Mexico_City.
+  reservationDate.setUTCHours(19, 0, 0, 0);
+  const reservationIso = reservationDate.toISOString();
+  const reservationYmd = reservationIso.slice(0, 10);
 
   // 1) Disponibilidad pública (GET sin cookie) responde con salas/mesas.
   const availability = await fetch(
-    `${BASE}/api/public/reservations?${qr}&date=2030-01-15&guests=2`
+    `${BASE}/api/public/reservations?${qr}&date=${reservationYmd}&guests=2`
   );
   assert.equal(availability.status, 200, "la disponibilidad pública debe ser 200");
   const availBody = await availability.json();
@@ -1619,7 +2540,7 @@ test("reservación sin cuenta: nombre+teléfono crean reservación de invitado v
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      startsAt: "2030-01-15T13:00:00.000Z",
+      startsAt: reservationIso,
       guests: 2,
       phone: "5512345678",
     }),
@@ -1631,7 +2552,7 @@ test("reservación sin cuenta: nombre+teléfono crean reservación de invitado v
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      startsAt: "2030-01-15T13:00:00.000Z",
+      startsAt: reservationIso,
       guests: 2,
       name: "María García",
       phone: "5512345678",
@@ -1650,7 +2571,7 @@ test("reservación sin cuenta: nombre+teléfono crean reservación de invitado v
     select: { name: true, phone: true, customerId: true, organizationId: true, tableId: true },
   });
   assert.equal(row.name, "María García", "la reservación guarda el nombre del invitado");
-  assert.equal(row.phone, "5512345678", "la reservación guarda el teléfono del invitado");
+  assert.equal(row.phone, "+525512345678", "la reservación guarda el teléfono normalizado del invitado");
   assert.equal(row.customerId, null, "el invitado no queda ligado a una cuenta");
   assert.equal(row.organizationId, ctx.hybOrgId, "la org se resuelve desde el QR de mesa");
   assert.equal(row.tableId, ctx.hybTableId, "la reservación usa la mesa pedida");
@@ -1663,6 +2584,44 @@ test("reservación sin cuenta: nombre+teléfono crean reservación de invitado v
   const visible = listBody.reservations?.find((r) => r.id === guestResId);
   assert.ok(visible, "la reservación de invitado aparece en el gestor");
   assert.equal(visible.name, "María García", "el gestor muestra el nombre del invitado");
-  assert.equal(visible.phone, "5512345678", "el gestor muestra el teléfono del invitado");
+  assert.equal(visible.phone, "+525512345678", "el gestor muestra el teléfono normalizado del invitado");
   assert.equal(visible.customer, null, "el gestor sabe que no tiene cuenta");
+});
+
+test("integridad: POS rechaza precio manipulado antes de persistir", async () => {
+  const manager = await login(ACCOUNTS.manager.email);
+  const tampered = await api("/api/pos/sales", {
+    cookie: manager.cookie,
+    method: "POST",
+    body: {
+      locationId: ctx.locationId,
+      payload: {
+        items: [{
+          productId: ctx.dish.id,
+          variantId: null,
+          productType: "standard",
+          productName: ctx.dish.name,
+          quantity: 1,
+          unitId: null,
+          unitPrice: 99999,
+          totalPrice: 99999,
+          discount: 0,
+          taxRate: 0.16,
+          lineTotal: 99999,
+          trackInventory: false,
+        }],
+        subtotal: 99999,
+        discount: 0,
+        tax: 0,
+        total: 99999,
+        changeGiven: 0,
+        pointsEarned: 0,
+        pointsRedeemed: 0,
+        pointsRedeemedValue: 0,
+        payments: [{ method: "cash", amount: 99999 }],
+        discounts: [],
+      },
+    },
+  });
+  assert.equal(tampered.status, 400, "el servidor debe rechazar el precio manipulado");
 });

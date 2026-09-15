@@ -16,10 +16,12 @@ import { InfoTooltip } from "@/components/base/info-tooltip"
 import { formatDate, DATE_FORMAT } from "@/lib/dates"
 
 export interface DatePickerProps {
+  id?: string
   value?: Date | null
   onChange?: (date: Date | null) => void
   onClear?: () => void
   label?: string
+  required?: boolean
   helper?: React.ReactNode
   placeholder?: string
   disabled?: boolean
@@ -29,14 +31,17 @@ export interface DatePickerProps {
   toYear?: number
   clearable?: boolean
   error?: string
+  showError?: boolean
   className?: string
 }
 
 export function DatePicker({
+  id,
   value,
   onChange,
   onClear,
   label,
+  required,
   helper,
   placeholder = "dd/mm/aaaa",
   disabled,
@@ -46,9 +51,12 @@ export function DatePicker({
   toYear,
   clearable = true,
   error,
+  showError = true,
   className,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
+  const autoId = React.useId().replace(/:/g, "")
+  const pickerId = id ?? `date-${autoId}`
 
   const disabledFn = React.useCallback(
     (d: Date) =>
@@ -70,7 +78,10 @@ export function DatePicker({
     <div className={cn("space-y-2", className)}>
       {label && (
         <div className="flex items-center gap-1.5">
-          <Label className="leading-none">{label}</Label>
+          <Label htmlFor={pickerId} className="cursor-pointer leading-none">
+            {label}
+            {required && <span className="text-destructive"> *</span>}
+          </Label>
           {helper && <InfoTooltip text={helper} />}
         </div>
       )}
@@ -78,10 +89,13 @@ export function DatePicker({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            id={pickerId}
             type="button"
             variant="outline"
             disabled={disabled}
             aria-label="Elegir fecha"
+            aria-invalid={Boolean(error) || undefined}
+            aria-describedby={error && showError ? `${pickerId}-error` : undefined}
             className={cn(
               "relative h-8 w-full justify-start px-3 text-left font-normal",
               error && "border-destructive ring-3 ring-destructive/20",
@@ -125,8 +139,8 @@ export function DatePicker({
         </PopoverContent>
       </Popover>
 
-      {error && (
-        <p className="text-xs leading-relaxed text-destructive">{error}</p>
+      {error && showError && (
+        <p id={`${pickerId}-error`} role="alert" className="text-xs leading-relaxed text-destructive">{error}</p>
       )}
     </div>
   )
