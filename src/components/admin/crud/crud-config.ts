@@ -841,14 +841,16 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       },
       {
         key: "buyQuantity",
-        label: "Lleva (cantidad)",
+        label: "Lleva X (total del paquete)",
         type: "number",
+        help: "Ejemplo 2x1: escribe 2. Cada grupo de 2 productos forma un paquete promocional.",
         showIf: (v) => v.benefit === "buy_x_get_y",
       },
       {
         key: "getQuantity",
-        label: "Paga / regala (cantidad)",
+        label: "Unidades gratis del paquete",
         type: "number",
+        help: "Ejemplo 2x1: escribe 1. En cada paquete de 2, una unidad será gratuita.",
         showIf: (v) => v.benefit === "buy_x_get_y",
       },
       { key: "minAmount", label: "Mínimo de compra ($)", type: "money" },

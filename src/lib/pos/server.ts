@@ -1076,6 +1076,44 @@ export async function createSale(
       })
     }
 
+    // Una venta cobrada a crédito genera automáticamente la cuenta por cobrar.
+    // Se ejecuta dentro de la misma transacción de la venta para que nunca exista
+    // una venta a crédito sin su saldo, ni un saldo si la venta falla.
+    const creditAmount = round2(
+      (payload.payments ?? [])
+        .filter((payment) => payment.method === "credit")
+        .reduce((sum, payment) => sum + payment.amount, 0)
+    )
+    if (creditAmount > 0) {
+      if (!payload.customerId) throw new PosError("Selecciona un cliente para vender a crédito", 400)
+      const policy = await tx.creditPolicy.findUnique({ where: { organizationId } })
+      if (!policy?.creditEnabled) throw new PosError("Las ventas a crédito no están habilitadas", 409)
+      const account = await tx.customerCredit.upsert({
+        where: { customerId: payload.customerId },
+        create: { organizationId, customerId: payload.customerId, creditLimit: policy.defaultLimit, useDefaultLimit: true },
+        update: {},
+      })
+      if (["suspended", "closed"].includes(account.status)) throw new PosError("La cuenta de crédito del cliente está bloqueada", 409)
+      const limit = account.useDefaultLimit ? policy.defaultLimit : account.creditLimit
+      const balanceAfter = round2(Number(account.currentBalance) + creditAmount)
+      if (limit != null && balanceAfter > Number(limit)) throw new PosError(`Límite de crédito excedido. Disponible: $${Math.max(0, Number(limit) - Number(account.currentBalance)).toFixed(2)}`, 409)
+      await tx.customerCredit.update({ where: { customerId: payload.customerId }, data: { currentBalance: balanceAfter, status: "active" } })
+      await tx.creditTransaction.create({
+        data: {
+          creditId: account.id,
+          customerId: payload.customerId,
+          organizationId,
+          type: "charge",
+          amount: creditAmount,
+          balanceAfter,
+          description: `Venta POS #${sale.saleNumber}`,
+          referenceType: "sale",
+          referenceId: sale.id,
+          dueDate: new Date(Date.now() + policy.maxDaysToPay * 86400000),
+        },
+      })
+    }
+
     // Loyalty: ganar y/o canjear puntos (6.7 / 6.10).
     // Si la venta es a crédito y la política indica que el crédito NO genera puntos, suprimir.
     let effectivePointsEarned = payload.pointsEarned

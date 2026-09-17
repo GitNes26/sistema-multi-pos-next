@@ -218,7 +218,7 @@ export function HomeClient() {
       <HeroParallaxCard points={data.points} />
 
       {/* Reservar mesa — accesible desde el inicio del portal */}
-      <motion.section variants={item}>
+      {(data.businessMode === "food_service" || data.businessMode === "hybrid") && <motion.section variants={item}>
         <Link
           href="/portal/reservations"
           className="flex items-center gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/10 via-transparent to-amber-500/10 p-3.5 shadow-sm transition active:scale-[0.99]"
@@ -234,7 +234,7 @@ export function HomeClient() {
           </div>
           <ArrowRight className="size-4 text-muted-foreground" />
         </Link>
-      </motion.section>
+      </motion.section>}
 
       {/* Pedidos activos */}
       {activeOrders.length > 0 && (

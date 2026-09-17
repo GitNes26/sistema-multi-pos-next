@@ -25,6 +25,11 @@ export interface DescriptionInput {
   weekdays?: number[] | string | null;
   startTime?: string | null;
   endTime?: string | null;
+  couponCode?: string | null;
+  requiresCustomer?: boolean;
+  exclusive?: boolean;
+  maxUses?: number | null;
+  maxUsesPerCustomer?: number | null;
 }
 
 function parseWeekdays(value: number[] | string | null | undefined): number[] {
@@ -69,7 +74,7 @@ export function generateDescriptionFinal(data: DescriptionInput): string {
       break;
     case "buy_x_get_y":
       parts.push(
-        `Lleva ${buyQ} y llévate ${getQ} gratis en ${SCOPE_LABELS[scope] ?? scope}`,
+        `Lleva ${buyQ} y recibe ${getQ} gratis dentro de cada paquete en ${SCOPE_LABELS[scope] ?? scope}`,
       );
       break;
     case "free_item":
@@ -108,6 +113,11 @@ export function generateDescriptionFinal(data: DescriptionInput): string {
   // 3. Conditions
   if (minAmount > 0) parts.push(`compra mínima de $${minAmount}`);
   if (minQty > 0) parts.push(`mínimo ${minQty} pieza(s)`);
+  if (data.couponCode) parts.push(`usa el cupón ${data.couponCode}`);
+  if (data.requiresCustomer) parts.push("exclusiva para clientes registrados");
+  if (data.maxUsesPerCustomer) parts.push(`máximo ${data.maxUsesPerCustomer} uso(s) por cliente`);
+  if (data.maxUses) parts.push(`limitada a ${data.maxUses} uso(s) en total`);
+  if (data.exclusive) parts.push("no se combina con otras promociones");
 
   return parts.join(". ") + ".";
 }

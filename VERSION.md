@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.19.1.0] — 2026-09-17
+- **Tipo:** `fix` (Patch)
+- fix: se implemento el modulo de proveedores y se corrigieron detalles, incluso de cretido y de formularios
+
 ### [0.19.0.0] — 2026-09-17
 - **Tipo:** `feat` (Minor)
 - feat: se implemento el modulo de proveedores

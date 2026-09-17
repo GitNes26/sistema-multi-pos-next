@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Eye, PackageCheck, Radio, Search } from "lucide-react"
+import { Eye, Radio, Search } from "lucide-react"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -188,24 +188,11 @@ export function OrdersPage({
             >
               <Eye className="size-3.5" /> Ver
             </Button>
-            {canManage &&
-              row.original.status !== "cancelled" &&
-              row.original.status !== "delivered" && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={() =>
-                    router.push(`/admin/orders/${row.original.id}/prepare`)
-                  }
-                >
-                  <PackageCheck className="size-3.5" /> Preparar
-                </Button>
-              )}
           </div>
         ),
       },
     ],
-    [canManage, router]
+    []
   )
 
   return (

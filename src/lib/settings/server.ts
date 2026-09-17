@@ -278,6 +278,9 @@ export async function getRolePermissions(roleId: string): Promise<string[]> {
 }
 
 export async function setRolePermissions(roleId: string, keys: string[]): Promise<{ ok: boolean }> {
+  const role = await prisma.role.findUnique({ where: { id: roleId }, select: { isSystem: true } });
+  if (!role) throw new Error("Rol no encontrado");
+  if (role.isSystem) throw new Error("Los roles del sistema son de solo lectura");
   const valid = new Set(PERMISSIONS.map((p) => p.key));
   const filtered = keys.filter((k) => valid.has(k as never));
   await prisma.$transaction([
@@ -334,6 +337,9 @@ export async function updateRole(
   roleId: string,
   input: { name?: string; description?: string | null; global?: boolean }
 ): Promise<{ ok: boolean }> {
+  const current = await prisma.role.findUnique({ where: { id: roleId }, select: { isSystem: true } });
+  if (!current) throw new Error("Rol no encontrado");
+  if (current.isSystem) throw new Error("Los roles del sistema son de solo lectura");
   const data: Record<string, unknown> = {};
   if (input.name !== undefined) data.name = input.name.trim();
   if (input.description !== undefined) data.description = input.description;

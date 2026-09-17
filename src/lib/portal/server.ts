@@ -401,6 +401,7 @@ export interface PortalCombo {
 }
 
 export interface PortalHomeData {
+  businessMode: string | null
   points: number
   promotions: {
     id: string
@@ -563,6 +564,7 @@ export async function getPortalHome(
   )
 
   return {
+    businessMode: bm,
     points: toNum(customer?.points ?? null),
     promotions: promotions.map((p) => ({
       id: p.id,

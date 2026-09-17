@@ -185,6 +185,11 @@ function generateDescriptionFinal(data: Record<string, unknown>): string {
     endTime: (data.endTime as string) || null,
     startsAt: (data.startsAt as string) || null,
     endsAt: (data.endsAt as string) || null,
+    couponCode: (data.couponCode as string) || null,
+    requiresCustomer: Boolean(data.requiresCustomer),
+    exclusive: Boolean(data.exclusive),
+    maxUses: data.maxUses ? Number(data.maxUses) : null,
+    maxUsesPerCustomer: data.maxUsesPerCustomer ? Number(data.maxUsesPerCustomer) : null,
   });
 }
 
@@ -232,6 +237,12 @@ function buildCreateData(organizationId: string, data: Record<string, unknown>) 
   const scope = (data.scope as $Enums.PromoScope) ?? "order";
   if (!BENEFITS.includes(benefit)) throw new CrudError("Tipo de beneficio inválido", 400, "benefit");
   if (!SCOPES.includes(scope)) throw new CrudError("Alcance inválido", 400, "scope");
+  if (benefit === "buy_x_get_y") {
+    const buy = Number(data.buyQuantity ?? 0);
+    const free = Number(data.getQuantity ?? 0);
+    if (!Number.isInteger(buy) || buy < 2) throw new CrudError("Lleva X debe ser un entero de al menos 2", 400, "buyQuantity");
+    if (!Number.isInteger(free) || free < 1 || free >= buy) throw new CrudError("Las unidades gratis deben ser un entero menor que Lleva X", 400, "getQuantity");
+  }
 
   const weekdays = Array.isArray(data.weekdays) ? data.weekdays : [];
   const validWeekdays = weekdays

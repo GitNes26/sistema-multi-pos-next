@@ -27,6 +27,11 @@ export function PromotionDescriptionPreview({
       weekdays: Array.isArray(values.weekdays) ? values.weekdays : null,
       startTime: (values.startTime as string) || null,
       endTime: (values.endTime as string) || null,
+      couponCode: (values.couponCode as string) || null,
+      requiresCustomer: Boolean(values.requiresCustomer),
+      exclusive: Boolean(values.exclusive),
+      maxUses: values.maxUses ? Number(values.maxUses) : null,
+      maxUsesPerCustomer: values.maxUsesPerCustomer ? Number(values.maxUsesPerCustomer) : null,
     };
     return generateDescriptionFinal(input);
   }, [
@@ -42,6 +47,11 @@ export function PromotionDescriptionPreview({
     values.weekdays,
     values.startTime,
     values.endTime,
+    values.couponCode,
+    values.requiresCustomer,
+    values.exclusive,
+    values.maxUses,
+    values.maxUsesPerCustomer,
   ]);
 
   return (

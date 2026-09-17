@@ -143,12 +143,18 @@ function promoDiscountAmount(
     }
     case "buy_x_get_y": {
       if (!p.buyQuantity) return 0
-      return round2(
-        applicable.reduce((acc, l) => {
-          const cycles = Math.floor(l.qty / (p.buyQuantity + p.getQuantity))
-          return acc + cycles * p.getQuantity * l.unitPrice
-        }, 0)
-      )
+      // Forma paquetes con todas las líneas elegibles y regala primero las
+      // unidades de menor precio. Así funciona 2x1 incluso si el carrito tiene
+      // dos productos/variantes distintos dentro del mismo alcance.
+      let freeUnits = Math.floor(baseQty / p.buyQuantity) * p.getQuantity
+      let discount = 0
+      for (const line of [...applicable].sort((a, b) => a.unitPrice - b.unitPrice)) {
+        if (freeUnits <= 0) break
+        const units = Math.min(Math.floor(line.qty), freeUnits)
+        discount += units * line.unitPrice
+        freeUnits -= units
+      }
+      return round2(discount)
     }
     case "free_item": {
       const cheapest = applicable.reduce(

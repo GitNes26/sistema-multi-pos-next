@@ -11,7 +11,9 @@ export async function GET() {
   if ("response" in guard) return guard.response;
 
   try {
-    const roles = await listRoles(guard.organizationId);
+    const roles = (await listRoles(guard.organizationId)).filter((role) =>
+      guard.session.user.role === "superadmin" || !["system-admin", "system-superadmin"].includes(role.id)
+    );
     return NextResponse.json({ ok: true, roles });
   } catch (err) {
     return settingsErrorResponse(err);

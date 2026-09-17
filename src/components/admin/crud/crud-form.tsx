@@ -88,6 +88,12 @@ function buildYupSchema(fields: CrudField[]) {
         : yup.boolean().optional()
       continue
     }
+    if (f.type === "image") {
+      shape[f.key] = f.required
+        ? yup.string().nullable().required(f.requiredMessage || `${f.label} es obligatorio`)
+        : yup.string().nullable().optional()
+      continue
+    }
 
     // text / textarea / select
     let schema = yup.string()
