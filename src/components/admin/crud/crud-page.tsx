@@ -10,6 +10,7 @@ import {
   FileSpreadsheet,
   ImagePlus,
   Layers,
+  Layers3,
   Loader2,
   Package,
   PackagePlus,
@@ -57,6 +58,8 @@ import {
 } from "./crud-config"
 import { ThumbImage } from "@/components/base/thumb-image"
 import { Switch } from "@/components/ui/switch"
+import { BulkCategoriesDialog } from "./bulk-categories-dialog"
+import { cn } from "@/lib/utils"
 
 interface CrudPageProps {
   moduleKey: string
@@ -173,6 +176,7 @@ export function CrudPage({
     unknown
   > | null>(null)
   const [bulkImagesOpen, setBulkImagesOpen] = useState(false)
+  const [bulkCategoriesOpen, setBulkCategoriesOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -796,6 +800,9 @@ export function CrudPage({
                   Imágenes
                 </TooltipButton>
               )}
+              {moduleKey === "categories" && (
+                <Button variant="outline" size="sm" onClick={() => setBulkCategoriesOpen(true)}><Layers3 className="size-4" />Agregar varias</Button>
+              )}
               {isExcelModule(moduleKey) && (
                 <>
                   <Button
@@ -1035,12 +1042,13 @@ export function CrudPage({
           if (!next) setRecipeProduct(null)
         }}
       />
+      <BulkCategoriesDialog open={bulkCategoriesOpen} onOpenChange={setBulkCategoriesOpen} onComplete={() => void load()} />
 
       <DialogComponent
         open={preview !== null}
         onOpenChange={(o) => !o && (setPreview(null), setPendingFile(null))}
         title="Vista previa de importación"
-        description={preview ? `Se importarán ${preview.total} fila(s).` : ""}
+        description={preview ? `${preview.valid} listas para importar · ${preview.invalid} requieren corrección.` : ""}
         className="max-w-[90vw]"
         footer={
           <>
@@ -1053,7 +1061,7 @@ export function CrudPage({
             <Button
               onClick={confirmImport}
               disabled={
-                excelBusy !== null || (preview?.missingColumns.length ?? 0) > 0
+                excelBusy !== null || (preview?.missingColumns.length ?? 0) > 0 || (preview?.invalid ?? 0) > 0 || (preview?.valid ?? 0) === 0
               }
             >
               {excelBusy === "import" ? (
@@ -1084,12 +1092,19 @@ export function CrudPage({
           </p>
         )}
 
+        {preview && preview.invalid > 0 && (
+          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+            Corrige las {preview.invalid} filas marcadas y vuelve a seleccionar el archivo. Ningún registro se importará mientras la vista previa tenga errores.
+          </div>
+        )}
+
         {preview && preview.sample.length > 0 && (
           <div className="max-h-72 overflow-auto rounded-lg border">
             <table className="w-full text-left text-sm">
               <thead className="sticky top-0 bg-muted">
                 <tr>
                   <th className="px-2 py-1.5 font-medium">Fila</th>
+                  <th className="px-2 py-1.5 font-medium">Validación</th>
                   {preview.headers.map((h) => (
                     <th
                       key={h}
@@ -1102,9 +1117,12 @@ export function CrudPage({
               </thead>
               <tbody>
                 {preview.sample.map((r) => (
-                  <tr key={r.line} className="border-t">
+                  <tr key={r.line} className={cn("border-t", r.errors.length > 0 && "bg-destructive/5")}>
                     <td className="px-2 py-1 text-muted-foreground">
                       {r.line}
+                    </td>
+                    <td className="min-w-52 px-2 py-1">
+                      {r.errors.length ? <span className="text-xs text-destructive">{r.errors.join(" · ")}</span> : <span className="text-xs text-emerald-700">Lista</span>}
                     </td>
                     {r.cells.map((c, i) => (
                       <td key={i} className="max-w-40 truncate px-2 py-1">

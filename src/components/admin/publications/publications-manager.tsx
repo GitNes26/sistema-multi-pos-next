@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import * as yup from "yup";
-import { AlertCircle, FileText, Megaphone, Pencil, Plus, Trash2, Heading } from "lucide-react";
+import { AlertCircle, Check, FileText, Megaphone, Palette, Pencil, Plus, Trash2, Heading } from "lucide-react";
 import { publicationsApi } from "@/lib/publications/client";
 import {
   PUBLICATION_TYPES,
@@ -26,6 +26,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DialogComponent } from "@/components/ui/dialog";
 import { useFocusInvalid } from "@/hooks/use-focus-invalid";
+import { PUBLICATION_DESIGNS, publicationDesign } from "@/lib/publications/designs";
+import { cn } from "@/lib/utils";
 
 const TYPE_COLORS: Record<string, string> = {
   product_new: "bg-emerald-500 text-white",
@@ -43,6 +45,7 @@ const EMPTY_FORM: PublicationInput & { id?: string } = {
   publishedAt: null,
   startsAt: null,
   endsAt: null,
+  metadata: { designId: "general" },
 };
 
 export function PublicationsManager() {
@@ -79,6 +82,7 @@ export function PublicationsManager() {
       publishedAt: p.publishedAt,
       startsAt: p.startsAt,
       endsAt: p.endsAt,
+      metadata: { designId: p.designId ?? "general" },
     });
   };
 
@@ -240,11 +244,48 @@ export function PublicationsManager() {
                 id="publication-type"
                 label="Tipo"
                 value={form.type}
-                onChange={(v) => setForm({ ...form, type: v as PublicationKind })}
+                onChange={(v) => {
+                  const type = v as PublicationKind;
+                  const designId = PUBLICATION_DESIGNS.find((design) => design.type === type)?.id ?? "general";
+                  setForm({ ...form, type, metadata: { ...(form.metadata ?? {}), designId } });
+                }}
                 options={PUBLICATION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
                 searchable={false}
                 clearable={false}
               />
+              {!form.imageUrl && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Palette className="size-4 text-muted-foreground" />
+                    <Label>Diseño rápido</Label>
+                    <span className="text-xs text-muted-foreground">Se usa cuando no subes una imagen</span>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {PUBLICATION_DESIGNS.filter((design) => design.type === form.type).map((design) => {
+                      const selected = (form.metadata as { designId?: string } | null)?.designId === design.id;
+                      return (
+                        <button
+                          key={design.id}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => setForm({ ...form, title: form.title || design.title, content: form.content || design.content, metadata: { ...(form.metadata ?? {}), designId: design.id } })}
+                          className={cn("relative min-h-28 overflow-hidden rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", design.className, selected && "ring-2 ring-primary ring-offset-2")}
+                        >
+                          {selected && <Check className="absolute right-2 top-2 size-4" />}
+                          <span className={cn("inline-flex rounded-lg px-2 py-1 text-xs font-semibold", design.accentClassName)}>{design.name}</span>
+                          <p className="mt-3 line-clamp-1 text-sm font-semibold">{form.title || design.title}</p>
+                          <p className="mt-1 line-clamp-2 text-xs opacity-80">{form.content || design.content}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className={cn("rounded-xl p-4", publicationDesign((form.metadata as { designId?: string } | null)?.designId).className)}>
+                    <span className={cn("inline-flex rounded-lg px-2 py-1 text-xs font-semibold", publicationDesign((form.metadata as { designId?: string } | null)?.designId).accentClassName)}>Vista previa</span>
+                    <p className="mt-3 font-semibold">{form.title || "Título de la publicación"}</p>
+                    <p className="mt-1 text-sm opacity-80">{form.content || "Aquí aparecerá el contenido del aviso."}</p>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <DatePicker
                   id="publication-startsAt"

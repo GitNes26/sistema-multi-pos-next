@@ -68,6 +68,8 @@ Aquí se da de alta todo lo que vendes. Por producto eliges:
 - **Categorías:** agrupan productos (Bebidas, Postres…) y pueden tener subcategorías.
   Cada categoría pertenece a una empresa. Si un producto queda sin una categoría válida,
   sigue disponible en el POS dentro de **Sin categoría** para que puedas reasignarlo.
+  Usa **Agregar varias** para elegir un giro —abarrotes, ferretería, carnicería,
+  restaurante y otros—, filtrar y crear únicamente las categorías seleccionadas.
 - **Medidas:** piezas, kilos, litros y sus conversiones.
   Los tipos aparecen en español. Si un dato no es válido, el formulario marca el campo
   exacto y lleva el foco hasta él para que puedas corregirlo.
@@ -75,6 +77,8 @@ Aquí se da de alta todo lo que vendes. Por producto eliges:
   (2x1…) y `Producto gratis`. Cada promoción se limita por días, horarios, categoría o
   producto, y se activa sola en caja y en la app del cliente.
 - **Publicaciones:** avisos y promociones que ven tus clientes en la app (novedades, horarios).
+  Si no subes una imagen, puedes elegir uno de diez diseños rápidos agrupados por
+  producto nuevo, promoción o aviso. La vista previa usa el título y contenido actuales.
 
 ### Clientes, Empleados y Puestos
 - **Clientes:** nombre, teléfono, correo, dirección, puntos y número de cliente generado automáticamente. El cliente también ve ese número en su perfil del Portal. Desde aquí se ve su crédito.
@@ -95,6 +99,14 @@ Para tiendas, restaurantes e híbridos. En una sola pantalla manejas:
   **Plantilla**, lee la hoja **Instrucciones**, copia los identificadores desde
   **Catálogo**, escribe la existencia final y después pulsa **Importar**. Descarga una
   plantilla nueva cada vez para incluir los productos actuales.
+- Las importaciones de Productos, Categorías y Clientes muestran primero una vista previa.
+  Las columnas dependientes —categoría, categoría padre y unidades— incluyen listas con
+  los valores vigentes. El sistema marca por fila campos faltantes, formatos inválidos,
+  dependencias inexistentes y códigos repetidos; corrige todos antes de confirmar.
+- Para Inventario, **Captura rápida** permite buscar y editar existencia y mínimo de
+  muchos productos en una cuadrícula y guardar únicamente las filas modificadas. Para
+  lotes mayores usa la plantilla Excel: también se valida completa antes de reemplazar
+  las existencias de la sucursal o CEDIS seleccionado.
 - Desde **Productos**, el botón de inventario de cada registro abre esta pantalla con
   el nombre del producto ya buscado, listo para registrar su entrada o mínimo.
 
@@ -193,3 +205,19 @@ La política general del crédito se configura en **Ajustes → Crédito** (ver 
 La campana del panel avisa en vivo (con sonido) sobre: ventas completadas, pedidos nuevos
 y sus cambios, stock bajo y créditos por vencer. Puedes ver solo las no leídas y marcar
 todo como leído.
+
+## 2.11 Proveedores y compras
+
+La página **Operación → Proveedores y compras** concentra el abastecimiento completo:
+
+1. Registra el proveedor y sus condiciones comerciales.
+2. Usa **Vincular producto** para guardar el SKU del proveedor, costo, mínimo de compra y proveedor preferido.
+3. Crea una cotización y agrega productos o variantes. Usa **Crear orden** para conservar sus partidas.
+4. Selecciona la sucursal o CEDIS que recibirá la mercancía y revisa cantidades, costos e impuestos.
+5. Un usuario con permiso de aprobación confirma la orden; después puede marcarse como enviada.
+6. En **Recibir**, captura solamente la mercancía entregada. El sistema admite entregas parciales, muestra lo pendiente y evita recibir de más.
+7. Al confirmar, las existencias se actualizan y la entrada aparece en **Historial de recepción** con su folio y orden de origen.
+
+Los permisos de consulta, gestión, aprobación y recepción pueden asignarse por separado para conservar control interno.
+
+Pulsa **Guía paso a paso** dentro del módulo, o **Realiza tu primera compra** en las acciones guiadas del panel, para recorrer el flujo sobre los formularios reales. La guía no crea pantallas paralelas: resalta la siguiente acción y conserva el avance al cambiar de pestaña o página.

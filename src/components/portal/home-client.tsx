@@ -30,6 +30,7 @@ import { TapScale } from "@/components/shared/tap-scale"
 import { PermissionSlider } from "@/components/shared/permission-slider"
 import { usePortalPermissions, type PortalPermissionType } from "@/hooks/use-portal-permissions"
 import { cn } from "@/lib/utils"
+import { publicationDesign } from "@/lib/publications/designs"
 import { STAGGER_FADE_UP } from "@/lib/animation-tokens"
 import { DetailSheet, type DetailItem } from "@/components/portal/detail-sheet"
 import { PortalComboCard } from "@/components/portal/combo-card"
@@ -310,9 +311,9 @@ export function HomeClient() {
                     </div>
                   </>
                 ) : (
-                  <div className="flex h-24 w-72 flex-col justify-center border border-border/60 bg-card p-4 shadow-sm">
+                  <div className={cn("flex h-24 w-72 flex-col justify-center border border-border/60 p-4", publicationDesign(pub.designId).className)}>
                     <Badge
-                      className={cn("w-fit", PUB_TYPE_COLORS[pub.type] ?? "bg-secondary")}
+                      className={cn("w-fit", publicationDesign(pub.designId).accentClassName)}
                     >
                       {PUB_TYPE_LABELS[pub.type] ?? pub.type}
                     </Badge>
@@ -320,7 +321,7 @@ export function HomeClient() {
                       {pub.title}
                     </p>
                     {pub.content && (
-                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                      <p className="mt-0.5 line-clamp-2 text-xs opacity-80">
                         {pub.content}
                       </p>
                     )}
@@ -361,12 +362,12 @@ export function HomeClient() {
                     </p>
                   )}
                   {p.description && p.description !== p.descriptionFinal && (
-                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                    <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
                       {p.description}
                     </p>
                   )}
                   {(p.startsAt || p.endsAt) && (
-                    <div className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground/70">
+                    <div className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground/70">
                       <Calendar className="size-3" />
                       <span>
                         {p.startsAt && p.endsAt
@@ -438,7 +439,7 @@ export function HomeClient() {
                       <ShoppingBag className="size-5 text-muted-foreground/30" />
                     )}
                   </div>
-                  <span className="line-clamp-2 text-[11px] leading-tight">
+                  <span className="line-clamp-2 text-xs leading-tight">
                     {p.name}
                   </span>
                 </Link>

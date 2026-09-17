@@ -1,5 +1,5 @@
-import type { BusinessMode } from "@/lib/auth/options";
-import type { PermissionKey } from "@/lib/auth/permission-keys";
+import type { BusinessMode } from "@/lib/auth/options"
+import type { PermissionKey } from "@/lib/auth/permission-keys"
 
 // ── Business Modes ─────────────────────────────────────────────────
 // Fuente única de verdad para la presentación de cada modo de negocio:
@@ -13,15 +13,15 @@ import type { PermissionKey } from "@/lib/auth/permission-keys";
 // agendamiento/reservaciones cuando esas páginas existan.
 
 export interface BusinessModeInfo {
-  id: BusinessMode;
+  id: BusinessMode
   /** Nombre corto para badges y encabezados. */
-  label: string;
+  label: string
   /** Descripción para que el usuario sepa qué incluye su tipo de negocio. */
-  description: string;
+  description: string
   /** Características visibles (chips) en el selector y la tarjeta del dashboard. */
-  features: string[];
+  features: string[]
   /** Clases de gradiente para el icono. */
-  gradient: string;
+  gradient: string
 }
 
 export const BUSINESS_MODES: Record<BusinessMode, BusinessModeInfo> = {
@@ -107,7 +107,7 @@ export const BUSINESS_MODES: Record<BusinessMode, BusinessModeInfo> = {
     ],
     gradient: "from-rose-500 to-pink-600",
   },
-};
+}
 
 export const BUSINESS_MODE_LIST: BusinessModeInfo[] = [
   BUSINESS_MODES.retail,
@@ -115,10 +115,10 @@ export const BUSINESS_MODE_LIST: BusinessModeInfo[] = [
   BUSINESS_MODES.services,
   BUSINESS_MODES.rental,
   BUSINESS_MODES.hybrid,
-];
+]
 
 export function businessModeInfo(mode: BusinessMode): BusinessModeInfo {
-  return BUSINESS_MODES[mode] ?? BUSINESS_MODES.retail;
+  return BUSINESS_MODES[mode] ?? BUSINESS_MODES.retail
 }
 
 // ── Wizards por modo de negocio ────────────────────────────────────
@@ -130,6 +130,7 @@ export type WizardActionKind =
   | "product"
   | "combos"
   | "inventory"
+  | "purchasing"
   | "tables"
   | "kds"
   | "agenda"
@@ -139,18 +140,18 @@ export type WizardActionKind =
   | "promotion"
   | "payments"
   | "company"
-  | "portal";
+  | "portal"
 
 export interface WizardActionDef {
-  kind: WizardActionKind;
-  title: string;
-  description: string;
+  kind: WizardActionKind
+  title: string
+  description: string
   /** Sección real a la que se navega para llenar el formulario existente. */
-  href: string;
+  href: string
   /** Permiso requerido para ver/abrir la acción. */
-  permission?: PermissionKey;
+  permission?: PermissionKey
   /** Modos de negocio que incluyen esta acción. */
-  modes: BusinessMode[];
+  modes: BusinessMode[]
 }
 
 export const WIZARD_ACTIONS: Record<WizardActionKind, WizardActionDef> = {
@@ -177,6 +178,14 @@ export const WIZARD_ACTIONS: Record<WizardActionKind, WizardActionDef> = {
     href: "/admin/inventory",
     permission: "inventory.manage",
     modes: ["retail", "food_service", "hybrid"],
+  },
+  purchasing: {
+    kind: "purchasing",
+    title: "Realiza tu primera compra",
+    description: "Proveedor, cotización, orden y recepción en inventario",
+    href: "/admin/purchasing",
+    permission: "purchasing.manage",
+    modes: ["retail", "food_service", "services", "rental", "hybrid"],
   },
   tables: {
     kind: "tables",
@@ -205,7 +214,8 @@ export const WIZARD_ACTIONS: Record<WizardActionKind, WizardActionDef> = {
   reservation: {
     kind: "reservation",
     title: "Configura tus reservaciones",
-    description: "Revisa el calendario de disponibilidad y aparta la primera renta",
+    description:
+      "Revisa el calendario de disponibilidad y aparta la primera renta",
     href: "/reservaciones",
     permission: "reservations.manage",
     modes: ["rental", "hybrid"],
@@ -257,13 +267,24 @@ export const WIZARD_ACTIONS: Record<WizardActionKind, WizardActionDef> = {
     href: "/portal",
     modes: ["retail", "food_service", "services", "rental", "hybrid"],
   },
-};
+}
 
 /** Orden de los wizards por modo de negocio (orden lógico de puesta en marcha). */
 export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
-  retail: ["product", "inventory", "promotion", "delivery", "credit", "payments", "company", "portal"],
+  retail: [
+    "product",
+    "inventory",
+    "purchasing",
+    "promotion",
+    "delivery",
+    "credit",
+    "payments",
+    "company",
+    "portal",
+  ],
   food_service: [
     "product",
+    "purchasing",
     "combos",
     "tables",
     "kds",
@@ -274,14 +295,31 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "company",
     "portal",
   ],
-  services: ["product", "agenda", "promotion", "payments", "company", "portal"],
-  rental: ["product", "reservation", "promotion", "payments", "company", "portal"],
+  services: [
+    "product",
+    "purchasing",
+    "agenda",
+    "promotion",
+    "payments",
+    "company",
+    "portal",
+  ],
+  rental: [
+    "product",
+    "purchasing",
+    "reservation",
+    "promotion",
+    "payments",
+    "company",
+    "portal",
+  ],
   hybrid: [
     "product",
     "combos",
     "tables",
     "kds",
     "inventory",
+    "purchasing",
     "delivery",
     "promotion",
     "credit",
@@ -289,4 +327,4 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "company",
     "portal",
   ],
-};
+}

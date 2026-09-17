@@ -1,6 +1,6 @@
 {
   "name": "sistema-multi-pos-react-node-chadcnui",
-  "version": "0.18.2.0",
+  "version": "0.19.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -13,6 +13,7 @@
     "test:prepare": "node scripts/test-env.mjs prepare",
     "test:serve": "node scripts/test-env.mjs serve",
     "test:integration": "node scripts/test-env.mjs integration",
+    "test:purchasing": "node scripts/test-env.mjs purchasing-integration demo",
     "test:e2e": "node scripts/test-env.mjs e2e",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "db:generate": "prisma generate",

@@ -428,6 +428,7 @@ export interface PortalHomeData {
     imageUrl: string | null
     type: string
     publishedAt: string | null
+    designId: string | null
   }[]
   combos: PortalCombo[]
 }
@@ -605,6 +606,7 @@ export async function getPortalHome(
       imageUrl: p.imageUrl,
       type: p.type,
       publishedAt: p.publishedAt?.toISOString() ?? null,
+      designId: typeof (p.metadata as { designId?: unknown } | null)?.designId === "string" ? String((p.metadata as { designId: string }).designId) : null,
     })),
     combos: combosRaw.map((c) => {
       const originalPrice = c.items.reduce((sum, ci) => {

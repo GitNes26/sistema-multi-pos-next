@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.19.0.0] — 2026-09-17
+- **Tipo:** `feat` (Minor)
+- feat: se implemento el modulo de proveedores
+
 ### [0.18.2.0] — 2026-09-15
 - **Tipo:** `fix` (Patch)
 - fix:correccion de detalles de registro

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan de plantilla administrativa"
+  short_description: "Planifica una base administrativa reutilizable"
+  default_prompt: "Analiza este proyecto como referencia y crea un plan para convertir sus patrones transversales en una plantilla administrativa reutilizable, separando el núcleo común de las reglas específicas del dominio."

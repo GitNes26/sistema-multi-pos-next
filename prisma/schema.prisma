@@ -1096,6 +1096,178 @@ model InventoryMovement {
   @@map("inventory_movements")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PROVEEDORES Y COMPRAS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Supplier {
+  id             String   @id @default(cuid())
+  organizationId String
+  code           String
+  businessName   String
+  tradeName      String?
+  taxId          String?
+  contactName    String?
+  email          String?
+  phone          String?
+  address        String?
+  paymentTerms   String?
+  leadTimeDays   Int      @default(0)
+  notes          String?  @db.Text
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  products SupplierProduct[]
+  quotes   PurchaseQuote[]
+  orders   PurchaseOrder[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId, businessName])
+  @@map("suppliers")
+}
+
+model SupplierProduct {
+  id             String   @id @default(cuid())
+  organizationId String
+  supplierId     String
+  productId      String
+  variantId      String?
+  supplierSku    String?
+  unitCost       Decimal  @default(0) @db.Decimal(12, 2)
+  minimumOrder   Decimal  @default(1) @db.Decimal(12, 3)
+  leadTimeDays   Int?
+  isPreferred    Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, productId, variantId])
+  @@index([organizationId, productId, variantId])
+  @@map("supplier_products")
+}
+
+model PurchaseQuote {
+  id             String    @id @default(cuid())
+  organizationId String
+  supplierId     String
+  folio          String
+  status         String    @default("draft")
+  requestedAt    DateTime  @default(now())
+  validUntil     DateTime?
+  notes          String?   @db.Text
+  createdBy      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  supplier Supplier            @relation(fields: [supplierId], references: [id])
+  items    PurchaseQuoteItem[]
+
+  @@unique([organizationId, folio])
+  @@index([organizationId, status])
+  @@map("purchase_quotes")
+}
+
+model PurchaseQuoteItem {
+  id          String  @id @default(cuid())
+  quoteId     String
+  productId   String
+  variantId   String?
+  description String
+  quantity    Decimal @db.Decimal(12, 3)
+  unitCost    Decimal @default(0) @db.Decimal(12, 2)
+  taxRate     Decimal @default(0) @db.Decimal(5, 4)
+
+  quote PurchaseQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@map("purchase_quote_items")
+}
+
+model PurchaseOrder {
+  id             String       @id @default(cuid())
+  organizationId String
+  supplierId     String
+  quoteId        String?
+  folio          String
+  status         String       @default("draft")
+  locationType   LocationType
+  locationId     String
+  expectedAt     DateTime?
+  subtotal       Decimal      @default(0) @db.Decimal(12, 2)
+  tax            Decimal      @default(0) @db.Decimal(12, 2)
+  total          Decimal      @default(0) @db.Decimal(12, 2)
+  notes          String?      @db.Text
+  createdBy      String?
+  approvedBy     String?
+  approvedAt     DateTime?
+  sentAt         DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  supplier Supplier            @relation(fields: [supplierId], references: [id])
+  items    PurchaseOrderItem[]
+  receipts GoodsReceipt[]
+
+  @@unique([organizationId, folio])
+  @@index([organizationId, status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id               String  @id @default(cuid())
+  orderId          String
+  productId        String
+  variantId        String?
+  description      String
+  quantity         Decimal @db.Decimal(12, 3)
+  receivedQuantity Decimal @default(0) @db.Decimal(12, 3)
+  unitCost         Decimal @db.Decimal(12, 2)
+  taxRate          Decimal @default(0) @db.Decimal(5, 4)
+
+  order        PurchaseOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  receiptItems GoodsReceiptItem[]
+
+  @@index([orderId])
+  @@map("purchase_order_items")
+}
+
+model GoodsReceipt {
+  id             String   @id @default(cuid())
+  organizationId String
+  orderId        String
+  folio          String
+  receivedBy     String?
+  notes          String?  @db.Text
+  receivedAt     DateTime @default(now())
+
+  order PurchaseOrder      @relation(fields: [orderId], references: [id])
+  items GoodsReceiptItem[]
+
+  @@unique([organizationId, folio])
+  @@index([orderId])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItem {
+  id          String  @id @default(cuid())
+  receiptId   String
+  orderItemId String
+  inventoryId String
+  quantity    Decimal @db.Decimal(12, 3)
+  unitCost    Decimal @db.Decimal(12, 2)
+
+  receipt   GoodsReceipt      @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  orderItem PurchaseOrderItem @relation(fields: [orderItemId], references: [id])
+
+  @@index([receiptId])
+  @@map("goods_receipt_items")
+}
+
 model VariantPriceHistory {
   id             String   @id @default(cuid())
   organizationId String

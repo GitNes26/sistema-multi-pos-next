@@ -156,6 +156,12 @@ export const NAV_SECTIONS: NavSection[] = [
         feature: "inventory",
       },
       {
+        href: "/admin/purchasing",
+        label: "Proveedores y compras",
+        icon: Truck,
+        permission: "purchasing.view",
+      },
+      {
         href: "/admin/locations",
         label: "Sucursales",
         icon: MapPin,

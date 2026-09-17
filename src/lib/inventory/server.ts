@@ -350,6 +350,37 @@ export async function setMinThreshold(organizationId: string, inventoryId: strin
   return value;
 }
 
+export async function bulkUpdateInventory(
+  organizationId: string,
+  userId: string,
+  changes: { inventoryId: string; quantity: number; minThreshold: number }[]
+) {
+  if (!changes.length) throw new CrudError("No hay cambios para guardar", 400)
+  if (changes.length > 500) throw new CrudError("Guarda como máximo 500 productos por lote", 400)
+  const ids = [...new Set(changes.map((row) => row.inventoryId))]
+  if (ids.length !== changes.length) throw new CrudError("Hay productos repetidos en el lote", 400)
+  for (const row of changes) {
+    if (!Number.isFinite(row.quantity) || row.quantity < 0) throw new CrudError("La existencia debe ser igual o mayor que cero", 400)
+    if (!Number.isFinite(row.minThreshold) || row.minThreshold < 0) throw new CrudError("El mínimo debe ser igual o mayor que cero", 400)
+  }
+  const current = await prisma.inventory.findMany({ where: { organizationId, id: { in: ids } } })
+  if (current.length !== ids.length) throw new CrudError("Uno de los registros ya no está disponible", 409)
+  const byId = new Map(current.map((row) => [row.id, row]))
+  const employee = await performerFor(userId)
+  await prisma.$transaction(async (tx) => {
+    for (const change of changes) {
+      const before = byId.get(change.inventoryId)!
+      const quantity = Math.round(change.quantity * 1000) / 1000
+      const threshold = Math.round(change.minThreshold * 1000) / 1000
+      await tx.inventory.update({ where: { id: before.id }, data: { quantity, minThreshold: threshold } })
+      const delta = Math.round((quantity - num(before.quantity)) * 1000) / 1000
+      if (delta !== 0) await tx.inventoryMovement.create({ data: { organizationId, productId: before.productId, variantId: before.variantId, locationId: before.locationId, locationType: before.locationType, type: "adjustment", quantity: delta, unitId: before.unitId, reason: "Captura rápida de inventario", referenceId: before.id, employeeId: employee?.id ?? null, userId } })
+    }
+  })
+  await Promise.all(ids.map((id) => maybeNotifyLowStock(organizationId, id)))
+  return { updated: changes.length }
+}
+
 /** Transfiere stock entre ubicaciones (transfer_out en origen, transfer_in en destino). */
 export async function transferStock(
   organizationId: string,
@@ -1064,14 +1095,16 @@ export async function cancelRevision(organizationId: string, revisionId: string)
 export async function importInventoryStock(
   organizationId: string,
   userId: string,
-  input: { locationType: $Enums.LocationType; locationId: string; buffer: Buffer }
+  input: { locationType: $Enums.LocationType; locationId: string; buffer: Buffer; preview?: boolean }
 ): Promise<ImportResult> {
-  const { locationType, locationId, buffer } = input;
+  const { locationType, locationId, buffer, preview = false } = input;
+  await assertInventoryLocation(organizationId, locationType, locationId);
 
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer as unknown as ExcelJS.Buffer);
   const ws = wb.worksheets[0];
   if (!ws) throw new CrudError("El archivo no contiene hojas", 400);
+  if (ws.rowCount > 5001) throw new CrudError("El archivo supera el límite de 5000 productos", 400);
 
   const headers: string[] = [];
   type ParsedRow = { sku: string; barcode: string; name: string; quantity: number; line: number };
@@ -1097,6 +1130,11 @@ export async function importInventoryStock(
       line: rowNumber,
     });
   });
+  if (!headers.includes("cantidad")) throw new CrudError("Falta la columna requerida «Cantidad»", 400);
+  if (!["sku", "código de barras", "codigo de barras", "barcode", "nombre", "producto"].some((header) => headers.includes(header))) {
+    throw new CrudError("Incluye al menos una columna para identificar el producto: SKU, Código de barras o Nombre", 400);
+  }
+  if (items.length === 0) throw new CrudError("El archivo no contiene filas de inventario", 400);
 
   const variants = await prisma.productVariant.findMany({
     where: { organizationId },
@@ -1115,6 +1153,7 @@ export async function importInventoryStock(
 
   const employee = await performerFor(userId);
   const result: ImportResult = { ok: true, imported: 0, errors: [] };
+  const seenTargets = new Set<string>();
 
   for (const item of items) {
     if (!Number.isFinite(item.quantity) || item.quantity < 0) {
@@ -1148,6 +1187,17 @@ export async function importInventoryStock(
     }
 
     const quantity = Math.round(item.quantity * 1000) / 1000;
+    const targetKey = variantId ? `variant:${variantId}` : `product:${productId}`;
+    if (seenTargets.has(targetKey)) {
+      result.errors.push({ row: item.line, message: "El producto está repetido en el archivo" });
+      continue;
+    }
+    seenTargets.add(targetKey);
+
+    if (preview) {
+      result.imported += 1;
+      continue;
+    }
 
     try {
       let row = await prisma.inventory.findFirst({

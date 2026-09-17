@@ -10,6 +10,8 @@ import {
   FileSpreadsheet,
   Hash,
   Loader2,
+  ListChecks,
+  Save,
   ScanLine,
   Search,
   TriangleAlert,
@@ -35,10 +37,11 @@ import { InputGroupField } from "@/components/base/input-group-field";
 import { DatePicker } from "@/components/base/date-picker";
 import { FormCombobox } from "@/components/base/form-combobox";
 import { DataTable } from "@/components/base/data-table";
-import { crudApi, inventoryApi, type InventoryRow, type InventoryMovement, type InventoryRevision, type RevisionDetailData, type RevisionItem, type RevisionStatus } from "@/lib/api";
+import { crudApi, inventoryApi, type ExcelImportResult, type InventoryRow, type InventoryMovement, type InventoryRevision, type RevisionDetailData, type RevisionItem, type RevisionStatus } from "@/lib/api";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { playSound } from "@/lib/sounds";
 import { SlideToPay } from "@/components/shared/slide-to-pay";
+import { cn } from "@/lib/utils";
 
 interface InventoryPageProps {
   canManage: boolean;
@@ -604,17 +607,16 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
   const [activeRevision, setActiveRevision] = useState<RevisionDetailData | null>(null);
   const [newRevisionOpen, setNewRevisionOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importPreview, setImportPreview] = useState<ExcelImportResult | null>(null);
+  const [pendingImport, setPendingImport] = useState<File | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleImportFile = async (file: File) => {
     setImporting(true);
     try {
-      const result = await inventoryApi.importStock({ locationType, locationId, file });
-      const first = result.errors[0]
-        ? ` Primer error: fila ${result.errors[0].row} — ${result.errors[0].message}.`
-        : "";
-      swalToast(`Se importaron ${result.imported} ${result.imported === 1 ? "existencia" : "existencias"}.${first}`);
-      load();
+      const result = await inventoryApi.previewStockImport({ locationType, locationId, file });
+      setPendingImport(file);
+      setImportPreview(result);
     } catch (err) {
       swalError("No se pudo importar", err instanceof Error ? err.message : undefined);
     } finally {
@@ -623,10 +625,22 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
     }
   };
 
+  const confirmInventoryImport = async () => {
+    if (!pendingImport) return;
+    setImporting(true);
+    try {
+      const result = await inventoryApi.importStock({ locationType, locationId, file: pendingImport });
+      swalToast(`${result.imported} existencias actualizadas`);
+      setImportPreview(null); setPendingImport(null); load();
+    } catch (error) { swalError("No se pudo importar", error instanceof Error ? error.message : undefined); }
+    finally { setImporting(false); }
+  };
+
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [productType, setProductType] = useState("");
   const [lowOnly, setLowOnly] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   useEffect(() => {
     const productName = new URLSearchParams(window.location.search).get("q")?.trim();
@@ -823,6 +837,9 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
             )}
             {canManage && locationId && (
               <>
+                <Button variant="default" size="sm" onClick={() => setBulkOpen(true)} disabled={rows.length === 0}>
+                  <ListChecks className="size-4" /> Captura rápida
+                </Button>
                 <input
                   ref={importInputRef}
                   type="file"
@@ -1287,8 +1304,44 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
           onDone={load}
         />
       )}
+      <BulkInventoryDialog open={bulkOpen} onOpenChange={setBulkOpen} rows={rows} onDone={() => void load()} />
+      <DialogComponent open={importPreview !== null} onOpenChange={(next) => { if (!next) { setImportPreview(null); setPendingImport(null); } }} title="Revisar importación de inventario" description={importPreview ? `${importPreview.imported} filas válidas · ${importPreview.errors.length} con errores` : ""} footer={<><Button variant="outline" onClick={() => { setImportPreview(null); setPendingImport(null); }}>Cancelar</Button><Button onClick={() => void confirmInventoryImport()} disabled={importing || !importPreview?.imported || Boolean(importPreview?.errors.length)}>{importing && <Loader2 className="size-4 animate-spin" />}Confirmar importación</Button></>}>
+        {importPreview?.errors.length ? <div role="alert" className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><p className="font-medium">Corrige el archivo antes de importarlo:</p>{importPreview.errors.slice(0, 20).map((error) => <p key={`${error.row}-${error.message}`}>Fila {error.row}: {error.message}</p>)}</div> : <div className="rounded-xl border border-emerald-600/30 bg-emerald-500/5 p-3 text-sm text-emerald-700">El archivo está listo. Las cantidades reemplazarán la existencia actual de la ubicación seleccionada.</div>}
+      </DialogComponent>
     </>
   );
+}
+
+function BulkInventoryDialog({ open, onOpenChange, rows, onDone }: { open: boolean; onOpenChange: (open: boolean) => void; rows: InventoryRow[]; onDone: () => void }) {
+  const [query, setQuery] = useState("");
+  const [draft, setDraft] = useState<Record<string, { quantity: string; minThreshold: string }>>({});
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    setQuery("");
+    setDraft(Object.fromEntries(rows.map((row) => [row.id, { quantity: String(row.quantity), minThreshold: String(row.minThreshold) }])));
+  }, [open, rows]);
+  const filtered = rows.filter((row) => `${row.productName} ${row.variantName ?? ""} ${row.sku ?? ""} ${row.barcode ?? ""}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const changed = rows.filter((row) => {
+    const value = draft[row.id];
+    return value && (Number(value.quantity) !== row.quantity || Number(value.minThreshold) !== row.minThreshold);
+  });
+  const invalid = changed.some((row) => { const value = draft[row.id]; return !Number.isFinite(Number(value.quantity)) || Number(value.quantity) < 0 || !Number.isFinite(Number(value.minThreshold)) || Number(value.minThreshold) < 0; });
+  const save = async () => {
+    setSaving(true);
+    try {
+      await inventoryApi.bulkUpdate(changed.map((row) => ({ inventoryId: row.id, quantity: Number(draft[row.id].quantity), minThreshold: Number(draft[row.id].minThreshold) })));
+      swalToast(`${changed.length} productos actualizados`); onOpenChange(false); onDone();
+    } catch (error) { swalError("No se pudo guardar el lote", error instanceof Error ? error.message : undefined); }
+    finally { setSaving(false); }
+  };
+  return <DialogComponent open={open} onOpenChange={onOpenChange} icon={<ListChecks className="size-5" />} title="Captura rápida de inventario" description="Edita existencias y mínimos en una sola cuadrícula. Solo se guardarán las filas modificadas." size="full" bodyClassName="space-y-3" footer={<><span className="mr-auto text-sm text-muted-foreground">{changed.length} cambios</span><Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button onClick={() => void save()} disabled={!changed.length || invalid || saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Guardar cambios</Button></>}>
+    <InputGroupField value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar producto, variante, SKU o código…" leftIcon={<Search className="size-4" />} />
+    <div className="max-h-[65vh] overflow-auto rounded-xl border">
+      <table className="w-full min-w-[680px] text-sm"><thead className="sticky top-0 z-10 bg-muted"><tr><th className="px-3 py-2 text-left">Producto</th><th className="w-36 px-3 py-2 text-left">Existencia</th><th className="w-36 px-3 py-2 text-left">Mínimo</th><th className="w-24 px-3 py-2 text-left">Unidad</th></tr></thead><tbody>{filtered.map((row) => { const value = draft[row.id] ?? { quantity: String(row.quantity), minThreshold: String(row.minThreshold) }; const rowChanged = changed.some((item) => item.id === row.id); return <tr key={row.id} className={cn("border-t", rowChanged && "bg-primary/5")}><td className="px-3 py-2"><p className="font-medium">{row.productName}</p><p className="text-xs text-muted-foreground">{row.variantName ?? row.sku ?? row.barcode ?? "Producto a granel"}</p></td><td className="px-3 py-2"><Input type="number" min="0" step="0.001" value={value.quantity} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { ...value, quantity: event.target.value } }))} aria-label={`Existencia de ${row.productName}`} className="tabular-nums" /></td><td className="px-3 py-2"><Input type="number" min="0" step="0.001" value={value.minThreshold} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { ...value, minThreshold: event.target.value } }))} aria-label={`Mínimo de ${row.productName}`} className="tabular-nums" /></td><td className="px-3 py-2 text-muted-foreground">{row.unit ?? "pza"}</td></tr> })}</tbody></table>
+    </div>
+    {invalid && <p role="alert" className="text-sm text-destructive">Corrige los campos vacíos, negativos o no numéricos antes de guardar.</p>}
+  </DialogComponent>;
 }
 
 function NewRevisionDialog({

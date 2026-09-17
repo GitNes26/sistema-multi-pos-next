@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
     if (file.size > MAX_SIZE) {
       return NextResponse.json({ ok: false, error: "El archivo excede 10 MB" }, { status: 413 });
     }
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      return NextResponse.json({ ok: false, error: "Selecciona un archivo Excel .xlsx" }, { status: 415 });
+    }
     const locationType = (String(form.get("locationType") ?? "location")) as $Enums.LocationType;
     const locationId = String(form.get("locationId") ?? "");
     if (!locationId) {
@@ -29,11 +32,17 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await importInventoryStock(organizationId, userId, {
+    if (buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+      return NextResponse.json({ ok: false, error: "El archivo no es un Excel .xlsx válido" }, { status: 415 });
+    }
+    const preview = form.get("preview") === "true";
+    const params = {
       locationType,
       locationId,
       buffer,
-    });
+    };
+    const checked = await importInventoryStock(organizationId, userId, { ...params, preview: true });
+    const result = preview || checked.errors.length ? checked : await importInventoryStock(organizationId, userId, params);
     return NextResponse.json({ ok: result.ok, result });
   } catch (err) {
     return inventoryErrorResponse(err);

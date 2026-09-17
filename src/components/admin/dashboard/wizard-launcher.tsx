@@ -1,8 +1,8 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react"
+import { useRouter, usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import {
   Package,
   Puzzle,
@@ -26,25 +26,25 @@ import {
   Car,
   Layers,
   RefreshCcw,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { useGuideStore } from "@/stores/guide-store";
-import { useBusinessMode } from "@/hooks/use-business-mode";
-import { usePermission } from "@/hooks/use-permission";
+} from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { useGuideStore } from "@/stores/guide-store"
+import { useBusinessMode } from "@/hooks/use-business-mode"
+import { usePermission } from "@/hooks/use-permission"
 import {
   businessModeInfo,
   MODE_WIZARDS,
   WIZARD_ACTIONS,
   type WizardActionKind,
-} from "@/lib/business-modes";
+} from "@/lib/business-modes"
 import {
   clearWelcomeGuideDismissal,
   welcomeGuideDismissKey,
   WELCOME_GUIDE_RESTORE_EVENT,
-} from "@/lib/welcome-guide";
-import { cn } from "@/lib/utils";
-import type { BusinessMode } from "@/lib/auth/options";
+} from "@/lib/welcome-guide"
+import { cn } from "@/lib/utils"
+import type { BusinessMode } from "@/lib/auth/options"
 
 // FASE — Guía de bienvenida del dashboard: asistentes que llevan al usuario
 // al apartado real (Catálogos → Productos, Ajustes → Entrega, etc.) para que
@@ -57,6 +57,7 @@ const ACTION_ICONS: Record<WizardActionKind, LucideIcon> = {
   product: Package,
   combos: Puzzle,
   inventory: Boxes,
+  purchasing: Truck,
   tables: Armchair,
   kds: ChefHat,
   agenda: CalendarDays,
@@ -67,7 +68,7 @@ const ACTION_ICONS: Record<WizardActionKind, LucideIcon> = {
   payments: CreditCard,
   company: Building2,
   portal: ExternalLink,
-};
+}
 
 const MODE_ICONS: Record<BusinessMode, LucideIcon> = {
   retail: Store,
@@ -75,139 +76,148 @@ const MODE_ICONS: Record<BusinessMode, LucideIcon> = {
   services: Wrench,
   rental: Car,
   hybrid: Layers,
-};
-
-interface WizardLauncherProps {
-  productCount?: number;
-  totalSales?: number;
 }
 
-export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLauncherProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { data: session } = useSession();
+interface WizardLauncherProps {
+  productCount?: number
+  totalSales?: number
+}
+
+export function WizardLauncher({
+  productCount = 0,
+  totalSales = 0,
+}: WizardLauncherProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const { data: session } = useSession()
   const orgId =
-    (session?.user as { activeOrganizationId?: string; organizationId?: string } | undefined)
-      ?.activeOrganizationId ??
-    (session?.user as { organizationId?: string } | undefined)?.organizationId ??
-    "";
+    (
+      session?.user as
+        { activeOrganizationId?: string; organizationId?: string } | undefined
+    )?.activeOrganizationId ??
+    (session?.user as { organizationId?: string } | undefined)
+      ?.organizationId ??
+    ""
   // Ocultar la guía por organización (mismo patrón que el onboarding del portal).
-  const dismissKey = welcomeGuideDismissKey(orgId);
-  const [dismissed, setDismissed] = useState(false);
+  const dismissKey = welcomeGuideDismissKey(orgId)
+  const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
     try {
-      if (localStorage.getItem(dismissKey) === "1") setDismissed(true);
+      if (localStorage.getItem(dismissKey) === "1") setDismissed(true)
     } catch {
       /* SSR / almacenamiento no disponible */
     }
-  }, [dismissKey]);
+  }, [dismissKey])
 
   // “Volver a mostrar la guía” desde el menú de usuario: reaparece al instante.
   useEffect(() => {
     const onRestore = () => {
-      clearWelcomeGuideDismissal(orgId);
-      setDismissed(false);
-    };
-    window.addEventListener(WELCOME_GUIDE_RESTORE_EVENT, onRestore);
-    return () => window.removeEventListener(WELCOME_GUIDE_RESTORE_EVENT, onRestore);
-  }, [orgId]);
+      clearWelcomeGuideDismissal(orgId)
+      setDismissed(false)
+    }
+    window.addEventListener(WELCOME_GUIDE_RESTORE_EVENT, onRestore)
+    return () =>
+      window.removeEventListener(WELCOME_GUIDE_RESTORE_EVENT, onRestore)
+  }, [orgId])
 
   const dismiss = () => {
     try {
-      localStorage.setItem(dismissKey, "1");
+      localStorage.setItem(dismissKey, "1")
     } catch {
       /* best-effort */
     }
-    setDismissed(true);
-  };
+    setDismissed(true)
+  }
 
-  const mode = useBusinessMode();
-  const info = businessModeInfo(mode);
-  const ModeIcon = MODE_ICONS[mode];
+  const mode = useBusinessMode()
+  const info = businessModeInfo(mode)
+  const ModeIcon = MODE_ICONS[mode]
 
   // Permisos por acción.
-  const canProduct = usePermission("products.manage");
-  const canInventory = usePermission("inventory.manage");
-  const canTables = usePermission("locations.view");
-  const canKds = usePermission("orders.view");
-  const canPromotion = usePermission("promotions.manage");
-  const canSettings = usePermission("settings.manage");
+  const canProduct = usePermission("products.manage")
+  const canInventory = usePermission("inventory.manage")
+  const canPurchasing = usePermission("purchasing.manage")
+  const canTables = usePermission("locations.view")
+  const canKds = usePermission("orders.view")
+  const canPromotion = usePermission("promotions.manage")
+  const canSettings = usePermission("settings.manage")
 
   const permissionFor = (kind: WizardActionKind): boolean => {
     switch (kind) {
       case "product":
       case "combos":
-        return canProduct;
+        return canProduct
       case "inventory":
-        return canInventory;
+        return canInventory
+      case "purchasing":
+        return canPurchasing
       case "tables":
-        return canTables;
+        return canTables
       case "kds":
-        return canKds;
+        return canKds
       case "delivery":
       case "credit":
       case "payments":
       case "company":
-        return canSettings;
+        return canSettings
       case "promotion":
-        return canPromotion;
+        return canPromotion
       default:
-        return true; // portal: sin permiso
+        return true // portal: sin permiso
     }
-  };
+  }
 
   // ── Estado del negocio ─────────────────────────────────────────────────────
-  const emptyBusiness = productCount === 0 && totalSales === 0;
-  const catalogReady = productCount > 0 && totalSales === 0;
+  const emptyBusiness = productCount === 0 && totalSales === 0
+  const catalogReady = productCount > 0 && totalSales === 0
 
   // Tarjetas del modo actual, filtradas por permiso.
   const actions = MODE_WIZARDS[mode]
     .map((kind) => WIZARD_ACTIONS[kind])
-    .filter((a) => permissionFor(a.kind));
+    .filter((a) => permissionFor(a.kind))
 
   // Catálogo listo → el portal, envíos y promociones pasan al frente.
   if (catalogReady) {
-    const priority = ["portal", "delivery", "promotion"];
-    const prio = actions.filter((a) => priority.includes(a.kind));
-    const rest = actions.filter((a) => !priority.includes(a.kind));
-    actions.length = 0;
-    actions.push(...prio, ...rest);
+    const priority = ["portal", "delivery", "promotion"]
+    const prio = actions.filter((a) => priority.includes(a.kind))
+    const rest = actions.filter((a) => !priority.includes(a.kind))
+    actions.length = 0
+    actions.push(...prio, ...rest)
   }
 
-  if (!actions.length) return null;
-  if (dismissed) return null;
+  if (!actions.length) return null
+  if (dismissed) return null
 
-  const hero =
-    emptyBusiness
+  const hero = emptyBusiness
+    ? {
+        emoji: "🎉",
+        eyebrow: "Tu negocio en marcha",
+        title: "¡Bienvenido a tu negocio!",
+        description:
+          "Estás a unos minutos de tu primera venta. Toca una tarjeta: te llevará al apartado exacto y te guiará paso a paso, resaltando cada botón y campo hasta completar el flujo.",
+      }
+    : catalogReady
       ? {
-          emoji: "🎉",
-          eyebrow: "Tu negocio en marcha",
-          title: "¡Bienvenido a tu negocio!",
-          description:
-            "Estás a unos minutos de tu primera venta. Toca una tarjeta: te llevará al apartado exacto y te guiará paso a paso, resaltando cada botón y campo hasta completar el flujo.",
-        }
-      : catalogReady
-        ? {
-            emoji: "🚀",
-            eyebrow: "Casi en el aire",
-            title: "¡Tu catálogo está listo!",
+          emoji: "🚀",
+          eyebrow: "Casi en el aire",
+          title: "¡Tu catálogo está listo!",
           description:
             "Ya puedes vender en tu caja. Para crecer: toca una tarjeta y sigue la guía paso a paso — prueba tu portal, configura envíos o lanza una promoción.",
-          }
-        : {
-            emoji: "✨",
-            eyebrow: "Acciones guiadas",
-            title: "Sigue haciendo crecer tu negocio",
-            description:
-              "Pasos guiados hacia tu catálogo, promociones, envíos y más.",
-          };
+        }
+      : {
+          emoji: "✨",
+          eyebrow: "Acciones guiadas",
+          title: "Sigue haciendo crecer tu negocio",
+          description:
+            "Pasos guiados hacia tu catálogo, promociones, envíos y más.",
+        }
 
   const go = (kind: WizardActionKind) => {
     // Lanza la guía inmersiva: navega a la sección real, resalta el elemento a
     // tocar y explica cada paso del flujo (spotlight + tooltip).
-    useGuideStore.getState().start(kind, pathname ?? "/admin");
-  };
+    useGuideStore.getState().start(kind, pathname ?? "/admin")
+  }
 
   return (
     <>
@@ -228,14 +238,16 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
         <CardContent className="relative z-10 overflow-hidden py-6">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary/15 to-violet-500/15 px-3 py-1 text-[11px] font-black tracking-wide text-primary uppercase ring-1 ring-primary/20">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary/15 to-violet-500/15 px-3 py-1 text-xs font-black tracking-wide text-primary uppercase ring-1 ring-primary/20">
                 <Sparkles className="size-3" />
                 {hero.eyebrow}
               </span>
               <h2 className="mt-2 flex items-center gap-2 text-2xl font-black tracking-tight">
                 {hero.title} <span aria-hidden>{hero.emoji}</span>
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">{hero.description}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {hero.description}
+              </p>
             </div>
             {catalogReady && (
               <a
@@ -259,7 +271,7 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
                 <ModeIcon className="size-5" />
               </span>
               <div>
-                <p className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+                <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
                   Tu tipo de negocio
                 </p>
                 <p className="text-sm font-black">{info.label}</p>
@@ -283,7 +295,7 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
             {info.features.map((f) => (
               <span
                 key={f}
-                className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground ring-1 ring-border/60"
+                className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border/60"
               >
                 {f}
               </span>
@@ -292,7 +304,7 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
 
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
             {actions.map((a, i) => {
-              const Icon = ACTION_ICONS[a.kind];
+              const Icon = ACTION_ICONS[a.kind]
               return (
                 <button
                   key={a.kind}
@@ -300,7 +312,7 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
                   onClick={() => go(a.kind)}
                   className="group relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border bg-background/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.99]"
                 >
-                  <span className="absolute top-2.5 right-3 flex size-6 items-center justify-center rounded-full bg-primary/10 text-[11px] font-black text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                  <span className="absolute top-2.5 right-3 flex size-6 items-center justify-center rounded-full bg-primary/10 text-xs font-black text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
                     {i + 1}
                   </span>
                   <span className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-violet-500/15 text-primary ring-1 ring-primary/20">
@@ -308,7 +320,9 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
                   </span>
                   <span className="pr-5">
                     <span className="flex items-center gap-1 text-sm font-bold">
-                      {a.kind === "product" && catalogReady ? "Agregar producto" : a.title}
+                      {a.kind === "product" && catalogReady
+                        ? "Agregar producto"
+                        : a.title}
                       <ChevronRight className="size-3.5 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
                     </span>
                     <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
@@ -316,12 +330,11 @@ export function WizardLauncher({ productCount = 0, totalSales = 0 }: WizardLaunc
                     </span>
                   </span>
                 </button>
-              );
+              )
             })}
           </div>
         </CardContent>
       </Card>
-
     </>
-  );
+  )
 }

@@ -23,7 +23,13 @@ export async function POST(req: NextRequest) {
     if (file.size > MAX_SIZE) {
       return NextResponse.json({ ok: false, error: "El archivo excede 10 MB" }, { status: 413 });
     }
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      return NextResponse.json({ ok: false, error: "Selecciona un archivo Excel .xlsx" }, { status: 415 });
+    }
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+      return NextResponse.json({ ok: false, error: "El archivo no es un Excel .xlsx válido" }, { status: 415 });
+    }
 
     if (form.get("preview") === "true") {
       const result = await previewWorkbook(organizationId, moduleKey, buffer);

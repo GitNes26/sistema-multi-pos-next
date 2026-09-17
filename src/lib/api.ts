@@ -269,6 +269,8 @@ export const inventoryApi = {
       method: "POST",
       body: JSON.stringify({ inventoryId, minThreshold }),
     }),
+  bulkUpdate: (rows: { inventoryId: string; quantity: number; minThreshold: number }[]) =>
+    inventoryRequest<{ ok: boolean; updated: number }>("/api/inventory/bulk", { method: "POST", body: JSON.stringify({ rows }) }),
   transfer: (body: {
     fromInventoryId: string;
     toLocationType: string;
@@ -324,6 +326,17 @@ export const inventoryApi = {
       throw new ApiError(data?.error ?? "Error al importar", res.status);
     }
     if (!data?.result) throw new ApiError("Respuesta inválida del servidor", 500);
+    return data.result;
+  },
+  previewStockImport: async (params: { locationType: string; locationId: string; file: File }): Promise<ExcelImportResult> => {
+    const form = new FormData();
+    form.append("locationType", params.locationType);
+    form.append("locationId", params.locationId);
+    form.append("file", params.file);
+    form.append("preview", "true");
+    const res = await fetch("/api/inventory/import", { method: "POST", body: form });
+    const data = await res.json() as { ok?: boolean; error?: string; result?: ExcelImportResult };
+    if (!res.ok || !data.result) throw new ApiError(data.error ?? "No se pudo analizar el archivo", res.status);
     return data.result;
   },
   exportPdf: (params: { locationType: string; locationId: string }) =>
@@ -709,7 +722,9 @@ export interface ExcelPreviewResult {
   total: number;
   missingColumns: string[];
   headers: string[];
-  sample: { line: number; cells: string[] }[];
+  sample: { line: number; cells: string[]; errors: string[] }[];
+  valid: number;
+  invalid: number;
 }
 
 export async function previewExcel(module: string, file: File): Promise<ExcelPreviewResult> {

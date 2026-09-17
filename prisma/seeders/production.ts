@@ -233,6 +233,7 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
 
   { id: "menu-operacion", parentId: null, type: "section", label: "Operación", icon: "Boxes", sortOrder: 3 },
   { id: "menu-inventario", parentId: "menu-operacion", type: "item", label: "Inventario", icon: "Boxes", href: "/admin/inventory", permissionKey: "inventory.view", sortOrder: 1 },
+  { id: "menu-compras", parentId: "menu-operacion", type: "item", label: "Proveedores y compras", icon: "Truck", href: "/admin/purchasing", permissionKey: "purchasing.view", sortOrder: 1.5 },
   { id: "menu-sucursales", parentId: "menu-operacion", type: "item", label: "Sucursales", icon: "MapPin", href: "/admin/locations", permissionKey: "locations.view", sortOrder: 2 },
   { id: "menu-cajas", parentId: "menu-operacion", type: "item", label: "Cajas", icon: "Banknote", href: "/admin/cashRegisters", permissionKey: "locations.view", sortOrder: 3 },
   { id: "menu-pedidos", parentId: "menu-operacion", type: "item", label: "Pedidos", icon: "ClipboardList", href: "/admin/orders", permissionKey: "orders.view", sortOrder: 4 },

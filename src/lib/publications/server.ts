@@ -42,6 +42,7 @@ export interface PublicationRow {
   startsAt: string | null;
   endsAt: string | null;
   createdAt: string;
+  designId: string | null;
 }
 
 function toRow(p: {
@@ -69,6 +70,7 @@ function toRow(p: {
     startsAt: p.startsAt?.toISOString() ?? null,
     endsAt: p.endsAt?.toISOString() ?? null,
     createdAt: p.createdAt.toISOString(),
+    designId: typeof (p.metadata as { designId?: unknown } | null)?.designId === "string" ? String((p.metadata as { designId: string }).designId) : null,
   };
 }
 
@@ -168,6 +170,7 @@ export async function updatePublication(
         ...(input.endsAt !== undefined
           ? { endsAt: input.endsAt ? new Date(input.endsAt.includes("T") ? input.endsAt : input.endsAt + "T00:00:00") : null }
           : {}),
+        ...(input.metadata !== undefined ? { metadata: (input.metadata as Prisma.InputJsonValue) ?? Prisma.JsonNull } : {}),
       },
     });
 

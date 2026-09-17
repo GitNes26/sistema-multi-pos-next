@@ -74,6 +74,8 @@ export const categoriesModule: CrudModule<CategoryDto> = {
   async create(organizationId, input) {
     const data = input as { name?: string; parentId?: string | null; imageUrl?: string | null; isActive?: boolean };
     if (!data.name?.trim()) throw new CrudError("El nombre es obligatorio", 400, "name");
+    const duplicate = await prisma.category.findFirst({ where: { organizationId, name: data.name.trim() } });
+    if (duplicate) throw new CrudError("Ya existe una categoría con ese nombre", 400, "name");
 
     if (data.parentId) {
       const parent = await prisma.category.findFirst({ where: { id: data.parentId, organizationId } });

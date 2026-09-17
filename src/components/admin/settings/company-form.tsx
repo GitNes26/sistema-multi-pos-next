@@ -59,7 +59,9 @@ export function CompanyForm() {
 
   useEffect(() => {
     if (loading) return
-    const frame = window.requestAnimationFrame(() => focusFirstEnabled("company-form"))
+    const frame = window.requestAnimationFrame(() =>
+      focusFirstEnabled("company-form")
+    )
     return () => window.cancelAnimationFrame(frame)
   }, [focusFirstEnabled, loading])
 
@@ -77,22 +79,53 @@ export function CompanyForm() {
   const save = async (event?: React.FormEvent) => {
     event?.preventDefault()
     try {
-      await yup.object({
-        tradeName: yup.string().trim().required("El nombre de la empresa es obligatorio"),
-        taxId: yup.string().max(13, "El RFC admite hasta 13 caracteres"),
-        postalCode: yup.string().test("postal-code", "El código postal debe tener 5 dígitos", (value) => !value || /^\d{5}$/.test(value)),
-        phone: yup.string().test("phone", "El teléfono debe tener 10 dígitos", (value) => !value || /^\d{10}$/.test(value)),
-        email: yup.string().email("Ingresa un correo válido"),
-        website: yup.string().url("Ingresa una URL completa, por ejemplo https://ejemplo.com"),
-      }).validate(form, { abortEarly: false })
+      await yup
+        .object({
+          tradeName: yup
+            .string()
+            .trim()
+            .required("El nombre de la empresa es obligatorio"),
+          taxId: yup.string().max(13, "El RFC admite hasta 13 caracteres"),
+          postalCode: yup
+            .string()
+            .test(
+              "postal-code",
+              "El código postal debe tener 5 dígitos",
+              (value) => !value || /^\d{5}$/.test(value)
+            )
+            .notRequired(),
+          phone: yup
+            .string()
+            .test(
+              "phone",
+              "El teléfono debe tener 10 dígitos",
+              (value) => !value || /^\d{10}$/.test(value)
+            )
+            .notRequired(),
+          email: yup.string().email("Ingresa un correo válido").notRequired(),
+          website: yup
+            .string()
+            .url("Ingresa una URL completa, por ejemplo https://ejemplo.com")
+            .notRequired(),
+        })
+        .validate(form, { abortEarly: false })
       setErrors({})
     } catch (error) {
       if (error instanceof yup.ValidationError) {
         const next: Record<string, string> = {}
-        for (const failure of error.inner) if (failure.path && !next[failure.path]) next[failure.path] = failure.message
+        for (const failure of error.inner)
+          if (failure.path && !next[failure.path])
+            next[failure.path] = failure.message
         setErrors(next)
-        const focusErrors = Object.fromEntries(Object.entries(next).map(([key, message]) => [`company-${key}`, message]))
-        window.requestAnimationFrame(() => focusFirstInvalid(focusErrors, "company-form"))
+        const focusErrors = Object.fromEntries(
+          Object.entries(next).map(([key, message]) => [
+            `company-${key}`,
+            message,
+          ])
+        )
+        window.requestAnimationFrame(() =>
+          focusFirstInvalid(focusErrors, "company-form")
+        )
       }
       return
     }
@@ -117,7 +150,11 @@ export function CompanyForm() {
       setForm(res.profile)
       swalToast("Datos de empresa guardados")
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "No se pudo guardar la información de la empresa")
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo guardar la información de la empresa"
+      )
     } finally {
       setSaving(false)
     }
@@ -134,9 +171,17 @@ export function CompanyForm() {
   }
 
   return (
-    <form id="company-form" noValidate onSubmit={save} className="grid gap-4 sm:grid-cols-2">
+    <form
+      id="company-form"
+      noValidate
+      onSubmit={save}
+      className="grid gap-4 sm:grid-cols-2"
+    >
       {formError && (
-        <div role="alert" className="sm:col-span-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+        <div
+          role="alert"
+          className="sm:col-span-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+        >
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           {formError}
         </div>
@@ -249,7 +294,9 @@ export function CompanyForm() {
       <div className="space-y-1.5 sm:col-span-2">
         <div className="flex items-center gap-1.5">
           <FileText className="size-4 text-muted-foreground" />
-          <Label htmlFor="company-ticketFooter" className="cursor-pointer">Pie de ticket</Label>
+          <Label htmlFor="company-ticketFooter" className="cursor-pointer">
+            Pie de ticket
+          </Label>
         </div>
         <Textarea
           id="company-ticketFooter"
