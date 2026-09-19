@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { hasPermission } from "@/lib/auth/permissions";
-import { createOrder, createQuote, createSupplier, changeOrderStatus, linkSupplierProduct, purchasingWorkspace, receiveOrder, updateSupplier } from "@/lib/purchasing/server";
+import { createOrder, createQuote, createSupplier, changeOrderStatus, linkSupplierProduct, purchasingWorkspace, receiveOrder, updateSupplier, updateQuote } from "@/lib/purchasing/server";
 
 async function guard(permission: "purchasing.view" | "purchasing.manage" | "purchasing.approve" | "purchasing.receive") {
   const session = await getServerSession(authOptions);
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     else if (action === "supplier.update") data = await updateSupplier(org, String(body.id ?? ""), body);
     else if (action === "supplier.link") data = await linkSupplierProduct(org, body);
     else if (action === "quote.create") data = await createQuote(org, user, body as never);
+    else if (action === "quote.update") data = await updateQuote(org, String(body.quoteId ?? ""), body as never);
     else if (action === "order.create") data = await createOrder(org, user, body as never);
     else if (action === "status") data = await changeOrderStatus(org, user, String(body.orderId ?? ""), String(body.status ?? ""));
     else if (action === "receive") data = await receiveOrder(org, user, body as never);

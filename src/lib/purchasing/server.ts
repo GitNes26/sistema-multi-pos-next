@@ -243,10 +243,21 @@ async function validateItems(organizationId: string, raw: PurchaseItemInput[]) {
         item.description?.trim() ||
         `${p.name}${item.variantId ? ` · ${p.variants.find((v) => v.id === item.variantId)?.name}` : ""}`,
       quantity: positive(item.quantity, "quantity"),
-      unitCost: Math.max(0, Number(item.unitCost ?? 0)),
-      taxRate: Math.max(0, Number(item.taxRate ?? 0)),
+      unitCost: nonNegative(item.unitCost, "unitCost"),
+      taxRate: rate(item.taxRate),
     }
   })
+}
+const nonNegative = (value: unknown, field: string) => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0)
+    throw new CrudError(`${field} debe ser un número no negativo`, 400, field)
+  return parsed
+}
+const rate = (value: unknown) => {
+  const parsed = nonNegative(value ?? 0, "taxRate")
+  if (parsed > 1) throw new CrudError("La tasa de impuesto no puede superar 100%", 400, "taxRate")
+  return parsed
 }
 
 export async function createQuote(
@@ -280,6 +291,28 @@ export async function createQuote(
   })
 }
 
+export async function updateQuote(
+  organizationId: string,
+  quoteId: string,
+  input: { supplierId: string; validUntil?: string; notes?: string; items: PurchaseItemInput[] }
+) {
+  const quote = await prisma.purchaseQuote.findFirst({ where: { id: quoteId, organizationId } })
+  if (!quote || quote.status === "cancelled") throw new CrudError("Cotización no disponible", 404)
+  const order = await prisma.purchaseOrder.findFirst({ where: { organizationId, quoteId }, select: { id: true } })
+  if (order) throw new CrudError("La cotización ya está vinculada a una orden", 409)
+  const supplier = await prisma.supplier.findFirst({ where: { id: input.supplierId, organizationId, isActive: true }, select: { id: true } })
+  if (!supplier) throw new CrudError("Selecciona un proveedor activo", 400, "supplierId")
+  const items = await validateItems(organizationId, input.items)
+  return prisma.$transaction(async (tx) => {
+    await tx.purchaseQuoteItem.deleteMany({ where: { quoteId } })
+    return tx.purchaseQuote.update({
+      where: { id: quoteId },
+      data: { supplierId: supplier.id, validUntil: input.validUntil ? new Date(input.validUntil) : null, notes: input.notes?.trim() || null, items: { create: items } },
+      include: { items: true, supplier: true },
+    })
+  })
+}
+
 export async function createOrder(
   organizationId: string,
   userId: string,
@@ -298,6 +331,15 @@ export async function createOrder(
   })
   if (!supplier)
     throw new CrudError("Selecciona un proveedor activo", 400, "supplierId")
+  if (input.quoteId) {
+    const quote = await prisma.purchaseQuote.findFirst({
+      where: { id: input.quoteId, organizationId, supplierId: supplier.id, status: { not: "cancelled" } },
+      select: { id: true },
+    })
+    if (!quote) throw new CrudError("La cotización no corresponde al proveedor o ya no está disponible", 400, "quoteId")
+    const existing = await prisma.purchaseOrder.findFirst({ where: { organizationId, quoteId: quote.id, status: { not: "cancelled" } }, select: { id: true } })
+    if (existing) throw new CrudError("Esta cotización ya tiene una orden activa", 409, "quoteId")
+  }
   const target =
     input.locationType === "cedis"
       ? await prisma.cedi.findFirst({

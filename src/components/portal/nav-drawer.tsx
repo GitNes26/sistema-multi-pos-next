@@ -15,10 +15,12 @@ export function NavDrawer({
   storeName,
   logoUrl,
   user,
+  canReserve,
 }: {
   storeName: string
   logoUrl?: string | null
   user: { name?: string | null; image?: string | null }
+  canReserve: boolean
 }) {
   const pathname = usePathname()
   const navOpen = usePortalStore((s) => s.navOpen)
@@ -37,7 +39,7 @@ export function NavDrawer({
     ...ALL_NAV_ITEMS.filter((i) => !inOrder.has(i.id)).map((i) => i.id),
   ]
     .map((id) => ALL_NAV_ITEMS.find((item) => item.id === id))
-    .filter((item): item is (typeof ALL_NAV_ITEMS)[number] => Boolean(item))
+    .filter((item): item is (typeof ALL_NAV_ITEMS)[number] => item !== undefined && (item.id !== "reservations" || canReserve))
 
   return (
     <BottomSheet

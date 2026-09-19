@@ -84,6 +84,7 @@ type Quote = {
   supplierId: string
   supplier: { businessName: string }
   validUntil?: string | null
+  notes?: string | null
   createdAt: string
   items: Item[]
 }
@@ -94,6 +95,7 @@ type Order = {
   supplierId: string
   supplier: { businessName: string }
   locationType: "location" | "cedis"
+  quoteId?: string | null
   locationId: string
   expectedAt?: string | null
   total: number
@@ -516,6 +518,12 @@ export function PurchasingPage({
           />
           <DocumentList
             rows={data?.quotes ?? []}
+            onEdit={canManage ? (quote) => {
+              if (data?.orders.some((order) => order.quoteId === quote.id)) { toast.error("Esta cotización ya tiene una orden"); return }
+              setDoc({ supplierId: quote.supplierId, quoteId: quote.id, locationType: "location", locationId: "", validUntil: quote.validUntil ? quote.validUntil.slice(0, 10) : "", expectedAt: "", notes: quote.notes ?? "" })
+              setItems(quote.items.map((item) => ({ ...item, id: crypto.randomUUID() })))
+              setDialog("quote")
+            } : undefined}
             onCreateOrder={
               canManage
                 ? (quote) => {
@@ -947,11 +955,11 @@ export function PurchasingPage({
         submit={() =>
           void run(
             {
-              action: dialog === "quote" ? "quote.create" : "order.create",
+              action: dialog === "quote" ? (doc.quoteId ? "quote.update" : "quote.create") : "order.create",
               ...doc,
               items,
             },
-            dialog === "quote" ? "Cotización creada" : "Orden creada"
+            dialog === "quote" ? (doc.quoteId ? "Cotización actualizada" : "Cotización creada") : "Orden creada"
           )
         }
       />
@@ -1071,9 +1079,11 @@ function SectionHeader({
 function DocumentList({
   rows,
   onCreateOrder,
+  onEdit,
 }: {
   rows: Quote[]
   onCreateOrder?: (quote: Quote) => void
+  onEdit?: (quote: Quote) => void
 }) {
   return (
     <div className="space-y-2">
@@ -1095,6 +1105,9 @@ function DocumentList({
             <span className="text-sm text-muted-foreground">
               {new Date(r.createdAt).toLocaleDateString("es-MX")}
             </span>
+            {onEdit && !["cancelled"].includes(r.status) && (
+              <Button size="sm" variant="outline" onClick={() => onEdit(r)}>Modificar</Button>
+            )}
             {onCreateOrder && (
               <Button
                 size="sm"
@@ -1165,7 +1178,7 @@ function PurchaseDocumentDialog({
       onOpenChange={(v) => !v && close()}
       title={
         kind === "quote"
-          ? "Nueva solicitud de cotización"
+          ? doc.quoteId ? "Modificar cotización" : "Nueva solicitud de cotización"
           : "Nueva orden de compra"
       }
       description={
@@ -1190,7 +1203,7 @@ function PurchaseDocumentDialog({
             onClick={submit}
           >
             {saving && <Loader2 className="animate-spin" />}
-            {kind === "quote" ? "Crear cotización" : "Crear orden"}
+            {kind === "quote" ? doc.quoteId ? "Guardar cotización" : "Crear cotización" : "Crear orden"}
           </Button>
         </>
       }

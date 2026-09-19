@@ -24,13 +24,15 @@ export default async function PortalShopLayout({
 
   let storeName = "Mi Tienda";
   let logoUrl: string | null = null;
+  let businessMode: string | null = null;
   if (organizationId) {
     const org = await prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { name: true, companyProfile: { select: { tradeName: true, logoUrl: true } } },
+      select: { name: true, businessMode: true, companyProfile: { select: { tradeName: true, logoUrl: true } } },
     });
     storeName = org?.companyProfile?.tradeName ?? org?.name ?? "Mi Tienda";
     logoUrl = org?.companyProfile?.logoUrl ?? null;
+    businessMode = org?.businessMode ?? null;
   }
 
   return (
@@ -42,6 +44,7 @@ export default async function PortalShopLayout({
         <PortalShell
           storeName={storeName}
           logoUrl={logoUrl}
+          businessMode={businessMode}
           user={{ name: session?.user?.name, image: session?.user?.image }}
         >
           <RouteTransition>{children}</RouteTransition>

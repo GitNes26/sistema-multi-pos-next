@@ -47,7 +47,7 @@ interface ProfileStats {
   favorites: number;
 }
 
-export function ProfileClient() {
+export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) {
   const [customer, setCustomer] = useState<PortalCustomer | null>(null);
   const [form, setForm] = useState({
     fullName: "",
@@ -379,7 +379,7 @@ export function ProfileClient() {
           <LayoutGrid className="size-4 text-primary" />
           <h2 className="text-sm font-semibold">Personalizar navegación</h2>
         </div>
-        <NavCustomizer />
+        <NavCustomizer canReserve={canReserve} />
       </motion.div>
 
       {/* ── Permissions ─────────────────────────────── */}

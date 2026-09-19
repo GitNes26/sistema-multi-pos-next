@@ -30,22 +30,23 @@ const DEFAULT_ORDER: NavItemIdIncludingCombos[] = [
   "combos",
 ];
 
-export function NavCustomizer() {
+export function NavCustomizer({ canReserve }: { canReserve: boolean }) {
   const navOrder = usePortalStore((s) => s.navOrder);
   const setNavOrder = usePortalStore((s) => s.setNavOrder);
 
-  const orderedItems = navOrder.map((id) =>
+  const visibleOrder = navOrder.filter((id) => id !== "reservations" || canReserve);
+  const orderedItems = visibleOrder.map((id) =>
     ALL_NAV_ITEMS.find((item) => item.id === id)
   );
 
   const availableItems = ALL_NAV_ITEMS.filter(
     (item) =>
-      !navOrder.includes(item.id) && !HIDDEN_FROM_BAR.includes(item.id)
+      !navOrder.includes(item.id) && !HIDDEN_FROM_BAR.includes(item.id) && (item.id !== "reservations" || canReserve)
   );
 
   const moveItem = (from: number, to: number) => {
-    if (to < 0 || to >= navOrder.length) return;
-    const next = [...navOrder];
+    if (to < 0 || to >= visibleOrder.length) return;
+    const next = [...visibleOrder];
     const [moved] = next.splice(from, 1);
     next.splice(to, 0, moved);
     setNavOrder(next);
@@ -67,9 +68,9 @@ export function NavCustomizer() {
     setNavOrder(navOrder.filter((i) => i !== id));
   };
 
-  const reset = () => setNavOrder(DEFAULT_ORDER);
+  const reset = () => setNavOrder(DEFAULT_ORDER.filter((id) => id !== "reservations" || canReserve));
 
-  const barCount = navOrder.filter(
+  const barCount = visibleOrder.filter(
     (id) => !HIDDEN_FROM_BAR.includes(id)
   ).length;
 

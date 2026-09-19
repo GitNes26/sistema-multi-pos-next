@@ -4,12 +4,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 import { ReservationBooking } from "@/components/portal/reservation-booking";
 import { ExternalLink } from "lucide-react";
+import { prisma } from "@/lib/db";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Reservar mesa" };
 
 export default async function PortalReservationsPage() {
   const session = await getServerSession(authOptions);
   const orgId = session?.user?.organizationId ?? null;
+  const organization = orgId ? await prisma.organization.findUnique({ where: { id: orgId }, select: { businessMode: true } }) : null;
+  if (organization?.businessMode !== "food_service" && organization?.businessMode !== "hybrid") redirect("/portal");
 
   return (
     <div className="pb-24">

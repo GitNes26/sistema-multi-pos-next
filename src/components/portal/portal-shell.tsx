@@ -64,18 +64,22 @@ const GRID_COLS: Record<number, string> = {
 export function PortalShell({
   storeName,
   logoUrl,
+  businessMode,
   user,
   children,
 }: {
   storeName: string;
   logoUrl?: string | null;
+  businessMode?: string | null;
   user: { name?: string | null; image?: string | null };
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const canReserve = businessMode === "food_service" || businessMode === "hybrid";
   const navOrder = usePortalStore((s) => s.navOrder);
   const orderedIds: NavItemIdIncludingCombos[] =
-    navOrder && navOrder.length >= 3 ? navOrder : DEFAULT_NAV_ORDER;
+    (navOrder && navOrder.length >= 3 ? navOrder : DEFAULT_NAV_ORDER)
+      .filter((id) => id !== "reservations" || canReserve);
 
   // Vistas fuera de la barra (ocultas por diseño o que no alcanzaron cupo).
   const hiddenSet = new Set(orderedIds.filter((id) => HIDDEN_FROM_BAR.includes(id)));
@@ -147,7 +151,7 @@ export function PortalShell({
         </div>
       </nav>
 
-      <NavDrawer storeName={storeName} logoUrl={logoUrl} user={user} />
+      <NavDrawer storeName={storeName} logoUrl={logoUrl} user={user} canReserve={canReserve} />
       <CartSheet />
       <BulkModal />
     </div>
