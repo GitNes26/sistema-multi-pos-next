@@ -31,6 +31,11 @@ import { AnimatedStats } from "@/components/landing/animated-stats"
 import packageJson from "../../package.json"
 import { prisma } from "@/lib/db"
 
+// Los planes se administran en la base de datos. La portada debe resolverlos
+// al atender la petición, cuando Dokploy ya inyectó DATABASE_URL al contenedor,
+// y no durante la construcción de la imagen.
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Bienvenido",
   description:

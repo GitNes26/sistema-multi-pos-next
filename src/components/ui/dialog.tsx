@@ -255,6 +255,10 @@ function DialogComponent({
       <DialogContent
         className={cn(sizeClass, className)}
         onKeyDown={handleEnter}
+        // Un formulario portaled conserva la jerarquía de eventos de React.
+        // Cada diálogo detiene aquí su submit para no enviar formularios de
+        // diálogos padres, incluidos los flujos personalizados futuros.
+        onSubmit={(event) => event.stopPropagation()}
         showCloseButton={showCloseButton}
         data-guide={dataGuide}
       >
