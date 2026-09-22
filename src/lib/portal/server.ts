@@ -18,6 +18,7 @@ import {
   consumeRecipeIngredients,
   restoreRecipeIngredients,
 } from "@/lib/inventory/recipes"
+import { categoryBranchIds } from "@/lib/catalog/categories"
 
 // FASE 13 — Servidor del portal de clientes: catálogo, pedidos, lealtad,
 // favoritos, listas de compra, perfil y métodos de pago.
@@ -167,6 +168,7 @@ export interface PortalProduct {
 
 export interface PortalCategory {
   id: string
+  parentId: string | null
   name: string
   imageUrl: string | null
   productCount: number
@@ -204,7 +206,7 @@ export async function getStorefront(
       prisma.category.findMany({
         where: { organizationId, isActive: true },
         orderBy: { name: "asc" },
-        select: { id: true, name: true, imageUrl: true },
+        select: { id: true, parentId: true, name: true, imageUrl: true },
       }),
       customerId
         ? prisma.customerFavorite.findMany({
@@ -355,12 +357,18 @@ export async function getStorefront(
       a.name.localeCompare(b.name)
   )
 
-  const categoriesWithCount: PortalCategory[] = categories.map((c) => ({
-    id: c.id,
-    name: c.name,
-    imageUrl: c.imageUrl,
-    productCount: products.filter((p) => p.categoryId === c.id).length,
-  }))
+  const categoriesWithCount: PortalCategory[] = categories.map((c) => {
+    const branchIds = categoryBranchIds(categories, c.id)
+    return {
+      id: c.id,
+      parentId: c.parentId,
+      name: c.name,
+      imageUrl: c.imageUrl,
+      productCount: products.filter(
+        (p) => p.categoryId && branchIds.has(p.categoryId)
+      ).length,
+    }
+  })
 
   return { categories: categoriesWithCount, products }
 }

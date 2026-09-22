@@ -165,9 +165,9 @@ async function request(body?: Record<string, unknown>) {
         }
       : undefined
   )
-  const json = await response.json()
-  if (!response.ok)
-    throw new Error(json.error ?? "No fue posible completar la operación")
+  const json = await response.json().catch(() => null)
+  if (!response.ok || json?.ok === false)
+    throw new Error(typeof json?.error === "string" ? json.error : "No fue posible completar la operación")
   return json.data
 }
 
@@ -207,6 +207,7 @@ export function PurchasingPage({
   const [selected, setSelected] = React.useState<Supplier | Order | null>(null),
     [saving, setSaving] = React.useState(false)
   const [supplierErrors, setSupplierErrors] = React.useState<Record<string, string>>({})
+  const [operationError, setOperationError] = React.useState<string | null>(null)
   const [supplier, setSupplier] = React.useState(emptySupplier),
     [doc, setDoc] = React.useState({
       supplierId: "",
@@ -247,6 +248,7 @@ export function PurchasingPage({
     setItems([])
     setReceiveQty({})
     setSupplierErrors({})
+    setOperationError(null)
   }
   const submitSupplier = async () => {
     try {
@@ -268,15 +270,19 @@ export function PurchasingPage({
     }
     await run({ action: selected ? "supplier.update" : "supplier.create", ...(selected ? { id: selected.id } : {}), ...supplier }, "Proveedor guardado")
   }
-  const run = async (body: Record<string, unknown>, message: string) => {
+  const run = async (body: Record<string, unknown>, message: string, keepLinkOpen = false) => {
     setSaving(true)
+    setOperationError(null)
     try {
       await request(body)
       toast.success(message)
-      close()
+      if (keepLinkOpen) setLink((current) => ({ ...current, productId: "", supplierSku: "", unitCost: "0", minimumOrder: "1", isPreferred: false }))
+      else close()
       await load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Error")
+      const message = e instanceof Error ? e.message : "No fue posible completar la operación"
+      setOperationError(message)
+      toast.error(message)
     } finally {
       setSaving(false)
     }
@@ -488,6 +494,8 @@ export function PurchasingPage({
                       {s.products.length} productos vinculados
                     </span>
                     {canManage && (
+                      <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={() => { setOperationError(null); setLink({ supplierId: s.id, productId: "", variantId: "", supplierSku: "", unitCost: "0", minimumOrder: "1", isPreferred: false }); setDialog("link") }}><Link2 className="size-4" /> Productos</Button>
                       <Button
                         size="sm"
                         variant="outline"
@@ -511,6 +519,7 @@ export function PurchasingPage({
                       >
                         Editar
                       </Button>
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -547,8 +556,9 @@ export function PurchasingPage({
           />
           <DocumentList
             rows={data?.quotes ?? []}
+            orders={data?.orders ?? []}
             onEdit={canManage ? (quote) => {
-              if (data?.orders.some((order) => order.quoteId === quote.id)) { toast.error("Esta cotización ya tiene una orden"); return }
+              if (data?.orders.some((order) => order.quoteId === quote.id)) { toast.error("La cotización ya está vinculada a una orden y no puede modificarse"); return }
               setDoc({ supplierId: quote.supplierId, quoteId: quote.id, locationType: "location", locationId: "", validUntil: quote.validUntil ? quote.validUntil.slice(0, 10) : "", expectedAt: "", notes: quote.notes ?? "" })
               setItems(quote.items.map((item) => ({ ...item, id: crypto.randomUUID(), quantity: Number(item.quantity), unitCost: Number(item.unitCost), taxRate: Number(item.taxRate) })))
               setDialog("quote")
@@ -556,6 +566,10 @@ export function PurchasingPage({
             onCreateOrder={
               canManage
                 ? (quote) => {
+                    if (data?.orders.some((order) => order.quoteId === quote.id && order.status !== "cancelled")) {
+                      toast.error("Esta cotización ya tiene una orden activa")
+                      return
+                    }
                     setDoc({
                       supplierId: quote.supplierId,
                       quoteId: quote.id,
@@ -629,6 +643,10 @@ export function PurchasingPage({
                       de {o.items.reduce((a, i) => a + Number(i.quantity), 0)}{" "}
                       unidades
                     </p>
+                    <p className="mt-2 text-xs font-medium text-foreground">
+                      {o.status === "draft" ? "Siguiente paso: aprobar la orden" : o.status === "approved" ? "Siguiente paso: marcar el envío o registrar la recepción" : o.status === "sent" ? "Siguiente paso: registrar lo recibido" : o.status === "partially_received" ? "Recepción parcial: registra el saldo pendiente" : o.status === "received" ? "Recepción completa; inventario actualizado" : "Orden cancelada"}
+                    </p>
+                    {o.receipts.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{o.receipts.length} recepción{o.receipts.length === 1 ? "" : "es"} registrada{o.receipts.length === 1 ? "" : "s"} · Última: {new Date(o.receipts[o.receipts.length - 1].receivedAt).toLocaleDateString("es-MX")}</p>}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {canApprove && o.status === "draft" && (
@@ -750,6 +768,7 @@ export function PurchasingPage({
           </>
         }
       >
+        {operationError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{operationError}</p>}
         <form id="supplier-form" noValidate onSubmit={(event) => { event.preventDefault(); void submitSupplier() }} className="grid gap-4 sm:grid-cols-2">
           <InputGroupField
             id="supplier-name"
@@ -885,7 +904,8 @@ export function PurchasingPage({
                     unitCost: Number(link.unitCost),
                     minimumOrder: Number(link.minimumOrder),
                   },
-                  "Producto vinculado"
+                  "Producto vinculado",
+                  true
                 )
               }}
             >
@@ -894,6 +914,7 @@ export function PurchasingPage({
           </>
         }
       >
+        {operationError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{operationError}</p>}
         <div className="space-y-4">
           <FormCombobox
             id="link-supplier"
@@ -956,6 +977,20 @@ export function PurchasingPage({
               setLink((v) => ({ ...v, isPreferred }))
             }
           />
+          {link.supplierId && <div className="rounded-xl border" aria-label="Productos vinculados al proveedor">
+            <div className="border-b bg-muted/40 px-3 py-2 text-sm font-semibold">Productos vinculados · {data?.suppliers.find((supplier) => supplier.id === link.supplierId)?.products.length ?? 0}</div>
+            <div className="max-h-56 overflow-y-auto">
+              {data?.suppliers.find((supplier) => supplier.id === link.supplierId)?.products.map((entry) => {
+                const product = data.products.find((candidate) => candidate.id === entry.productId)
+                const variant = product?.variants.find((candidate) => candidate.id === entry.variantId)
+                return <button key={entry.id} type="button" className="flex min-h-12 w-full items-center justify-between gap-3 border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-primary" onClick={() => setLink({ supplierId: link.supplierId, productId: `${entry.productId}|${entry.variantId ?? ""}`, variantId: entry.variantId ?? "", supplierSku: entry.supplierSku ?? "", unitCost: String(entry.unitCost), minimumOrder: String(entry.minimumOrder), isPreferred: entry.isPreferred })}>
+                  <span className="min-w-0"><span className="block truncate font-medium">{product?.name ?? "Producto no disponible"}{variant ? ` · ${variant.name}` : ""}</span><span className="block text-xs text-muted-foreground">{entry.supplierSku || "Sin SKU"} · Mínimo {entry.minimumOrder}</span></span>
+                  <span className="shrink-0 font-semibold tabular-nums">{money.format(entry.unitCost)}</span>
+                </button>
+              })}
+              {!data?.suppliers.find((supplier) => supplier.id === link.supplierId)?.products.length && <p className="p-3 text-sm text-muted-foreground">Aún no hay productos vinculados. Selecciona uno arriba para agregarlo.</p>}
+            </div>
+          </div>}
         </div>
       </DialogComponent>
 
@@ -964,6 +999,7 @@ export function PurchasingPage({
         open={dialog === "quote" || dialog === "order"}
         close={close}
         saving={saving}
+        error={operationError}
         data={data}
         doc={doc}
         setDoc={setDoc}
@@ -997,7 +1033,12 @@ export function PurchasingPage({
               disabled={
                 saving || !Object.values(receiveQty).some((v) => Number(v) > 0)
               }
-              onClick={() =>
+              onClick={() => {
+                const invalid = selectedOrder?.items.find((item) => {
+                  const quantity = Number(receiveQty[item.id] ?? 0)
+                  return !Number.isFinite(quantity) || quantity < 0 || quantity > Number(item.quantity) - Number(item.receivedQuantity ?? 0)
+                })
+                if (invalid) { setOperationError(`Revisa la cantidad de ${invalid.description}: no puede superar lo pendiente ni ser negativa.`); document.getElementById(`receive-${invalid.id}`)?.focus(); return }
                 void run(
                   {
                     action: "receive",
@@ -1011,7 +1052,7 @@ export function PurchasingPage({
                   },
                   "Recepción ingresada al inventario"
                 )
-              }
+              }}
             >
               <PackageCheck />
               Confirmar recepción
@@ -1019,6 +1060,7 @@ export function PurchasingPage({
           </>
         }
       >
+        {operationError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{operationError}</p>}
         {selectedOrder?.items.map((item) => {
           const pending =
             Number(item.quantity) - Number(item.receivedQuantity ?? 0)
@@ -1096,16 +1138,22 @@ function SectionHeader({
 }
 function DocumentList({
   rows,
+  orders,
   onCreateOrder,
   onEdit,
 }: {
   rows: Quote[]
+  orders: Order[]
   onCreateOrder?: (quote: Quote) => void
   onEdit?: (quote: Quote) => void
 }) {
   return (
     <div className="space-y-2">
-      {rows.map((r) => (
+      {rows.map((r) => {
+        const linkedOrder = orders.find((order) => order.quoteId === r.id)
+        const activeOrder = linkedOrder?.status !== "cancelled" ? linkedOrder : null
+        const total = r.items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.unitCost) * (1 + Number(item.taxRate)), 0)
+        return (
         <div
           key={r.id}
           className="flex flex-col justify-between gap-2 rounded-xl border p-4 sm:flex-row sm:items-center"
@@ -1116,17 +1164,18 @@ function DocumentList({
               <StatusBadge status={r.status} />
             </div>
             <p className="text-sm text-muted-foreground">
-              {r.supplier.businessName} · {r.items.length} partidas
+              {r.supplier.businessName} · {r.items.length} partidas · {money.format(total)}
             </p>
+            {linkedOrder && <p className="mt-1 text-xs text-muted-foreground">Vinculada con la orden {linkedOrder.folio}. Ya no se puede modificar.{activeOrder ? " Para continuar, usa esa orden." : " Puedes crear una nueva orden porque la anterior se canceló."}</p>}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
               {new Date(r.createdAt).toLocaleDateString("es-MX")}
             </span>
-            {onEdit && !["cancelled"].includes(r.status) && (
+            {onEdit && !["cancelled"].includes(r.status) && !linkedOrder && (
               <Button size="sm" variant="outline" onClick={() => onEdit(r)}>Modificar</Button>
             )}
-            {onCreateOrder && (
+            {onCreateOrder && !activeOrder && r.status !== "cancelled" && (
               <Button
                 size="sm"
                 variant="outline"
@@ -1138,7 +1187,7 @@ function DocumentList({
             )}
           </div>
         </div>
-      ))}
+      )})}
     </div>
   )
 }
@@ -1148,6 +1197,7 @@ function PurchaseDocumentDialog({
   open,
   close,
   saving,
+  error,
   data,
   doc,
   setDoc,
@@ -1160,6 +1210,7 @@ function PurchaseDocumentDialog({
   open: boolean
   close: () => void
   saving: boolean
+  error: string | null
   data: Workspace | null
   doc: {
     supplierId: string
@@ -1245,6 +1296,7 @@ function PurchaseDocumentDialog({
         </>
       }
     >
+      {error && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
       <form id="purchase-document-form" noValidate onSubmit={(event) => { event.preventDefault(); submitValidated() }} className="space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
           <FormCombobox

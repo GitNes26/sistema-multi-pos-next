@@ -6035,6 +6035,13 @@ export async function seedDemo() {
   // / system-hybrid-kitchen), mesas, combos y pedidos para KDS.
   const hibrido = await seedHybridDemo(ownerUser.id, passwordHash)
 
+  const demoPlan = await prisma.subscriptionPlan.findUnique({ where: { name: "Multi-sucursal" } })
+  if (demoPlan) {
+    for (const organizationId of [org.id, restaurant.org.id, estetica.org.id, fiestas.org.id, hibrido.org.id]) {
+      await prisma.organizationSubscription.upsert({ where: { organizationId }, update: { planId: demoPlan.id, status: "active", periodEndsAt: new Date("2099-12-31T23:59:59.000Z") }, create: { organizationId, planId: demoPlan.id, status: "active", periodEndsAt: new Date("2099-12-31T23:59:59.000Z") } })
+    }
+  }
+
   return {
     org,
     ownerUser,

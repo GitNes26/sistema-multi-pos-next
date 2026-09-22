@@ -43,13 +43,14 @@ export function OptionSelect({
       }
       const res = await crudApi.list(field.optionsModule, { pageSize: 250 });
       setOptions(
-        res.rows.map((r) => ({
+        res.rows.filter((r) => r.isActive !== false && r.active !== false).map((r) => ({
           value: String(r[valueKey] ?? ""),
           label: String(r[labelKey] ?? r.id ?? ""),
         }))
       );
     } catch {
-      setOptions([]);
+      // Conserva las opciones visibles (incluida una recién creada) si una
+      // sincronización posterior falla temporalmente.
     } finally {
       setLoading(false);
     }
@@ -86,7 +87,23 @@ export function OptionSelect({
           module={field.optionsModule}
           onClose={() => setCreateOpen(false)}
           onCreated={(record) => {
-            onChange(String(record.id ?? ""));
+            const createdValue = String(record[valueKey] ?? record.id ?? "");
+            const createdLabel = String(
+              record[labelKey] ?? record.name ?? createdValue
+            );
+            if (createdValue) {
+              setOptions((current) => {
+                const next = { value: createdValue, label: createdLabel };
+                const index = current.findIndex(
+                  (option) => option.value === createdValue
+                );
+                if (index < 0) return [...current, next];
+                return current.map((option, optionIndex) =>
+                  optionIndex === index ? next : option
+                );
+              });
+              onChange(createdValue);
+            }
             setCreateOpen(false);
             void load();
           }}

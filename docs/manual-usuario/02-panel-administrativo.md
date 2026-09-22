@@ -52,6 +52,9 @@ Aquí se da de alta todo lo que vendes. Por producto eliges:
     (hasta 3, cada uno con precio extra), "Sabores" (combinables hasta 2).
     Con el tipo Personalizado marcas si el grupo es **requerido**, cuántas opciones
     se pueden elegir (mínimo y máximo) y cuánto cuesta extra cada una.
+    En servicios, las variantes también separan consumos: por ejemplo, «Aplicación de
+    pestañas» y «Aplicación + juego de pestañas». En **Receta e insumos** asigna el juego
+    únicamente a la variante que lo incluye, junto con cantidad y merma.
 - **Stock por sucursal, código interno y código de barras** (para escáner).
 - **Combo** (menú Combos, restaurantes e híbridos): paquete de productos con precio especial.
 - **Receta e insumos:** en la tabla de productos, pulsa el botón de la olla. Este botón
@@ -212,12 +215,36 @@ La página **Operación → Proveedores y compras** concentra el abastecimiento 
 
 1. Registra el proveedor y sus condiciones comerciales.
 2. Usa **Vincular producto** para guardar el SKU del proveedor, costo, mínimo de compra y proveedor preferido.
+   Selecciona un proveedor para ver sus productos vinculados en la misma ventana; toca
+   una fila para ajustar costo, SKU o mínimo y continúa vinculando sin cerrar el formulario.
 3. Crea una cotización y agrega productos o variantes. Usa **Crear orden** para conservar sus partidas.
+   Cuando una cotización ya tiene orden, la lista muestra el folio vinculado y explica
+   por qué no puede modificarse. Una orden activa impide crear otra con la misma cotización.
 4. Selecciona la sucursal o CEDIS que recibirá la mercancía y revisa cantidades, costos e impuestos.
 5. Un usuario con permiso de aprobación confirma la orden; después puede marcarse como enviada.
 6. En **Recibir**, captura solamente la mercancía entregada. El sistema admite entregas parciales, muestra lo pendiente y evita recibir de más.
 7. Al confirmar, las existencias se actualizan y la entrada aparece en **Historial de recepción** con su folio y orden de origen.
 
+Cada orden indica el paso siguiente y cuántas recepciones lleva. Si el servidor rechaza
+una acción, el mensaje aparece dentro del formulario abierto para corregirla sin perder
+los datos capturados.
+
 Los permisos de consulta, gestión, aprobación y recepción pueden asignarse por separado para conservar control interno.
 
 Pulsa **Guía paso a paso** dentro del módulo, o **Realiza tu primera compra** en las acciones guiadas del panel, para recorrer el flujo sobre los formularios reales. La guía no crea pantallas paralelas: resalta la siguiente acción y conserva el avance al cambiar de pestaña o página.
+
+## 2.12 Plan y capacidad contratada
+
+En **Ajustes → Mi plan**, propietarios y administradores consultan el plan vigente, fecha
+de vencimiento, sucursales y empleados utilizados contra el límite contratado. La misma
+página compara los planes disponibles y permite solicitar una actualización.
+
+Solo el superadministrador ve **Control de suscripciones** y **Planes del sistema**. Desde
+allí crea o actualiza paquetes, define precios de sucursales y paquetes de empleados extra,
+asigna capacidad, registra pagos, revisa el historial y bloquea o desbloquea una empresa.
+Si una suscripción vence después de su período de gracia, el sistema la suspende al validar
+el acceso. Los avisos previos aparecen en Notificaciones según los días configurados.
+
+Al alcanzar el límite, el sistema conserva los datos existentes y rechaza únicamente una
+nueva sucursal o un nuevo empleado, explicando que se debe actualizar el plan o contratar
+capacidad adicional.

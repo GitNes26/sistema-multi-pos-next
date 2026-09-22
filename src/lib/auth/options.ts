@@ -361,10 +361,17 @@ export const authOptions: NextAuthOptions = {
         if (candidateOrgId) {
           const org = await prisma.organization.findUnique({
             where: { id: candidateOrgId },
-            select: { businessMode: true, name: true },
+            select: { businessMode: true, name: true, isBlocked: true, blockedReason: true, subscription: { select: { id: true, status: true, periodEndsAt: true, graceEndsAt: true, autoBlockOnPastDue: true } } },
           })
           if (org?.businessMode) businessMode = org.businessMode
           organizationName = org?.name ?? null
+          const subscriptionExpired = Boolean(org?.subscription?.autoBlockOnPastDue && ["active", "past_due"].includes(org.subscription.status) && (org.subscription.graceEndsAt ?? org.subscription.periodEndsAt) < new Date())
+          if (subscriptionExpired && candidateOrgId) {
+            await prisma.$transaction([prisma.organizationSubscription.update({ where: { id: org!.subscription!.id }, data: { status: "suspended" } }), prisma.organization.update({ where: { id: candidateOrgId }, data: { isBlocked: true, blockedReason: "Suscripción vencida sin pago registrado" } })])
+          }
+          if ((org?.isBlocked || subscriptionExpired) && kind.scope !== "superadmin") {
+            throw new Error(org?.blockedReason || "El acceso de esta empresa está suspendido. Contacta al administrador.")
+          }
         }
         // Solo se activa si la org existe (el superAdmin con una org borrada
         // vuelve a "Sin organización" en lugar de quedar en un id colgado).

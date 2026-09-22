@@ -90,7 +90,8 @@ export function OnboardingWizard({
 
   const handleBack = useCallback(() => {
     if (step > 0) setStep((s) => s - 1);
-  }, [step]);
+    else router.push("/admin");
+  }, [step, router]);
 
   const handleFinish = useCallback(async () => {
     if (!selectedMode) return;
@@ -126,7 +127,7 @@ export function OnboardingWizard({
       {/* Background decoration */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 size-80 rounded-full bg-gradient-to-br from-emerald-200/30 to-teal-200/30 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 size-80 rounded-full bg-gradient-to-br from-violet-200/30 to-purple-200/30 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 size-80 rounded-full bg-gradient-to-br from-slate-200/30 to-teal-200/20 blur-3xl" />
       </div>
 
       <div className="relative flex min-h-screen flex-col">
@@ -193,7 +194,7 @@ export function OnboardingWizard({
                 <div className="space-y-3">
                   <h1 className="text-4xl font-bold text-slate-900 dark:text-white md:text-5xl">
                     ¡Bienvenido a{" "}
-                    <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                    <span className="text-emerald-600 dark:text-emerald-400">
                       Multi-POS
                     </span>
                     !
@@ -271,7 +272,7 @@ export function OnboardingWizard({
             {/* Step 2: Done */}
             {step === 2 && (
               <div className="space-y-8 text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="mx-auto flex size-28 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-2xl shadow-emerald-500/25 animate-bounce">
+                <div className="mx-auto flex size-28 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-2xl shadow-emerald-500/25">
                   <PartyPopper className="size-14 text-white" />
                 </div>
                 <div className="space-y-3">
@@ -348,11 +349,11 @@ export function OnboardingWizard({
             <Button
               variant="ghost"
               onClick={handleBack}
-              disabled={step === 0}
-              className="gap-2"
+              className="min-h-11 gap-2"
+              aria-label={step === 0 ? "Volver al panel" : "Volver al paso anterior"}
             >
               <ArrowLeft className="size-4" />
-              Atrás
+              {step === 0 ? "Volver al panel" : "Atrás"}
             </Button>
 
             {step < STEPS.length - 1 ? (

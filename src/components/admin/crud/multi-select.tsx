@@ -48,9 +48,10 @@ export function MultiSelect({
         const labelKey = field.optionLabel ?? "name";
         if (!active) return;
         const nested = field.optionNested;
+        const activeRows = res.rows.filter((r) => r.isActive !== false && r.active !== false);
         const flat = nested
-          ? res.rows.flatMap((r) => (Array.isArray(r[nested]) ? (r[nested] as Record<string, unknown>[]) : []))
-          : res.rows;
+          ? activeRows.flatMap((r) => (Array.isArray(r[nested]) ? (r[nested] as Record<string, unknown>[]).filter((item) => item.isActive !== false && item.active !== false) : []))
+          : activeRows;
         setOptions(
           flat.map((r) => ({
             value: String(r[valueKey] ?? ""),

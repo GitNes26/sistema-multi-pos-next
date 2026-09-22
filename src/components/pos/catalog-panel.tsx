@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ThumbImage } from "@/components/base/thumb-image"
+import { categoryBranchIds } from "@/lib/catalog/categories"
 
 const COMBOS_CATEGORY_ID = "__combos__"
 const UNCATEGORIZED_CATEGORY_ID = "__uncategorized__"
@@ -42,6 +43,10 @@ export function CatalogPanel({
   const setKeyboardOpen = usePosStore((s) => s.setKeyboardOpen)
 
   const inputRef = useRef<HTMLInputElement>(null)
+  const activeCategoryIds = useMemo(
+    () => categoryBranchIds(categories, activeCategory),
+    [categories, activeCategory]
+  )
 
   // 6.13 – El campo de búsqueda mantiene el foco (lector de código de barras).
   useEffect(() => {
@@ -55,7 +60,12 @@ export function CatalogPanel({
     const q = search.trim().toLowerCase()
     return products.filter((p) => {
       if (activeCategory === UNCATEGORIZED_CATEGORY_ID && p.categoryId) return false
-      if (activeCategory && activeCategory !== UNCATEGORIZED_CATEGORY_ID && p.categoryId !== activeCategory) return false
+      if (
+        activeCategory &&
+        activeCategory !== UNCATEGORIZED_CATEGORY_ID &&
+        activeCategory !== COMBOS_CATEGORY_ID &&
+        (!p.categoryId || !activeCategoryIds.has(p.categoryId))
+      ) return false
       if (!q) return true
       return (
         p.name.toLowerCase().includes(q) ||
@@ -63,7 +73,7 @@ export function CatalogPanel({
         (p.barcode ?? "").includes(q)
       )
     })
-  }, [products, activeCategory, search])
+  }, [products, activeCategory, activeCategoryIds, search])
 
   useEffect(() => {
     const q = search.trim()

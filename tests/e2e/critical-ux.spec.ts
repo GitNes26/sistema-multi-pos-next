@@ -11,7 +11,7 @@ async function loginOwner(page: Page) {
 
 async function loginPortal(page: Page) {
   await page.goto("/portal/auth/login", { waitUntil: "domcontentloaded" })
-  await expect(page.getByTestId("app-splash")).toBeHidden({ timeout: 10_000 })
+  await expect(page.getByTestId("app-splash")).toBeHidden({ timeout: 30_000 })
   await expect(page.locator("#identifier")).toBeFocused({ timeout: 15_000 })
   await page.locator("#identifier").fill("hcli-001@hibrido.local")
   await page.locator("#password").fill("demo1234")
@@ -36,8 +36,13 @@ test("proveedor: foco inicial y Enter guarda el formulario", async ({ page }, te
 })
 
 test("compras: cotización y orden validan por Enter y conservan los totales", async ({ page }, testInfo) => {
+  test.setTimeout(120_000)
   await loginOwner(page)
   await page.goto("/admin/purchasing", { waitUntil: "domcontentloaded" })
+  const supplierResponse = await page.request.post("/api/purchasing", { data: { action: "supplier.create", businessName: `Proveedor compra ${testInfo.project.name} ${Date.now()}`, leadTimeDays: 0 } })
+  expect(supplierResponse.ok()).toBe(true)
+  await page.reload()
+  await expect(page.getByText(/Proveedores activos/)).toBeVisible({ timeout: 30_000 })
   await page.getByRole("tab", { name: "Cotizaciones" }).click()
   await page.getByRole("button", { name: "Nueva cotización" }).click()
   const dialog = page.getByRole("dialog", { name: "Nueva solicitud de cotización" })
@@ -71,6 +76,15 @@ test("compras: cotización y orden validan por Enter y conservan los totales", a
   await page.locator("#purchase-target").click()
   await page.locator("[cmdk-item]").first().click()
   await expect(orderDialog.getByText(/Total estimado:.*29/)).toBeVisible()
+  await page.route("**/api/purchasing", async (route) => {
+    if (route.request().method() === "POST" && route.request().postData()?.includes('"order.create"')) {
+      await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ ok: false, error: "Esta cotización ya tiene una orden activa", field: "quoteId" }) })
+    } else await route.continue()
+  })
+  await orderDialog.getByRole("button", { name: "Crear orden" }).click()
+  await expect(orderDialog.getByRole("alert")).toContainText("Esta cotización ya tiene una orden activa")
+  await expect(orderDialog).toBeVisible()
+  await page.unroute("**/api/purchasing")
   const orderResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/purchasing") && response.request().method() === "POST" && response.request().postData()?.includes('"order.create"') === true)
   await orderDialog.locator('input[id^="qty-"]').first().press("Enter")
   const orderResponse = await orderResponsePromise
@@ -125,6 +139,29 @@ test("producto: Enter destaca campos inválidos y enfoca el primero", async ({ p
   await page.screenshot({ path: testInfo.outputPath("producto-validacion.png"), fullPage: true })
 })
 
+test("producto: crear una categoría conserva el formulario padre y selecciona la nueva opción", async ({ page }) => {
+  await loginOwner(page)
+  await page.goto("/admin/products", { waitUntil: "domcontentloaded" })
+  await page.getByRole("button", { name: /^nuevo$/i }).click()
+
+  const productName = `Producto pendiente ${Date.now()}`
+  const categoryName = `Categoría rápida ${Date.now()}`
+  await page.locator("#product-name").fill(productName)
+  await page.locator("#product-category").click()
+  await page.getByRole("button", { name: /^agregar$/i }).click()
+
+  const dialogLayers = page.locator('[data-slot="dialog-content"]')
+  await expect(dialogLayers).toHaveCount(2)
+  const categoryDialog = page.getByRole("dialog")
+  await categoryDialog.getByLabel("Nombre").fill(categoryName)
+  await categoryDialog.getByRole("button", { name: /^crear$/i }).click()
+
+  await expect(dialogLayers).toHaveCount(1, { timeout: 30_000 })
+  await expect(page.locator("#product-form")).toBeVisible()
+  await expect(page.locator("#product-name")).toHaveValue(productName)
+  await expect(page.locator("#product-category")).toContainText(categoryName)
+})
+
 test("portal: Enter en login vacío muestra errores sin desbordamiento", async ({ page }, testInfo) => {
   await page.goto("/portal/auth/login", { waitUntil: "domcontentloaded" })
   await expect(page.getByTestId("app-splash")).toBeHidden({ timeout: 10_000 })
@@ -139,7 +176,12 @@ test("portal: Enter en login vacío muestra errores sin desbordamiento", async (
 })
 
 test("portal: detalle de producto, carrito y pago conservan la navegación", async ({ page }, testInfo) => {
+  test.setTimeout(120_000)
   await loginPortal(page)
+  await page.goBack({ waitUntil: "domcontentloaded" })
+  await expect(page).toHaveURL(/\/portal$/, { timeout: 15_000 })
+  await page.goto("/")
+  await expect(page).toHaveURL(/\/portal$/)
   await page.goto("/portal/store", { waitUntil: "domcontentloaded" })
   const skipTour = page.getByRole("button", { name: "Saltar" })
   await expect(skipTour).toBeVisible({ timeout: 15_000 })
@@ -153,13 +195,11 @@ test("portal: detalle de producto, carrito y pago conservan la navegación", asy
   await expect(page.getByRole("button", { name: "Agregar al carrito" })).toBeVisible()
   await page.getByRole("button", { name: "Agregar al carrito" }).click()
   await page.getByRole("button", { name: "Carrito" }).click()
-  const slideToCheckout = page.getByRole("button", { name: "Desliza para pagar" })
-  await slideToCheckout.focus()
-  await slideToCheckout.press("Enter")
+  await page.getByRole("button", { name: "Continuar al pago" }).click()
   await expect(page).toHaveURL(/\/portal\/checkout/, { timeout: 30_000 })
   await expect(page.getByRole("heading", { name: "Método de pago" })).toBeVisible({ timeout: 30_000 })
   await expect(page.locator("#pay-credit")).toBeVisible()
-  const confirmButton = page.getByRole("button", { name: /Confirmar pedido/ })
+  const confirmButton = page.getByRole("button", { name: /Desliza para confirmar|Desliza para pagar/ })
   await expect(confirmButton).toBeVisible()
   const buttonBox = await confirmButton.boundingBox()
   const navBox = await page.locator("nav.fixed").boundingBox()

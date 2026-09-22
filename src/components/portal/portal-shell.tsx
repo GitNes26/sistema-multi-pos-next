@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import {
   Home,
   Store,
@@ -75,6 +76,17 @@ export function PortalShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  useEffect(() => {
+    const keepCustomerInPortal = () => {
+      if (window.location.pathname === "/" || window.location.pathname === "/portal/auth/login") {
+        window.history.replaceState(window.history.state, "", "/portal");
+        router.replace("/portal");
+      }
+    };
+    window.addEventListener("popstate", keepCustomerInPortal);
+    return () => window.removeEventListener("popstate", keepCustomerInPortal);
+  }, [router]);
   const canReserve = businessMode === "food_service" || businessMode === "hybrid";
   const navOrder = usePortalStore((s) => s.navOrder);
   const orderedIds: NavItemIdIncludingCombos[] =

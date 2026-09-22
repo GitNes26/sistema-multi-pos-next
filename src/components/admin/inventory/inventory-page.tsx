@@ -671,12 +671,12 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
       crudApi.list("cedis", { pageSize: 250 }),
     ])
       .then(([l, c]) => {
-        const locs: LocationOption[] = l.rows.map((r) => ({
+        const locs: LocationOption[] = l.rows.filter((r) => r.isActive !== false && r.active !== false).map((r) => ({
           id: String(r.id),
           name: String(r.name ?? ""),
           code: r.code != null ? String(r.code) : null,
         }));
-        const ceds: LocationOption[] = c.rows.map((r) => ({
+        const ceds: LocationOption[] = c.rows.filter((r) => r.isActive !== false && r.active !== false).map((r) => ({
           id: String(r.id),
           name: String(r.name ?? ""),
           code: r.code != null ? String(r.code) : null,

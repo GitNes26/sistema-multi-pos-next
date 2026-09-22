@@ -16,6 +16,8 @@ sin llamar por teléfono. Cada cliente entra con su correo/código y contraseña
 La barra inferior muestra las secciones principales y **Menú** abre un panel lateral con
 las demás secciones. En **Perfil → Personalizar navegación** puedes ordenar tus accesos
 principales.
+Con una sesión activa, usar Atrás desde el inicio del portal te mantiene en **Inicio**;
+para salir usa **Cerrar sesión** en Mi perfil.
 
 ## 7.2 Tienda y carrito
 
@@ -43,7 +45,10 @@ principales.
    - **Crédito**, si la empresa lo habilitó y tienes línea activa con saldo disponible. El motivo se muestra si tu línea está bloqueada o no alcanza.
    > El pago de **adeudos de crédito** no se hace en el checkout: se hace en la sección
    > **Mi Crédito** (ver 7.6 y capítulo 8).
-4. Desliza **Desliza para pagar** y listo: llega la confirmación del pedido.
+4. Revisa el monto final y desliza el control de confirmación. Si elegiste pago en línea,
+   se abrirá el proveedor de pago; la confirmación del pedido o del cargo se muestra al
+   completar el flujo. En efectivo o crédito, el control confirma el pedido sin afirmar
+   que ya se cobró en línea.
 
 ## 7.4 Pedidos y seguimiento
 

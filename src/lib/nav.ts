@@ -22,6 +22,7 @@ import {
   Ruler,
   Settings,
   ShieldCheck,
+  BadgeDollarSign,
   ShoppingCart,
   Sparkles,
   Tags,
@@ -259,6 +260,24 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Ajustes",
         icon: Settings,
         permission: "settings.manage",
+      },
+      {
+        href: "/admin/settings/my-plan",
+        label: "Mi plan",
+        icon: BadgeDollarSign,
+        permission: "settings.manage",
+      },
+      {
+        href: "/admin/settings/subscriptions",
+        label: "Control de suscripciones",
+        icon: ShieldCheck,
+        permission: "organizations.manage",
+      },
+      {
+        href: "/admin/settings/plans",
+        label: "Planes del sistema",
+        icon: BadgeDollarSign,
+        permission: "organizations.manage",
       },
       {
         href: "/admin/settings/users",

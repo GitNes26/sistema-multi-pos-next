@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.20.1.0] — 2026-09-22
+- **Tipo:** `fix` (Patch)
+- fix: resolviendo conflictos de modales apilados, categorias y subcategorias, porducto custom con variantes y se agregaron planes y panel de suscripciones
+
 ### [0.20.0.0] — 2026-09-22
 - **Tipo:** `feat` (Minor)
 - feat: se mejoro la UX del portal y se implemento mensajes

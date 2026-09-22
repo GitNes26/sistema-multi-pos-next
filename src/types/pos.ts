@@ -93,6 +93,7 @@ export interface PosProduct {
 
 export interface PosCategory {
   id: string
+  parentId: string | null
   name: string
   imageUrl: string | null
   productCount: number

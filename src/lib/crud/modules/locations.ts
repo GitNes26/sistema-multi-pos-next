@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { assertSubscriptionCapacity } from "@/lib/billing/subscriptions";
 import { CrudError, type CrudModule, type ListParams, type CrudListResult } from "../types";
 
 export interface LocationDto {
@@ -136,6 +137,7 @@ export const locationsModule: CrudModule<LocationDto> = {
   },
 
   async create(organizationId, input, _ctx) {
+    await assertSubscriptionCapacity(organizationId, "locations");
     const data = input as Record<string, unknown>;
     const name = data.name ? String(data.name).trim() : "";
     if (!name) throw new CrudError("El nombre es obligatorio", 400, "name");
@@ -241,3 +243,4 @@ export const locationsModule: CrudModule<LocationDto> = {
     await prisma.location.update({ where: { id }, data: { isActive: false } });
   },
 };
+

@@ -28,6 +28,11 @@ export async function middleware(req: NextRequest) {
   // Sesión inválida (usuario desactivado/eliminado) → tratar como sin sesión.
   const authenticated = Boolean(token && !token.invalid);
 
+  // Al volver con el navegador, un cliente con sesión permanece en su portal.
+  if (authenticated && token!.scope === "portal" && (pathname === "/" || pathname === "/portal/auth/login")) {
+    return NextResponse.redirect(new URL("/portal", req.url));
+  }
+
   // Onboarding: solo accesible con sesión de app
   if (pathname.startsWith("/onboarding")) {
     if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
@@ -117,6 +122,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/pos/:path*",
     "/kds/:path*",
     "/agenda/:path*",

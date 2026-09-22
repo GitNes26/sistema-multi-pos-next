@@ -1,6 +1,7 @@
 import { $Enums } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
+import { assertSubscriptionCapacity } from "@/lib/billing/subscriptions";
 import { hashPassword, setMembership, verifyPassword } from "@/lib/auth/users";
 import { mailConfigured, sendWelcomeLink } from "@/lib/auth/mail";
 import { roleAllowedInOrg, roleIdToEnum } from "@/lib/settings/system-roles";
@@ -173,6 +174,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
   },
 
   async create(organizationId, input, ctx) {
+    await assertSubscriptionCapacity(organizationId, "employees");
     const data = input as Record<string, unknown>;
     const fullName = data.fullName ? String(data.fullName).trim() : "";
     if (!fullName) throw new CrudError("El nombre es obligatorio", 400, "fullName");
@@ -391,3 +393,4 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     ]);
   },
 };
+

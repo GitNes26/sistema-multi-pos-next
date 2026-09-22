@@ -336,6 +336,8 @@ export function ProductsForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Aísla este formulario de los diálogos CRUD abiertos desde sus selectores.
+    e.stopPropagation()
     const validationValues = {
       name,
       taxRate,
@@ -853,6 +855,18 @@ export function ProductsForm({
         </>
       ) : productType === "custom" ? (
         <>
+          <FieldRow label="Variantes y opciones" full>
+            <div className="rounded-xl border bg-muted/30 p-3 text-sm">
+              <p className="font-medium">Una variante puede cambiar el servicio y sus consumos.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Ejemplo: «Aplicación de pestañas» y «Aplicación + juego de pestañas».
+                Guarda primero el producto, crea ambas desde el botón «Variantes» de la tabla
+                y, en «Receta e insumos», asigna el juego de pestañas solo a la variante que
+                lo incluye, con cantidad y merma. Así el inventario se descuenta únicamente
+                cuando se vende esa opción.
+              </p>
+            </div>
+          </FieldRow>
           {/* Variante base — precio, costo, SKU, código de barras */}
           <FieldRow label="Precio y costo base" full>
             <p className="text-xs text-muted-foreground">

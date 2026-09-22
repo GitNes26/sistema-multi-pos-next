@@ -257,6 +257,9 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   { id: "menu-usuarios", parentId: "menu-ajustes", type: "item", label: "Usuarios y permisos", icon: "ShieldCheck", href: "/admin/settings/users", permissionKey: "users.manage", sortOrder: 6 },
   { id: "menu-menus", parentId: "menu-ajustes", type: "item", label: "Menú", icon: "Menu", href: "/admin/settings/menus", permissionKey: "users.manage", sortOrder: 7 },
   { id: "menu-organizations", parentId: "menu-ajustes", type: "item", label: "Organizaciones y roles", icon: "Building2", href: "/admin/settings/organizations", permissionKey: "organizations.manage", sortOrder: 8 },
+  { id: "menu-my-plan", parentId: "menu-ajustes", type: "item", label: "Mi plan", icon: "CreditCard", href: "/admin/settings/my-plan", permissionKey: "settings.manage", sortOrder: 8.1 },
+  { id: "menu-subscriptions", parentId: "menu-ajustes", type: "item", label: "Control de suscripciones", icon: "ShieldCheck", href: "/admin/settings/subscriptions", permissionKey: "organizations.manage", sortOrder: 8.2 },
+  { id: "menu-plans", parentId: "menu-ajustes", type: "item", label: "Planes del sistema", icon: "CreditCard", href: "/admin/settings/plans", permissionKey: "organizations.manage", sortOrder: 8.3 },
 ];
 
 export async function seedProduction() {
@@ -364,6 +367,13 @@ export async function seedProduction() {
       },
     });
   }
+
+  const plans = [
+    { name: "Esencial", description: "Operación inicial para un negocio pequeño.", monthlyPrice: 699, includedLocations: 1, includedEmployees: 5, extraLocationPrice: 249, extraEmployeePackSize: 5, extraEmployeePackPrice: 149, sortOrder: 10 },
+    { name: "Crecimiento", description: "Más capacidad para equipos y sucursales en expansión.", monthlyPrice: 1499, includedLocations: 3, includedEmployees: 20, extraLocationPrice: 199, extraEmployeePackSize: 10, extraEmployeePackPrice: 199, sortOrder: 20 },
+    { name: "Multi-sucursal", description: "Control centralizado para operaciones de mayor escala.", monthlyPrice: 2999, includedLocations: 10, includedEmployees: 75, extraLocationPrice: 149, extraEmployeePackSize: 25, extraEmployeePackPrice: 299, sortOrder: 30 },
+  ];
+  for (const plan of plans) await prisma.subscriptionPlan.upsert({ where: { name: plan.name }, update: plan, create: { ...plan, features: ["Punto de venta", "Panel administrativo", "Portal de clientes", "Inventario y compras", "Reportes PDF y Excel"] } });
 }
 
 export { SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD, SUPERADMIN_NAME };

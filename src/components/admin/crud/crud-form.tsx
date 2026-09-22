@@ -350,6 +350,10 @@ export function CrudForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Los formularios de creación rápida viven en un portal, pero sus eventos
+    // conservan la jerarquía de React. Evita que el submit alcance el formulario
+    // padre y cierre también su diálogo.
+    e.stopPropagation()
     const valid = await validateForm()
     if (!valid) return
 

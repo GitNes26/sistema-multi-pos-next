@@ -17,6 +17,10 @@ import {
   FileSpreadsheet,
   MapPin,
   QrCode,
+  ClipboardCheck,
+  CreditCard,
+  Building2,
+  Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { HeroBackground } from "@/components/landing/hero-background"
@@ -25,6 +29,7 @@ import { Reveal } from "@/components/landing/reveal"
 import { ScrollCue } from "@/components/landing/scroll-cue"
 import { AnimatedStats } from "@/components/landing/animated-stats"
 import packageJson from "../../package.json"
+import { prisma } from "@/lib/db"
 
 export const metadata: Metadata = {
   title: "Bienvenido",
@@ -83,6 +88,18 @@ const FEATURES = [
     title: "Notificaciones en vivo",
     text: "Entérate al instante de ventas, nuevos pedidos y stock bajo, en tiempo real.",
   },
+  {
+    icon: ClipboardCheck,
+    color: "text-cyan-600 bg-cyan-500/10 dark:text-cyan-400 dark:bg-cyan-500/15",
+    title: "Proveedores y compras",
+    text: "Vincula productos, solicita cotizaciones, aprueba órdenes y registra recepciones en inventario.",
+  },
+  {
+    icon: CreditCard,
+    color: "text-orange-600 bg-orange-500/10 dark:text-orange-400 dark:bg-orange-500/15",
+    title: "Crédito para clientes",
+    text: "Configura límites por cliente, registra ventas a crédito y consulta saldos y abonos.",
+  },
 ]
 
 const CAPABILITIES = [
@@ -94,6 +111,8 @@ const CAPABILITIES = [
   { icon: Gift, label: "Puntos de lealtad" },
   { icon: Smartphone, label: "PWA instalable" },
   { icon: Bell, label: "Alertas de stock" },
+  { icon: ClipboardCheck, label: "Compras a proveedores" },
+  { icon: CreditCard, label: "Crédito y abonos" },
 ]
 
 function Logo() {
@@ -153,7 +172,8 @@ function CtaSection({ whatsappUrl }: { whatsappUrl: string }) {
   )
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const plans = await prisma.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
   return (
     <div className="flex min-h-svh flex-col bg-background">
       {/* ── Header ─────────────────────────────────────────────── */}
@@ -186,7 +206,7 @@ export default function LandingPage() {
             <Reveal delay={0.08}>
               <h1 className="mx-auto max-w-3xl text-balance text-4xl font-bold tracking-tight sm:text-6xl">
                 Tu negocio,{" "}
-                <span className="bg-gradient-to-r from-emerald-300 via-teal-300 to-sky-300 bg-clip-text text-transparent">
+                <span className="text-emerald-300">
                   un solo sistema.
                 </span>
               </h1>
@@ -194,9 +214,9 @@ export default function LandingPage() {
 
             <Reveal delay={0.16}>
               <p className="mx-auto max-w-2xl text-pretty text-base text-slate-300 sm:text-lg">
-                Vende, gestiona inventario, recibe pedidos en línea y fideliza a
-                tus clientes — todo en tiempo real, diseñado para tiendas,
-                restaurantes y cadenas pequeñas.
+                Vende, gestiona inventario y compras, recibe pedidos en línea y
+                atiende a tus clientes desde un solo lugar. Adaptado a retail,
+                restaurantes, servicios, rentas y negocios híbridos.
               </p>
             </Reveal>
 
@@ -232,6 +252,11 @@ export default function LandingPage() {
         {/* Degradado de transición al fondo claro */}
         <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-b from-transparent to-background" />
       </section>
+
+      {plans.length > 0 && <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6" id="planes">
+        <div className="mx-auto max-w-2xl text-center"><h2 className="text-3xl font-bold tracking-tight">Un plan para cada etapa</h2><p className="mt-3 text-muted-foreground">Todos incluyen Punto de venta, Panel administrativo y Portal de clientes. La capacidad cambia según tu operación.</p></div>
+        <div className="mt-10 grid gap-4 lg:grid-cols-3">{plans.map((plan)=><div key={plan.id} className="rounded-2xl border bg-card p-6"><h3 className="text-xl font-semibold">{plan.name}</h3><p className="mt-1 min-h-10 text-sm text-muted-foreground">{plan.description}</p><p className="mt-5 text-3xl font-semibold">${Number(plan.monthlyPrice).toLocaleString("es-MX")}<span className="text-sm font-normal text-muted-foreground">/mes</span></p><div className="mt-4 space-y-2 text-sm"><p><Building2 className="mr-2 inline size-4"/>{plan.includedLocations} sucursal(es) incluida(s)</p><p><Users className="mr-2 inline size-4"/>{plan.includedEmployees} empleados incluidos</p><p className="text-muted-foreground">Sucursal extra: ${Number(plan.extraLocationPrice).toLocaleString("es-MX")}/mes</p><p className="text-muted-foreground">{plan.extraEmployeePackSize} empleados extra: ${Number(plan.extraEmployeePackPrice).toLocaleString("es-MX")}/mes</p></div><ul className="mt-4 space-y-2 text-sm">{(plan.features as string[]).map(feature=><li key={feature} className="flex gap-2"><Check className="size-4 text-emerald-600"/>{feature}</li>)}</ul><Button asChild className="mt-6 w-full"><a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">Solicitar este plan</a></Button></div>)}</div>
+      </section>}
 
       {/* ── Features ──────────────────────────────────────────── */}
       <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6">
@@ -297,6 +322,8 @@ export default function LandingPage() {
                 "Pedidos con seguimiento en vivo",
                 "Programa de puntos de lealtad",
                 "Reportes exportables en PDF/Excel",
+                "Cotizaciones, órdenes y recepción de compras",
+                "Crédito y abonos por cliente",
               ].map((item) => (
                 <div key={item} className="flex items-center gap-2.5 text-sm">
                   <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">

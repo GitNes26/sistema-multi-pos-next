@@ -47,23 +47,6 @@ function DialogOverlay({
   )
 }
 
-/** Evento global: cierra todos los diálogos abiertos (p. ej. tras crear un
- * registro desde un FormCombobox en un diálogo anidado). */
-export const CLOSE_ALL_DIALOGS_EVENT = "multipos:close-all-dialogs"
-
-export function closeAllDialogs() {
-  if (typeof window === "undefined") return
-  window.dispatchEvent(new Event(CLOSE_ALL_DIALOGS_EVENT))
-}
-
-function useCloseAllDialogs(onClose: () => void) {
-  React.useEffect(() => {
-    const handler = () => onClose()
-    window.addEventListener(CLOSE_ALL_DIALOGS_EVENT, handler)
-    return () => window.removeEventListener(CLOSE_ALL_DIALOGS_EVENT, handler)
-  }, [onClose])
-}
-
 function isInteractionInsideNestedLayer(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false
   return Boolean(
@@ -252,8 +235,6 @@ function DialogComponent({
   children,
   dataGuide,
 }: DialogComponentProps) {
-  useCloseAllDialogs(() => onOpenChange(false))
-
   const sizeClass = DIALOG_SIZE_CLASSES[size]
   const handleEnter: React.KeyboardEventHandler<HTMLDivElement> = (event) => {
     if (event.key !== "Enter" || event.defaultPrevented || event.nativeEvent.isComposing || event.repeat) return

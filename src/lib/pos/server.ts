@@ -15,7 +15,7 @@ import { saleArithmeticError } from "./sale-integrity"
 import { bestAutoPromotion, type PricingLine } from "./pricing"
 import { getWeekdaysNumber } from "./pricing-schedule"
 import { customerMayUsePromotion, reservePromotionCustomerUse } from "@/lib/promotions/customer-use"
-import { isFeatureEnabled, type FeatureKey } from "@/lib/features"
+import { isFeatureEnabled } from "@/lib/features"
 import type { BusinessMode } from "@/lib/auth/options"
 import { maybeNotifyLowStock } from "@/lib/inventory/server"
 import { consumeRecipeIngredients } from "@/lib/inventory/recipes"
@@ -23,6 +23,7 @@ import { notifySaleCompleted } from "@/lib/notifications/events"
 import { notifyStaff } from "@/lib/notifications/staff"
 import { broadcastTableUpdate } from "@/lib/tables/live"
 import { closeKitchenOrderOnSale } from "./kitchen"
+import { categoryBranchIds } from "@/lib/catalog/categories"
 
 export class PosError extends Error {
   status: number
@@ -119,7 +120,7 @@ export async function getPosCatalog(
     prisma.category.findMany({
       where: { organizationId, isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, imageUrl: true },
+      select: { id: true, parentId: true, name: true, imageUrl: true },
     }),
     prisma.customer.findMany({
       where: { organizationId, isActive: true },
@@ -353,12 +354,18 @@ export async function getPosCatalog(
       a.name.localeCompare(b.name)
   )
 
-  const categoriesWithCount = categories.map((c) => ({
-    id: c.id,
-    name: c.name,
-    imageUrl: c.imageUrl,
-    productCount: products.filter((p) => p.categoryId === c.id).length,
-  }))
+  const categoriesWithCount = categories.map((c) => {
+    const branchIds = categoryBranchIds(categories, c.id)
+    return {
+      id: c.id,
+      parentId: c.parentId,
+      name: c.name,
+      imageUrl: c.imageUrl,
+      productCount: products.filter(
+        (p) => p.categoryId && branchIds.has(p.categoryId)
+      ).length,
+    }
+  })
 
   const registersMapped: PosCashRegister[] = registers.map((r) => ({
     id: r.id,

@@ -171,6 +171,12 @@ export async function createOrganization(
     return created
   })
 
+  const starterPlan = await prisma.subscriptionPlan.findFirst({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
+  if (starterPlan) {
+    const periodEndsAt = new Date(); periodEndsAt.setDate(periodEndsAt.getDate() + 30)
+    await prisma.organizationSubscription.create({ data: { organizationId: org.id, planId: starterPlan.id, status: "active", periodEndsAt } })
+  }
+
   return {
     id: org.id,
     name: org.name,

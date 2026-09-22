@@ -167,9 +167,9 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
   const loadOptions = useCallback(async () => {
     try {
       const [locations, employees, registers] = await Promise.all([
-        crudApi.list("locations", { pageSize: 250 }).then((r) => r.rows.map((x) => ({ id: String(x.id), name: String(x.name) }))),
-        crudApi.list("employees", { pageSize: 250 }).then((r) => r.rows.map((x) => ({ id: String(x.id), name: String(x.fullName ?? "") }))),
-        crudApi.list("cashRegisters", { pageSize: 250 }).then((r) => r.rows.map((x) => ({ id: String(x.id), name: String(x.name) }))),
+        crudApi.list("locations", { pageSize: 250 }).then((r) => r.rows.filter((x) => x.isActive !== false && x.active !== false).map((x) => ({ id: String(x.id), name: String(x.name) }))),
+        crudApi.list("employees", { pageSize: 250 }).then((r) => r.rows.filter((x) => x.isActive !== false && x.active !== false).map((x) => ({ id: String(x.id), name: String(x.fullName ?? "") }))),
+        crudApi.list("cashRegisters", { pageSize: 250 }).then((r) => r.rows.filter((x) => x.isActive !== false && x.active !== false).map((x) => ({ id: String(x.id), name: String(x.name) }))),
       ]);
       setOptions({ locations, employees, registers });
     } catch {

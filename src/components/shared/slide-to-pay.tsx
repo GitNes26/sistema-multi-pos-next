@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 type SlideAction = "payment" | "transfer" | "approval" | "confirm"
 
 interface SlideToPayProps {
-  onConfirm: () => void | Promise<void>
+  onConfirm: () => void | boolean | Promise<void | boolean>
   label?: string
   hint?: string
   action?: SlideAction
@@ -52,7 +52,8 @@ export function SlideToPay({ onConfirm, label, hint = "Desliza hasta el final pa
     animate(x, travel, { duration: 0.18 })
     haptic.success()
     try {
-      await onConfirm()
+      const result = await onConfirm()
+      if (result === false) { reset(); return }
       setComplete(true)
       window.setTimeout(() => { setComplete(false); reset() }, 900)
     } catch (error) {
@@ -69,7 +70,7 @@ export function SlideToPay({ onConfirm, label, hint = "Desliza hasta el final pa
         <motion.div className="absolute inset-y-1 left-1 rounded-xl bg-primary/15" style={{ width: fill }} />
         <motion.div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-16 text-center" style={{ opacity: textOpacity }}>
           <span className="text-sm font-semibold">{empty ? "No hay elementos para procesar" : loading ? "Procesando…" : complete ? "Acción confirmada" : visibleLabel}</span>
-          {!empty && !loading && !complete && <span className="text-[11px] text-muted-foreground">{hint}</span>}
+          {!empty && !loading && !complete && <span className="text-xs text-muted-foreground">{hint}</span>}
         </motion.div>
         <motion.button
           type="button"

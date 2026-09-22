@@ -68,7 +68,7 @@ export function RecipeDialog({
       }),
     ])
       .then(([result, recipe]) => {
-        setCatalog(result.rows as RecipeProduct[])
+        setCatalog(result.rows.filter((row) => row.isActive !== false && row.active !== false) as RecipeProduct[])
         setRows(
           recipe.items.map((item) => ({
             id: crypto.randomUUID(),

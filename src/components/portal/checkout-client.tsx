@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Banknote, CreditCard, Globe, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, CircleCheck, Home, Plus, Trash2, Sparkles, Navigation } from "lucide-react";
+import { ArrowLeft, Banknote, CreditCard, Globe, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, Home, Plus, Trash2, Sparkles, Navigation } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePortalStore, cartSubtotal, cartTax } from "@/stores/portal-store";
 import { portalApi, type LoyaltyData, type PortalPromotionPreview } from "@/lib/portal/client";
@@ -23,6 +23,7 @@ import { InputGroupField } from "@/components/base/input-group-field";
 import { SwipeableRow } from "@/components/shared/swipeable-row";
 import { GpsPicker, type GpsValue } from "@/components/base/gps-picker";
 import { PermissionSlider } from "@/components/shared/permission-slider";
+import { SlideToPay } from "@/components/shared/slide-to-pay";
 import { cn } from "@/lib/utils";
 
 function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -364,15 +365,15 @@ export function CheckoutClient() {
         ? (pickupWithDistance[0] ? `loc-${pickupWithDistance[0].id}` : "delivery-method-pickup")
         : "delivery-address";
       requestAnimationFrame(() => document.getElementById(targetId)?.focus());
-      return;
+      return false;
     }
     if (deliveryMethod === "delivery" && radiusError) {
       setSubmitError(radiusError);
-      return;
+      return false;
     }
     if (scheduleInfo && !scheduleInfo.open) {
       setSubmitError(scheduleInfo.message);
-      return;
+      return false;
     }
 
     setSubmitting(true);
@@ -401,13 +402,15 @@ export function CheckoutClient() {
         const pay = await paymentsApi.payOrder(order.order.id);
         clearCart();
         window.location.assign(pay.url);
-        return;
+        return true;
       }
 
       clearCart();
       router.push(`/portal/orders/${order.order.id}`);
+      return true;
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "No se pudo crear el pedido");
+      return false;
     } finally {
       setSubmitting(false);
     }
@@ -944,14 +947,14 @@ export function CheckoutClient() {
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {submitError}
               </p>
             )}
-            <Button
-              className="h-14 w-full rounded-2xl text-base font-bold shadow-lg"
-              onClick={submit}
-              disabled={submitting || policyLoading || !!minAmountError || !!radiusError || (scheduleInfo != null && !scheduleInfo.open)}
-            >
-              <CircleCheck className="mr-2 size-5" />
-              {submitting ? "Procesando…" : policyLoading ? "Actualizando condiciones…" : `Confirmar pedido · ${money(payableTotal)}`}
-            </Button>
+            <SlideToPay
+              action="payment"
+              label={`${payMethod === "online" || payMethod === "card" ? "Desliza para pagar" : "Desliza para confirmar"} · ${money(payableTotal)}`}
+              hint="Revisa el total y desliza para continuar"
+              onConfirm={submit}
+              loading={submitting}
+              disabled={policyLoading || !!minAmountError || !!radiusError || (scheduleInfo != null && !scheduleInfo.open)}
+            />
           </div>
         </>
       )}

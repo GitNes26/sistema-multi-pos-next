@@ -132,10 +132,10 @@ export function SalesPage({
         crudApi
           .list("locations", { pageSize: 250 })
           .then((r) =>
-            r.rows.map((x) => ({ id: String(x.id), name: String(x.name) }))
+            r.rows.filter((x) => x.isActive !== false && x.active !== false).map((x) => ({ id: String(x.id), name: String(x.name) }))
           ),
         crudApi.list("employees", { pageSize: 250 }).then((r) =>
-          r.rows.map((x) => ({
+          r.rows.filter((x) => x.isActive !== false && x.active !== false).map((x) => ({
             id: String(x.id),
             name: String(x.fullName ?? ""),
           }))
@@ -143,7 +143,7 @@ export function SalesPage({
         crudApi
           .list("cashRegisters", { pageSize: 250 })
           .then((r) =>
-            r.rows.map((x) => ({ id: String(x.id), name: String(x.name) }))
+            r.rows.filter((x) => x.isActive !== false && x.active !== false).map((x) => ({ id: String(x.id), name: String(x.name) }))
           ),
       ])
       setOptions({ locations, employees, registers })

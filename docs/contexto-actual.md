@@ -1,6 +1,6 @@
 # Contexto vigente de Multi-POS
 
-Revisión: 21 de septiembre de 2026.
+Revisión: 22 de septiembre de 2026.
 
 Multi-POS es una aplicación web multiempresa y multisucursal construida con Next.js 15,
 React 19, Prisma 6 y MySQL. Comparte catálogo, ventas, clientes y configuración, y adapta
@@ -14,6 +14,10 @@ sus superficies según cinco modos: retail, restaurante, servicios, rentas e hí
 - **Agenda:** personal de servicios; disponibilidad, citas y cobro relacionado.
 - **Reservaciones:** agentes de renta; disponibilidad, período, entrega y devolución.
 - **Portal:** cliente; catálogo, carrito, pedido, reservaciones, crédito y seguimiento.
+- **Proveedores y compras:** abastecimiento; vínculos de producto, cotizaciones, órdenes,
+  aprobaciones y recepciones parciales o completas que actualizan inventario.
+- **Planes y suscripciones:** el superadministrador define paquetes, precios, capacidad,
+  vencimiento, pagos y bloqueos; cada empresa consulta su consumo desde Mi plan.
 - **Público:** acceso, recuperación, onboarding, menú QR y reservación de mesa invitada.
 
 ## Reglas transversales

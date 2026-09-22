@@ -80,7 +80,7 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
       if (categoryId !== "all") params.categoryId = categoryId;
       const res = await crudApi.list("products", params);
       setProducts(
-        res.rows.map((r) => ({
+        res.rows.filter((r) => r.isActive !== false && r.active !== false).map((r) => ({
           id: String(r.id),
           name: String(r.name ?? ""),
           imageUrl: (r.imageUrl as string | null) ?? null,
@@ -129,7 +129,7 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
     crudApi
       .list("categories", { pageSize: 200 })
       .then((res) =>
-        setCategories(res.rows.map((r) => ({ id: String(r.id), name: String(r.name ?? "") })))
+        setCategories(res.rows.filter((r) => r.isActive !== false && r.active !== false).map((r) => ({ id: String(r.id), name: String(r.name ?? "") })))
       )
       .catch(() => setCategories([]));
   }, [open]);

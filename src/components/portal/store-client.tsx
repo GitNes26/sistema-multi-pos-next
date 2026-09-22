@@ -18,6 +18,7 @@ import { Heart, ListChecks } from "lucide-react"
 import { swalToast } from "@/lib/swal"
 import { ProductBuilder, selectedOptionsKey } from "@/components/pos/product-builder"
 import type { PortalProduct, PortalVariantOption as PortalVariant } from "@/lib/portal/server"
+import { categoryBranchIds } from "@/lib/catalog/categories"
 
 export function StoreClient() {
   const router = useRouter();
@@ -36,6 +37,10 @@ export function StoreClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [builderProduct, setBuilderProduct] = useState<PortalProduct | null>(null);
+  const activeCategoryIds = useMemo(
+    () => categoryBranchIds(categories, activeCategory),
+    [categories, activeCategory]
+  );
 
   useEffect(() => {
     let active = true;
@@ -61,11 +66,15 @@ export function StoreClient() {
 
   const filtered = useMemo(() => {
     let list = products;
-    if (activeCategory) list = list.filter((p) => p.categoryId === activeCategory);
+    if (activeCategory) {
+      list = list.filter(
+        (p) => p.categoryId && activeCategoryIds.has(p.categoryId)
+      );
+    }
     const q = search.trim().toLowerCase();
     if (q) list = list.filter((p) => p.name.toLowerCase().includes(q) || (p.categoryName ?? "").toLowerCase().includes(q));
     return list;
-  }, [products, activeCategory, search]);
+  }, [products, activeCategory, activeCategoryIds, search]);
 
   return (
     <div className="relative space-y-3 p-4">
