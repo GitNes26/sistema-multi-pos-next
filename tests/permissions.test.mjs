@@ -1109,14 +1109,14 @@ test("gerente: abre y cierra caja (200), entra a /admin, CRUD create 201 y limpi
 test("defaults, apariencia y categorías respetan la empresa activa", async () => {
   const manager = await login(ACCOUNTS.manager.email);
 
-  for (const module of ["customers", "employees"]) {
-    const response = await api(`/api/crud/${module}?defaults=1`, { cookie: manager.cookie });
-    assert.equal(response.status, 200, `${module} debe entregar defaults`);
+  for (const catalog of ["customers", "employees"]) {
+    const response = await api(`/api/crud/${catalog}?defaults=1`, { cookie: manager.cookie });
+    assert.equal(response.status, 200, `${catalog} debe entregar defaults`);
     const body = await response.json();
     assert.equal(body.defaults.isActive, true);
     assert.match(
-      module === "customers" ? body.defaults.customerCode : body.defaults.employeeCode,
-      module === "customers" ? /^CLI-\d{4,}$/ : /^EMP-\d{4,}$/,
+      catalog === "customers" ? body.defaults.customerCode : body.defaults.employeeCode,
+      catalog === "customers" ? /^CLI-\d{4,}$/ : /^EMP-\d{4,}$/,
     );
   }
 

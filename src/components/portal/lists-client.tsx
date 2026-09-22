@@ -1,247 +1,147 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
-import { Copy, Plus, ListChecks, ShoppingCart, Pencil } from "lucide-react"
+import { Copy, ListChecks, MoreHorizontal, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react"
+import * as yup from "yup"
 import { portalApi } from "@/lib/portal/client"
 import type { ShoppingListRow } from "@/lib/portal/server"
-import { swalConfirm, swalError, swalPrompt, swalToast } from "@/lib/swal"
+import { swalConfirm, swalToast } from "@/lib/swal"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 import { EmptyState } from "@/components/shared/empty-state"
 import { ListsEmptyIllustration } from "@/components/shared/animated-illustrations"
-import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { usePortalStore } from "@/stores/portal-store"
-import { STAGGER } from "@/lib/animation-tokens"
+import { DialogComponent } from "@/components/ui/dialog"
+import { InputGroupField } from "@/components/base/input-group-field"
+import { Textarea } from "@/components/ui/textarea"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+
+const listSchema = yup.object({
+  name: yup.string().trim().required("Escribe un nombre para la lista").max(80, "Máximo 80 caracteres"),
+  notes: yup.string().max(300, "Máximo 300 caracteres"),
+})
 
 export function ListsClient() {
   const router = useRouter()
   const [lists, setLists] = useState<ShoppingListRow[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editName, setEditName] = useState("")
+  const [name, setName] = useState("")
+  const [notes, setNotes] = useState("")
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [notesError, setNotesError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const nameRef = useRef<HTMLInputElement>(null)
 
-  const load = useCallback(() => {
-    portalApi
-      .lists()
-      .then((d) => setLists(d.lists))
-      .catch((e) => setError(e instanceof Error ? e.message : "Error"))
+  const load = useCallback(async () => {
+    try { setError(null); setLists((await portalApi.lists()).lists) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudieron cargar las listas") }
   }, [])
+  useEffect(() => { void load() }, [load])
 
-  useEffect(() => {
-    load()
-  }, [load])
-
-  const create = async () => {
-    const name = await swalPrompt("Nueva lista", "Nombre de la lista…", undefined, "Ej. Despensa semanal")
-    if (!name) return
-    try {
-      const res = await portalApi.createList({ name, notes: null, items: [] })
-      swalToast("Lista creada")
-      router.push(`/portal/lists/${res.list.id}`)
-    } catch (err) {
-      swalError("No se pudo crear", err instanceof Error ? err.message : undefined)
-    }
+  const openForm = (list?: ShoppingListRow) => {
+    setEditingId(list?.id ?? null)
+    setName(list?.name ?? "")
+    setNotes(list?.notes ?? "")
+    setNameError(null)
+    setNotesError(null)
+    setFormError(null)
+    setFormOpen(true)
+    requestAnimationFrame(() => nameRef.current?.focus())
   }
 
-  const duplicate = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      const res = await portalApi.duplicateList(id)
-      swalToast("Lista duplicada")
-      setLists((prev) =>
-        prev
-          ? [
-              {
-                id: res.list.id,
-                name: res.list.name,
-                notes: res.list.notes,
-                itemsCount: res.list.items.length,
-                createdAt: res.list.createdAt,
-              },
-              ...prev,
-            ]
-          : prev
-      )
-    } catch (err) {
-      swalError("No se pudo duplicar", err instanceof Error ? err.message : undefined)
+  const saveForm = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setNameError(null); setNotesError(null); setFormError(null)
+    try { await listSchema.validate({ name, notes }, { abortEarly: false }) }
+    catch (cause) {
+      if (cause instanceof yup.ValidationError) {
+        for (const issue of cause.inner.length ? cause.inner : [cause]) {
+          if (issue.path === "name") setNameError(issue.message)
+          if (issue.path === "notes") setNotesError(issue.message)
+        }
+        if (cause.inner.some((issue) => issue.path === "name") || cause.path === "name") nameRef.current?.focus()
+      }
+      return
     }
+    setSaving(true)
+    try {
+      if (editingId) {
+        const detail = await portalApi.list(editingId)
+        await portalApi.updateList(editingId, {
+          name: name.trim(), notes: notes.trim() || null,
+          items: detail.list.items.map((item) => ({ variantId: item.variantId, productId: item.variantId ? null : item.productId, unitId: item.unitId, quantity: item.quantity })),
+        })
+        setLists((current) => current?.map((list) => list.id === editingId ? { ...list, name: name.trim(), notes: notes.trim() || null } : list) ?? null)
+        swalToast("Lista actualizada")
+      } else {
+        const created = await portalApi.createList({ name: name.trim(), notes: notes.trim() || null, items: [] })
+        swalToast("Lista creada")
+        router.push(`/portal/lists/${created.list.id}`)
+      }
+      setFormOpen(false)
+    } catch (cause) { setFormError(cause instanceof Error ? cause.message : "No se pudo guardar la lista") }
+    finally { setSaving(false) }
+  }
+
+  const duplicate = async (id: string) => {
+    try {
+      const result = await portalApi.duplicateList(id)
+      setLists((current) => current ? [{ id: result.list.id, name: result.list.name, notes: result.list.notes, itemsCount: result.list.items.length, createdAt: result.list.createdAt }, ...current] : current)
+      swalToast("Lista duplicada")
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo duplicar la lista") }
   }
 
   const remove = async (id: string) => {
-    const ok = await swalConfirm("Eliminar lista", "¿Seguro que quieres eliminar esta lista?", { danger: true })
-    if (!ok) return
-    try {
-      await portalApi.deleteList(id)
-      setLists((prev) => (prev ? prev.filter((l) => l.id !== id) : prev))
-      swalToast("Lista eliminada", "info")
-    } catch (err) {
-      swalError("No se pudo eliminar", err instanceof Error ? err.message : undefined)
-    }
+    if (!await swalConfirm("Eliminar lista", "¿Seguro que quieres eliminar esta lista?", { danger: true })) return
+    try { await portalApi.deleteList(id); setLists((current) => current?.filter((list) => list.id !== id) ?? null); swalToast("Lista eliminada", "info") }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo eliminar la lista") }
   }
 
-  const startRename = (id: string, currentName: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setEditingId(id)
-    setEditName(currentName)
-  }
-
-  const saveRename = async () => {
-    if (!editingId || !editName.trim()) return
+  const addAllToCart = async (listId: string) => {
     try {
-      const existing = lists?.find((l) => l.id === editingId)
-      await portalApi.updateList(editingId, {
-        name: editName.trim(),
-        items: [],
-        notes: existing?.notes ?? null,
-      })
-      setLists((prev) =>
-        prev ? prev.map((l) => (l.id === editingId ? { ...l, name: editName.trim() } : l)) : prev
-      )
-      swalToast("Lista renombrada")
-    } catch {
-      // silent
-    }
-    setEditingId(null)
-  }
-
-  const addAllToCart = async (listId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    try {
-      const res = await portalApi.list(listId)
-      let added = 0
-      let limited = 0
-      let skipped = 0
+      const [res, storefront] = await Promise.all([portalApi.list(listId), portalApi.storefront()])
+      usePortalStore.getState().setStorefront(storefront.categories, storefront.products)
+      let added = 0, limited = 0, skipped = 0
       for (const item of res.list.items) {
-        const products = usePortalStore.getState().products
-        const product = products.find((p) => p.variants.some((v) => v.id === item.variantId))
-        if (product) {
-          const variant = product.variants.find((v) => v.id === item.variantId)
-          if (variant) {
-            const r = usePortalStore.getState().addStandard(product, variant, item.quantity)
-            if (r.added > 0) {
-              added++
-              if (r.limited) limited++
-            } else {
-              skipped++
-            }
-          }
+        const product = storefront.products.find((candidate) => candidate.productId === item.productId)
+        if (!product?.isAvailable) { skipped++; continue }
+        if (!item.variantId && item.unitId && product.bulk) {
+          const unit = item.unitId === product.bulk.unitId ? { unitId: product.bulk.unitId, unitName: product.bulk.unitName, unitAbbrev: product.bulk.unitAbbrev, price: product.bulk.price } : product.bulk.split?.unitId === item.unitId ? product.bulk.split : null
+          if (!unit) { skipped++; continue }
+          const result = usePortalStore.getState().addBulk(product, { qty: item.quantity, unitId: unit.unitId, unitName: unit.unitName, unitAbbrev: unit.unitAbbrev, pricePerUnit: unit.price })
+          if (result.added > 0) { added++; if (result.limited) limited++ } else skipped++
+        } else {
+          const variant = product.variants.find((candidate) => candidate.id === item.variantId)
+          if (!variant?.isAvailable) { skipped++; continue }
+          const result = usePortalStore.getState().addStandard(product, variant, item.quantity)
+          if (result.added > 0) { added++; if (result.limited) limited++ } else skipped++
         }
       }
-      if (added > 0) {
-        const parts = [`${added} producto${added > 1 ? "s" : ""} agregado${added > 1 ? "s" : ""} al carrito`]
-        if (limited > 0) parts.push(`${limited} limitado${limited > 1 ? "s" : ""} por stock`)
-        if (skipped > 0) parts.push(`${skipped} sin stock`)
-        swalToast(parts.join(" · "))
+      if (!added) { swalToast("No hay productos disponibles para agregar", "info"); return }
+      if (limited || skipped) {
+        setError(`${limited ? `${limited} producto${limited === 1 ? "" : "s"} ajustado${limited === 1 ? "" : "s"} al stock disponible. ` : ""}${skipped ? `${skipped} producto${skipped === 1 ? "" : "s"} no disponible${skipped === 1 ? "" : "s"}.` : ""}`)
       } else {
-        swalToast("Los productos de la lista no tienen stock disponible", "info")
+        setError(null)
       }
-    } catch {
-      swalToast("No se pudo agregar la lista", "info")
-    }
+      usePortalStore.getState().setCartOpen(true)
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo agregar la lista al carrito") }
   }
 
-  return (
-    <PullToRefresh onRefresh={load}>
-      <div className="space-y-3 p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold">Mis listas</h1>
-          <Button size="sm" className="rounded-xl" onClick={create}>
-            <Plus className="size-4" /> Nueva
-          </Button>
-        </div>
+  return <div className="space-y-4 p-4">
+    <header className="flex items-center justify-between gap-3"><div><h1 className="text-xl font-bold">Mis listas</h1><p className="text-sm text-muted-foreground">Organiza compras habituales y repítelas en un toque.</p></div><Button className="h-11 shrink-0" onClick={() => openForm()}><Plus className="size-4" /> Nueva lista</Button></header>
+    {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error} <button type="button" className="font-semibold underline" onClick={() => void load()}>Reintentar</button></div>}
+    {!lists ? <div className="space-y-3">{Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div> : lists.length === 0 ? <div className="space-y-4"><EmptyState icon={ListChecks} illustration={ListsEmptyIllustration} title="Todavía no tienes listas" description="Crea una lista para guardar los productos que compras con frecuencia." /><Button className="w-full h-11" onClick={() => openForm()}><Plus className="size-4" /> Crear mi primera lista</Button></div> : <div className="space-y-3">{lists.map((list) => <article key={list.id} className="rounded-2xl border bg-card p-4 shadow-sm">
+      <Link href={`/portal/lists/${list.id}`} className="flex items-start gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-primary"><span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><ListChecks className="size-5" /></span><span className="min-w-0 flex-1"><strong className="block truncate text-sm">{list.name}</strong><span className="text-xs text-muted-foreground">{list.itemsCount} producto{list.itemsCount === 1 ? "" : "s"}</span>{list.notes && <span className="mt-1 block line-clamp-2 text-xs text-muted-foreground">{list.notes}</span>}</span></Link>
+      <div className="mt-3 flex items-center gap-2 border-t pt-3"><Button variant="secondary" className="h-11 flex-1" disabled={!list.itemsCount} onClick={() => void addAllToCart(list.id)}><ShoppingCart className="size-4" /> Comprar lista</Button><Button variant="outline" size="icon" className="size-11" aria-label={`Editar ${list.name}`} onClick={() => openForm(list)}><Pencil className="size-4" /></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" className="size-11" aria-label={`Más opciones para ${list.name}`}><MoreHorizontal className="size-5" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem className="min-h-11" onSelect={() => void duplicate(list.id)}><Copy className="size-4" /> Duplicar</DropdownMenuItem><DropdownMenuItem variant="destructive" className="min-h-11" onSelect={() => void remove(list.id)}><Trash2 className="size-4" /> Eliminar</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
+    </article>)}</div>}
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-
-        {!lists ? (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full rounded-xl" />
-            ))}
-          </div>
-        ) : lists.length === 0 ? (
-          <EmptyState
-            icon={ListChecks}
-            illustration={ListsEmptyIllustration}
-            title="No tienes listas"
-            description="Crea una lista para organizar tu compra."
-          />
-        ) : (
-          <AnimatePresence>
-            {lists.map((l, idx) => (
-              <motion.div
-                key={l.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -100 }}
-                transition={{ delay: idx * STAGGER.MEDIUM }}
-              >
-                <SwipeableRow onDelete={() => remove(l.id)}>
-                  <div
-                    className="flex items-center gap-3 rounded-xl border border-border/60 bg-card p-3.5 shadow-sm active:bg-muted/30"
-                    onClick={() => router.push(`/portal/lists/${l.id}`)}
-                  >
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <ListChecks className="size-5" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      {editingId === l.id ? (
-                        <input
-                          autoFocus
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onBlur={saveRename}
-                          onKeyDown={(e) => e.key === "Enter" && saveRename()}
-                          className="w-full bg-transparent text-sm font-semibold outline-none"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      ) : (
-                        <p className="truncate text-sm font-semibold">{l.name}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {l.itemsCount} producto{l.itemsCount !== 1 ? "s" : ""}
-                      </p>
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-0.5">
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        className="size-8 text-primary"
-                        onClick={(e) => addAllToCart(l.id, e)}
-                        aria-label="Agregar al carrito"
-                      >
-                        <ShoppingCart className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        className="size-8"
-                        onClick={(e) => startRename(l.id, l.name, e)}
-                        aria-label="Renombrar"
-                      >
-                        <Pencil className="size-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        className="size-8"
-                        onClick={(e) => duplicate(l.id, e)}
-                        aria-label="Duplicar"
-                      >
-                        <Copy className="size-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </SwipeableRow>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        )}
-      </div>
-    </PullToRefresh>
-  )
+    <DialogComponent open={formOpen} onOpenChange={setFormOpen} title={editingId ? "Editar lista" : "Nueva lista"} description="Ponle un nombre fácil de reconocer. Después podrás añadir productos y cantidades." icon={<ListChecks className="size-5" />} size="sm" footer={<><Button variant="outline" type="button" onClick={() => setFormOpen(false)}>Cancelar</Button><Button type="submit" form="shopping-list-form" disabled={saving}>{saving ? "Guardando…" : editingId ? "Guardar cambios" : "Crear lista"}</Button></>}>
+      <form id="shopping-list-form" onSubmit={saveForm} noValidate className="space-y-4 py-2"><InputGroupField ref={nameRef} id="shopping-list-name" label="Nombre de la lista" required leftIcon={<ListChecks className="size-4" />} placeholder="Ej. Despensa semanal" value={name} error={nameError ?? undefined} onChange={(event) => { setName(event.target.value); setNameError(null) }} /><div className="space-y-2"><label htmlFor="shopping-list-notes" className="flex items-center gap-2 text-sm font-medium"><Pencil className="size-4 text-muted-foreground" /> Notas (opcional)</label><Textarea id="shopping-list-notes" rows={3} maxLength={300} placeholder="Ej. Comprar para el fin de semana" value={notes} aria-invalid={Boolean(notesError)} onChange={(event) => { setNotes(event.target.value); setNotesError(null) }} />{notesError && <p className="text-xs text-destructive">{notesError}</p>}</div>{formError && <p role="alert" className="text-sm text-destructive">{formError}</p>}</form>
+    </DialogComponent>
+  </div>
 }

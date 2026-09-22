@@ -43,6 +43,8 @@ export interface PublicationRow {
   endsAt: string | null;
   createdAt: string;
   designId: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
 }
 
 function toRow(p: {
@@ -71,6 +73,8 @@ function toRow(p: {
     endsAt: p.endsAt?.toISOString() ?? null,
     createdAt: p.createdAt.toISOString(),
     designId: typeof (p.metadata as { designId?: unknown } | null)?.designId === "string" ? String((p.metadata as { designId: string }).designId) : null,
+    primaryColor: typeof (p.metadata as { primaryColor?: unknown } | null)?.primaryColor === "string" ? String((p.metadata as { primaryColor: string }).primaryColor) : null,
+    secondaryColor: typeof (p.metadata as { secondaryColor?: unknown } | null)?.secondaryColor === "string" ? String((p.metadata as { secondaryColor: string }).secondaryColor) : null,
   };
 }
 

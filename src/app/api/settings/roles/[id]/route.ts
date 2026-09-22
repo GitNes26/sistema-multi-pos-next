@@ -15,7 +15,7 @@ export async function GET(
 
   const { id } = await params;
   try {
-    const permissions = await getRolePermissions(id);
+    const permissions = await getRolePermissions(id, guard.organizationId, guard.session.user.role === "superadmin");
     return NextResponse.json({ ok: true, permissions });
   } catch (err) {
     return settingsErrorResponse(err);
@@ -32,7 +32,7 @@ export async function PATCH(
   const { id } = await params;
   try {
     const input = await req.json();
-    const result = await updateRole(id, input);
+    const result = await updateRole(id, input, guard.organizationId, guard.session.user.role === "superadmin");
     return NextResponse.json(result);
   } catch (err) {
     return settingsErrorResponse(err);
@@ -48,7 +48,7 @@ export async function DELETE(
 
   const { id } = await params;
   try {
-    const result = await deleteRole(id);
+    const result = await deleteRole(id, guard.organizationId, guard.session.user.role === "superadmin");
     return NextResponse.json(result);
   } catch (err) {
     return settingsErrorResponse(err);

@@ -1,6 +1,9 @@
 import { $Enums } from "@prisma/client";
+import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { hashPassword, setMembership, verifyPassword } from "@/lib/auth/users";
+import { mailConfigured, sendWelcomeLink } from "@/lib/auth/mail";
+import { roleAllowedInOrg, roleIdToEnum } from "@/lib/settings/system-roles";
 import { CrudError, type CrudModule, type ListParams, type CrudListResult } from "../types";
 
 export interface EmployeeDto {
@@ -8,6 +11,7 @@ export interface EmployeeDto {
   employeeCode: string | null;
   fullName: string;
   role: string;
+  roleId: string | null;
   positionId: string | null;
   positionName: string | null;
   locationId: string | null;
@@ -25,6 +29,30 @@ export interface EmployeeDto {
 /** Roles de acceso asignables a un empleado (se crea su cuenta de usuario). */
 const EMPLOYEE_ROLES = ["owner", "admin", "manager", "cashier"] as const satisfies readonly $Enums.OrgRole[];
 
+async function resolveEmployeeRole(organizationId: string, actorId: string, data: Record<string, unknown>) {
+  const [actor, actorMembership] = await Promise.all([
+    prisma.user.findUnique({ where: { id: actorId }, select: { isSuperadmin: true } }),
+    prisma.membership.findUnique({ where: { userId_organizationId: { userId: actorId, organizationId } }, select: { role: true } }),
+  ]);
+  const mayAssignOwner = Boolean(actor?.isSuperadmin || actorMembership?.role === "owner");
+  const roleId = typeof data.roleId === "string" ? data.roleId : "";
+  if (roleId) {
+    const [role, organization] = await Promise.all([
+      prisma.role.findUnique({ where: { id: roleId }, select: { id: true, isSystem: true, businessMode: true, organizationId: true } }),
+      prisma.organization.findUnique({ where: { id: organizationId }, select: { businessMode: true } }),
+    ]);
+    if (!role || !roleAllowedInOrg(role, organization?.businessMode ?? "retail", organizationId)) throw new CrudError("Rol no disponible para esta empresa", 400, "roleId");
+    if (["system-admin", "system-superadmin"].includes(role.id) && !actor?.isSuperadmin) throw new CrudError("No puedes asignar este rol", 403, "roleId");
+    if (role.id === "system-owner" && !mayAssignOwner) throw new CrudError("Solo el propietario puede asignar este rol", 403, "roleId");
+    return { role: roleIdToEnum(roleId), roleId };
+  }
+  const raw = typeof data.role === "string" ? data.role : "";
+  if (!(EMPLOYEE_ROLES as readonly string[]).includes(raw)) throw new CrudError("Selecciona un rol", 400, "roleId");
+  if (raw === "admin" && !actor?.isSuperadmin) throw new CrudError("No puedes asignar este rol", 403, "roleId");
+  if (raw === "owner" && !mayAssignOwner) throw new CrudError("Solo el propietario puede asignar este rol", 403, "roleId");
+  return { role: raw as $Enums.OrgRole, roleId: null };
+}
+
 type EmployeeRow = {
   id: string;
   employeeCode: string | null;
@@ -40,17 +68,19 @@ type EmployeeRow = {
   userId: string;
   position: { name: string } | null;
   location: { name: string } | null;
-  user: { email: string | null; memberships: { role: string }[] } | null;
+  user: { email: string | null; memberships: { role: string; roleId: string | null; roleRef: { name: string } | null }[] } | null;
   _count: { sales: number };
 };
 
 function serialize(e: EmployeeRow): EmployeeDto {
-  const role = e.user?.memberships?.[0]?.role ?? "cashier";
+  const membership = e.user?.memberships?.[0];
+  const role = membership?.roleRef?.name ?? membership?.role ?? "cashier";
   return {
     id: e.id,
     employeeCode: e.employeeCode,
     fullName: e.fullName,
     role,
+    roleId: membership?.roleId ?? null,
     positionId: e.positionId,
     positionName: e.position?.name ?? null,
     locationId: e.locationId,
@@ -112,7 +142,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
         include: {
           position: { select: { name: true } },
           location: { select: { name: true } },
-          user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true } } } },
+          user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true, roleId: true, roleRef: { select: { name: true } } } } } },
           _count: { select: { sales: true } },
         },
         orderBy: [{ isActive: "desc" }, { fullName: "asc" }],
@@ -134,7 +164,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
       include: {
         position: { select: { name: true } },
         location: { select: { name: true } },
-        user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true } } } },
+        user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true, roleId: true, roleRef: { select: { name: true } } } } } },
         _count: { select: { sales: true } },
       },
     });
@@ -142,7 +172,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     return serialize(e as EmployeeRow);
   },
 
-  async create(organizationId, input, _ctx) {
+  async create(organizationId, input, ctx) {
     const data = input as Record<string, unknown>;
     const fullName = data.fullName ? String(data.fullName).trim() : "";
     if (!fullName) throw new CrudError("El nombre es obligatorio", 400, "fullName");
@@ -156,6 +186,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     const emailRaw = data.email ? String(data.email).trim().toLowerCase() : "";
     const phone = data.phone ? String(data.phone).trim() : null;
     if (emailRaw) {
+      if (process.env.NODE_ENV === "production" && !mailConfigured()) throw new CrudError("Configura el correo SMTP antes de registrar empleados con acceso", 503, "email");
       const dupEmail = await prisma.user.findUnique({ where: { email: emailRaw } });
       if (dupEmail) throw new CrudError("Ya existe un usuario con ese correo", 400, "email");
     }
@@ -165,11 +196,8 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     }
 
     const email = emailRaw || `emp-${employeeCode.toLowerCase()}@empresa.local`;
-    // Contraseña inicial = correo (el empleado la cambia en su primer acceso).
-    const passwordHash = await hashPassword(email);
-    const roleRaw = data.role ? String(data.role) : "";
-    const role: $Enums.OrgRole =
-      (EMPLOYEE_ROLES as readonly string[]).includes(roleRaw) ? (roleRaw as $Enums.OrgRole) : "cashier";
+    const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
+    const assignment = await resolveEmployeeRole(organizationId, ctx.userId, data);
     const positionId = data.positionId ? String(data.positionId) : null;
     if (positionId) {
       const pos = await prisma.employeePosition.findFirst({ where: { id: positionId, organizationId } });
@@ -190,7 +218,8 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     const paymentFrequency = data.paymentFrequency ? String(data.paymentFrequency) : "biweekly";
 
     try {
-      await setMembership(user.id, organizationId, role);
+      await setMembership(user.id, organizationId, assignment.role);
+      if (assignment.roleId) await prisma.membership.update({ where: { userId_organizationId: { userId: user.id, organizationId } }, data: { roleId: assignment.roleId } });
       const employee = await prisma.employee.create({
         data: {
           organizationId,
@@ -209,20 +238,22 @@ export const employeesModule: CrudModule<EmployeeDto> = {
         include: {
           position: { select: { name: true } },
           location: { select: { name: true } },
-          user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true } } } },
+          user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true, roleId: true, roleRef: { select: { name: true } } } } } },
           _count: { select: { sales: true } },
         },
       });
+      if (emailRaw && mailConfigured()) await sendWelcomeLink(emailRaw);
       return serialize(employee as EmployeeRow);
     } catch (err) {
       // Cleanup orphaned user/membership on create failure
+      await prisma.employee.deleteMany({ where: { userId: user.id, organizationId } }).catch((cleanupErr) => console.error("[employees] cleanup employee failed:", cleanupErr));
       await prisma.membership.deleteMany({ where: { userId: user.id, organizationId } }).catch((cleanupErr) => console.error("[employees] cleanup membership failed:", cleanupErr));
       await prisma.user.delete({ where: { id: user.id } }).catch((cleanupErr) => console.error("[employees] cleanup user failed:", cleanupErr));
       throw err;
     }
   },
 
-  async update(organizationId, id, input, _ctx) {
+  async update(organizationId, id, input, ctx) {
     const data = input as Record<string, unknown>;
     const existing = await prisma.employee.findFirst({
       where: { id, organizationId },
@@ -258,6 +289,9 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     }
 
     const emailRaw = data.email !== undefined ? (data.email ? String(data.email).trim().toLowerCase() : null) : undefined;
+    if (emailRaw && emailRaw !== existing.user?.email && process.env.NODE_ENV === "production" && !mailConfigured()) {
+      throw new CrudError("Configura el correo SMTP antes de cambiar el correo de acceso", 503, "email");
+    }
     if (emailRaw) {
       const dupEmail = await prisma.user.findFirst({
         where: { email: emailRaw, id: { not: existing.userId } },
@@ -282,17 +316,18 @@ export const employeesModule: CrudModule<EmployeeDto> = {
       },
     });
 
-    // Si el correo cambió y la contraseña sigue siendo la default (el correo anterior),
-    // se resetea para que coincida con el nuevo correo.
+    // Las cuentas heredadas con contraseña igual al correo reciben un enlace
+    // para elegir una nueva; nunca sustituimos el secreto por el nuevo correo.
     if (emailRaw && emailRaw !== existing.user?.email) {
       const userRow = await prisma.user.findUnique({
         where: { id: existing.userId },
         select: { passwordHash: true },
       });
-      if (userRow && (await verifyPassword(existing.user?.email ?? "", userRow.passwordHash))) {
+      if (userRow && (await verifyPassword(existing.user?.email ?? "", userRow.passwordHash)) && mailConfigured()) {
+        await sendWelcomeLink(emailRaw);
         await prisma.user.update({
           where: { id: existing.userId },
-          data: { passwordHash: await hashPassword(emailRaw) },
+          data: { passwordHash: await hashPassword(randomBytes(32).toString("hex")) },
         });
       }
     }
@@ -310,12 +345,10 @@ export const employeesModule: CrudModule<EmployeeDto> = {
       if (!loc) throw new CrudError("La sucursal no existe", 400, "locationId");
     }
 
-    if (data.role !== undefined) {
-      const roleRaw = String(data.role);
-      if (!(EMPLOYEE_ROLES as readonly string[]).includes(roleRaw)) {
-        throw new CrudError("Rol inválido", 400, "role");
-      }
-      await setMembership(existing.userId, organizationId, roleRaw as $Enums.OrgRole);
+    if (data.roleId !== undefined || data.role !== undefined) {
+      const assignment = await resolveEmployeeRole(organizationId, ctx.userId, data);
+      await setMembership(existing.userId, organizationId, assignment.role);
+      await prisma.membership.update({ where: { userId_organizationId: { userId: existing.userId, organizationId } }, data: { roleId: assignment.roleId } });
     }
 
     const employee = await prisma.employee.update({
@@ -339,7 +372,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
       include: {
         position: { select: { name: true } },
         location: { select: { name: true } },
-        user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true } } } },
+        user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true, roleId: true, roleRef: { select: { name: true } } } } } },
         _count: { select: { sales: true } },
       },
     });

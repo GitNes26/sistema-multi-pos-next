@@ -1,6 +1,6 @@
 import type { Notification } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { broadcastToOrg, type LiveNotificationPayload } from "@/lib/notifications/live";
+import { broadcastToOrg, broadcastToUser, type LiveNotificationPayload } from "@/lib/notifications/live";
 import { sendPushToUser } from "@/lib/notifications/push";
 
 // FASE 8.9 — Persistencia + broadcast de notificaciones (stocks bajos y futuras).
@@ -32,6 +32,7 @@ export interface PersistNotificationInput {
   organizationId: string;
   locationId?: string | null;
   userId?: string | null;
+  recipientUserId?: string | null;
   /** Empleado vinculado al movimiento/evento que origina la notificación (11.7). */
   employeeId?: string | null;
   kind: string;
@@ -66,6 +67,7 @@ export async function persistNotification(input: PersistNotificationInput) {
       organizationId: input.organizationId,
       locationId: input.locationId ?? null,
       userId: input.userId ?? null,
+      recipientUserId: input.recipientUserId ?? null,
       employeeId: input.employeeId ?? null,
       kind: input.kind,
       title: input.title,
@@ -76,13 +78,14 @@ export async function persistNotification(input: PersistNotificationInput) {
     },
   });
 
-  broadcastToOrg(input.organizationId, notificationToPayload(created));
+  if (input.recipientUserId) broadcastToUser(input.organizationId, input.recipientUserId, notificationToPayload(created));
+  else broadcastToOrg(input.organizationId, notificationToPayload(created));
 
   // Enviar Web Push si la notificación tiene un userId (cliente portal)
-  if (input.userId) {
+  if (input.recipientUserId || input.userId) {
     const url = input.link || "/";
     const meta = (input.metadata ?? {}) as Record<string, unknown>;
-    sendPushToUser(input.userId, {
+    sendPushToUser(input.recipientUserId ?? input.userId!, {
       title: input.title,
       body: input.body ?? "",
       url,

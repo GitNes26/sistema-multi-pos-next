@@ -239,6 +239,7 @@ model User {
   promotionsCreated             Promotion[]             @relation("PromotionCreatedBy")
   orderStatusHistory            OrderStatusHistory[]
   notifications                 Notification[]
+  recipientNotifications        Notification[]          @relation("NotificationRecipient")
   invitationsSent               UserInvitation[]        @relation("UserInvitationInvitedBy")
   pushSubscriptions             PushSubscription[]
 
@@ -308,6 +309,8 @@ model Organization {
   creditPolicy           CreditPolicy?
   customerCredits        CustomerCredit[]
   creditTransactions     CreditTransaction[]
+  creditPaymentIntents    CreditPaymentIntent[]
+  promotionCustomerUses   PromotionCustomerUse[]
   productCombos          ProductCombo[]
   customerAddresses      CustomerAddress[]
   pushSubscriptions      PushSubscription[]
@@ -500,6 +503,26 @@ model CreditTransaction {
   @@map("credit_transactions")
 }
 
+model CreditPaymentIntent {
+  id             String    @id @default(cuid())
+  organizationId String
+  customerId     String
+  amount         Decimal   @db.Decimal(12, 2)
+  currency       String
+  provider       String
+  externalId     String?
+  status         String    @default("pending")
+  createdAt      DateTime  @default(now())
+  paidAt         DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+
+  @@unique([provider, externalId])
+  @@index([organizationId, customerId, status])
+  @@map("credit_payment_intents")
+}
+
 model AppSettings {
   id             String   @id @default(cuid())
   organizationId String   @unique
@@ -610,6 +633,8 @@ model Customer {
   addresses           CustomerAddress[]
   creditAccount       CustomerCredit?
   creditTransactions  CreditTransaction[]
+  creditPaymentIntents CreditPaymentIntent[]
+  promotionCustomerUses PromotionCustomerUse[]
   segments            CustomerSegment[]
 
   @@unique([organizationId, customerCode])
@@ -691,13 +716,17 @@ model ShoppingList {
 model ShoppingListItem {
   id        String   @id @default(cuid())
   listId    String
-  variantId String
+  variantId String?
+  productId String?
+  unitId    String?
   quantity  Decimal  @default(1) @db.Decimal(12, 3)
   createdAt DateTime @default(now())
 
-  list    ShoppingList   @relation(fields: [listId], references: [id])
-  variant ProductVariant @relation(fields: [variantId], references: [id])
+  list    ShoppingList    @relation(fields: [listId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+  product Product?        @relation(fields: [productId], references: [id])
 
+  @@index([productId])
   @@map("shopping_list_items")
 }
 
@@ -906,6 +935,7 @@ model Product {
   pairsB                 ProductPair[]           @relation("PairB")
   inventorySnapshots     InventorySnapshot[]
   transferItems          TransferItem[]
+  shoppingListItems      ShoppingListItem[]
 
   @@map("products")
 }
@@ -1474,8 +1504,26 @@ model Promotion {
   targets       PromotionTarget[]
   coupons       Coupon[]
   saleDiscounts SaleDiscount[]
+  customerUses PromotionCustomerUse[]
+  orders Order[]
 
   @@map("promotions")
+}
+
+model PromotionCustomerUse {
+  promotionId   String
+  customerId    String
+  organizationId String
+  usesCount     Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  promotion    Promotion    @relation(fields: [promotionId], references: [id])
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@id([promotionId, customerId])
+  @@index([organizationId, customerId])
+  @@map("promotion_customer_uses")
 }
 
 model PromotionTarget {
@@ -1543,6 +1591,7 @@ model Order {
   organizationId   String
   locationId       String?
   customerId       String?
+  promotionId      String?
   idempotencyKey   String?        @db.VarChar(64)
   tableId          String? // Mesa asociada (food_service)
   orderNumber      BigInt         @unique @default(autoincrement())
@@ -1575,6 +1624,7 @@ model Order {
   organization  Organization         @relation(fields: [organizationId], references: [id])
   location      Location?            @relation(fields: [locationId], references: [id])
   customer      Customer?            @relation(fields: [customerId], references: [id])
+  promotion     Promotion?           @relation(fields: [promotionId], references: [id])
   table         Table?               @relation(fields: [tableId], references: [id])
   sale          Sale?                @relation(fields: [saleId], references: [id])
   items         OrderItem[]
@@ -1583,6 +1633,7 @@ model Order {
   tableSessions TableSession[]
 
   @@unique([organizationId, customerId, idempotencyKey])
+  @@index([promotionId])
   @@map("orders")
 }
 
@@ -2068,6 +2119,7 @@ model Notification {
   organizationId String
   locationId     String?
   userId         String?
+  recipientUserId String?
   employeeId     String?
   kind           String
   title          String
@@ -2081,8 +2133,10 @@ model Notification {
   organization Organization @relation(fields: [organizationId], references: [id])
   location     Location?    @relation(fields: [locationId], references: [id])
   user         User?        @relation(fields: [userId], references: [id])
+  recipient    User?        @relation("NotificationRecipient", fields: [recipientUserId], references: [id])
   employee     Employee?    @relation(fields: [employeeId], references: [id])
 
+  @@index([organizationId, recipientUserId, createdAt])
   @@map("notifications")
 }
 

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { hashPassword, setMembership, verifyPassword } from "@/lib/auth/users";
+import { mailConfigured, sendWelcomeLink } from "@/lib/auth/mail";
 import { CrudError, type CrudModule, type ListParams, type CrudListResult } from "../types";
 
 export interface CustomerDto {
@@ -130,6 +131,7 @@ export const customersModule: CrudModule<CustomerDto> = {
     const emailRaw = data.email ? String(data.email).trim().toLowerCase() : "";
     const phone = data.phone ? String(data.phone).trim() : null;
     if (emailRaw) {
+      if (process.env.NODE_ENV === "production" && !mailConfigured()) throw new CrudError("Configura el correo SMTP antes de registrar clientes con acceso", 503, "email");
       const dupEmail = await prisma.user.findUnique({ where: { email: emailRaw } });
       if (dupEmail) throw new CrudError("Ya existe un usuario con ese correo", 400, "email");
     }
@@ -147,8 +149,7 @@ export const customersModule: CrudModule<CustomerDto> = {
     }
 
     const email = emailRaw || `cli-${randomBytes(4).toString("hex")}@portal.local`;
-    // Contraseña inicial = correo (el cliente la cambia en su primer acceso).
-    const passwordHash = await hashPassword(email);
+    const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
 
     const user = await prisma.user.create({
       data: { email, passwordHash, fullName, phone, isActive: true },
@@ -177,9 +178,11 @@ export const customersModule: CrudModule<CustomerDto> = {
         },
         include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true } } },
       });
+      if (emailRaw && mailConfigured()) await sendWelcomeLink(emailRaw);
       return serialize(customer);
     } catch (err) {
       // Cleanup orphaned user/membership on create failure
+      await prisma.customer.deleteMany({ where: { userId: user.id, organizationId } }).catch((cleanupErr) => console.error("[customers] cleanup customer failed:", cleanupErr));
       await prisma.membership.deleteMany({ where: { userId: user.id, organizationId } }).catch((cleanupErr) => console.error("[customers] cleanup membership failed:", cleanupErr));
       await prisma.user.delete({ where: { id: user.id } }).catch((cleanupErr) => console.error("[customers] cleanup user failed:", cleanupErr));
       throw err;
@@ -199,6 +202,9 @@ export const customersModule: CrudModule<CustomerDto> = {
       data.email !== undefined
         ? (data.email ? String(data.email).trim().toLowerCase() : null)
         : existing.email;
+    if (emailRaw && emailRaw !== existing.email && process.env.NODE_ENV === "production" && !mailConfigured()) {
+      throw new CrudError("Configura el correo SMTP antes de cambiar el correo de acceso", 503, "email");
+    }
 
     if (phone && phone !== existing.phone) {
       const dupPhone = await prisma.customer.findFirst({
@@ -227,17 +233,18 @@ export const customersModule: CrudModule<CustomerDto> = {
       },
     });
 
-    // Si el correo cambió y la contraseña sigue siendo la default (el correo anterior),
-    // se resetea para que coincida con el nuevo correo.
+    // Las cuentas heredadas con contraseña igual al correo reciben un enlace
+    // para elegir una nueva; nunca sustituimos el secreto por el nuevo correo.
     if (emailRaw && emailRaw !== existing.email) {
       const userRow = await prisma.user.findUnique({
         where: { id: existing.userId },
         select: { passwordHash: true },
       });
-      if (userRow && (await verifyPassword(existing.email ?? "", userRow.passwordHash))) {
+      if (userRow && (await verifyPassword(existing.email ?? "", userRow.passwordHash)) && mailConfigured()) {
+        await sendWelcomeLink(emailRaw);
         await prisma.user.update({
           where: { id: existing.userId },
-          data: { passwordHash: await hashPassword(emailRaw) },
+          data: { passwordHash: await hashPassword(randomBytes(32).toString("hex")) },
         });
       }
     }

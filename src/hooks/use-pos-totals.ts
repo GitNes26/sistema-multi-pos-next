@@ -4,10 +4,12 @@ import { useMemo } from "react";
 import { usePosStore, selectCustomer } from "@/stores/pos-store";
 import { computeTotals, pointsToMoney, type PricingLine } from "@/lib/pos/pricing";
 import { getWeekdaysNumber } from "@/lib/pos/pricing-schedule";
+import { customerMayUsePromotion } from "@/lib/promotions/customer-use";
 
 export function usePosTotals() {
   const items = usePosStore((s) => s.items);
   const promotions = usePosStore((s) => s.promotions);
+  const promotionUses = usePosStore((s) => s.promotionUses);
   const customerId = usePosStore((s) => s.customerId);
   const manualDiscount = usePosStore((s) => s.manualDiscount);
   const coupon = usePosStore((s) => s.coupon.result);
@@ -28,7 +30,10 @@ export function usePosTotals() {
 
     const totals = computeTotals({
       lines,
-      promotions,
+      promotions: promotions.filter((promotion) => customerMayUsePromotion(
+        promotion.maxUsesPerCustomer, customerId,
+        promotionUses.find((usage) => usage.customerId === customerId && usage.promotionId === promotion.id)?.usesCount ?? 0
+      )),
       customer,
       manualDiscount,
       coupon,
@@ -40,6 +45,7 @@ export function usePosTotals() {
     const now = new Date();
     const nextPurchase = promotions.find(
       (p) =>
+        customerMayUsePromotion(p.maxUsesPerCustomer, customerId, promotionUses.find((usage) => usage.customerId === customerId && usage.promotionId === p.id)?.usesCount ?? 0) &&
         p.benefit === "next_purchase_coupon" &&
         (p.scope === "order" || p.scope === "category" || p.scope === "product") &&
         (!p.requiresCustomer || !!customer) &&
@@ -57,5 +63,5 @@ export function usePosTotals() {
         ? { promotionId: nextPurchase.id, amount: nextPurchase.value || Math.round(totals.payable * 0.1) }
         : null,
     };
-  }, [items, promotions, customerId, manualDiscount, coupon, pointsRedeemed, loyalty]);
+  }, [items, promotions, promotionUses, customerId, manualDiscount, coupon, pointsRedeemed, loyalty]);
 }

@@ -49,6 +49,10 @@ if (mode === "prepare" && !fs.existsSync(envFile)) {
         // Prevent real messages even if Next loads the developer's .env files.
         TWILIO_ACCOUNT_SID: "",
         TWILIO_AUTH_TOKEN: "",
+        SMTP_HOST: "",
+        SMTP_USER: "",
+        SMTP_PASSWORD: "",
+        SMTP_FROM: "",
         VAPID_PRIVATE_KEY: "",
       },
       null,
@@ -58,6 +62,8 @@ if (mode === "prepare" && !fs.existsSync(envFile)) {
 }
 if (!fs.existsSync(envFile)) throw new Error("Run test:prepare first.")
 const env = { ...process.env, ...JSON.parse(fs.readFileSync(envFile, "utf8")) }
+// Las pruebas nunca deben enviar correos reales, incluso con un entorno antiguo.
+for (const key of ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM"]) env[key] = ""
 assertTestEnvironment(env)
 function run(bin, args, extra = {}) {
   const r = spawnSync(process.execPath, [require.resolve(bin), ...args], {

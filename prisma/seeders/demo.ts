@@ -5532,6 +5532,7 @@ export async function seedDemo() {
     minAmount?: number
     buyQuantity?: number
     getQuantity?: number
+    maxUsesPerCustomer?: number
     weekdays?: string
   }[] = [
     {
@@ -5546,6 +5547,7 @@ export async function seedDemo() {
       scope: "order",
       value: 20,
       minAmount: 300,
+      maxUsesPerCustomer: 2,
     },
     {
       name: "2x1 Refresco cola 2L",
@@ -5612,6 +5614,7 @@ export async function seedDemo() {
         buyQuantity: pd.buyQuantity,
         getQuantity: pd.getQuantity,
         minAmount: pd.minAmount,
+        maxUsesPerCustomer: pd.maxUsesPerCustomer,
         weekdays: pd.weekdays,
         isActive: true,
         createdBy: ownerUser.id,

@@ -1,6 +1,6 @@
 # Contexto vigente de Multi-POS
 
-Revisión: 15 de septiembre de 2026.
+Revisión: 21 de septiembre de 2026.
 
 Multi-POS es una aplicación web multiempresa y multisucursal construida con Next.js 15,
 React 19, Prisma 6 y MySQL. Comparte catálogo, ventas, clientes y configuración, y adapta
@@ -34,10 +34,19 @@ sus superficies según cinco modos: retail, restaurante, servicios, rentas e hí
 Ventas afectan caja, inventario o recetas, crédito, lealtad, pedidos y reportes. Pedidos
 alimentan POS, KDS, entrega y portal. Agenda y rentas pueden crear ventas vinculadas.
 Organización, sucursal, apariencia, permisos y pasarelas condicionan todas las superficies.
+Los abonos de crédito iniciados en el portal generan una intención de pago: solo el
+webhook firmado de la pasarela modifica el saldo. Las notificaciones operativas de
+compras y crédito se dirigen al personal con el permiso correspondiente.
+Las promociones con límite por cliente registran su uso en la venta o pedido; la
+reserva ocurre en la misma transacción y rechaza dos usos concurrentes al llegar al límite.
 
 ## Estado conocido
 
 La estabilización funcional y responsive está implementada y cuenta con pruebas de reglas
 críticas. Impresión física, escáner, tacto real, mensajería y pasarelas en sandbox requieren
-validación externa. Los modelos de agregados BI, snapshots, pares, comisiones y segmentos
+validación externa. Las imágenes subidas requieren un volumen persistente compartido en
+el despliegue; el código no puede recuperar archivos que se hayan perdido en el host.
+El contador por cliente comienza con la migración que lo crea: usos previos no pueden
+reconstruirse íntegramente para pedidos antiguos sin una relación histórica con la promoción.
+Los modelos de agregados BI, snapshots, pares, comisiones y segmentos
 se conservan aunque algunos procesos de persistencia estén dormidos.

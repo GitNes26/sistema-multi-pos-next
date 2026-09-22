@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import * as yup from "yup"
 import {
   Building2,
   CalendarDays,
@@ -147,6 +148,12 @@ const emptySupplier = {
   isActive: true,
 }
 
+const supplierSchema = yup.object({
+  businessName: yup.string().trim().required("Ingresa la razón social"),
+  email: yup.string().trim().email("Ingresa un correo válido"),
+  leadTimeDays: yup.number().min(0, "Los días de entrega no pueden ser negativos"),
+})
+
 async function request(body?: Record<string, unknown>) {
   const response = await fetch(
     "/api/purchasing",
@@ -199,6 +206,7 @@ export function PurchasingPage({
   >(null)
   const [selected, setSelected] = React.useState<Supplier | Order | null>(null),
     [saving, setSaving] = React.useState(false)
+  const [supplierErrors, setSupplierErrors] = React.useState<Record<string, string>>({})
   const [supplier, setSupplier] = React.useState(emptySupplier),
     [doc, setDoc] = React.useState({
       supplierId: "",
@@ -238,6 +246,27 @@ export function PurchasingPage({
     setSelected(null)
     setItems([])
     setReceiveQty({})
+    setSupplierErrors({})
+  }
+  const submitSupplier = async () => {
+    try {
+      await supplierSchema.validate(supplier, { abortEarly: false })
+      setSupplierErrors({})
+    } catch (error) {
+      if (error instanceof yup.ValidationError) {
+        const next: Record<string, string> = {}
+        for (const issue of error.inner.length ? error.inner : [error]) {
+          if (issue.path && !next[issue.path]) next[issue.path] = issue.message
+        }
+        setSupplierErrors(next)
+        const first = ["businessName", "email", "leadTimeDays"].find((key) => next[key])
+        const inputId = first === "businessName" ? "supplier-name" : first === "email" ? "supplier-email" : "supplier-lead"
+        requestAnimationFrame(() => document.getElementById(inputId)?.focus())
+        return
+      }
+      throw error
+    }
+    await run({ action: selected ? "supplier.update" : "supplier.create", ...(selected ? { id: selected.id } : {}), ...supplier }, "Proveedor guardado")
   }
   const run = async (body: Record<string, unknown>, message: string) => {
     setSaving(true)
@@ -521,7 +550,7 @@ export function PurchasingPage({
             onEdit={canManage ? (quote) => {
               if (data?.orders.some((order) => order.quoteId === quote.id)) { toast.error("Esta cotización ya tiene una orden"); return }
               setDoc({ supplierId: quote.supplierId, quoteId: quote.id, locationType: "location", locationId: "", validUntil: quote.validUntil ? quote.validUntil.slice(0, 10) : "", expectedAt: "", notes: quote.notes ?? "" })
-              setItems(quote.items.map((item) => ({ ...item, id: crypto.randomUUID() })))
+              setItems(quote.items.map((item) => ({ ...item, id: crypto.randomUUID(), quantity: Number(item.quantity), unitCost: Number(item.unitCost), taxRate: Number(item.taxRate) })))
               setDialog("quote")
             } : undefined}
             onCreateOrder={
@@ -540,6 +569,9 @@ export function PurchasingPage({
                       quote.items.map((item) => ({
                         ...item,
                         id: crypto.randomUUID(),
+                        quantity: Number(item.quantity),
+                        unitCost: Number(item.unitCost),
+                        taxRate: Number(item.taxRate),
                       }))
                     )
                     setDialog("order")
@@ -709,33 +741,24 @@ export function PurchasingPage({
               Cancelar
             </Button>
             <Button
-              disabled={saving || !supplier.businessName.trim()}
-              onClick={() =>
-                void run(
-                  {
-                    action: selected ? "supplier.update" : "supplier.create",
-                    ...(selected ? { id: selected.id } : {}),
-                    ...supplier,
-                  },
-                  "Proveedor guardado"
-                )
-              }
+              type="submit"
+              form="supplier-form"
+              disabled={saving}
             >
               {saving && <Loader2 className="animate-spin" />}Guardar
             </Button>
           </>
         }
       >
-        <div className="grid gap-4 sm:grid-cols-2">
+        <form id="supplier-form" noValidate onSubmit={(event) => { event.preventDefault(); void submitSupplier() }} className="grid gap-4 sm:grid-cols-2">
           <InputGroupField
             id="supplier-name"
             label="Razón social"
             required
             leftIcon={<Building2 />}
             value={supplier.businessName}
-            onChange={(e) =>
-              setSupplier((v) => ({ ...v, businessName: e.target.value }))
-            }
+            onChange={(e) => { setSupplier((v) => ({ ...v, businessName: e.target.value })); setSupplierErrors((v) => ({ ...v, businessName: "" })) }}
+            error={supplierErrors.businessName}
             autoFocus
           />
           <InputGroupField
@@ -774,9 +797,8 @@ export function PurchasingPage({
             type="email"
             leftIcon={<Mail />}
             value={supplier.email}
-            onChange={(e) =>
-              setSupplier((v) => ({ ...v, email: e.target.value }))
-            }
+            onChange={(e) => { setSupplier((v) => ({ ...v, email: e.target.value })); setSupplierErrors((v) => ({ ...v, email: "" })) }}
+            error={supplierErrors.email}
           />
           <InputGroupField
             id="supplier-phone"
@@ -804,12 +826,8 @@ export function PurchasingPage({
             min={0}
             leftIcon={<Truck />}
             value={supplier.leadTimeDays}
-            onChange={(e) =>
-              setSupplier((v) => ({
-                ...v,
-                leadTimeDays: Number(e.target.value),
-              }))
-            }
+            onChange={(e) => { setSupplier((v) => ({ ...v, leadTimeDays: Number(e.target.value) })); setSupplierErrors((v) => ({ ...v, leadTimeDays: "" })) }}
+            error={supplierErrors.leadTimeDays}
           />
           <div className="sm:col-span-2">
             <InputGroupField
@@ -840,7 +858,7 @@ export function PurchasingPage({
               setSupplier((v) => ({ ...v, isActive }))
             }
           />
-        </div>
+        </form>
       </DialogComponent>
 
       <DialogComponent
@@ -1158,6 +1176,29 @@ function PurchaseDocumentDialog({
   addItem: (value: string) => void
   submit: () => void
 }) {
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
+  React.useEffect(() => {
+    if (open) setErrors({})
+  }, [open, kind])
+  const submitValidated = () => {
+    const next: Record<string, string> = {}
+    if (!doc.supplierId) next.supplier = "Selecciona un proveedor."
+    if (kind === "order" && !doc.locationId) next.location = "Selecciona el destino del inventario."
+    if (!items.length) next.product = "Agrega al menos un producto."
+    for (const item of items) {
+      if (!Number.isFinite(item.quantity) || item.quantity <= 0) next[`qty-${item.id}`] = "La cantidad debe ser mayor que cero."
+      if (!Number.isFinite(item.unitCost) || item.unitCost < 0) next[`cost-${item.id}`] = "El costo no puede ser negativo."
+      if (!Number.isFinite(item.taxRate) || item.taxRate < 0 || item.taxRate > 1) next[`tax-${item.id}`] = "El impuesto debe estar entre 0 y 1."
+    }
+    setErrors(next)
+    const first = ["supplier", "location", "product", ...items.flatMap((item) => [`qty-${item.id}`, `cost-${item.id}`, `tax-${item.id}`])].find((key) => next[key])
+    if (first) {
+      const id = first === "supplier" ? "purchase-supplier" : first === "location" ? "purchase-target" : first === "product" ? "purchase-add-product" : first
+      requestAnimationFrame(() => document.getElementById(id)?.focus())
+      return
+    }
+    submit()
+  }
   const options = (data?.products ?? []).flatMap((p) =>
     p.variants.length
       ? p.variants.map((v) => ({
@@ -1194,13 +1235,9 @@ function PurchaseDocumentDialog({
             Cancelar
           </Button>
           <Button
-            disabled={
-              saving ||
-              !doc.supplierId ||
-              !items.length ||
-              (kind === "order" && !doc.locationId)
-            }
-            onClick={submit}
+            type="submit"
+            form="purchase-document-form"
+            disabled={saving}
           >
             {saving && <Loader2 className="animate-spin" />}
             {kind === "quote" ? doc.quoteId ? "Guardar cotización" : "Crear cotización" : "Crear orden"}
@@ -1208,7 +1245,7 @@ function PurchaseDocumentDialog({
         </>
       }
     >
-      <div className="space-y-5">
+      <form id="purchase-document-form" noValidate onSubmit={(event) => { event.preventDefault(); submitValidated() }} className="space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
           <FormCombobox
             id="purchase-supplier"
@@ -1217,7 +1254,8 @@ function PurchaseDocumentDialog({
             icon={<Building2 />}
             options={supplierOptions}
             value={doc.supplierId}
-            onChange={(supplierId) => setDoc((v) => ({ ...v, supplierId }))}
+            onChange={(supplierId) => { setDoc((v) => ({ ...v, supplierId })); setErrors((v) => ({ ...v, supplier: "" })) }}
+            error={errors.supplier}
           />
           {kind === "quote" ? (
             <InputGroupField
@@ -1256,7 +1294,8 @@ function PurchaseDocumentDialog({
                   label: x.name,
                 }))}
                 value={doc.locationId}
-                onChange={(locationId) => setDoc((v) => ({ ...v, locationId }))}
+                onChange={(locationId) => { setDoc((v) => ({ ...v, locationId })); setErrors((v) => ({ ...v, location: "" })) }}
+                error={errors.location}
               />
               <InputGroupField
                 id="order-expected"
@@ -1282,8 +1321,9 @@ function PurchaseDocumentDialog({
               )
           )}
           value=""
-          onChange={addItem}
+          onChange={(value) => { addItem(value); setErrors((v) => ({ ...v, product: "" })) }}
           placeholder="Buscar y agregar…"
+          error={errors.product}
         />
         <div className="space-y-2">
           {items.map((item, index) => (
@@ -1302,7 +1342,9 @@ function PurchaseDocumentDialog({
                 step="0.001"
                 leftIcon={<PackageCheck />}
                 value={item.quantity}
-                onChange={(e) =>
+                error={errors[`qty-${item.id}`]}
+                onChange={(e) => {
+                  setErrors((v) => ({ ...v, [`qty-${item.id}`]: "" }))
                   setItems((v) =>
                     v.map((x, i) =>
                       i === index
@@ -1310,7 +1352,7 @@ function PurchaseDocumentDialog({
                         : x
                     )
                   )
-                }
+                }}
               />
               <InputGroupField
                 id={`cost-${item.id}`}
@@ -1320,7 +1362,9 @@ function PurchaseDocumentDialog({
                 step="0.01"
                 leftIcon={<ShoppingCart />}
                 value={item.unitCost}
-                onChange={(e) =>
+                error={errors[`cost-${item.id}`]}
+                onChange={(e) => {
+                  setErrors((v) => ({ ...v, [`cost-${item.id}`]: "" }))
                   setItems((v) =>
                     v.map((x, i) =>
                       i === index
@@ -1328,7 +1372,7 @@ function PurchaseDocumentDialog({
                         : x
                     )
                   )
-                }
+                }}
               />
               <InputGroupField
                 id={`tax-${item.id}`}
@@ -1339,7 +1383,9 @@ function PurchaseDocumentDialog({
                 step="0.01"
                 leftIcon={<FileText />}
                 value={item.taxRate}
-                onChange={(e) =>
+                error={errors[`tax-${item.id}`]}
+                onChange={(e) => {
+                  setErrors((v) => ({ ...v, [`tax-${item.id}`]: "" }))
                   setItems((v) =>
                     v.map((x, i) =>
                       i === index
@@ -1347,9 +1393,10 @@ function PurchaseDocumentDialog({
                         : x
                     )
                   )
-                }
+                }}
               />
               <Button
+                type="button"
                 className="self-end"
                 variant="ghost"
                 size="sm"
@@ -1366,7 +1413,7 @@ function PurchaseDocumentDialog({
               Total estimado:{" "}
               {money.format(
                 items.reduce(
-                  (a, i) => a + i.quantity * i.unitCost * (1 + i.taxRate),
+                  (a, i) => a + Number(i.quantity) * Number(i.unitCost) * (1 + Number(i.taxRate)),
                   0
                 )
               )}
@@ -1381,7 +1428,7 @@ function PurchaseDocumentDialog({
             onChange={(e) => setDoc((v) => ({ ...v, notes: e.target.value }))}
           />
         </div>
-      </div>
+      </form>
     </DialogComponent>
   )
 }

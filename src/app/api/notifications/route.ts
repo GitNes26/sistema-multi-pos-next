@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const pageSize = Math.min(200, Math.max(1, pageSizeRaw || 40));
   const filter = searchParams.get("filter");
 
-  const where: Record<string, unknown> = { organizationId: guard.organizationId };
+  const where: Record<string, unknown> = { organizationId: guard.organizationId, OR: [{ recipientUserId: null }, { recipientUserId: guard.userId }] };
   if (filter === "unread") where.readAt = null;
 
   try {

@@ -200,13 +200,13 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
         unitPrice: opts.pricePerUnit,
         unitAbbrev: opts.unitAbbrev,
         unitId: opts.unitId,
-        qty: addQty,
+        qty: round3(already + addQty),
         taxRate: product.taxRate,
         categoryId: product.categoryId,
         trackInventory: track,
         stock: track ? product.stock : 0,
         step: product.bulk?.step ?? 0.01,
-        bulkQuantityDisplay: `${round3(addQty)} ${opts.unitAbbrev} × ${opts.pricePerUnit.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}/${opts.unitAbbrev}`,
+        bulkQuantityDisplay: `${round3(already + addQty)} ${opts.unitAbbrev} × ${opts.pricePerUnit.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}/${opts.unitAbbrev}`,
       };
       return {
         items: existing ? s.items.map((i) => (i.key === key ? line : i)) : [...s.items, line],

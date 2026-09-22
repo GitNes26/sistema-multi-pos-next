@@ -1,6 +1,7 @@
 import { $Enums, type BusinessMode } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { hashPassword, normalizeIdentifier } from "@/lib/auth/users"
+import { mailConfigured, sendWelcomeLink } from "@/lib/auth/mail"
 import { listRoles } from "@/lib/settings/server"
 import {
   roleAllowedInOrg,
@@ -285,6 +286,15 @@ export async function createUser(input: {
     },
     select: { id: true },
   })
+  if (mailConfigured()) {
+    try {
+      await sendWelcomeLink(email)
+    } catch (error) {
+      console.error("[settings/organizations] No se pudo enviar la invitación:", error)
+      await prisma.user.delete({ where: { id: created.id } })
+      throw new Error("No se pudo enviar el correo de acceso. Intenta de nuevo.")
+    }
+  }
   return created
 }
 

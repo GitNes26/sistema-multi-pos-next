@@ -135,7 +135,9 @@ export async function getMenuTree(
     select: MENU_SELECT,
   });
   const nodes = rows.map((r) => toNode(r as MenuRow));
-  const keep = (n: MenuNode) => canSee(n.permissionKey, permissions, isAdmin, role ?? null);
+  const keep = (n: MenuNode) =>
+    (n.href !== "/admin/settings/menus" || role === "admin" || role === "superadmin") &&
+    canSee(n.permissionKey, permissions, isAdmin, role ?? null);
   return filterTree(buildTree(nodes), keep);
 }
 

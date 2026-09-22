@@ -3,7 +3,7 @@
 > **Documento técnico interno (Fase 0).** No es parte del manual para el usuario final:
 > es la base que usa el agente (skill `manual-usuario`) para redactar y revalidar el manual.
 > Cuando el sistema cambie, actualiza este archivo primero.
-> Última revisión: contra el código del 15 de septiembre de 2026 (Multi-POS v0.18.1.0).
+> Última revisión: contra el código del 22 de septiembre de 2026 (Multi-POS v0.19.2.0).
 
 ---
 
@@ -17,6 +17,7 @@
 | **Agenda de citas** | `/agenda` | Calendario de citas por empleado con checkout/cobro (services/hybrid). |
 | **Reservaciones (renta)** | `/reservaciones` | Calendario de disponibilidad, alta/confirmación/cobro de rentas (rental/hybrid). |
 | **Portal Cliente** | `/portal` (app móvil/PWA) | Tienda, carrito, checkout con entrega a domicilio o recoger, pedidos con seguimiento, lealtad, crédito, listas, favoritos, reservación de mesas. |
+| **Seguridad de cuenta del portal** | `/portal/change-password` y recuperación desde el acceso | El cliente cambia su contraseña con la actual; una cuenta nueva con correo recibe un enlace temporal para crearla si el correo saliente está configurado. |
 | **Menú digital** | `/portal/menu?table=...` | Menú para leer el QR de la mesa: ordenar desde la mesa. |
 | **Reserva pública de mesas** | `/reservar` (+ `/reservar/verificar`) | Flujo de invitado: elegir día/hora/sala y confirmar con código. |
 | **Onboarding y guías inmersivas** | `/onboarding` + recorridos desde `/admin` y `/pos` | El onboarding elige el tipo de negocio. Después, las acciones guiadas navegan entre las pantallas reales, resaltan botones, formularios y campos, y conservan el paso al cambiar de sección. |

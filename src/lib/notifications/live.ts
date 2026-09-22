@@ -42,6 +42,18 @@ export function openOrgChannel(organizationId: string, controller: Controller) {
   };
 }
 
+export function openUserChannel(organizationId: string, userId: string, controller: Controller) {
+  return openOrgChannel(`${organizationId}:${userId}`, controller);
+}
+
+export function broadcastToUser(organizationId: string, userId: string, payload: LiveNotificationPayload) {
+  broadcastToOrg(`${organizationId}:${userId}`, payload);
+}
+
+export function sendItems(controller: Controller, items: LiveNotificationPayload[]) {
+  controller.enqueue(okChunk({ items }));
+}
+
 export function broadcastToOrg(organizationId: string, payload: LiveNotificationPayload) {
   const set = channels.get(organizationId);
   if (!set || set.size === 0) return;

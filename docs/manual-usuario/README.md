@@ -21,7 +21,7 @@ La edición navegable e imprimible de los cuatro manuales está en
 5. **Agenda de citas (Servicios)** — `05-agenda.md`
 6. **Reservaciones de renta (Renta/Híbrido)** — `06-reservaciones.md`
 7. **Portal del Cliente** — `07-portal-cliente.md`
-   - Cuenta y perfil · Tienda y carrito · Checkout · Pedidos y seguimiento · Lealtad · Mi Crédito · Listas y favoritos · Reservar mesa · Menú digital (QR)
+   - Cuenta, contraseña y perfil · Tienda y carrito · Checkout · Pedidos y seguimiento · Lealtad · Mi Crédito · Listas con productos a granel y favoritos · Reservar mesa · Menú digital (QR)
 8. **Créditos y adeudos (transversal)** — `08-creditos.md`
 9. **Preguntas frecuentes por tipo de negocio** — `09-faq.md`
 10. **Glosario general** — `10-glosario.md`

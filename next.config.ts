@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "ui-avatars.com" },
     ],
   },
+  async rewrites() {
+    // Los registros anteriores guardaron /uploads/...; en standalone los archivos
+    // agregados después del build se sirven de forma fiable por la ruta dinámica.
+    return [{ source: "/uploads/:organizationId/:fileName", destination: "/api/media/:organizationId/:fileName" }]
+  },
   async headers() {
     return [
       {

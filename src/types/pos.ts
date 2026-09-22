@@ -209,6 +209,7 @@ export interface PosCatalog {
   categories: PosCategory[]
   customers: PosCustomer[]
   promotions: PosPromotion[]
+  promotionUses: { promotionId: string; customerId: string; usesCount: number }[]
   combos: PosCombo[]
   registers: PosCashRegister[]
   session: PosCashSession | null

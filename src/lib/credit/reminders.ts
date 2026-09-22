@@ -90,6 +90,7 @@ export async function checkCreditExpirationReminders(): Promise<{ notified: numb
         await persistNotification({
           organizationId: policy.organizationId,
           userId: customer.userId,
+          recipientUserId: customer.userId,
           kind: "credit_reminder",
           title: "Recordatorio de crédito",
           body: `Tienes $${totalOwed.toFixed(2)} pendientes${daysUntilDue <= 0 ? " (vencido)" : ` — vence en ${daysUntilDue} día${daysUntilDue === 1 ? "" : "s"}`}. Realiza tu abono pronto.`,
@@ -191,6 +192,7 @@ export async function checkOverdueCredits(): Promise<{ alerted: number; errors: 
       await persistNotification({
         organizationId: orgId,
         userId: customer.userId,
+        recipientUserId: customer.userId,
         kind: "credit_overdue",
         title: "Crédito vencido",
         body: `Tu crédito de $${totalOwed.toFixed(2)} venció hace ${daysOverdue} día${daysOverdue === 1 ? "" : "s"}. Por favor liquidalo lo antes posible.`,

@@ -32,6 +32,11 @@ export function PromotionDescriptionPreview({
       exclusive: Boolean(values.exclusive),
       maxUses: values.maxUses ? Number(values.maxUses) : null,
       maxUsesPerCustomer: values.maxUsesPerCustomer ? Number(values.maxUsesPerCustomer) : null,
+      targetLocations: Array.isArray(values.targetLocations) ? values.targetLocations as string[] : [],
+      targetCategories: Array.isArray(values.targetCategories) ? values.targetCategories as string[] : [],
+      targetProducts: Array.isArray(values.targetProducts) ? values.targetProducts as string[] : [],
+      targetVariants: Array.isArray(values.targetVariants) ? values.targetVariants as string[] : [],
+      rewardVariants: Array.isArray(values.rewardVariants) ? values.rewardVariants as string[] : [],
     };
     return generateDescriptionFinal(input);
   }, [
@@ -52,6 +57,11 @@ export function PromotionDescriptionPreview({
     values.exclusive,
     values.maxUses,
     values.maxUsesPerCustomer,
+    values.targetLocations,
+    values.targetCategories,
+    values.targetProducts,
+    values.targetVariants,
+    values.rewardVariants,
   ]);
 
   return (

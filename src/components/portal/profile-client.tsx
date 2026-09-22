@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -18,11 +18,9 @@ import {
   Trash2,
   Receipt,
   Settings,
-  Bell,
-  Camera,
-  BarChart3,
   FileText,
   IdCard,
+  KeyRound,
 } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import { logout } from "@/lib/auth/logout";
@@ -34,7 +32,6 @@ import { InputGroupField } from "@/components/base/input-group-field";
 import { AddressField } from "@/components/base/address-field";
 import { NavCustomizer } from "@/components/portal/nav-customizer";
 import { PortalPermissionsSection } from "@/components/portal/portal-permissions-section";
-import { TapScale } from "@/components/shared/tap-scale";
 import { AnimatedNumber } from "@/components/base/animated-number";
 import packageJson from "../../../package.json";
 import { STAGGER_FADE_UP } from "@/lib/animation-tokens";
@@ -62,6 +59,10 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<ProfileStats>({ orders: 0, points: 0, favorites: 0 });
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showNavigation, setShowNavigation] = useState(false);
+  const [showPermissions, setShowPermissions] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -103,7 +104,15 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
     fetchProfile();
   }, []);
 
+  useEffect(() => {
+    if (window.location.hash === "#nav-customizer") setShowNavigation(true);
+  }, []);
+
   const save = async () => {
+    setFormError(null);
+    if (!form.fullName.trim()) { setFormError("Escribe tu nombre para continuar."); nameRef.current?.focus(); return; }
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { setFormError("Revisa el correo electrónico."); document.querySelector<HTMLInputElement>("#profile-email")?.focus(); return; }
+    if (form.phone && form.phone.length !== 10) { setFormError("El teléfono debe tener 10 dígitos."); document.querySelector<HTMLInputElement>("#profile-phone")?.focus(); return; }
     setSaving(true);
     try {
       const res = await portalApi.updateProfile({
@@ -118,7 +127,7 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
       swalToast("Perfil actualizado");
       setShowEditForm(false);
     } catch (err) {
-      swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
+      setFormError(err instanceof Error ? err.message : "No se pudo guardar el perfil");
     } finally {
       setSaving(false);
     }
@@ -166,93 +175,72 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
       animate="show"
     >
       {/* ── Header ──────────────────────────────────── */}
-      <motion.div variants={item} className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Perfil</h1>
-        <Link href="/portal/notifications">
-          <div className="flex size-10 items-center justify-center rounded-full bg-muted/60 transition-colors hover:bg-muted">
-            <Bell className="size-5 text-muted-foreground" />
-          </div>
-        </Link>
-      </motion.div>
+      <motion.div variants={item}><h1 className="text-2xl font-bold tracking-tight">Mi perfil</h1><p className="text-sm text-muted-foreground">Tus datos, seguridad y preferencias.</p></motion.div>
 
       {/* ── Avatar Card ─────────────────────────────── */}
       <motion.div variants={item}>
-        <div className="relative rounded-3xl border border-border/30 bg-card p-6 pb-5 shadow-sm">
-          {/* Avatar with gradient ring */}
-          <div className="flex flex-col items-center">
-            <div className="relative">
-              <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-rose-400 via-amber-400 to-emerald-400 opacity-60 blur-sm" />
-              <div className="relative flex size-24 items-center justify-center rounded-full bg-gradient-to-br from-rose-400 via-amber-400 to-emerald-400 p-[3px]">
-                <div className="flex size-full items-center justify-center rounded-full bg-background">
+        <div className="rounded-2xl border bg-card p-4 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-primary/20 bg-primary/5">
                   {customer.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={customer.imageUrl}
                       alt=""
-                      className="size-full rounded-full object-cover"
+                      className="size-full object-cover"
                     />
                   ) : (
-                    <span className="text-2xl font-bold text-muted-foreground">{initials}</span>
+                    <span className="text-lg font-bold text-primary">{initials}</span>
                   )}
-                </div>
-              </div>
             </div>
-
-            {/* Name + @username */}
-            <h2 className="mt-4 text-xl font-bold tracking-tight">{customer.fullName}</h2>
-            {customer.email && (
-              <p className="text-sm text-muted-foreground">@{customer.email.split("@")[0]}</p>
-            )}
+            <div className="min-w-0 flex-1"><h2 className="truncate text-lg font-bold">{customer.fullName}</h2>{customer.email && <p className="truncate text-sm text-muted-foreground">{customer.email}</p>}</div>
+          </div>
             {customer.customerCode && (
-              <p className="mt-2 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-muted px-3 text-xs font-semibold text-muted-foreground">
+              <p className="mt-3 inline-flex min-h-8 items-center gap-1.5 rounded-full bg-muted px-3 text-xs font-semibold text-muted-foreground">
                 <IdCard className="size-3.5" aria-hidden="true" />
                 Núm. de cliente: {customer.customerCode}
               </p>
             )}
 
-            {/* Stats row */}
-            <div className="mt-5 flex w-full max-w-xs items-center justify-around">
+            <div className="mt-4 flex w-full items-center justify-around border-t pt-4">
               <div className="flex flex-col items-center gap-0.5">
                 <span className="text-lg font-bold">
                   <AnimatedNumber value={stats.orders} duration={0.6} />
                 </span>
-                <span className="text-[11px] text-muted-foreground">Pedidos</span>
+                <span className="text-xs text-muted-foreground">Pedidos</span>
               </div>
               <div className="h-10 w-px bg-border/50" />
               <div className="flex flex-col items-center gap-0.5">
                 <span className="text-lg font-bold text-amber-500">
                   <AnimatedNumber value={stats.points} duration={0.6} />
                 </span>
-                <span className="text-[11px] text-muted-foreground">Puntos</span>
+                <span className="text-xs text-muted-foreground">Puntos</span>
               </div>
               <div className="h-10 w-px bg-border/50" />
               <div className="flex flex-col items-center gap-0.5">
                 <span className="text-lg font-bold">
                   <AnimatedNumber value={stats.favorites} duration={0.6} />
                 </span>
-                <span className="text-[11px] text-muted-foreground">Favoritos</span>
+                <span className="text-xs text-muted-foreground">Favoritos</span>
               </div>
             </div>
-          </div>
         </div>
       </motion.div>
 
       {/* ── Credit / Balance Card ───────────────────── */}
       <motion.div variants={item}>
         <Link href="/portal/credit" className="block">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-muted/80 via-muted/40 to-muted/80 border border-border/30 p-4 shadow-sm transition-all hover:shadow-md">
+          <div className="rounded-2xl border bg-card p-4 shadow-sm transition-colors hover:bg-muted/40">
             <div className="flex items-center gap-3">
               <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-background/80 shadow-sm">
                 <CreditCard className="size-5 text-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground">Mi crédito</p>
-                <p className="text-lg font-bold">
-                  {stats.points > 0 ? `${stats.points} pts` : "$0"}
-                </p>
+                <p className="text-sm font-semibold">Mi crédito</p>
+                <p className="text-xs text-muted-foreground">Consulta saldo, adeudos y abonos</p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 rounded-full bg-background/80 px-3 py-1.5 text-xs font-semibold shadow-sm">
-                Usar
+                Ver detalle
                 <ChevronRight className="size-3.5" />
               </div>
             </div>
@@ -260,42 +248,9 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
         </Link>
       </motion.div>
 
-      {/* ── Menu Items ──────────────────────────────── */}
-      <motion.div variants={item} className="space-y-2">
-        <ProfileMenuItem
-          href="/portal/favorites"
-          icon={Heart}
-          iconColor="text-rose-500 bg-rose-500/10"
-          label="Favoritos"
-          badge={stats.favorites > 0 ? stats.favorites : undefined}
-        />
-        <ProfileMenuItem
-          href="/portal/loyalty"
-          icon={Sparkles}
-          iconColor="text-amber-500 bg-amber-500/10"
-          label="Puntos y lealtad"
-          badge={stats.points > 0 ? stats.points : undefined}
-        />
-        <ProfileMenuItem
-          href="/portal/orders"
-          icon={Receipt}
-          iconColor="text-emerald-500 bg-emerald-500/10"
-          label="Mis pedidos"
-          badge={stats.orders > 0 ? stats.orders : undefined}
-        />
-        <ProfileMenuItem
-          href="/portal/payment-methods"
-          icon={FileText}
-          iconColor="text-blue-500 bg-blue-500/10"
-          label="Métodos de pago"
-        />
-        <ProfileMenuItem
-          href="/portal/notifications"
-          icon={Bell}
-          iconColor="text-violet-500 bg-violet-500/10"
-          label="Notificaciones"
-        />
-      </motion.div>
+      <motion.section variants={item} className="space-y-2"><h2 className="px-1 text-sm font-semibold">Tu actividad</h2><div className="grid grid-cols-2 gap-2">
+        {([{ href: "/portal/orders", icon: Receipt, label: "Pedidos" }, { href: "/portal/favorites", icon: Heart, label: "Favoritos" }, { href: "/portal/loyalty", icon: Sparkles, label: "Puntos" }, { href: "/portal/payment-methods", icon: FileText, label: "Métodos de pago" }] as const).map(({ href, icon: Icon, label }) => <Link key={href} href={href} className="flex min-h-16 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-primary"><Icon className="size-5 shrink-0 text-primary" />{label}</Link>)}
+      </div></motion.section>
 
       {/* ── Settings Section ────────────────────────── */}
       <motion.div variants={item} className="space-y-2">
@@ -303,8 +258,10 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
           Configuración
         </p>
         <button
-          onClick={() => setShowEditForm(!showEditForm)}
-          className="flex w-full items-center gap-3.5 rounded-2xl border border-border/30 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
+          onClick={() => { setShowEditForm(!showEditForm); if (!showEditForm) requestAnimationFrame(() => nameRef.current?.focus()); }}
+          aria-expanded={showEditForm}
+          aria-controls="profile-edit-form"
+          className="flex min-h-14 w-full items-center gap-3.5 rounded-2xl border border-border/30 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-primary"
         >
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted/60">
             <Settings className="size-5 text-muted-foreground" />
@@ -312,24 +269,36 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
           <span className="flex-1 text-left text-sm font-semibold">Editar perfil</span>
           <ChevronRight className={`size-4 text-muted-foreground transition-transform ${showEditForm ? "rotate-90" : ""}`} />
         </button>
+        <ProfileMenuItem href="/portal/change-password" icon={KeyRound} iconColor="text-blue-600 bg-blue-600/10" label="Cambiar contraseña" />
         <button
-          onClick={() => {
-            const el = document.getElementById("nav-customizer");
-            el?.scrollIntoView({ behavior: "smooth" });
-          }}
-          className="flex w-full items-center gap-3.5 rounded-2xl border border-border/30 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
+          onClick={() => setShowNavigation(!showNavigation)}
+          aria-expanded={showNavigation}
+          aria-controls="nav-customizer-panel"
+          className="flex min-h-14 w-full items-center gap-3.5 rounded-2xl border border-border/30 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-primary"
         >
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted/60">
             <LayoutGrid className="size-5 text-muted-foreground" />
           </div>
           <span className="flex-1 text-left text-sm font-semibold">Personalizar navegación</span>
-          <ChevronRight className="size-4 text-muted-foreground" />
+          <ChevronRight className={`size-4 text-muted-foreground transition-transform ${showNavigation ? "rotate-90" : ""}`} />
+        </button>
+        <button
+          onClick={() => setShowPermissions(!showPermissions)}
+          aria-expanded={showPermissions}
+          aria-controls="profile-permissions-panel"
+          className="flex min-h-14 w-full items-center gap-3.5 rounded-2xl border border-border/30 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted/60"><Shield className="size-5 text-muted-foreground" /></div>
+          <span className="flex-1 text-left text-sm font-semibold">Permisos de la aplicación</span>
+          <ChevronRight className={`size-4 text-muted-foreground transition-transform ${showPermissions ? "rotate-90" : ""}`} />
         </button>
       </motion.div>
 
       {/* ── Edit Form (collapsible) ─────────────────── */}
       {showEditForm && (
-        <motion.div
+        <motion.form
+          id="profile-edit-form"
+          onSubmit={(event) => { event.preventDefault(); void save(); }}
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
@@ -339,13 +308,18 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
             <User className="size-4 text-primary" />
             <h2 className="text-sm font-semibold">Datos personales</h2>
           </div>
+          {formError && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{formError}</p>}
           <InputGroupField
+            ref={nameRef}
+            id="profile-name"
             label="Nombre"
+            required
             leftIcon={<User className="size-4" />}
             value={form.fullName}
             onChange={(e) => setForm({ ...form, fullName: e.target.value })}
           />
           <InputGroupField
+            id="profile-phone"
             label="Teléfono"
             helper="Solo 10 dígitos."
             inputMode="numeric"
@@ -354,7 +328,8 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
             onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
           />
           <InputGroupField
-            label="Email"
+            id="profile-email"
+            label="Correo electrónico"
             type="email"
             leftIcon={<Mail className="size-4" />}
             value={form.email}
@@ -367,23 +342,23 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
             longitude={form.longitude}
             onGpsChange={(gps) => setForm({ ...form, latitude: gps?.lat ?? null, longitude: gps?.lon ?? null })}
           />
-          <Button className="w-full h-11 rounded-xl font-semibold" onClick={save} disabled={saving}>
+          <Button type="submit" className="w-full h-11 rounded-xl font-semibold" disabled={saving}>
             {saving ? "Guardando…" : "Guardar cambios"}
           </Button>
-        </motion.div>
+        </motion.form>
       )}
 
       {/* ── Nav Customizer ──────────────────────────── */}
-      <motion.div variants={item} id="nav-customizer" className="rounded-2xl border border-border/30 bg-card p-4 shadow-sm">
+      {showNavigation && <motion.div variants={item} id="nav-customizer-panel" className="rounded-2xl border border-border/30 bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <LayoutGrid className="size-4 text-primary" />
           <h2 className="text-sm font-semibold">Personalizar navegación</h2>
         </div>
         <NavCustomizer canReserve={canReserve} />
-      </motion.div>
+      </motion.div>}
 
       {/* ── Permissions ─────────────────────────────── */}
-      <motion.div variants={item} className="rounded-2xl border border-border/30 bg-card p-4 shadow-sm">
+      {showPermissions && <motion.div variants={item} id="profile-permissions-panel" className="rounded-2xl border border-border/30 bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <Shield className="size-4 text-primary" />
           <h2 className="text-sm font-semibold">Permisos de la aplicación</h2>
@@ -392,7 +367,7 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
           Gestiona los permisos que usa la app para funcionalidades como ubicación, cámara y notificaciones.
         </p>
         <PortalPermissionsSection />
-      </motion.div>
+      </motion.div>}
 
       {/* ── Logout ──────────────────────────────────── */}
       <motion.div variants={item}>
@@ -411,7 +386,7 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
       </motion.div>
 
       {/* ── Version ─────────────────────────────────── */}
-      <motion.p variants={item} className="text-center text-[0.65rem] text-muted-foreground/50 pb-4">
+      <motion.p variants={item} className="text-center text-xs text-muted-foreground/50 pb-4">
         Sistema Multi-POS v{packageJson.version}
       </motion.p>
     </motion.div>
@@ -433,23 +408,21 @@ function ProfileMenuItem({
   badge?: number;
 }) {
   return (
-    <TapScale>
       <Link
         href={href}
-        className="flex items-center gap-3.5 rounded-2xl border border-border/30 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50"
+        className="flex min-h-14 items-center gap-3.5 rounded-2xl border border-border/30 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-primary"
       >
         <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${iconColor}`}>
           <Icon className="size-5" />
         </div>
         <span className="flex-1 text-sm font-semibold">{label}</span>
         {badge !== undefined && (
-          <span className="flex min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+          <span className="flex min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-bold text-primary">
             {badge > 99 ? "99+" : badge}
           </span>
         )}
         <ChevronRight className="size-4 text-muted-foreground" />
       </Link>
-    </TapScale>
   );
 }
 

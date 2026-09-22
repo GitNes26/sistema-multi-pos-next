@@ -1,6 +1,7 @@
 import { Prisma, type LocationType } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { CrudError } from "@/lib/crud/types"
+import { notifyStaff } from "@/lib/notifications/staff"
 import {
   canTransitionPurchaseOrder,
   purchaseTotals,
@@ -276,7 +277,7 @@ export async function createQuote(
   if (!supplier)
     throw new CrudError("Selecciona un proveedor activo", 400, "supplierId")
   const items = await validateItems(organizationId, input.items)
-  return prisma.purchaseQuote.create({
+  const quote = await prisma.purchaseQuote.create({
     data: {
       organizationId,
       supplierId: supplier.id,
@@ -289,6 +290,8 @@ export async function createQuote(
     },
     include: { items: true, supplier: true },
   })
+  await notifyStaff(organizationId, "purchasing.manage", { kind: "purchase_quote", title: "Nueva cotización", body: `${quote.folio} · ${supplier.businessName}`, link: "/admin/purchasing", excludeUserId: userId }).catch((error) => console.error("[purchasing/notification]", error))
+  return quote
 }
 
 export async function updateQuote(
@@ -352,7 +355,7 @@ export async function createOrder(
     throw new CrudError("Selecciona un destino válido", 400, "locationId")
   const items = await validateItems(organizationId, input.items)
   const { subtotal, tax, total } = purchaseTotals(items)
-  return prisma.purchaseOrder.create({
+  const order = await prisma.purchaseOrder.create({
     data: {
       organizationId,
       supplierId: supplier.id,
@@ -370,6 +373,8 @@ export async function createOrder(
     },
     include: { items: true, supplier: true },
   })
+  await notifyStaff(organizationId, "purchasing.approve", { kind: "purchase_order", title: "Orden pendiente de aprobación", body: `${order.folio} · ${supplier.businessName}`, link: "/admin/purchasing", excludeUserId: userId }).catch((error) => console.error("[purchasing/notification]", error))
+  return order
 }
 
 export async function changeOrderStatus(
@@ -387,7 +392,7 @@ export async function changeOrderStatus(
       `No se puede cambiar de ${order.status} a ${status}`,
       409
     )
-  return prisma.purchaseOrder.update({
+  const updated = await prisma.purchaseOrder.update({
     where: { id: order.id },
     data: {
       status,
@@ -398,6 +403,9 @@ export async function changeOrderStatus(
       ...(status === "cancelled" ? { cancelledAt: new Date() } : {}),
     },
   })
+  const permission = status === "approved" || status === "sent" ? "purchasing.receive" : "purchasing.manage"
+  await notifyStaff(organizationId, permission, { kind: "purchase_order", title: `Orden ${status === "approved" ? "aprobada" : status === "sent" ? "enviada" : "cancelada"}`, body: order.folio, link: "/admin/purchasing", excludeUserId: userId }).catch((error) => console.error("[purchasing/notification]", error))
+  return updated
 }
 
 export async function receiveOrder(
@@ -431,7 +439,7 @@ export async function receiveOrder(
     select: { id: true },
   })
   const folio = await nextFolio(organizationId, "REC", "receipt")
-  return prisma.$transaction(
+  const receipt = await prisma.$transaction(
     async (tx) => {
       const receipt = await tx.goodsReceipt.create({
         data: {
@@ -535,4 +543,6 @@ export async function receiveOrder(
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
   )
+  await notifyStaff(organizationId, "purchasing.manage", { kind: "purchase_receipt", title: "Compra recibida", body: `${order.folio} · inventario actualizado`, link: "/admin/purchasing", excludeUserId: userId }).catch((error) => console.error("[purchasing/notification]", error))
+  return receipt
 }

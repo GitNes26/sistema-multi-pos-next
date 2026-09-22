@@ -25,6 +25,8 @@ interface BottomSheetProps {
   className?: string
   bodyClassName?: string
   showCloseButton?: boolean
+  height?: string
+  maxHeight?: string
 }
 
 export function BottomSheet({
@@ -37,9 +39,9 @@ export function BottomSheet({
   className,
   bodyClassName,
   showCloseButton = true,
+  height = "95dvh",
+  maxHeight = "95dvh",
 }: BottomSheetProps) {
-  const [snap, setSnap] = React.useState<number | string | null>(0.95)
-
   return (
     <Drawer
       open={open}
@@ -52,11 +54,8 @@ export function BottomSheet({
             "mx-auto flex flex-col rounded-t-3xl border-t border-border/30 bg-background shadow-[0_-8px_30px_rgba(0,0,0,0.18)]",
             className
           )}
-          style={{ height: '95vh', maxHeight: '95vh', marginTop: 0 }}
+          style={{ height, maxHeight, marginTop: 0 }}
         >
-          {/* Drag handle */}
-          <div className="mx-auto mt-2.5 mb-1 flex h-1.5 w-12 shrink-0 cursor-grab touch-none items-center justify-center rounded-full bg-muted-foreground/25 active:cursor-grabbing active:bg-muted-foreground/40" />
-
           {/* Header */}
           {(title || showCloseButton) && (
             <DrawerHeader className="flex flex-row items-center gap-3 px-4 pb-2 pt-2">

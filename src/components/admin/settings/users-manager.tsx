@@ -358,14 +358,14 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
                 return (
                   <div key={module} className="rounded-lg border p-3">
                     <label htmlFor={`permission-module-${module}`} className="flex cursor-pointer items-center gap-2">
-                      <Checkbox id={`permission-module-${module}`} checked={all} onCheckedChange={() => toggleModule(modulePerms.map((p) => p.key))} />
+                      <Checkbox id={`permission-module-${module}`} checked={all} disabled={selected.isSystem} onCheckedChange={() => toggleModule(modulePerms.map((p) => p.key))} />
                       <span className="text-sm font-medium capitalize">{module}</span>
                       <span className="ml-auto text-xs text-muted-foreground">Todos</span>
                     </label>
                     <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
                       {modulePerms.map((p) => (
                         <label htmlFor={`permission-${p.key}`} key={p.key} className="flex cursor-pointer items-center gap-2 text-sm">
-                          <Checkbox id={`permission-${p.key}`} checked={perms.has(p.key)} onCheckedChange={() => toggle(p.key)} />
+                          <Checkbox id={`permission-${p.key}`} checked={perms.has(p.key)} disabled={selected.isSystem} onCheckedChange={() => toggle(p.key)} />
                           <span className="text-muted-foreground">{p.label}</span>
                         </label>
                       ))}
@@ -375,9 +375,9 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
               })}
             </div>
 
-            <Button onClick={savePerms} disabled={saving}>
+            {!selected.isSystem && <Button onClick={savePerms} disabled={saving}>
               <ShieldCheck className="size-4" /> {saving ? "Guardando…" : "Guardar permisos"}
-            </Button>
+            </Button>}
           </div>
         )}
       </div>

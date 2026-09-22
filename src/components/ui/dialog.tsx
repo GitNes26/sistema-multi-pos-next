@@ -255,11 +255,25 @@ function DialogComponent({
   useCloseAllDialogs(() => onOpenChange(false))
 
   const sizeClass = DIALOG_SIZE_CLASSES[size]
+  const handleEnter: React.KeyboardEventHandler<HTMLDivElement> = (event) => {
+    if (event.key !== "Enter" || event.defaultPrevented || event.nativeEvent.isComposing || event.repeat) return
+    const target = event.target
+    if (!(target instanceof HTMLElement) || !target.matches('input:not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"])')) return
+    if (target.closest('form, [role="combobox"], [role="listbox"], [cmdk-root], [data-slot="popover-content"]')) return
+    const dialog = event.currentTarget
+    const action = [...dialog.querySelectorAll<HTMLButtonElement>('[data-slot="dialog-footer"] button')]
+      .reverse()
+      .find((button) => !button.disabled)
+    if (!action) return
+    event.preventDefault()
+    action.click()
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(sizeClass, className)}
+        onKeyDown={handleEnter}
         showCloseButton={showCloseButton}
         data-guide={dataGuide}
       >

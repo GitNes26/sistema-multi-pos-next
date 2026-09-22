@@ -190,6 +190,11 @@ function generateDescriptionFinal(data: Record<string, unknown>): string {
     exclusive: Boolean(data.exclusive),
     maxUses: data.maxUses ? Number(data.maxUses) : null,
     maxUsesPerCustomer: data.maxUsesPerCustomer ? Number(data.maxUsesPerCustomer) : null,
+    targetLocations: Array.isArray(data.targetLocations) ? data.targetLocations as string[] : [],
+    targetCategories: Array.isArray(data.targetCategories) ? data.targetCategories as string[] : [],
+    targetProducts: Array.isArray(data.targetProducts) ? data.targetProducts as string[] : [],
+    targetVariants: Array.isArray(data.targetVariants) ? data.targetVariants as string[] : [],
+    rewardVariants: Array.isArray(data.rewardVariants) ? data.rewardVariants as string[] : [],
   });
 }
 

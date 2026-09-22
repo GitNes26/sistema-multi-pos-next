@@ -10,7 +10,7 @@ export async function POST() {
 
   try {
     const { count } = await prisma.notification.updateMany({
-      where: { organizationId: guard.organizationId, readAt: null },
+      where: { organizationId: guard.organizationId, readAt: null, OR: [{ recipientUserId: null }, { recipientUserId: guard.userId }] },
       data: { readAt: new Date() },
     });
     return NextResponse.json({ ok: true, updated: count });

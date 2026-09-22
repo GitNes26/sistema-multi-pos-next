@@ -11,11 +11,16 @@ import type {
   PosSalePayload,
 } from "@/types/pos"
 import { round2 } from "./money"
+import { saleArithmeticError } from "./sale-integrity"
+import { bestAutoPromotion, type PricingLine } from "./pricing"
+import { getWeekdaysNumber } from "./pricing-schedule"
+import { customerMayUsePromotion, reservePromotionCustomerUse } from "@/lib/promotions/customer-use"
 import { isFeatureEnabled, type FeatureKey } from "@/lib/features"
 import type { BusinessMode } from "@/lib/auth/options"
 import { maybeNotifyLowStock } from "@/lib/inventory/server"
 import { consumeRecipeIngredients } from "@/lib/inventory/recipes"
 import { notifySaleCompleted } from "@/lib/notifications/events"
+import { notifyStaff } from "@/lib/notifications/staff"
 import { broadcastTableUpdate } from "@/lib/tables/live"
 import { closeKitchenOrderOnSale } from "./kitchen"
 
@@ -188,6 +193,14 @@ export async function getPosCatalog(
       orderBy: { createdAt: "asc" },
     }),
   ])
+
+  const limitedPromotionIds = promotions.filter((promotion) => promotion.maxUsesPerCustomer != null).map((promotion) => promotion.id)
+  const promotionUses = limitedPromotionIds.length && customers.length
+    ? await prisma.promotionCustomerUse.findMany({
+        where: { organizationId, promotionId: { in: limitedPromotionIds }, customerId: { in: customers.map((customer) => customer.id) } },
+        select: { promotionId: true, customerId: true, usesCount: true },
+      })
+    : []
 
   const location = firstActiveLocation(locations)
   if (!location) {
@@ -476,6 +489,7 @@ export async function getPosCatalog(
       endTime: p.endTime,
       targets: p.targets.map((t) => ({ kind: t.kind, targetId: t.targetId })),
     })),
+    promotionUses,
     registers: registersMapped,
     session,
     cashier: {
@@ -688,7 +702,8 @@ async function validateSaleAmounts(
   organizationId: string,
   payload: PosSalePayload
 ) {
-  let subtotal = 0
+  const trustedLines: { subtotal: number; taxRate: number }[] = []
+  const pricingLines: PricingLine[] = []
   for (const item of payload.items) {
     if (
       !Number.isFinite(item.quantity) ||
@@ -710,6 +725,7 @@ async function validateSaleAmounts(
           include: {
             product: {
               select: {
+                categoryId: true,
                 taxRate: true,
                 productType: true,
                 isActive: true,
@@ -733,6 +749,7 @@ async function validateSaleAmounts(
             isAvailable: true,
           },
           select: {
+            categoryId: true,
             taxRate: true,
             productType: true,
             isActive: true,
@@ -814,20 +831,76 @@ async function validateSaleAmounts(
     if (Math.abs(Number(item.taxRate) - toNum(product.taxRate)) > 0.0001) {
       throw new PosError("Impuesto de producto inválido", 400)
     }
-    subtotal = round2(subtotal + lineSubtotal)
+    trustedLines.push({ subtotal: lineSubtotal, taxRate: toNum(product.taxRate) })
+    pricingLines.push({ key: `${item.productId}:${item.variantId ?? ""}`, productId: item.productId, variantId: item.variantId, categoryId: product.categoryId, qty: item.quantity, unitPrice: trustedUnitPrice, taxRate: toNum(product.taxRate) })
   }
-  if (Math.abs(Number(payload.subtotal) - subtotal) > 0.01) {
-    throw new PosError("Subtotal inválido", 400)
+  const arithmeticError = saleArithmeticError(payload, trustedLines)
+  if (arithmeticError) throw new PosError(arithmeticError, 400)
+  if (!Number.isFinite(payload.pointsRedeemedValue)) throw new PosError("Puntos inválidos", 400)
+
+  const promotions = await prisma.promotion.findMany({
+    where: { organizationId, isActive: true },
+    include: { targets: { select: { kind: true, targetId: true } } },
+  })
+  const available = promotions.map((promotion) => ({
+    id: promotion.id, name: promotion.name, description: promotion.description,
+    descriptionFinal: promotion.descriptionFinal, benefit: promotion.benefit, scope: promotion.scope,
+    value: toNum(promotion.value), buyQuantity: promotion.buyQuantity, getQuantity: promotion.getQuantity,
+    minAmount: toNum(promotion.minAmount), minQuantity: toNum(promotion.minQuantity),
+    couponCode: promotion.couponCode, requiresCustomer: promotion.requiresCustomer,
+    priority: promotion.priority, exclusive: promotion.exclusive, maxUses: promotion.maxUses,
+    maxUsesPerCustomer: promotion.maxUsesPerCustomer, usesCount: promotion.usesCount,
+    startsAt: promotion.startsAt?.toISOString() ?? null, endsAt: promotion.endsAt?.toISOString() ?? null,
+    weekdays: promotion.weekdays, startTime: promotion.startTime, endTime: promotion.endTime,
+    targets: promotion.targets,
+  }))
+  const customerUses = payload.customerId ? await prisma.promotionCustomerUse.findMany({
+    where: { organizationId, customerId: payload.customerId },
+    select: { promotionId: true, usesCount: true },
+  }) : []
+  const usesByPromotion = new Map(customerUses.map((entry) => [entry.promotionId, entry.usesCount]))
+  const eligible = available.filter((promotion) => customerMayUsePromotion(
+    promotion.maxUsesPerCustomer, payload.customerId, usesByPromotion.get(promotion.id) ?? 0
+  ))
+  const customer = payload.customerId ? { id: payload.customerId, fullName: "", phone: null, email: null, customerCode: null, points: 0, imageUrl: null, address: null } : null
+  const auto = bestAutoPromotion(eligible, pricingLines, customer)
+  const coupon = payload.couponCode ? await validateCoupon(organizationId, payload.couponCode, payload.customerId) : null
+  if (coupon && !coupon.ok) throw new PosError(coupon.error, 409)
+  let seenAuto = false
+  let seenCoupon = false
+  for (const discount of payload.discounts.filter((entry) => entry.promotionId)) {
+    if (auto.promotionId === discount.promotionId && !seenAuto && discount.amount <= auto.discount + 0.01) {
+      seenAuto = true
+      continue
+    }
+    const couponAmount = coupon?.ok ? (coupon.percent != null ? round2(payload.subtotal * coupon.percent / 100) : coupon.amount) : 0
+    if (coupon?.ok && coupon.promotionId === discount.promotionId && !seenCoupon && discount.amount <= couponAmount + 0.01) {
+      seenCoupon = true
+      continue
+    }
+    throw new PosError("La promoción enviada no aplica al ticket actual", 409)
   }
-  if (
-    ![
-      payload.discount,
-      payload.tax,
-      payload.total,
-      payload.pointsRedeemedValue,
-    ].every(Number.isFinite)
-  ) {
-    throw new PosError("Totales inválidos", 400)
+  if (payload.nextPurchaseCoupon) {
+    const couponPromotion = eligible.find((entry) => entry.id === payload.nextPurchaseCoupon?.promotionId)
+    const now = new Date()
+    const matchingTargets = couponPromotion?.scope === "order" ||
+      couponPromotion?.targets.some((target) => pricingLines.some((line) =>
+        (target.kind === "category" && line.categoryId === target.targetId) ||
+        (target.kind === "product" && line.productId === target.targetId)
+      ))
+    const weekdays = getWeekdaysNumber(couponPromotion?.weekdays ?? null)
+    const valid = couponPromotion?.benefit === "next_purchase_coupon" && matchingTargets &&
+      (!couponPromotion.requiresCustomer || Boolean(payload.customerId)) &&
+      payload.subtotal >= couponPromotion.minAmount &&
+      (!couponPromotion.startsAt || now >= new Date(couponPromotion.startsAt)) &&
+      (!couponPromotion.endsAt || now <= new Date(couponPromotion.endsAt)) &&
+      (!weekdays.length || weekdays.includes(now.getDay())) &&
+      (couponPromotion.maxUses == null || couponPromotion.usesCount < couponPromotion.maxUses)
+    const expectedAmount = couponPromotion ? (couponPromotion.value || Math.round(Math.max(0, payload.total - payload.pointsRedeemedValue) * 0.1)) : 0
+    if (!valid || !Number.isFinite(payload.nextPurchaseCoupon.amount) ||
+        Math.abs(payload.nextPurchaseCoupon.amount - expectedAmount) > 0.01) {
+      throw new PosError("El cupón de próxima compra ya no aplica al ticket", 409)
+    }
   }
 }
 
@@ -968,12 +1041,25 @@ export async function createSale(
         })),
       })
     }
+    const issuedCoupon = payload.couponCode ? await tx.coupon.findFirst({
+      where: { organizationId, code: payload.couponCode.trim().toUpperCase() },
+      select: { promotionId: true },
+    }) : null
     for (const d of payload.discounts) {
       if (d.promotionId) {
-        await tx.promotion.update({
-          where: { id: d.promotionId },
+        // El cupón de próxima compra ya contó al emitirse; redimirlo no es
+        // un segundo uso de la promoción original.
+        if (issuedCoupon?.promotionId === d.promotionId) continue
+        const promotion = await tx.promotion.findFirst({ where: { id: d.promotionId, organizationId, isActive: true }, select: { maxUses: true, maxUsesPerCustomer: true } })
+        if (!promotion) throw new PosError("La promoción ya no está disponible", 409)
+        const used = await tx.promotion.updateMany({
+          where: { id: d.promotionId, organizationId, isActive: true, ...(promotion.maxUses != null ? { usesCount: { lt: promotion.maxUses } } : {}) },
           data: { usesCount: { increment: 1 } },
         })
+        if (!used.count) throw new PosError("La promoción alcanzó su límite de usos", 409)
+        if (!(await reservePromotionCustomerUse(tx, organizationId, d.promotionId, payload.customerId, promotion.maxUsesPerCustomer))) {
+          throw new PosError("Este cliente alcanzó el límite de usos de la promoción", 409)
+        }
       }
     }
 
@@ -1070,10 +1156,16 @@ export async function createSale(
           expiresAt: addDays(new Date(), 30),
         },
       })
-      await tx.promotion.update({
-        where: { id: np.promotionId },
+      const promotion = await tx.promotion.findFirst({ where: { id: np.promotionId, organizationId, isActive: true }, select: { maxUses: true, maxUsesPerCustomer: true } })
+      if (!promotion) throw new PosError("El cupón ya no está disponible", 409)
+      const used = await tx.promotion.updateMany({
+        where: { id: np.promotionId, organizationId, isActive: true, ...(promotion.maxUses != null ? { usesCount: { lt: promotion.maxUses } } : {}) },
         data: { usesCount: { increment: 1 } },
       })
+      if (!used.count) throw new PosError("El cupón alcanzó su límite de usos", 409)
+      if (!(await reservePromotionCustomerUse(tx, organizationId, np.promotionId, payload.customerId, promotion.maxUsesPerCustomer))) {
+        throw new PosError("Este cliente alcanzó el límite de usos de la promoción", 409)
+      }
     }
 
     // Una venta cobrada a crédito genera automáticamente la cuenta por cobrar.
@@ -1097,7 +1189,12 @@ export async function createSale(
       const limit = account.useDefaultLimit ? policy.defaultLimit : account.creditLimit
       const balanceAfter = round2(Number(account.currentBalance) + creditAmount)
       if (limit != null && balanceAfter > Number(limit)) throw new PosError(`Límite de crédito excedido. Disponible: $${Math.max(0, Number(limit) - Number(account.currentBalance)).toFixed(2)}`, 409)
-      await tx.customerCredit.update({ where: { customerId: payload.customerId }, data: { currentBalance: balanceAfter, status: "active" } })
+      const reserved = await tx.customerCredit.updateMany({
+        where: { id: account.id, status: { notIn: ["suspended", "closed"] }, ...(limit != null ? { currentBalance: { lte: Number(limit) - creditAmount } } : {}) },
+        data: { currentBalance: { increment: creditAmount }, status: "active" },
+      })
+      if (!reserved.count) throw new PosError("El crédito disponible cambió. Revisa el saldo e intenta de nuevo", 409)
+      const updatedCredit = await tx.customerCredit.findUniqueOrThrow({ where: { id: account.id }, select: { currentBalance: true } })
       await tx.creditTransaction.create({
         data: {
           creditId: account.id,
@@ -1105,7 +1202,7 @@ export async function createSale(
           organizationId,
           type: "charge",
           amount: creditAmount,
-          balanceAfter,
+          balanceAfter: updatedCredit.currentBalance,
           description: `Venta POS #${sale.saleNumber}`,
           referenceType: "sale",
           referenceId: sale.id,
@@ -1237,6 +1334,9 @@ export async function createSale(
     total: toNum(result.sale.total),
     locationName: result.locationName,
   })
+  if (payload.payments?.some((payment) => payment.method === "credit")) {
+    await notifyStaff(organizationId, "orders.view", { kind: "credit_charge", title: "Nueva venta a crédito", body: `Venta ${result.sale.saleNumber} · ${toNum(result.sale.total).toFixed(2)}`, link: "/admin/credits", excludeUserId: ctx.userId ?? undefined }).catch((error) => console.error("[credit/notification]", error))
+  }
 
   return {
     id: result.sale.id,

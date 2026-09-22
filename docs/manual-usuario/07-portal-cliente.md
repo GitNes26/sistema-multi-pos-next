@@ -13,9 +13,9 @@ sin llamar por teléfono. Cada cliente entra con su correo/código y contraseña
 - **Combos** del día (restaurantes e híbridos).
 - **Productos nuevos** y **Ver tienda**.
 
-En la barra de abajo: Inicio, Tienda, Reservar, Pedidos, Listas y Perfil. Cada persona puede
-**Personalizar navegación** (Perfil → Personalizar navegación) para dejar al frente lo que
-más usa.
+La barra inferior muestra las secciones principales y **Menú** abre un panel lateral con
+las demás secciones. En **Perfil → Personalizar navegación** puedes ordenar tus accesos
+principales.
 
 ## 7.2 Tienda y carrito
 
@@ -27,8 +27,10 @@ más usa.
 3. En restaurantes, los productos **personalizados** (nieves, cafés, papas) abren el
    **constructor**: eliges tamaño, sabores, toppings y notas. Cada configuración es una
    línea propia en el carrito con su precio correcto.
-4. Toca el **carrito** (arriba a la derecha) para revisar: cantidades, configuración de
-   cada línea y total. Desliza una línea a la izquierda para quitarla.
+4. Toca el **carrito** (arriba a la derecha) para revisar productos, cambiar cantidades o
+   quitar una línea. El resumen muestra subtotal, impuestos y total estimado. Pulsa
+   **Continuar al pago** para elegir entrega y método de pago; ese botón todavía no cobra.
+5. **Favoritos** y **Mis listas** están junto a la búsqueda de Tienda.
 
 ## 7.3 Checkout (finalizar compra)
 
@@ -38,6 +40,7 @@ más usa.
    - **Pagar al repartidor** (domicilio) o **Pagar en sucursal** (recoger) — en efectivo.
    - **Pagar en línea** (si la sucursal lo tiene activado).
    - **Tarjeta guardada** (Perfil → Métodos de pago).
+   - **Crédito**, si la empresa lo habilitó y tienes línea activa con saldo disponible. El motivo se muestra si tu línea está bloqueada o no alcanza.
    > El pago de **adeudos de crédito** no se hace en el checkout: se hace en la sección
    > **Mi Crédito** (ver 7.6 y capítulo 8).
 4. Desliza **Desliza para pagar** y listo: llega la confirmación del pedido.
@@ -62,15 +65,20 @@ más usa.
 ## 7.6 Mi Crédito (si tu negocio te da línea)
 
 - Consulta tu **saldo**, tu **límite** y la fecha límite de pago de cada adeudo.
-- **Paga** desde la app (tarjeta guardada) o en caja: el abono se refleja al momento.
+- **Abona** desde la app mediante la pasarela configurada. El saldo cambia al confirmarse el pago, no al volver de la pasarela. El panel puede registrar abonos presenciales.
 - El sistema avisa **antes del vencimiento**; si algo ya venció, se marca con claridad.
 - Detalle completo en el capítulo 8.
 
 ## 7.7 Listas y favoritos
 
 - **Favoritos:** el corazoncito de cada producto; tus favoritos se compran más rápido.
-- **Listas de compras:** arma listas ("Despensa semanal"), copia una lista anterior al
-  carrito de golpe y administra cantidades.
+- **Listas de compras:** pulsa **Nueva lista**, escribe el nombre y, si quieres, notas.
+  Al abrirla, toca **Agregar**.
+  Busca productos normales o **a granel**; en estos últimos elige la unidad de venta
+  (por ejemplo, kilogramo o pieza dividida). Usa **+** y **−** para ajustar la cantidad,
+  pulsa **Guardar lista** y, cuando la necesites, usa **Comprar lista** desde Mis listas.
+  También puedes editar nombre y notas, duplicarla o eliminarla. Editar el nombre conserva
+  los productos guardados.
 
 ## 7.8 Reservar mesa (restaurantes)
 
@@ -93,7 +101,10 @@ ya identificada:
 
 ## 7.10 Perfil
 
-- **Editar perfil** (datos, foto).
+- **Editar perfil** (nombre, teléfono, correo y dirección).
+- **Cambiar contraseña:** escribe la contraseña actual, la nueva y su confirmación.
+  Si olvidaste la actual, solicita un enlace de recuperación desde el acceso. El enlace
+  recibido por correo vence en una hora; el negocio debe tener habilitado el envío de correos.
 - **Métodos de pago:** guarda tarjetas de forma segura y elige la predeterminada.
 - **Notificaciones:** avisos de tus pedidos y promociones.
 - **Cerrar sesión** y **Personalizar navegación**.

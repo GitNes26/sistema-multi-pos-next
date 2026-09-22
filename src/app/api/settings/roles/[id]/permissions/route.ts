@@ -19,7 +19,7 @@ export async function PUT(
     if (!Array.isArray(permissions)) {
       return NextResponse.json({ ok: false, error: "permissions inválido" }, { status: 400 });
     }
-    const result = await setRolePermissions(id, permissions);
+    const result = await setRolePermissions(id, permissions, guard.organizationId, guard.session.user.role === "superadmin");
     return NextResponse.json(result);
   } catch (err) {
     return settingsErrorResponse(err);

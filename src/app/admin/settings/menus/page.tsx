@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Gestión de menú" };
 
 export default async function AdminMenusPage() {
   const session = await getServerSession(authOptions);
-  if (!hasPermission(session, "users.manage")) {
+  if (!["admin", "superadmin"].includes(session?.user?.role ?? "") || !hasPermission(session, "users.manage")) {
     redirect("/admin");
   }
 

@@ -4,7 +4,6 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState, useRef } from "react"
 import { ChevronLeft, ShoppingCart, Bell, BellRing } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
 import { usePortalStore } from "@/stores/portal-store"
 import { Button } from "@/components/ui/button"
 import { TapScale } from "@/components/shared/tap-scale"
@@ -51,9 +50,7 @@ export function PortalHeader({
   const pathname = usePathname()
   const router = useRouter()
   const { data: session } = useSession()
-  const itemCount = usePortalStore((s) =>
-    s.items.reduce((a, i) => a + i.qty, 0)
-  )
+  const itemCount = usePortalStore((s) => s.items.length)
   const setCartOpen = usePortalStore((s) => s.setCartOpen)
   usePushSound()
 
@@ -140,41 +137,25 @@ export function PortalHeader({
               variant="header"
             />
           )}
-          <AnimatePresence>
-            {itemCount > 0 && (
-              <motion.div
-                key="cart-btn"
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              >
+          <div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative size-9"
-                  aria-label="Carrito"
+                  className="relative size-11"
+                  aria-label={`Carrito${itemCount > 0 ? ` (${itemCount} productos)` : ""}`}
                   onClick={() => setCartOpen(true)}
                 >
                   <ShoppingCart className="size-[18px]" />
-                  <motion.div
-                    key={itemCount}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                    className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-[9px] font-bold"
-                  >
+                  {itemCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                     {itemCount > 99 ? "99+" : itemCount}
-                  </motion.div>
+                  </span>}
                 </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          </div>
 
           <TapScale>
             <Link
               href="/portal/notifications"
-              className="relative flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted"
+              className="relative flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted"
               aria-label={`Notificaciones${unreadCount > 0 ? ` (${unreadCount} sin leer)` : ""}`}
             >
               {unreadCount > 0 ? (
@@ -183,7 +164,7 @@ export function PortalHeader({
                 <Bell className="size-[18px]" />
               )}
               {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[8px] font-bold text-destructive-foreground animate-in zoom-in">
+                <span className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground animate-in zoom-in">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
@@ -193,7 +174,7 @@ export function PortalHeader({
           <TapScale>
             <Link
               href="/portal/profile"
-              className="flex size-9 items-center justify-center overflow-hidden rounded-full border-2 border-primary/20 bg-primary/5"
+              className="flex size-11 items-center justify-center overflow-hidden rounded-full border-2 border-primary/20 bg-primary/5"
               aria-label="Perfil"
             >
               {user.image ? (

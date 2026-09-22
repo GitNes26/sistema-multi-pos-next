@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 import { broadcastOrderStatus } from "@/lib/portal/live";
 import { notifyOrderEvent } from "@/lib/notifications/events";
+import { notifyStaff } from "@/lib/notifications/staff";
+import { persistNotification } from "@/lib/notifications/helpers";
 
 // FASE 16 — Pasarelas de pago (Stripe + MercadoPago).
 // Estructura y lógica; las claves se configuran por empresa en /admin/settings/payments.
@@ -109,8 +111,97 @@ export async function createCheckout(
 }
 
 function gateBaseUrls(orderId: string) {
+  if (orderId.startsWith("credit:")) {
+    const base = `${appUrl()}/portal/credit`;
+    return { success: `${base}?payment=returned`, cancel: `${base}?payment=cancelled` };
+  }
   const base = `${appUrl()}/portal/orders/${orderId}`;
   return { success: `${base}?paid=1`, cancel: base };
+}
+
+/** Abono en línea: el saldo no cambia hasta que la pasarela confirme el pago. */
+export async function createCreditCheckout(organizationId: string, customerId: string, requestedAmount: unknown): Promise<CheckoutResult> {
+  const amount = Number(requestedAmount);
+  if (!Number.isFinite(amount) || amount <= 0 || Math.abs(amount - Math.round(amount * 100) / 100) > 0.0000001) throw new Error("Ingresa un monto válido con hasta dos decimales");
+  const [account, customer, organization, config, creditPolicy] = await Promise.all([
+    prisma.customerCredit.findFirst({ where: { organizationId, customerId } }),
+    prisma.customer.findFirst({ where: { id: customerId, organizationId }, select: { email: true } }),
+    prisma.organization.findUnique({ where: { id: organizationId }, select: { currency: true } }),
+    getPaymentConfig(organizationId),
+    prisma.creditPolicy.findUnique({ where: { organizationId }, select: { allowPartialPayments: true } }),
+  ]);
+  if (!account || !customer || !organization) throw new Error("Cuenta de crédito no encontrada");
+  if (config.provider === "none") throw new Error("La empresa aún no configuró pagos en línea");
+  const intent = await prisma.$transaction(async (tx) => {
+    // Serializa solicitudes del mismo cliente: dos pestañas no pueden abrir
+    // simultáneamente dos checkouts sobre el mismo saldo disponible.
+    await tx.$queryRaw`SELECT id FROM customer_credits WHERE id = ${account.id} FOR UPDATE`;
+    const current = await tx.customerCredit.findUniqueOrThrow({ where: { id: account.id } });
+    if (amount > Number(current.currentBalance)) throw new Error("El abono no puede superar el saldo pendiente");
+    if (creditPolicy?.allowPartialPayments === false && amount !== Number(current.currentBalance)) throw new Error("La empresa requiere liquidar el saldo completo");
+    const pending = await tx.creditPaymentIntent.findFirst({ where: { organizationId, customerId, status: "pending", createdAt: { gte: new Date(Date.now() - 30 * 60_000) } } });
+    if (pending) throw new Error("Ya tienes un abono en proceso. Espera su confirmación antes de crear otro");
+    return tx.creditPaymentIntent.create({ data: { organizationId, customerId, amount, currency: organization.currency, provider: config.provider } });
+  });
+  let result: CheckoutResult;
+  try {
+    result = await createCheckout(organizationId, {
+      orderId: `credit:${intent.id}`, orderNumber: 0, amount, currency: organization.currency,
+      customerEmail: customer.email,
+      items: [{ name: "Abono a cuenta de crédito", quantity: 1, unitPrice: amount }],
+    });
+  } catch (error) {
+    await prisma.creditPaymentIntent.update({ where: { id: intent.id }, data: { status: "failed" } });
+    throw error;
+  }
+  await prisma.creditPaymentIntent.update({ where: { id: intent.id }, data: { externalId: result.externalId } });
+  return result;
+}
+
+async function markCreditPaymentPaid(organizationId: string, reference: string, provider: "stripe" | "mercadopago", externalId: string | undefined, amount: unknown, currency: unknown): Promise<{ ok: boolean }> {
+  if (!reference.startsWith("credit:")) return { ok: false };
+  const id = reference.slice(7);
+  const intent = await prisma.creditPaymentIntent.findFirst({ where: { id, organizationId, provider } });
+  if (!intent || !paymentMatches(Number(intent.amount), intent.currency, amount, currency)) return { ok: false };
+  if (provider === "stripe" && intent.externalId && externalId !== intent.externalId) return { ok: false };
+  if (intent.status === "paid" || intent.status === "paid_review") return { ok: true };
+  if (intent.status !== "pending") return { ok: false };
+  let outcome: "paid" | "paid_review" | null = null;
+  const result = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.creditPaymentIntent.updateMany({ where: { id, status: "pending" }, data: { status: "processing" } });
+    if (!claimed.count) return { ok: true };
+    const account = await tx.customerCredit.findFirst({ where: { organizationId, customerId: intent.customerId } });
+    if (!account || Number(account.currentBalance) < Number(intent.amount)) {
+      await tx.creditPaymentIntent.update({ where: { id }, data: { status: "paid_review", paidAt: new Date() } });
+      outcome = "paid_review";
+      return { ok: true };
+    }
+    const updated = await tx.customerCredit.updateMany({
+      where: { id: account.id, currentBalance: { gte: intent.amount } },
+      data: { currentBalance: { decrement: intent.amount } },
+    });
+    if (!updated.count) {
+      await tx.creditPaymentIntent.update({ where: { id }, data: { status: "paid_review", paidAt: new Date() } });
+      outcome = "paid_review";
+      return { ok: true };
+    }
+    const balanceAfter = Number(account.currentBalance) - Number(intent.amount);
+    if (balanceAfter === 0) await tx.customerCredit.update({ where: { id: account.id }, data: { status: "settled" } });
+    await tx.creditTransaction.create({ data: {
+      creditId: account.id, customerId: intent.customerId, organizationId,
+      type: "payment", amount: intent.amount, balanceAfter,
+      description: "Abono confirmado por pasarela", referenceType: provider, referenceId: externalId ?? id, paidAt: new Date(),
+    } });
+    await tx.creditPaymentIntent.update({ where: { id }, data: { status: "paid", paidAt: new Date() } });
+    outcome = "paid";
+    return { ok: true };
+  });
+  if (outcome) {
+    await notifyStaff(organizationId, "orders.view", { kind: "credit_payment", title: outcome === "paid" ? "Abono a crédito confirmado" : "Abono requiere conciliación", body: `$${Number(intent.amount).toFixed(2)} recibido`, link: "/admin/credits", severity: outcome === "paid" ? "success" : "warning" }).catch((error) => console.error("[credit/notification]", error));
+    const customer = await prisma.customer.findUnique({ where: { id: intent.customerId }, select: { userId: true } });
+    if (customer) await persistNotification({ organizationId, userId: customer.userId, recipientUserId: customer.userId, kind: "credit_payment", title: outcome === "paid" ? "Abono confirmado" : "Abono en revisión", body: outcome === "paid" ? `Tu abono de $${Number(intent.amount).toFixed(2)} ya se reflejó en tu saldo.` : "Recibimos el pago y el comercio está conciliando tu saldo.", link: "/portal/credit", severity: outcome === "paid" ? "success" : "warning" }).catch((error) => console.error("[credit/notification]", error));
+  }
+  return result;
 }
 
 async function createStripeSession(
@@ -260,7 +351,7 @@ export async function processStripeWebhook(
   organizationId: string,
   rawBody: string,
   signature: string | null,
-  event: { type?: string; data?: { object?: { client_reference_id?: string; payment_status?: string; amount_total?: number; currency?: string } } }
+  event: { type?: string; data?: { object?: { id?: string; client_reference_id?: string; payment_status?: string; amount_total?: number; currency?: string } } }
 ): Promise<{ ok: boolean }> {
   const config = await getPaymentConfig(organizationId);
   if (config.provider !== "stripe" || !verifyStripeSignature(rawBody, signature, config.stripe.webhookSecret)) {
@@ -271,6 +362,7 @@ export async function processStripeWebhook(
   const orderId = event.data?.object?.client_reference_id;
   if (!orderId || paymentStatus !== "paid") return { ok: true };
   const object = event.data!.object!;
+  if (orderId.startsWith("credit:")) return markCreditPaymentPaid(organizationId, orderId, "stripe", object.id, typeof object.amount_total === "number" ? object.amount_total / 100 : undefined, object.currency);
   return markOrderPaid(organizationId, orderId, typeof object.amount_total === "number" ? object.amount_total / 100 : undefined, object.currency);
 }
 
@@ -296,5 +388,6 @@ export async function processMercadoPagoWebhook(
   if (data.status !== "approved") return { ok: true };
   if (!data.external_reference) return { ok: true };
 
+  if (data.external_reference.startsWith("credit:")) return markCreditPaymentPaid(organizationId, data.external_reference, "mercadopago", String(paymentId), data.transaction_amount, data.currency_id);
   return markOrderPaid(organizationId, data.external_reference, data.transaction_amount, data.currency_id);
 }

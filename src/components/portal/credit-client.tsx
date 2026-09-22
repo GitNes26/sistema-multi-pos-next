@@ -45,6 +45,9 @@ export function CreditClient() {
   const [loading, setLoading] = useState(true)
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paying, setPaying] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null)
+  const [activePaymentPending, setActivePaymentPending] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +56,9 @@ export function CreditClient() {
       if (data.ok) {
         setCredit(data.credit)
         setTransactions(data.transactions ?? [])
+        const latestPayment = data.recentPayments?.[0]
+        setPaymentStatus(latestPayment?.status ?? null)
+        setActivePaymentPending(latestPayment?.status === "pending" && Date.now() - new Date(latestPayment.createdAt).getTime() < 30 * 60_000)
       }
     } catch {
       // silent
@@ -66,6 +72,7 @@ export function CreditClient() {
   const makePayment = async () => {
     const amount = parseFloat(paymentAmount.replace(",", "."))
     if (!amount || amount <= 0) return
+    setPaymentError(null)
     setPaying(true)
     try {
       const res = await fetch("/api/portal/credit", {
@@ -76,15 +83,14 @@ export function CreditClient() {
       })
       const data = await res.json()
       if (data.ok) {
-        playSound("sale-complete")
-        setPaymentAmount("")
-        load()
+        window.location.assign(data.url)
       } else {
         playSound("error")
-        alert(data.error ?? "Error al procesar el pago")
+        setPaymentError(data.error ?? "No se pudo preparar el pago")
       }
     } catch {
       playSound("error")
+      setPaymentError("No se pudo conectar con la pasarela. Intenta de nuevo.")
     } finally {
       setPaying(false)
     }
@@ -155,12 +161,18 @@ export function CreditClient() {
         <TabsContent value="summary" className="space-y-4">
           {/* Payment section */}
           {hasDebt && (
-            <div className="rounded-xl border p-4 space-y-3">
+            <form onSubmit={(event) => { event.preventDefault(); void makePayment() }} className="rounded-xl border p-4 space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-1.5">
                 <CreditCard className="size-4" /> Realizar abono
               </h3>
+              {activePaymentPending && <p role="status" className="text-xs text-amber-700">Hay un abono en proceso. El saldo cambiará cuando se confirme el pago. Si no recibes confirmación, podrás intentar de nuevo en 30 minutos.</p>}
+              {paymentStatus === "paid_review" && <p role="status" className="text-xs text-amber-700">Recibimos un pago que requiere conciliación con tu saldo. El comercio lo revisará.</p>}
+              {paymentError && <p role="alert" className="text-xs text-destructive">{paymentError}</p>}
               <div className="flex items-center gap-2">
                 <InputGroupField
+                  id="credit-payment-amount"
+                  label="Monto del abono"
+                  required
                   type="number"
                   min={0}
                   step="0.01"
@@ -171,17 +183,19 @@ export function CreditClient() {
                   className="flex-1"
                 />
                 <Button
-                  onClick={makePayment}
-                  disabled={paying || !paymentAmount || parseFloat(paymentAmount) <= 0}
+                  type="submit"
+                  disabled={paying || activePaymentPending || paymentStatus === "paid_review" || !paymentAmount || parseFloat(paymentAmount) <= 0}
                   className="shrink-0"
                 >
-                  {paying ? "Procesando…" : "Pagar"}
+                  {paying ? "Preparando pago…" : "Continuar al pago"}
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">El abono se reflejará cuando la pasarela confirme el pago. Volver a esta página no confirma el cargo por sí solo.</p>
               <div className="flex gap-2">
                 {[100, 200, 500].map((preset) => (
                   <Button
                     key={preset}
+                    type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => setPaymentAmount(String(preset))}
@@ -191,6 +205,7 @@ export function CreditClient() {
                 ))}
                 {credit && (
                   <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => setPaymentAmount(String(credit.currentBalance))}
@@ -199,7 +214,7 @@ export function CreditClient() {
                   </Button>
                 )}
               </div>
-            </div>
+            </form>
           )}
 
           {!hasDebt && credit && (
@@ -270,5 +285,3 @@ export function CreditClient() {
     </PullToRefresh>
   )
 }
-
-

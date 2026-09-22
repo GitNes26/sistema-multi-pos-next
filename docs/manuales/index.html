@@ -386,6 +386,18 @@
             regla configurada por la empresa. Revisa siempre el saldo disponible
             antes de confirmar.
           </p>
+          <p>
+            Las promociones pueden limitarse por cliente. Identifica al cliente
+            antes de la venta para aplicar ese límite; el sistema registra el uso
+            al confirmar la venta o el pedido.
+          </p>
+          <p>
+            En el portal, el cliente puede comprar a crédito si su línea está
+            activa y alcanza para el pedido. Para abonar un adeudo se le envía
+            a la pasarela configurada; el saldo baja únicamente cuando ésta
+            confirma el pago. Un abono en revisión requiere conciliación del
+            comercio.
+          </p>
           <h2>Portal del cliente</h2>
           <p>
             El cliente elige empresa y sucursal, consulta productos, variantes y
@@ -512,6 +524,13 @@ npm start</code></pre>
             <code>NEXTAUTH_URL</code> y un
             <code>NEXTAUTH_SECRET</code> aleatorio. No copies secretos reales al
             repositorio.
+          </p>
+          <p>
+            Monta <code>UPLOADS_DIR</code> en un volumen persistente y compartido
+            por las instancias que sirvan la aplicación. Las imágenes nuevas se
+            sirven mediante <code>/api/media</code>; las URL antiguas de
+            <code>/uploads</code> se redirigen a esa ruta. Sin el volumen, una
+            imagen puede desaparecer tras reiniciar o al cambiar de instancia.
           </p>
           <h2>Seeds y datos</h2>
           <p>

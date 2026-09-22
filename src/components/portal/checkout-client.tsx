@@ -59,7 +59,8 @@ export function CheckoutClient() {
   const [gps, setGps] = useState<GpsValue | null>(null);
   const [addresses, setAddresses] = useState<CustomerAddressView[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
-  const [payMethod, setPayMethod] = useState<"cash" | "card" | "online">("cash");
+  const [payMethod, setPayMethod] = useState<"cash" | "card" | "online" | "credit">("cash");
+  const [credit, setCredit] = useState<{ creditLimit: number | null; currentBalance: number; allowed: boolean; reason?: string } | null>(null);
   const [cardId, setCardId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
@@ -176,8 +177,8 @@ export function CheckoutClient() {
     let active = true;
     setLoading(true);
     setLoadError(null);
-    Promise.all([portalApi.locations(), portalApi.paymentMethods(), portalApi.deliveryPolicy(), portalApi.addresses(), portalApi.loyalty(), portalApi.promotions()])
-      .then(([l, m, p, a, ly, pr]) => {
+    Promise.all([portalApi.locations(), portalApi.paymentMethods(), portalApi.deliveryPolicy(), portalApi.addresses(), portalApi.loyalty(), portalApi.promotions(), portalApi.credit()])
+      .then(([l, m, p, a, ly, pr, cr]) => {
         if (!active) return;
         setLocations(l.locations);
         setMethods(m.methods);
@@ -186,6 +187,7 @@ export function CheckoutClient() {
         setAddresses(a.addresses);
         setLoyalty(ly);
         setPromotions(pr.promotions);
+        setCredit({ creditLimit: cr.credit?.creditLimit ?? null, currentBalance: cr.credit?.currentBalance ?? 0, allowed: cr.canUse.allowed, reason: cr.canUse.reason });
         const pickupLoc = l.locations.find((x) => x.allowsPickup);
         setLocationId(pickupLoc?.id ?? "");
         if (l.locations.every((x) => !x.allowsPickup)) setDeliveryMethod("delivery");
@@ -383,7 +385,7 @@ export function CheckoutClient() {
         address: deliveryMethod === "delivery" ? address : null,
         latitude: coords?.lat ?? null,
         longitude: coords?.lng ?? null,
-        paymentMethod: payMethod === "cash" ? "cash" : "card",
+        paymentMethod: payMethod === "cash" ? "cash" : payMethod === "credit" ? "credit" : "card",
         paymentReference:
           payMethod === "card" ? selectedCard?.last4 ?? null : payMethod === "online" ? "gateway" : null,
         pointsRedeemed: pointsToRedeem,
@@ -689,7 +691,7 @@ export function CheckoutClient() {
             </h2>
             <RadioGroup
               value={payMethod}
-              onValueChange={(v) => setPayMethod(v as "cash" | "card" | "online")}
+              onValueChange={(v) => setPayMethod(v as "cash" | "card" | "online" | "credit")}
               className="space-y-2"
             >
               <Label
@@ -703,6 +705,17 @@ export function CheckoutClient() {
                 <Banknote className="size-5 text-muted-foreground" />
                 <span className="flex-1 text-sm font-medium">
                   {deliveryMethod === "delivery" ? "Pagar al repartidor" : "Pagar en sucursal"}
+                </span>
+              </Label>
+
+              <Label
+                htmlFor="pay-credit"
+                className={cn("flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-all", (!credit?.allowed || (credit.creditLimit != null && payableTotal > credit.creditLimit - credit.currentBalance)) && "cursor-not-allowed opacity-60", payMethod === "credit" ? "border-primary bg-primary/5" : "border-transparent bg-muted/50")}
+              >
+                <RadioGroupItem value="credit" id="pay-credit" disabled={!credit?.allowed || payableTotal <= 0 || (credit.creditLimit != null && payableTotal > credit.creditLimit - credit.currentBalance)} />
+                <CreditCard className="size-5 text-muted-foreground" />
+                <span className="flex-1 text-sm font-medium">Comprar a crédito
+                  <span className="block text-xs text-muted-foreground">{credit?.allowed ? credit.creditLimit != null ? `Disponible: ${money(Math.max(0, credit.creditLimit - credit.currentBalance))}` : "Disponible según las condiciones de la empresa" : credit?.reason ?? "Consultando disponibilidad…"}</span>
                 </span>
               </Label>
 
@@ -924,8 +937,8 @@ export function CheckoutClient() {
             />
           </div>
 
-          {/* Submit — fixed at bottom on mobile */}
-          <div className="sticky bottom-0 -mx-4 bg-background px-4 pt-3 pb-4">
+          {/* La acción permanece encima de la navegación fija del portal. */}
+          <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t bg-background/95 px-4 pb-3 pt-3 backdrop-blur">
             {submitError && (
               <p role="alert" className="mb-2 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {submitError}

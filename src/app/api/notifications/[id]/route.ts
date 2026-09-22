@@ -16,7 +16,7 @@ export async function PATCH(
     const body = (await req.json().catch(() => null)) as { read?: boolean } | null;
     const read = body?.read === false ? false : true;
     await prisma.notification.updateMany({
-      where: { id, organizationId: guard.organizationId },
+      where: { id, organizationId: guard.organizationId, OR: [{ recipientUserId: null }, { recipientUserId: guard.userId }] },
       data: { readAt: read ? new Date() : null },
     });
     return NextResponse.json({ ok: true });

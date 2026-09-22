@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import { usePortalStore } from "@/stores/portal-store";
@@ -10,16 +11,16 @@ import { TapScale } from "@/components/shared/tap-scale";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
+import { motion, LayoutGroup } from "framer-motion";
 import { STAGGER_FADE_UP, STAGGER } from "@/lib/animation-tokens";
-import { ExpandableFAB } from "@/components/shared/expandable-fab"
 import { SwipeableProductCard } from "@/components/shared/swipeable-product-card"
-import { ScanBarcode, Heart, ListChecks } from "lucide-react"
+import { Heart, ListChecks } from "lucide-react"
 import { swalToast } from "@/lib/swal"
 import { ProductBuilder, selectedOptionsKey } from "@/components/pos/product-builder"
 import type { PortalProduct, PortalVariantOption as PortalVariant } from "@/lib/portal/server"
 
 export function StoreClient() {
+  const router = useRouter();
   const categories = usePortalStore((s) => s.categories);
   const products = usePortalStore((s) => s.products);
   const setStorefront = usePortalStore((s) => s.setStorefront);
@@ -34,7 +35,6 @@ export function StoreClient() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchFocused, setSearchFocused] = useState(false);
   const [builderProduct, setBuilderProduct] = useState<PortalProduct | null>(null);
 
   useEffect(() => {
@@ -75,25 +75,16 @@ export function StoreClient() {
           type="search"
           className="pl-9 md:pl-9"
           placeholder="Buscar productos…"
+          aria-label="Buscar productos"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
         />
       </div>
 
-      {/* Backdrop blur overlay when search is active */}
-      <AnimatePresence>
-        {searchFocused && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="pointer-events-none absolute inset-0 z-[5] bg-background/60 backdrop-blur-md"
-          />
-        )}
-      </AnimatePresence>
+      <div className="grid grid-cols-2 gap-2">
+        <Link href="/portal/favorites" className="flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-card text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"><Heart className="size-4 text-primary" /> Favoritos</Link>
+        <Link href="/portal/lists" className="flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-card text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"><ListChecks className="size-4 text-primary" /> Mis listas</Link>
+      </div>
 
       <motion.div
         className="flex gap-2 overflow-x-auto pb-1"
@@ -170,6 +161,7 @@ export function StoreClient() {
               return (
                 <motion.div key={p.id} variants={STAGGER_FADE_UP.item} layout>
                   <SwipeableProductCard
+                    onOpen={() => router.push(`/portal/store/${p.id}`)}
                     onSwipeLeft={() => {
                       if (!defaultVariant) return
                       // Productos personalizados: el swipe abre el constructor
@@ -207,16 +199,6 @@ export function StoreClient() {
           </motion.div>
         </LayoutGroup>
       )}
-
-      {/* Cloning principle: FAB that expands into sub-actions */}
-      <ExpandableFAB
-        className="bottom-24 right-4"
-        actions={[
-          { icon: <ScanBarcode className="size-5" />, label: "Escanear", onClick: () => setSearch("") },
-          { icon: <Heart className="size-5" />, label: "Favoritos", onClick: () => window.location.href = "/portal/favorites" },
-          { icon: <ListChecks className="size-5" />, label: "Mi lista", onClick: () => window.location.href = "/portal/lists" },
-        ]}
-      />
 
       {/* Constructor de producto (solo productos personalizados) */}
       {builderProduct && (

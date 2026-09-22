@@ -44,9 +44,12 @@ flowchart TD
 
 **Desde la app del cliente (Portal → Mi Crédito):**
 1. Revisa el saldo y los adeudos con su fecha límite.
-2. Captura el monto en **Monto a pagar** y toca **Pagar**; el pago se procesa con el
-   método de pago configurado por el negocio.
-3. El abono se refleja al instante y queda en el historial.
+2. Captura el monto en **Monto del abono** y toca **Continuar al pago**. La empresa
+   debe tener una pasarela de pagos en línea configurada.
+3. Completa el pago en la pasarela. El saldo solo disminuye cuando llega la
+   confirmación del proveedor; regresar al portal no confirma el cargo.
+4. Si aparece **Abono en proceso**, espera la confirmación antes de iniciar otro.
+   Si aparece **Abono en revisión**, contacta al comercio para conciliarlo.
 
 **En la caja:**
 1. El cliente pide abonar. La caja no registra abonos por sí sola: se hace desde el panel
@@ -72,7 +75,7 @@ flowchart TD
 | Situación | Qué pasa |
 |---|---|
 | Cliente alcanza su límite | La caja no permite más crédito hasta que pague o se suba su límite. |
-| Cliente paga de más | Queda como saldo a favor y se descuenta de la siguiente compra (ajuste documentado). |
+| Cliente intenta pagar de más | El portal rechaza el monto que supera el saldo pendiente. |
 | Devolución de una venta a crédito | El adeudo baja automáticamente por el monto devuelto. |
 | Cliente nuevo | Si la política exige aprobación, su línea queda inactiva hasta que el administrador la apruebe. |
 | Vencido por muchos días | Aparece en los reportes de crédito para gestión de cobranza del negocio. |

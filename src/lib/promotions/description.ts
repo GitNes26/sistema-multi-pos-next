@@ -30,6 +30,11 @@ export interface DescriptionInput {
   exclusive?: boolean;
   maxUses?: number | null;
   maxUsesPerCustomer?: number | null;
+  targetLocations?: string[];
+  targetCategories?: string[];
+  targetProducts?: string[];
+  targetVariants?: string[];
+  rewardVariants?: string[];
 }
 
 function parseWeekdays(value: number[] | string | null | undefined): number[] {
@@ -81,9 +86,7 @@ export function generateDescriptionFinal(data: DescriptionInput): string {
       parts.push(`Producto gratis en ${SCOPE_LABELS[scope] ?? scope}`);
       break;
     case "next_purchase_coupon":
-      parts.push(
-        `Cupón de $${value || "10%"} para tu próxima compra`,
-      );
+      parts.push(value > 0 ? `Cupón de $${value} para tu próxima compra` : "Cupón para tu próxima compra");
       break;
   }
 
@@ -118,6 +121,10 @@ export function generateDescriptionFinal(data: DescriptionInput): string {
   if (data.maxUsesPerCustomer) parts.push(`máximo ${data.maxUsesPerCustomer} uso(s) por cliente`);
   if (data.maxUses) parts.push(`limitada a ${data.maxUses} uso(s) en total`);
   if (data.exclusive) parts.push("no se combina con otras promociones");
+  if (data.targetLocations?.length) parts.push(`válida en ${data.targetLocations.length} sucursal(es) seleccionada(s)`);
+  const targetCount = scope === "category" ? data.targetCategories?.length : scope === "product" ? data.targetProducts?.length : scope === "variant" ? data.targetVariants?.length : 0;
+  if (targetCount) parts.push(`aplica a ${targetCount} ${scope === "category" ? "categoría(s)" : scope === "product" ? "producto(s)" : "variante(s)"} seleccionado(s)`);
+  if (benefit === "free_item" && data.rewardVariants?.length) parts.push(`obsequio entre ${data.rewardVariants.length} variante(s) seleccionada(s)`);
 
-  return parts.join(". ") + ".";
+  return parts.length ? parts.join(". ") + "." : "Selecciona un beneficio para ver cómo se explicará la promoción.";
 }

@@ -34,6 +34,13 @@ export function OptionSelect({
     if (!field.optionsModule) return;
     setLoading(true);
     try {
+      if (field.optionsModule === "roles") {
+        const response = await fetch("/api/settings/roles", { credentials: "include" });
+        const payload = await response.json() as { roles?: { id: string; name: string }[] };
+        if (!response.ok) throw new Error("No se pudieron cargar los roles");
+        setOptions((payload.roles ?? []).map((role) => ({ value: role.id, label: role.name })));
+        return;
+      }
       const res = await crudApi.list(field.optionsModule, { pageSize: 250 });
       setOptions(
         res.rows.map((r) => ({

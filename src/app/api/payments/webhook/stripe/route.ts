@@ -22,14 +22,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    select: { organizationId: true },
-  });
-  if (!order) {
+  const organizationId = orderId.startsWith("credit:")
+    ? (await prisma.creditPaymentIntent.findUnique({ where: { id: orderId.slice(7) }, select: { organizationId: true } }))?.organizationId
+    : (await prisma.order.findUnique({ where: { id: orderId }, select: { organizationId: true } }))?.organizationId;
+  if (!organizationId) {
     return NextResponse.json({ ok: true });
   }
 
-  const result = await processStripeWebhook(order.organizationId, rawBody, signature, event);
+  const result = await processStripeWebhook(organizationId, rawBody, signature, event);
   return NextResponse.json(result, { status: result.ok ? 200 : 400 });
 }

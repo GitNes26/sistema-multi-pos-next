@@ -111,6 +111,7 @@ export const portalApi = {
 
   // Lealtad
   loyalty: () => json<{ ok: boolean } & LoyaltyData>("/api/portal/loyalty"),
+  credit: () => json<{ ok: boolean; credit: { creditLimit: number | null; currentBalance: number; status: string } | null; canUse: { allowed: boolean; reason?: string } }>("/api/portal/credit"),
 
   // Perfil
   profile: () =>

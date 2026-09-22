@@ -122,6 +122,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
   categories: [],
   customers: [],
   promotions: [],
+  promotionUses: [],
   combos: [],
   registers: [],
   session: null,

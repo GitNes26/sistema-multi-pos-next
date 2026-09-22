@@ -32,7 +32,6 @@ import { swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
 import { SPRING_BOUNCE, STAGGER_FADE_UP } from "@/lib/animation-tokens"
 import { haptic } from "@/lib/haptics"
-import { MaskReveal } from "@/components/shared/mask-reveal"
 import { ThumbImage } from "@/components/base/thumb-image"
 
 /* ------------------------------------------------------------------ */
@@ -80,6 +79,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
   const [favBusy, setFavBusy] = useState(false)
   const [variantSheet, setVariantSheet] = useState(false)
   const [builderOpen, setBuilderOpen] = useState(false)
+  const [imageFailed, setImageFailed] = useState(false)
 
   // Fetch product data
   useEffect(() => {
@@ -129,6 +129,8 @@ export function ProductDetailClient({ productId }: { productId: string }) {
   const hasVariants = (p?.variants.length ?? 0) > 1
   const hasOptions = (p?.options?.length ?? 0) > 0
   const selectedVariant = p?.variants[selectedVariantIdx] ?? null
+  const heroImage = selectedVariant?.imageUrl ?? p?.imageUrl ?? null
+  useEffect(() => setImageFailed(false), [heroImage])
   const outOfStock = isBulk
     ? p?.trackInventory && p.stock <= 0
     : p?.trackInventory && (selectedVariant?.stock ?? 0) <= 0
@@ -264,15 +266,18 @@ export function ProductDetailClient({ productId }: { productId: string }) {
           <Share2 className="size-4" />
         </button>
 
-        {p.imageUrl ? (
-          <MaskReveal shape="wipe" duration={0.7} className="aspect-square w-full">
-            <ThumbImage
-              src={p.imageUrl}
-              alt={p.name}
-              layoutId={`${p.id}-img`}
-              className="aspect-square w-full object-cover"
-            />
-          </MaskReveal>
+        {heroImage && !imageFailed ? (
+          // El detalle usa la imagen original y cambia con la variante seleccionada.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={heroImage}
+            src={heroImage}
+            alt={p.name}
+            loading="eager"
+            decoding="async"
+            onError={() => setImageFailed(true)}
+            className="aspect-square w-full bg-muted/50 object-cover"
+          />
         ) : (
           <div className="flex aspect-square w-full items-center justify-center bg-muted/50">
             <Package className="size-16 text-muted-foreground/30" />

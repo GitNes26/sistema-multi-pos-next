@@ -269,7 +269,20 @@ export async function listRoles(organizationId: string): Promise<RoleRow[]> {
   }));
 }
 
-export async function getRolePermissions(roleId: string): Promise<string[]> {
+async function assertManageableRole(roleId: string, organizationId: string, isSuperadmin: boolean, allowSystemRead = false) {
+  const role = await prisma.role.findUnique({ where: { id: roleId }, select: { id: true, isSystem: true, organizationId: true, businessMode: true } });
+  if (!role || (role.organizationId !== organizationId && !(isSuperadmin && role.organizationId === null) && !(allowSystemRead && role.isSystem))) throw new Error("Rol no disponible en esta organización");
+  if (!isSuperadmin && ["system-admin", "system-superadmin"].includes(role.id)) throw new Error("Rol no disponible");
+  if (role.isSystem && !isSuperadmin) {
+    const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { businessMode: true } });
+    if (!organization || !roleAllowedInOrg(role, organization.businessMode, organizationId)) throw new Error("Rol no disponible para este giro");
+  }
+  if (role.isSystem && !allowSystemRead) throw new Error("Los roles del sistema son de solo lectura");
+  return role;
+}
+
+export async function getRolePermissions(roleId: string, organizationId: string, isSuperadmin: boolean): Promise<string[]> {
+  await assertManageableRole(roleId, organizationId, isSuperadmin, true);
   const rps = await prisma.rolePermission.findMany({
     where: { roleId, organizationId: null },
     select: { permissionKey: true },
@@ -277,12 +290,11 @@ export async function getRolePermissions(roleId: string): Promise<string[]> {
   return rps.map((rp) => rp.permissionKey);
 }
 
-export async function setRolePermissions(roleId: string, keys: string[]): Promise<{ ok: boolean }> {
-  const role = await prisma.role.findUnique({ where: { id: roleId }, select: { isSystem: true } });
-  if (!role) throw new Error("Rol no encontrado");
-  if (role.isSystem) throw new Error("Los roles del sistema son de solo lectura");
+export async function setRolePermissions(roleId: string, keys: string[], organizationId: string, isSuperadmin: boolean): Promise<{ ok: boolean }> {
+  await assertManageableRole(roleId, organizationId, isSuperadmin);
   const valid = new Set(PERMISSIONS.map((p) => p.key));
   const filtered = keys.filter((k) => valid.has(k as never));
+  if (!isSuperadmin && filtered.includes("organizations.manage")) throw new Error("Ese permiso está reservado al SuperAdmin");
   await prisma.$transaction([
     prisma.rolePermission.deleteMany({ where: { roleId, organizationId: null } }),
     prisma.rolePermission.createMany({
@@ -294,9 +306,13 @@ export async function setRolePermissions(roleId: string, keys: string[]): Promis
 
 export async function createRole(
   organizationId: string,
-  input: { name: string; description?: string | null; copyRoleId?: string | null; global?: boolean }
+  input: { name: string; description?: string | null; copyRoleId?: string | null; global?: boolean },
+  isSuperadmin = false
 ): Promise<RoleRow> {
   if (!input.name?.trim()) throw new Error("El nombre es obligatorio");
+  if (!isSuperadmin && ["admin", "superadmin"].includes(input.name.trim().toLowerCase())) throw new Error("Ese nombre está reservado para roles del sistema");
+  if (input.global && !isSuperadmin) throw new Error("Solo el SuperAdmin puede crear roles globales");
+  if (input.copyRoleId) await assertManageableRole(input.copyRoleId, organizationId, isSuperadmin, true);
   // SuperAdmin puede crear roles globales (organizationId = null)
   const scopeOrgId = input.global ? null : organizationId;
   const created = await prisma.role.create({
@@ -315,7 +331,7 @@ export async function createRole(
     });
     if (source.length) {
       await prisma.rolePermission.createMany({
-        data: source.map((s) => ({ roleId: created.id, permissionKey: s.permissionKey, allowed: true })),
+      data: source.filter((s) => isSuperadmin || s.permissionKey !== "organizations.manage").map((s) => ({ roleId: created.id, permissionKey: s.permissionKey, allowed: true })),
       });
     }
   }
@@ -335,11 +351,13 @@ export async function createRole(
 
 export async function updateRole(
   roleId: string,
-  input: { name?: string; description?: string | null; global?: boolean }
+  input: { name?: string; description?: string | null; global?: boolean },
+  organizationId: string,
+  isSuperadmin: boolean
 ): Promise<{ ok: boolean }> {
-  const current = await prisma.role.findUnique({ where: { id: roleId }, select: { isSystem: true } });
-  if (!current) throw new Error("Rol no encontrado");
-  if (current.isSystem) throw new Error("Los roles del sistema son de solo lectura");
+  await assertManageableRole(roleId, organizationId, isSuperadmin);
+  if (input.global !== undefined && !isSuperadmin) throw new Error("Solo el SuperAdmin puede cambiar el alcance del rol");
+  if (!isSuperadmin && input.name && ["admin", "superadmin"].includes(input.name.trim().toLowerCase())) throw new Error("Ese nombre está reservado para roles del sistema");
   const data: Record<string, unknown> = {};
   if (input.name !== undefined) data.name = input.name.trim();
   if (input.description !== undefined) data.description = input.description;
@@ -348,10 +366,8 @@ export async function updateRole(
   return { ok: true };
 }
 
-export async function deleteRole(roleId: string): Promise<{ ok: boolean }> {
-  const role = await prisma.role.findUnique({ where: { id: roleId } });
-  if (!role) throw new Error("Rol no encontrado");
-  if (role.isSystem) throw new Error("Los roles del sistema no se pueden eliminar");
+export async function deleteRole(roleId: string, organizationId: string, isSuperadmin: boolean): Promise<{ ok: boolean }> {
+  await assertManageableRole(roleId, organizationId, isSuperadmin);
   await prisma.role.delete({ where: { id: roleId } });
   return { ok: true };
 }

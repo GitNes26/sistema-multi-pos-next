@@ -2,7 +2,7 @@
 
 import { motion, useMotionValue, useTransform } from "framer-motion"
 import { ShoppingCart, Heart, Check } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { haptic } from "@/lib/haptics"
 import { cn } from "@/lib/utils"
 
@@ -21,6 +21,7 @@ interface SwipeableProductCardProps {
   children: React.ReactNode
   onSwipeLeft?: () => void
   onSwipeRight?: () => void
+  onOpen?: () => void
   /** Show left action (add to cart) */
   showLeft?: boolean
   /** Show right action (favorite) */
@@ -32,6 +33,7 @@ export function SwipeableProductCard({
   children,
   onSwipeLeft,
   onSwipeRight,
+  onOpen,
   showLeft = true,
   showRight = true,
   className,
@@ -39,6 +41,8 @@ export function SwipeableProductCard({
   const x = useMotionValue(0)
   const [swipedLeft, setSwipedLeft] = useState(false)
   const [swipedRight, setSwipedRight] = useState(false)
+  const pressStart = useRef<{ x: number; y: number } | null>(null)
+  const openedOnPointerUp = useRef(false)
 
   // Left swipe → green background with cart icon
   const leftBg = useTransform(
@@ -138,6 +142,22 @@ export function SwipeableProductCard({
         }}
         dragElastic={0.15}
         onDragEnd={handleDragEnd}
+        onPointerDownCapture={(event) => {
+          pressStart.current = { x: event.clientX, y: event.clientY }
+          openedOnPointerUp.current = false
+        }}
+        onPointerUpCapture={(event) => {
+          const start = pressStart.current
+          pressStart.current = null
+          if (!start || !onOpen || (event.target as Element).closest("button")) return
+          if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) return
+          openedOnPointerUp.current = true
+          onOpen()
+          window.setTimeout(() => { openedOnPointerUp.current = false }, 300)
+        }}
+        onClickCapture={(event) => {
+          if (openedOnPointerUp.current) event.preventDefault()
+        }}
         className="relative bg-background"
       >
         {children}

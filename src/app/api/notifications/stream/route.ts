@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
-import { openOrgChannel, broadcastItems } from "@/lib/notifications/live";
+import { openOrgChannel, openUserChannel, sendItems } from "@/lib/notifications/live";
 import { notificationToPayload } from "@/lib/notifications/helpers";
 
 // FASE 8.9 / 11 — SSE endpoint de notificaciones en tiempo real.
@@ -26,12 +26,14 @@ export async function GET() {
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      unregisterByController.set(controller, openOrgChannel(organizationId, controller));
+      const unregisterOrg = openOrgChannel(organizationId, controller);
+      const unregisterUser = openUserChannel(organizationId, session.user.id, controller);
+      unregisterByController.set(controller, () => { unregisterOrg(); unregisterUser(); });
 
       // Enviar las pendientes que ya existen.
       prisma.notification
-        .findMany({ where: { organizationId }, orderBy: { createdAt: "desc" }, take: 40 })
-        .then((recent) => broadcastItems(organizationId, recent.map(notificationToPayload)))
+        .findMany({ where: { organizationId, OR: [{ recipientUserId: null }, { recipientUserId: session.user.id }] }, orderBy: { createdAt: "desc" }, take: 40 })
+        .then((recent) => sendItems(controller, recent.map(notificationToPayload)))
         .catch(() => {
           // Falla la carga inicial: el broadcast en vivo sigue funcionando.
         });

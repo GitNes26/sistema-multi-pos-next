@@ -29,13 +29,11 @@ import { Card } from "@/components/ui/card"
 import { TapScale } from "@/components/shared/tap-scale"
 import { PermissionSlider } from "@/components/shared/permission-slider"
 import { usePortalPermissions, type PortalPermissionType } from "@/hooks/use-portal-permissions"
-import { cn } from "@/lib/utils"
-import { publicationDesign } from "@/lib/publications/designs"
 import { STAGGER_FADE_UP } from "@/lib/animation-tokens"
 import { DetailSheet, type DetailItem } from "@/components/portal/detail-sheet"
 import { PortalComboCard } from "@/components/portal/combo-card"
 import { MaskReveal, MaskRevealImage } from "@/components/shared/mask-reveal"
-import { useParallax, useHorizontalParallax } from "@/hooks/use-parallax"
+import { useParallax } from "@/hooks/use-parallax"
 import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 
 const PUB_TYPE_LABELS: Record<string, string> = {
@@ -311,20 +309,13 @@ export function HomeClient() {
                     </div>
                   </>
                 ) : (
-                  <div className={cn("flex h-24 w-72 flex-col justify-center border border-border/60 p-4", publicationDesign(pub.designId).className)}>
-                    <Badge
-                      className={cn("w-fit", publicationDesign(pub.designId).accentClassName)}
-                    >
+                  <div className="flex h-44 w-[min(19rem,calc(100vw-2rem))] flex-col rounded-2xl border bg-card p-4 text-foreground">
+                    <Badge className={`w-fit ${PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}`}>
                       {PUB_TYPE_LABELS[pub.type] ?? pub.type}
                     </Badge>
-                    <p className="mt-1.5 line-clamp-1 text-sm font-bold">
-                      {pub.title}
-                    </p>
-                    {pub.content && (
-                      <p className="mt-0.5 line-clamp-2 text-xs opacity-80">
-                        {pub.content}
-                      </p>
-                    )}
+                    <p className="mt-3 line-clamp-2 text-base font-bold leading-snug">{pub.title}</p>
+                    {pub.content && <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{pub.content}</p>}
+                    <span className="mt-auto pt-2 text-xs font-semibold text-primary">Ver aviso completo</span>
                   </div>
                 )}
               </div>

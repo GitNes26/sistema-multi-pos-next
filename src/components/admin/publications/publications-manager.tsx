@@ -26,7 +26,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DialogComponent } from "@/components/ui/dialog";
 import { useFocusInvalid } from "@/hooks/use-focus-invalid";
-import { PUBLICATION_DESIGNS, publicationDesign } from "@/lib/publications/designs";
+import { PUBLICATION_DESIGNS } from "@/lib/publications/designs";
+import { PublicationFlyer, flyerColors } from "@/components/publications/publication-flyer";
 import { cn } from "@/lib/utils";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -39,13 +40,13 @@ const EMPTY_FORM: PublicationInput & { id?: string } = {
   id: undefined,
   title: "",
   content: "",
-  imageUrl: "",
+  imageUrl: null,
   type: "notice",
   isActive: true,
   publishedAt: null,
   startsAt: null,
   endsAt: null,
-  metadata: { designId: "general" },
+  metadata: { designId: "general", primaryColor: flyerColors("general")[0], secondaryColor: flyerColors("general")[1] },
 };
 
 export function PublicationsManager() {
@@ -76,13 +77,13 @@ export function PublicationsManager() {
       id: p.id,
       title: p.title,
       content: p.content ?? "",
-      imageUrl: p.imageUrl ?? "",
+      imageUrl: p.imageUrl,
       type: p.type as PublicationKind,
       isActive: p.isActive,
       publishedAt: p.publishedAt,
       startsAt: p.startsAt,
       endsAt: p.endsAt,
-      metadata: { designId: p.designId ?? "general" },
+      metadata: { designId: p.designId ?? "general", primaryColor: p.primaryColor ?? flyerColors(p.designId)[0], secondaryColor: p.secondaryColor ?? flyerColors(p.designId)[1] },
     });
   };
 
@@ -145,6 +146,9 @@ export function PublicationsManager() {
       swalError("No se pudo eliminar", err instanceof Error ? err.message : undefined);
     }
   };
+
+  const flyerMeta = (form?.metadata ?? {}) as { designId?: string; primaryColor?: string; secondaryColor?: string };
+  const [defaultPrimary, defaultSecondary] = flyerColors(flyerMeta.designId);
 
   return (
     <div className="space-y-3">
@@ -247,7 +251,7 @@ export function PublicationsManager() {
                 onChange={(v) => {
                   const type = v as PublicationKind;
                   const designId = PUBLICATION_DESIGNS.find((design) => design.type === type)?.id ?? "general";
-                  setForm({ ...form, type, metadata: { ...(form.metadata ?? {}), designId } });
+                  setForm({ ...form, type, metadata: { ...(form.metadata ?? {}), designId, primaryColor: flyerColors(designId)[0], secondaryColor: flyerColors(designId)[1] } });
                 }}
                 options={PUBLICATION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
                 searchable={false}
@@ -268,22 +272,24 @@ export function PublicationsManager() {
                           key={design.id}
                           type="button"
                           aria-pressed={selected}
-                          onClick={() => setForm({ ...form, title: form.title || design.title, content: form.content || design.content, metadata: { ...(form.metadata ?? {}), designId: design.id } })}
-                          className={cn("relative min-h-28 overflow-hidden rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", design.className, selected && "ring-2 ring-primary ring-offset-2")}
+                          onClick={() => setForm({ ...form, title: form.title || design.title, content: form.content || design.content, metadata: { ...(form.metadata ?? {}), designId: design.id, primaryColor: flyerColors(design.id)[0], secondaryColor: flyerColors(design.id)[1] } })}
+                          className={cn("relative overflow-hidden rounded-xl border text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", selected && "ring-2 ring-primary ring-offset-2")}
                         >
                           {selected && <Check className="absolute right-2 top-2 size-4" />}
-                          <span className={cn("inline-flex rounded-lg px-2 py-1 text-xs font-semibold", design.accentClassName)}>{design.name}</span>
-                          <p className="mt-3 line-clamp-1 text-sm font-semibold">{form.title || design.title}</p>
-                          <p className="mt-1 line-clamp-2 text-xs opacity-80">{form.content || design.content}</p>
+                          <PublicationFlyer compact designId={design.id} title={form.title || design.title} content={form.content || design.content} />
                         </button>
                       );
                     })}
                   </div>
-                  <div className={cn("rounded-xl p-4", publicationDesign((form.metadata as { designId?: string } | null)?.designId).className)}>
-                    <span className={cn("inline-flex rounded-lg px-2 py-1 text-xs font-semibold", publicationDesign((form.metadata as { designId?: string } | null)?.designId).accentClassName)}>Vista previa</span>
-                    <p className="mt-3 font-semibold">{form.title || "Título de la publicación"}</p>
-                    <p className="mt-1 text-sm opacity-80">{form.content || "Aquí aparecerá el contenido del aviso."}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1 text-xs font-medium">Color primario
+                      <input type="color" aria-label="Color primario del flyer" value={flyerMeta.primaryColor ?? defaultPrimary} onChange={(event) => setForm({ ...form, metadata: { ...(form.metadata ?? {}), primaryColor: event.target.value } })} className="h-11 w-full cursor-pointer rounded-lg border bg-background p-1" />
+                    </label>
+                    <label className="space-y-1 text-xs font-medium">Color secundario
+                      <input type="color" aria-label="Color secundario del flyer" value={flyerMeta.secondaryColor ?? defaultSecondary} onChange={(event) => setForm({ ...form, metadata: { ...(form.metadata ?? {}), secondaryColor: event.target.value } })} className="h-11 w-full cursor-pointer rounded-lg border bg-background p-1" />
+                    </label>
                   </div>
+                  <PublicationFlyer designId={flyerMeta.designId} title={form.title || "Título de la publicación"} content={form.content || "Aquí aparecerá el contenido del aviso."} primaryColor={flyerMeta.primaryColor} secondaryColor={flyerMeta.secondaryColor} />
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
@@ -306,8 +312,8 @@ export function PublicationsManager() {
               <Attachment
                 label="Imagen"
                 helper="Banner de la publicación."
-                value={form.imageUrl ?? ""}
-                onChange={(url) => setForm({ ...form, imageUrl: url ?? "" })}
+                value={form.imageUrl}
+                onChange={(url) => setForm({ ...form, imageUrl: url })}
                 upload={uploadFile}
                 accept={UPLOAD_IMAGE_ACCEPT}
               />

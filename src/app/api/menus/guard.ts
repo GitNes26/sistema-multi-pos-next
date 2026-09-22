@@ -22,7 +22,7 @@ export async function menusReadGuard(): Promise<GuardResult> {
 export async function menusAdminGuard(): Promise<GuardResult> {
   const g = await menusReadGuard();
   if ("response" in g) return g;
-  if (!hasPermission(g.session, "users.manage")) {
+  if (!["admin", "superadmin"].includes(g.session.user.role) || !hasPermission(g.session, "users.manage")) {
     return { response: NextResponse.json({ ok: false, error: "No tienes permiso para esta acción" }, { status: 403 }) };
   }
   return g;

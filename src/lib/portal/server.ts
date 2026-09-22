@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { Prisma, type $Enums } from "@prisma/client"
 import { notifyOrderEvent } from "@/lib/notifications/events"
+import { notifyStaff } from "@/lib/notifications/staff"
 import { round2, round3 } from "@/lib/pos/money"
 import {
   parseSchedule,
@@ -12,6 +13,7 @@ import {
   getEffectiveDeliveryPolicy,
 } from "@/lib/orders/server"
 import { evaluatePortalPromotions } from "./promo-engine"
+import { customerMayUsePromotion, reservePromotionCustomerUse } from "@/lib/promotions/customer-use"
 import {
   consumeRecipeIngredients,
   restoreRecipeIngredients,
@@ -430,6 +432,8 @@ export interface PortalHomeData {
     type: string
     publishedAt: string | null
     designId: string | null
+    primaryColor: string | null
+    secondaryColor: string | null
   }[]
   combos: PortalCombo[]
 }
@@ -609,6 +613,8 @@ export async function getPortalHome(
       type: p.type,
       publishedAt: p.publishedAt?.toISOString() ?? null,
       designId: typeof (p.metadata as { designId?: unknown } | null)?.designId === "string" ? String((p.metadata as { designId: string }).designId) : null,
+      primaryColor: typeof (p.metadata as { primaryColor?: unknown } | null)?.primaryColor === "string" ? String((p.metadata as { primaryColor: string }).primaryColor) : null,
+      secondaryColor: typeof (p.metadata as { secondaryColor?: unknown } | null)?.secondaryColor === "string" ? String((p.metadata as { secondaryColor: string }).secondaryColor) : null,
     })),
     combos: combosRaw.map((c) => {
       const originalPrice = c.items.reduce((sum, ci) => {
@@ -738,7 +744,7 @@ export interface PortalOrderInput {
   tableId?: string | null
 }
 
-const VALID_PAYMENT_METHODS = ["cash", "card", "wallet", "other", "points"]
+const VALID_PAYMENT_METHODS = ["cash", "card", "wallet", "other", "points", "credit"]
 
 export interface PortalOrderRow {
   id: string
@@ -1332,8 +1338,14 @@ export async function createPortalOrder(
     where: { organizationId, isActive: true },
     include: { targets: { select: { kind: true, targetId: true } } },
   })
+  const customerPromotionUses = await prisma.promotionCustomerUse.findMany({
+    where: { organizationId, customerId }, select: { promotionId: true, usesCount: true },
+  })
+  const usesByPromotion = new Map(customerPromotionUses.map((entry) => [entry.promotionId, entry.usesCount]))
   const promoResult = evaluatePortalPromotions(
-    activePromos.map((p) => ({
+    activePromos.filter((promotion) => customerMayUsePromotion(
+      promotion.maxUsesPerCustomer, customerId, usesByPromotion.get(promotion.id) ?? 0
+    )).map((p) => ({
       id: p.id,
       name: p.name,
       benefit: p.benefit,
@@ -1436,6 +1448,7 @@ export async function createPortalOrder(
     throw new PortalError("Los puntos exceden el total del pedido")
   }
   const adjustedTotal = round2(Math.max(0, beforePoints - pointsValue))
+  if (input.paymentMethod === "credit" && adjustedTotal <= 0) throw new PortalError("El pedido no tiene un importe para financiar")
 
   let order
   try {
@@ -1444,6 +1457,7 @@ export async function createPortalOrder(
         data: {
           organizationId,
           customerId,
+          promotionId: promoDiscount > 0 ? promoResult.promotionId : null,
           idempotencyKey,
           locationId: effectiveLocationId,
           tableId: input.tableId ?? null,
@@ -1464,6 +1478,23 @@ export async function createPortalOrder(
           tip: round2(trustedTip),
         },
       })
+      if (promoResult.promotionId && promoDiscount > 0) {
+        const selectedPromotion = activePromos.find((promotion) => promotion.id === promoResult.promotionId)
+        if (!selectedPromotion) throw new PortalError("La promoción ya no está disponible", 409)
+        const reservedPromotion = await tx.promotion.updateMany({
+          where: {
+            id: selectedPromotion.id,
+            organizationId,
+            isActive: true,
+            ...(selectedPromotion.maxUses != null ? { usesCount: { lt: selectedPromotion.maxUses } } : {}),
+          },
+          data: { usesCount: { increment: 1 } },
+        })
+        if (!reservedPromotion.count) throw new PortalError("La promoción alcanzó su límite de usos", 409)
+        if (!(await reservePromotionCustomerUse(tx, organizationId, selectedPromotion.id, customerId, selectedPromotion.maxUsesPerCustomer))) {
+          throw new PortalError("Alcanzaste el límite de usos de esta promoción", 409)
+        }
+      }
 
       await tx.orderItem.createMany({
         data: trustedItems.map((i) => ({
@@ -1493,6 +1524,31 @@ export async function createPortalOrder(
           userId: customer.userId,
         },
       })
+
+      if (input.paymentMethod === "credit") {
+        const policy = await tx.creditPolicy.findUnique({ where: { organizationId } })
+        if (!policy?.creditEnabled) throw new PortalError("La empresa no tiene habilitado el crédito", 409)
+        const account = await tx.customerCredit.upsert({
+          where: { customerId },
+          create: { organizationId, customerId, creditLimit: null, useDefaultLimit: true },
+          update: {},
+        })
+        if (account.organizationId !== organizationId || ["suspended", "closed"].includes(account.status)) throw new PortalError("Tu cuenta de crédito está bloqueada", 409)
+        const limit = account.useDefaultLimit ? policy.defaultLimit : account.creditLimit
+        if (limit != null && Number(account.currentBalance) + adjustedTotal > Number(limit)) throw new PortalError("El pedido supera tu crédito disponible", 409)
+        const reserved = await tx.customerCredit.updateMany({
+          where: { id: account.id, status: { notIn: ["suspended", "closed"] }, ...(limit != null ? { currentBalance: { lte: Number(limit) - adjustedTotal } } : {}) },
+          data: { currentBalance: { increment: adjustedTotal }, status: "active" },
+        })
+        if (!reserved.count) throw new PortalError("Tu crédito disponible cambió. Revisa el saldo e intenta de nuevo", 409)
+        const current = await tx.customerCredit.findUniqueOrThrow({ where: { id: account.id }, select: { currentBalance: true } })
+        await tx.creditTransaction.create({ data: {
+          creditId: account.id, customerId, organizationId, type: "charge", amount: adjustedTotal,
+          balanceAfter: current.currentBalance, description: `Pedido #${Number(created.orderNumber)}`,
+          referenceType: "order", referenceId: created.id,
+          dueDate: policy.maxDaysToPay ? new Date(Date.now() + policy.maxDaysToPay * 86400000) : null,
+        } })
+      }
 
       // Deducción de puntos por redención
       if (pointsRedeemed > 0) {
@@ -1558,6 +1614,7 @@ export async function createPortalOrder(
       total: toNum(order.total),
     }
   )
+  if (input.paymentMethod === "credit") await notifyStaff(organizationId, "orders.view", { kind: "credit_charge", title: "Nuevo pedido a crédito", body: `Pedido #${Number(order.orderNumber)} · $${toNum(order.total).toFixed(2)}`, link: "/admin/credits" }).catch((error) => console.error("[credit/notification]", error))
 
   return detail!
 }
@@ -1592,6 +1649,28 @@ export async function cancelPortalOrder(
     })
     if (claimed.count !== 1)
       throw new PortalError("Este pedido ya no se puede cancelar", 409)
+    if (order.promotionId) {
+      await tx.promotion.updateMany({
+        where: { id: order.promotionId, organizationId, usesCount: { gt: 0 } },
+        data: { usesCount: { decrement: 1 } },
+      })
+      await tx.promotionCustomerUse.updateMany({
+        where: { promotionId: order.promotionId, customerId, organizationId, usesCount: { gt: 0 } },
+        data: { usesCount: { decrement: 1 } },
+      })
+    }
+    if (order.paymentMethod === "credit") {
+      const account = await tx.customerCredit.findFirst({ where: { organizationId, customerId } })
+      if (!account || Number(account.currentBalance) < Number(order.total)) throw new PortalError("El pedido tiene abonos aplicados. Solicita la cancelación y ajuste de crédito al comercio", 409)
+      const updated = await tx.customerCredit.updateMany({ where: { id: account.id, currentBalance: { gte: order.total } }, data: { currentBalance: { decrement: order.total } } })
+      if (!updated.count) throw new PortalError("El saldo cambió; intenta la cancelación de nuevo", 409)
+      const balance = await tx.customerCredit.findUniqueOrThrow({ where: { id: account.id }, select: { currentBalance: true } })
+      await tx.creditTransaction.create({ data: {
+        creditId: account.id, customerId, organizationId, type: "writeoff", amount: order.total,
+        balanceAfter: balance.currentBalance, description: `Cancelación de pedido #${Number(order.orderNumber)}`,
+        referenceType: "order_cancellation", referenceId: order.id,
+      } })
+    }
     await tx.orderStatusHistory.create({
       data: {
         orderId,
@@ -1846,7 +1925,7 @@ export async function removeFavorite(
 export interface ShoppingListInput {
   name: string
   notes?: string | null
-  items: { variantId: string; quantity: number }[]
+  items: { variantId?: string | null; productId?: string | null; unitId?: string | null; quantity: number }[]
 }
 
 export interface ShoppingListRow {
@@ -1864,12 +1943,16 @@ export interface ShoppingListView {
   createdAt: string
   items: {
     id: string
-    variantId: string
+    variantId: string | null
+    productId: string
+    unitId: string | null
     quantity: number
     productName: string
     variantName: string | null
     price: number
     imageUrl: string | null
+    unitAbbrev: string | null
+    step: number
   }[]
 }
 
@@ -1878,7 +1961,7 @@ export async function listShoppingLists(
   customerId: string
 ): Promise<ShoppingListRow[]> {
   const lists = await prisma.shoppingList.findMany({
-    where: { customerId },
+    where: { organizationId, customerId },
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { items: true } } },
   })
@@ -1897,10 +1980,13 @@ export async function getShoppingList(
   listId: string
 ): Promise<ShoppingListView | null> {
   const list = await prisma.shoppingList.findFirst({
-    where: { id: listId, customerId },
+    where: { id: listId, organizationId, customerId },
     include: {
       items: {
-        include: { variant: { include: { product: true } } },
+        include: {
+          variant: { include: { product: true } },
+          product: { include: { bulkUnit: true, splitUnit: true } },
+        },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -1911,16 +1997,55 @@ export async function getShoppingList(
     name: list.name,
     notes: list.notes,
     createdAt: list.createdAt.toISOString(),
-    items: list.items.map((i) => ({
+    items: list.items.filter((i) => i.variant || i.product).map((i) => ({
       id: i.id,
       variantId: i.variantId,
+      productId: i.variant?.productId ?? i.productId!,
+      unitId: i.unitId,
       quantity: toNum(i.quantity),
-      productName: i.variant.product.name,
-      variantName: i.variant.name === "Default" ? null : i.variant.name,
-      price: toNum(i.variant.price),
-      imageUrl: i.variant.imageUrl ?? i.variant.product.imageUrl,
+      productName: i.variant?.product.name ?? i.product!.name,
+      variantName: i.variant
+        ? i.variant.name === "Default" ? null : i.variant.name
+        : i.unitId === i.product?.splitUnitId ? i.product?.splitUnit?.name ?? null : i.product?.bulkUnit?.name ?? null,
+      price: i.variant
+        ? toNum(i.variant.price)
+        : toNum((i.unitId === i.product?.splitUnitId ? i.product?.splitPricePerUnit : i.product?.bulkPricePerUnit) ?? null),
+      imageUrl: i.variant ? i.variant.imageUrl ?? i.variant.product.imageUrl : i.product?.imageUrl ?? null,
+      unitAbbrev: i.variant ? null : i.unitId === i.product?.splitUnitId ? i.product?.splitUnit?.abbreviation ?? null : i.product?.bulkUnit?.abbreviation ?? null,
+      step: i.variant ? 1 : i.unitId === i.product?.splitUnitId ? 1 : toNum(i.product?.bulkStep ?? null) || 0.01,
     })),
   }
+}
+
+async function validatedShoppingListItems(organizationId: string, items: ShoppingListInput["items"]) {
+  if (!Array.isArray(items) || items.length > 200) throw new PortalError("La lista debe tener como máximo 200 productos")
+  const variantIds = items.map((item) => item.variantId).filter((id): id is string => Boolean(id))
+  const productIds = items.map((item) => item.productId).filter((id): id is string => Boolean(id))
+  const [variants, products] = await Promise.all([
+    prisma.productVariant.findMany({ where: { id: { in: variantIds }, organizationId, isActive: true, product: { isActive: true } }, select: { id: true } }),
+    prisma.product.findMany({ where: { id: { in: productIds }, organizationId, isActive: true, productType: "bulk" }, select: { id: true, bulkUnitId: true, splitUnitId: true, allowSplit: true } }),
+  ])
+  const allowedVariants = new Set(variants.map((variant) => variant.id))
+  const allowedProducts = new Map(products.map((product) => [product.id, product]))
+  const seen = new Set<string>()
+  return items.map((item) => {
+    const quantity = Number(item.quantity)
+    if (!Number.isFinite(quantity) || quantity <= 0) throw new PortalError("La cantidad debe ser mayor que cero")
+    if (item.variantId && !item.productId && allowedVariants.has(item.variantId)) {
+      const key = `v:${item.variantId}`
+      if (seen.has(key)) throw new PortalError("El producto está repetido en la lista")
+      seen.add(key)
+      return { variantId: item.variantId, productId: null, unitId: null, quantity: round3(quantity) }
+    }
+    const product = item.productId ? allowedProducts.get(item.productId) : null
+    if (!item.variantId && product && item.unitId && (item.unitId === product.bulkUnitId || (product.allowSplit && item.unitId === product.splitUnitId))) {
+      const key = `b:${product.id}:${item.unitId}`
+      if (seen.has(key)) throw new PortalError("El producto está repetido en la lista")
+      seen.add(key)
+      return { variantId: null, productId: product.id, unitId: item.unitId, quantity: round3(quantity) }
+    }
+    throw new PortalError("La lista contiene un producto o una unidad no disponible")
+  })
 }
 
 export async function createShoppingList(
@@ -1929,6 +2054,7 @@ export async function createShoppingList(
   input: ShoppingListInput
 ): Promise<ShoppingListView> {
   if (!input.name.trim()) throw new PortalError("El nombre es obligatorio")
+  const items = await validatedShoppingListItems(organizationId, input.items)
   const list = await prisma.shoppingList.create({
     data: {
       organizationId,
@@ -1936,10 +2062,7 @@ export async function createShoppingList(
       name: input.name.trim(),
       notes: input.notes ?? null,
       items: {
-        create: input.items.map((i) => ({
-          variantId: i.variantId,
-          quantity: round3(i.quantity),
-        })),
+        create: items,
       },
     },
   })
@@ -1953,10 +2076,11 @@ export async function updateShoppingList(
   input: ShoppingListInput
 ): Promise<ShoppingListView> {
   const list = await prisma.shoppingList.findFirst({
-    where: { id: listId, customerId },
+    where: { id: listId, organizationId, customerId },
   })
   if (!list) throw new PortalError("Lista no encontrada", 404)
   if (!input.name.trim()) throw new PortalError("El nombre es obligatorio")
+  const items = await validatedShoppingListItems(organizationId, input.items)
 
   await prisma.$transaction([
     prisma.shoppingListItem.deleteMany({ where: { listId } }),
@@ -1966,10 +2090,7 @@ export async function updateShoppingList(
         name: input.name.trim(),
         notes: input.notes ?? null,
         items: {
-          create: input.items.map((i) => ({
-            variantId: i.variantId,
-            quantity: round3(i.quantity),
-          })),
+          create: items,
         },
       },
     }),
@@ -1984,7 +2105,7 @@ export async function deleteShoppingList(
   listId: string
 ) {
   const list = await prisma.shoppingList.findFirst({
-    where: { id: listId, customerId },
+    where: { id: listId, organizationId, customerId },
   })
   if (!list) throw new PortalError("Lista no encontrada", 404)
   await prisma.shoppingList.delete({ where: { id: listId } })
@@ -1997,7 +2118,7 @@ export async function duplicateShoppingList(
   listId: string
 ): Promise<ShoppingListView> {
   const list = await prisma.shoppingList.findFirst({
-    where: { id: listId, customerId },
+    where: { id: listId, organizationId, customerId },
     include: { items: true },
   })
   if (!list) throw new PortalError("Lista no encontrada", 404)
@@ -2011,6 +2132,8 @@ export async function duplicateShoppingList(
       items: {
         create: list.items.map((i) => ({
           variantId: i.variantId,
+          productId: i.productId,
+          unitId: i.unitId,
           quantity: toNum(i.quantity),
         })),
       },

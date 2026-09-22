@@ -25,7 +25,7 @@ const schema = yup.object({
 
 type Values = yup.InferType<typeof schema>
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?: string }) {
   const [status, setStatus] = useState<
     | { kind: "idle" }
     | { kind: "loading" }
@@ -136,8 +136,8 @@ export function ChangePasswordForm() {
         </form>
 
         <p className="text-center text-xs text-muted-foreground">
-          <Link href="/auth/login" className="underline underline-offset-4">
-            Volver al inicio de sesión
+          <Link href={returnHref} className="underline underline-offset-4">
+            {returnHref === "/portal/profile" ? "Volver a mi perfil" : "Volver al inicio de sesión"}
           </Link>
         </p>
       </CardContent>

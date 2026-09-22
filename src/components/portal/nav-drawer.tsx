@@ -2,11 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronRight, Settings2 } from "lucide-react"
-import { motion } from "framer-motion"
+import { ChevronRight, Settings2, X } from "lucide-react"
 import { usePortalStore } from "@/stores/portal-store"
 import { ALL_NAV_ITEMS, type NavItemIdIncludingCombos } from "./portal-shell"
-import { BottomSheet } from "./bottom-sheet"
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Logo } from "@/components/layout/logo"
 import { cn } from "@/lib/utils"
 import { haptic } from "@/lib/haptics"
@@ -42,37 +41,25 @@ export function NavDrawer({
     .filter((item): item is (typeof ALL_NAV_ITEMS)[number] => item !== undefined && (item.id !== "reservations" || canReserve))
 
   return (
-    <BottomSheet
-      open={navOpen}
-      onOpenChange={setNavOpen}
-      title="Menú"
-      showCloseButton={true}
-    >
-      {/* Encabezado: tienda + usuario */}
-      <div className="flex items-center gap-3 px-1 pb-3">
-        <Logo size={40} logoUrl={logoUrl} className="rounded-xl" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold">{storeName}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            Hola, {user.name?.split(" ")[0] ?? "bienvenido"}
-          </p>
-        </div>
-      </div>
+    <Sheet open={navOpen} onOpenChange={setNavOpen}>
+      <SheetContent side="left" showCloseButton={false} style={{ width: "min(88vw, 22rem)", maxWidth: "22rem" }} className="gap-0 overflow-hidden p-0 safe-area-top safe-area-bottom">
+        <SheetHeader className="flex-row items-center gap-3 border-b px-4 py-5 pr-14">
+          <Logo size={44} logoUrl={logoUrl} className="shrink-0 rounded-xl" />
+          <div className="min-w-0 text-left">
+            <SheetTitle className="truncate text-base font-semibold">{storeName}</SheetTitle>
+            <SheetDescription className="truncate">Hola, {user.name?.split(" ")[0] ?? "bienvenido"}</SheetDescription>
+          </div>
+          <SheetClose asChild><button type="button" className="absolute right-3 top-5 flex size-11 items-center justify-center rounded-xl hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary" aria-label="Cerrar menú"><X className="size-5" /></button></SheetClose>
+        </SheetHeader>
 
-      {/* Activities */}
-      <nav className="space-y-0.5 pb-2">
-        {drawerItems.map((item, idx) => {
+        <nav aria-label="Secciones del portal" className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {drawerItems.map((item) => {
           const Icon = item.icon
           const active = item.match
             ? item.match.test(pathname)
             : pathname === item.href || pathname.startsWith(`${item.href}/`)
           return (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: Math.min(idx * 0.03, 0.24), duration: 0.18 }}
-            >
+            <div key={item.id}>
               <Link
                 href={item.href}
                 onClick={() => {
@@ -80,7 +67,7 @@ export function NavDrawer({
                   setNavOpen(false)
                 }}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors",
+                  "flex min-h-12 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-primary",
                   active
                     ? "bg-primary/10 text-primary"
                     : "text-foreground/80 hover:bg-muted"
@@ -100,17 +87,16 @@ export function NavDrawer({
                 )}
                 <ChevronRight className="size-4 text-muted-foreground/60" />
               </Link>
-            </motion.div>
+            </div>
           )
         })}
-      </nav>
+        </nav>
 
-      {/* Personalizar navegación */}
-      <div className="border-t pt-3 pb-2">
+      <div className="border-t px-3 py-3">
         <Link
           href="/portal/profile#nav-customizer"
           onClick={() => setNavOpen(false)}
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex min-h-12 items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
         >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
             <Settings2 className="size-[18px]" />
@@ -119,6 +105,7 @@ export function NavDrawer({
           <ChevronRight className="size-4 text-muted-foreground/60" />
         </Link>
       </div>
-    </BottomSheet>
+      </SheetContent>
+    </Sheet>
   )
 }

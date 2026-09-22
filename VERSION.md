@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.20.0.0] — 2026-09-22
+- **Tipo:** `feat` (Minor)
+- feat: se mejoro la UX del portal y se implemento mensajes
+
 ### [0.19.2.0] — 2026-09-19
 - **Tipo:** `fix` (Patch)
 - fix: se implemento el modulo de proveedores y se corrigieron detalles, incluso de cretido y de formularios COMPLETO

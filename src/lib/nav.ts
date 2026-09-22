@@ -326,6 +326,11 @@ function navUserHasPermission(
   return permissions?.includes(permission) ?? false;
 }
 
+function navUserCanSeeItem(navUser: NavUser | null, item: NavItem): boolean {
+  if (item.href === "/admin/settings/menus" && !["admin", "superadmin"].includes(navUser?.user?.role ?? "")) return false;
+  return navUserHasPermission(navUser, item.permission);
+}
+
 /** Filtra secciones según permisos de la sesión (server-side). */
 export function filterNavSections(
   session: Session | null,
@@ -335,7 +340,7 @@ export function filterNavSections(
     .map((section) => ({
       ...section,
       items: section.items.filter(
-        (item) => !item.permission || hasPermission(session, item.permission)
+        (item) => (item.href !== "/admin/settings/menus" || ["admin", "superadmin"].includes(session?.user?.role ?? "")) && (!item.permission || hasPermission(session, item.permission))
       ),
     }))
     .filter((section) => section.items.length > 0);
@@ -350,7 +355,7 @@ export function filterNavSectionsByUser(
     .map((section) => ({
       ...section,
       items: section.items.filter((item) =>
-        navUserHasPermission(navUser, item.permission)
+        navUserCanSeeItem(navUser, item)
       ),
     }))
     .filter((section) => section.items.length > 0);
@@ -389,7 +394,7 @@ export function filterNavSectionsByUserAndFeature(
       ...section,
       items: section.items.filter(
         (item) =>
-          navUserHasPermission(navUser, item.permission) &&
+          navUserCanSeeItem(navUser, item) &&
           navItemHasFeature(item, mode)
       ),
     }))
@@ -407,7 +412,7 @@ export function filterNavItems(
   navUser: NavUser | null,
   items: NavItem[]
 ): NavItem[] {
-  return items.filter((item) => navUserHasPermission(navUser, item.permission));
+  return items.filter((item) => navUserCanSeeItem(navUser, item));
 }
 
 /** ¿La ruta actual coincide con el item? (considera hijos) */

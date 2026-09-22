@@ -113,6 +113,7 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
       {visible && (
         <motion.div
           key="splash"
+          data-testid="app-splash"
           initial={{ opacity: 1 }}
           className="fixed inset-0 z-[9999] overflow-hidden bg-slate-950 text-slate-50"
         >

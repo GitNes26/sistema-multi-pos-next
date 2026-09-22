@@ -525,17 +525,12 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         },
       },
       {
-        key: "role",
+        key: "roleId",
         label: "Rol",
         type: "select",
         icon: "CheckSquare",
         required: true,
-        options: [
-          { value: "cashier", label: "Cajero" },
-          { value: "manager", label: "Gerente" },
-          { value: "admin", label: "Admin" },
-          { value: "owner", label: "Propietario" },
-        ],
+        optionsModule: "roles",
         help: "Se crea una cuenta de usuario para el empleado con este rol de acceso.",
       },
       {

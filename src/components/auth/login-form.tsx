@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { signIn } from "next-auth/react"
@@ -88,11 +88,16 @@ export function LoginForm({
   const {
     register,
     handleSubmit,
+    setFocus,
     formState: { errors },
   } = useForm<LoginValues>({
     resolver: yupResolver(validationSchema),
     defaultValues: { identifier: "", password: "" },
   })
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setFocus("identifier"))
+    return () => cancelAnimationFrame(frame)
+  }, [setFocus])
 
   /** Busca la lista de orgs del identificador con debounce; limpia al vaciar. */
   function onIdentifierChange(value: string) {

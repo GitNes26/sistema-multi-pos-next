@@ -118,7 +118,7 @@ export function PortalShell({
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium text-muted-foreground transition-colors",
+                    "flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-2 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-2 focus-visible:outline-primary",
                     active && "text-primary"
                   )}
                 >
@@ -138,7 +138,7 @@ export function PortalShell({
                   usePortalStore.getState().setNavOpen(true);
                 }}
                 className={cn(
-                  "flex w-full flex-col items-center gap-0.5 py-2 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground",
+                  "flex min-h-14 w-full flex-col items-center justify-center gap-1 px-1 py-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary",
                   !currentInBar && "text-primary"
                 )}
                 aria-label="Abrir menú de navegación"
