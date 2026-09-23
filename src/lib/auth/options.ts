@@ -492,13 +492,29 @@ export const authOptions: NextAuthOptions = {
       const lastCheck =
         typeof token.authCheckedAt === "number" ? token.authCheckedAt : 0
       if (Date.now() - lastCheck > 60_000) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id },
-          select: { id: true, isActive: true },
-        })
+        const activeOrganizationId =
+          token.activeOrganizationId ?? token.organizationId ?? null
+        const [dbUser, activeOrganization] = await Promise.all([
+          prisma.user.findUnique({
+            where: { id: token.id },
+            select: { id: true, isActive: true },
+          }),
+          activeOrganizationId
+            ? prisma.organization.findUnique({
+                where: { id: activeOrganizationId },
+                select: { name: true, businessMode: true },
+              })
+            : Promise.resolve(null),
+        ])
         token.authCheckedAt = Date.now()
         if (!dbUser || !dbUser.isActive) {
           token.invalid = true
+        } else if (activeOrganization) {
+          token.organizationName = activeOrganization.name
+          token.businessMode = activeOrganization.businessMode
+        } else if (activeOrganizationId) {
+          token.activeOrganizationId = null
+          token.organizationName = null
         }
       }
       return token

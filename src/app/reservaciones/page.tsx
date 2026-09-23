@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { getAppSettings } from "@/lib/db/app-settings";
 import { RESERVATION_MODES } from "@/lib/reservations/server";
 import { AppearanceSync } from "@/components/appearance/appearance-sync";
+import { OrganizationContextSync } from "@/components/auth/organization-context-sync";
 import { Splash } from "@/components/appearance/splash";
 import { ReservationsApp } from "@/components/reservations/reservations-app";
 
@@ -39,6 +40,11 @@ export default async function ReservacionesPage() {
   return (
     <>
       <AppearanceSync tenant={tenant} />
+      <OrganizationContextSync
+        organizationId={organizationId}
+        organizationName={org.name}
+        businessMode={org.businessMode}
+      />
       <Splash orgName={org.name} />
       <ReservationsApp orgName={org.name} orgMode={org.businessMode} canManage={canManage} />
     </>

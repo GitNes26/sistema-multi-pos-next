@@ -7,6 +7,8 @@ import { AppearanceSync } from "@/components/appearance/appearance-sync";
 import { Splash } from "@/components/appearance/splash";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { SessionGuard } from "@/components/auth/session-guard";
+import { OrganizationContextSync } from "@/components/auth/organization-context-sync";
+import type { BusinessMode } from "@/lib/auth/options";
 import { OnboardingSheet } from "@/components/portal/onboarding-sheet";
 import { RouteTransition } from "@/components/layout/route-transition";
 
@@ -24,13 +26,15 @@ export default async function PortalShopLayout({
 
   let storeName = "Mi Tienda";
   let logoUrl: string | null = null;
-  let businessMode: string | null = null;
+  let businessMode: BusinessMode | null = null;
+  let organizationName: string | null = null;
   if (organizationId) {
     const org = await prisma.organization.findUnique({
       where: { id: organizationId },
       select: { name: true, businessMode: true, companyProfile: { select: { tradeName: true, logoUrl: true } } },
     });
     storeName = org?.companyProfile?.tradeName ?? org?.name ?? "Mi Tienda";
+    organizationName = org?.name ?? null;
     logoUrl = org?.companyProfile?.logoUrl ?? null;
     businessMode = org?.businessMode ?? null;
   }
@@ -39,6 +43,11 @@ export default async function PortalShopLayout({
     <SessionGuard loginPath="/portal/auth/login">
       <>
         <AppearanceSync tenant={tenant} />
+        <OrganizationContextSync
+          organizationId={organizationId}
+          organizationName={organizationName}
+          businessMode={businessMode}
+        />
         <Splash delay={500} orgName={storeName} logoUrl={logoUrl} />
         <OnboardingSheet />
         <PortalShell

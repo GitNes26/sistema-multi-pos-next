@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useThemeStore } from "@/stores/theme-store";
 import type { AppSettingsParams } from "@/lib/db/app-settings";
 import type { ThemeMode } from "@/lib/appearance";
@@ -14,33 +14,72 @@ export function AppearanceSync({ tenant }: { tenant: AppSettingsParams | null })
   const setTheme = useThemeStore((s) => s.setTheme);
   const lastAppliedRef = useRef<string>("");
 
-  useEffect(() => {
-    if (!tenant) {
+  const applyTenant = useCallback((settings: AppSettingsParams | null) => {
+    if (!settings) {
       setTenant(null);
       return;
     }
 
     // Create a fingerprint to avoid re-applying the same values
-    const fingerprint = JSON.stringify(tenant);
+    const fingerprint = JSON.stringify(settings);
     if (fingerprint === lastAppliedRef.current) return;
     lastAppliedRef.current = fingerprint;
 
     setTenant({
-      primaryHue: tenant.primaryHue,
-      accentHue: tenant.accentHue,
-      fontFamily: tenant.fontFamily as never,
-      fontScale: tenant.fontScale,
-      density: tenant.density as never,
-      borderRadius: tenant.borderRadius,
-      cardSize: tenant.cardSize as never,
-      sidebarStyle: tenant.sidebarStyle as never,
+      primaryHue: settings.primaryHue,
+      accentHue: settings.accentHue,
+      fontFamily: settings.fontFamily as never,
+      fontScale: settings.fontScale,
+      density: settings.density as never,
+      borderRadius: settings.borderRadius,
+      cardSize: settings.cardSize as never,
+      sidebarStyle: settings.sidebarStyle as never,
     });
 
     // Sync theme mode from DB if valid
-    if (tenant.theme && (THEMES as readonly string[]).includes(tenant.theme)) {
-      setTheme(tenant.theme as ThemeMode);
+    if (settings.theme && (THEMES as readonly string[]).includes(settings.theme)) {
+      setTheme(settings.theme as ThemeMode);
     }
-  }, [tenant, setTenant, setTheme]);
+  }, [setTenant, setTheme]);
+
+  useEffect(() => {
+    applyTenant(tenant);
+  }, [applyTenant, tenant]);
+
+  useEffect(() => {
+    let controller: AbortController | null = null;
+
+    const refresh = async () => {
+      controller?.abort();
+      controller = new AbortController();
+      try {
+        const response = await fetch("/api/settings/appearance", {
+          cache: "no-store",
+          credentials: "same-origin",
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as { settings?: AppSettingsParams };
+        if (data.settings) applyTenant(data.settings);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error("[appearance] no se pudo sincronizar la apariencia", error);
+        }
+      }
+    };
+
+    void refresh();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      controller?.abort();
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [applyTenant]);
 
   return null;
 }

@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { getAppSettings } from "@/lib/db/app-settings";
 import { getPosCatalog, PosError } from "@/lib/pos/server";
 import { AppearanceSync } from "@/components/appearance/appearance-sync";
+import { OrganizationContextSync } from "@/components/auth/organization-context-sync";
 import { Splash } from "@/components/appearance/splash";
 import { PosApp } from "@/components/pos/pos-app";
 
@@ -92,6 +93,11 @@ export default async function PosPage() {
   return (
     <>
       <AppearanceSync tenant={tenant} />
+      <OrganizationContextSync
+        organizationId={organizationId}
+        organizationName={orgMode?.name ?? null}
+        businessMode={orgMode?.businessMode ?? null}
+      />
       <Splash
         orgName={orgMode?.companyProfile?.tradeName ?? orgMode?.name ?? null}
       />

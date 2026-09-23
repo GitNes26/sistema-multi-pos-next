@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import type { SessionRole } from "@/lib/auth/permissions";
-import { isFeatureEnabled } from "@/lib/features";
-import type { BusinessMode } from "@/lib/auth/options";
 
 // FASE 2.7 — Middleware de protección de rutas.
 // - /pos          → cualquier sesión de app (no cliente)
@@ -65,8 +63,8 @@ export async function middleware(req: NextRequest) {
     // El superAdmin sin organización activa primero elige empresa (igual que /admin).
     if (token!.scope === "superadmin" && !token!.activeOrganizationId)
       return NextResponse.redirect(new URL("/admin/settings/organizations", req.url));
-    if (!isFeatureEnabled("appointments", (token!.businessMode ?? "retail") as BusinessMode))
-      return NextResponse.redirect(new URL("/admin", req.url));
+    // El giro se valida en la página contra la organización en BD. El JWT puede
+    // pertenecer a una sesión abierta antes de que la empresa cambiara de giro.
     return NextResponse.next();
   }
 
@@ -78,8 +76,8 @@ export async function middleware(req: NextRequest) {
     // El superAdmin sin organización activa primero elige empresa (igual que /admin).
     if (token!.scope === "superadmin" && !token!.activeOrganizationId)
       return NextResponse.redirect(new URL("/admin/settings/organizations", req.url));
-    if (!isFeatureEnabled("reservations", (token!.businessMode ?? "retail") as BusinessMode))
-      return NextResponse.redirect(new URL("/admin", req.url));
+    // El giro se valida en la página contra la organización en BD. El JWT puede
+    // pertenecer a una sesión abierta antes de que la empresa cambiara de giro.
     return NextResponse.next();
   }
 

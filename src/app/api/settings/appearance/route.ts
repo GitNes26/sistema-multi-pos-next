@@ -30,7 +30,10 @@ export async function GET() {
   }
 
   const settings = (await getAppSettings(organizationId)) ?? DEFAULT_APP_SETTINGS;
-  return NextResponse.json({ settings });
+  return NextResponse.json(
+    { settings },
+    { headers: { "Cache-Control": "private, no-store, max-age=0" } }
+  );
 }
 
 export async function PATCH(req: Request) {
@@ -61,5 +64,8 @@ export async function PATCH(req: Request) {
   }
 
   const settings = await upsertAppSettings(organizationId, patch);
-  return NextResponse.json({ settings });
+  return NextResponse.json(
+    { settings },
+    { headers: { "Cache-Control": "private, no-store, max-age=0" } }
+  );
 }

@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { getAppSettings } from "@/lib/db/app-settings";
 import { AGENDA_MODES } from "@/lib/agenda/server";
 import { AppearanceSync } from "@/components/appearance/appearance-sync";
+import { OrganizationContextSync } from "@/components/auth/organization-context-sync";
 import { Splash } from "@/components/appearance/splash";
 import { AgendaApp } from "@/components/agenda/agenda-app";
 
@@ -39,6 +40,11 @@ export default async function AgendaPage() {
   return (
     <>
       <AppearanceSync tenant={tenant} />
+      <OrganizationContextSync
+        organizationId={organizationId}
+        organizationName={org.name}
+        businessMode={org.businessMode}
+      />
       <Splash orgName={org.name} />
       <AgendaApp orgName={org.name} orgMode={org.businessMode} canManage={canManage} />
     </>
