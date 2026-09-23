@@ -51,9 +51,14 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
   // programan nada (skipRef se consulta sincrónicamente dentro de cada uno).
   const skipRef = useRef(false);
   useEffect(() => {
-    if (typeof window !== "undefined" && sessionStorage.getItem(SESSION_KEY)) {
+    if (typeof window === "undefined") return;
+    try {
+      if (!window.sessionStorage.getItem(SESSION_KEY)) return;
       skipRef.current = true;
       setVisible(false);
+    } catch {
+      // Safari privado, WebViews y políticas empresariales pueden bloquear
+      // Storage. El splash debe continuar con sus temporizadores normales.
     }
   }, []);
 
@@ -103,7 +108,11 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
         scale: EXIT_SCALE,
       });
     }
-    sessionStorage.setItem(SESSION_KEY, "1");
+    try {
+      window.sessionStorage.setItem(SESSION_KEY, "1");
+    } catch {
+      // Recordar el splash es opcional; cerrarlo no lo es.
+    }
     const timer = setTimeout(() => setVisible(false), prefersReduced ? 0 : 200);
     return () => clearTimeout(timer);
   }, [ready, prefersReduced]);

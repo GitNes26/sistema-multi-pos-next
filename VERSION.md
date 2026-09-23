@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.20.2.1] — 2026-09-23
+- **Tipo:** `chore` (Revision)
+- doc: fix de inicio movil
+
 ### [0.20.2.0] — 2026-09-22
 - **Tipo:** `fix` (Patch)
 - fix: resolviendo conflictos de modales apilados, categorias y subcategorias, porducto custom con variantes y se agregaron planes y panel de suscripciones v2

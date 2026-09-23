@@ -175,6 +175,22 @@ test("portal: Enter en login vacío muestra errores sin desbordamiento", async (
   await page.screenshot({ path: testInfo.outputPath("portal-login-validacion.png"), fullPage: true })
 })
 
+test("portal móvil: el arranque no queda bloqueado si el almacenamiento de sesión falla", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      get() {
+        throw new DOMException("Storage unavailable", "SecurityError")
+      },
+    })
+  })
+  await loginPortal(page)
+  await expect(page.getByTestId("app-splash")).toBeHidden({ timeout: 6_000 })
+  await expect(page.getByTestId("auth-splash")).toBeHidden({ timeout: 6_000 })
+  await expect(page.locator("main")).toBeVisible()
+  await expect(page.locator("nav.fixed")).toBeVisible()
+})
+
 test("portal: detalle de producto, carrito y pago conservan la navegación", async ({ page }, testInfo) => {
   test.setTimeout(120_000)
   await loginPortal(page)
