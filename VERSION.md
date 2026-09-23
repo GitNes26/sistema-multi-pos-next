@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.20.3.1] — 2026-09-23
+- **Tipo:** `ux` (Revision)
+- ux: se mejoraron UX de cocina, mesas, reservaciones, servicios
+
 ### [0.20.3.0] — 2026-09-23
 - **Tipo:** `fix` (Patch)
 - fix: mejoras en combos, cocina, reservas, mesas y las variantes en producto personalizado
