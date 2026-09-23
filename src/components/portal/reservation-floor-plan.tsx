@@ -18,6 +18,7 @@ export interface PlanTable {
   posX: number | null;
   posY: number | null;
   status: string;
+  rotation?: number;
 }
 
 const CANVAS_W = 760;
@@ -77,7 +78,7 @@ export function ReservationFloorPlan({
                   ? "z-10 border-primary bg-primary/15 text-primary ring-2 ring-primary"
                   : "border-emerald-400 bg-emerald-500/15 text-emerald-700"
             )}
-            style={{ left: x, top: y, width: w, height: h, transform: "translate(-50%, -50%)" }}
+            style={{ left: x, top: y, width: w, height: h, transform: `translate(-50%, -50%) rotate(${t.rotation ?? 0}deg)` }}
             title={`Mesa ${t.number} · ${t.capacity} pers.${disabled ? " · no disponible" : ""}`}
           >
             <span className="text-xs font-bold leading-none">{t.number}</span>

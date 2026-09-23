@@ -48,7 +48,17 @@ export function AppShell({ user, permissions, logoUrl, children }: AppShellProps
       .filter((section) => section.items.length > 0);
   }, [dbSections, businessMode]);
 
-  const sections = filteredDbSections ?? fallbackSections;
+  const sections = React.useMemo(
+    () => (filteredDbSections ?? fallbackSections).map((section) => ({
+      ...section,
+      items: section.items.map((item) =>
+        item.href === "/admin/products" && (businessMode === "services" || businessMode === "hybrid")
+          ? { ...item, label: "Productos y servicios" }
+          : item
+      ),
+    })),
+    [businessMode, fallbackSections, filteredDbSections]
+  );
   const bottomNav = React.useMemo(
     () => (bottomItems ?? BOTTOM_NAV).filter((item) => !item.href || isNavHrefEnabled(item.href, businessMode)),
     [bottomItems, businessMode]

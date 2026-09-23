@@ -280,7 +280,7 @@ export async function getStorefront(
         variants: [],
         bulk: null,
         options: optionsEnabled(p.productType)
-          ? (p.options ?? []).map((o) => ({
+          ? (p.options ?? []).filter((o) => o.kind === "topic").map((o) => ({
               id: o.id,
               name: o.name,
               position: o.position,

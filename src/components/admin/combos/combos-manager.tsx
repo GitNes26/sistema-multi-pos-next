@@ -11,11 +11,13 @@ import {
   DollarSign,
   GripVertical,
   Puzzle,
+  ImageIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
+import { InputGroupField } from "@/components/base/input-group-field"
+import { SwitchField } from "@/components/base/switch-field"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
@@ -185,27 +187,25 @@ function ComboForm({
     <div className="space-y-5">
       {/* Basic info */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label className="text-sm font-semibold">Nombre *</Label>
-          <Input
+        <InputGroupField
+            label="Nombre"
+            required
+            leftIcon={<Package className="size-4" />}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ej: Combo Desayuno"
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-sm font-semibold">Precio del combo *</Label>
-          <div className="relative">
-            <DollarSign className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+        <div>
+            <InputGroupField
+              label="Precio del combo"
+              required
+              leftIcon={<DollarSign className="size-4" />}
               type="number"
               min={0}
               step={0.5}
               value={comboPrice}
               onChange={(e) => setComboPrice(Number(e.target.value))}
-              className="pl-9"
             />
-          </div>
           {suggestedPrice > 0 && comboPrice !== suggestedPrice && (
             <p className="text-xs text-muted-foreground">
               Precio sugerido (suma de productos): {money(suggestedPrice)}
@@ -229,19 +229,16 @@ function ComboForm({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label className="text-sm font-semibold">URL de imagen</Label>
-        <Input
+      <InputGroupField
+        label="Imagen del combo"
+        leftIcon={<ImageIcon className="size-4" />}
+        helper="Puedes pegar una URL pública o una ruta de archivo ya cargada."
           value={imageUrl}
           onChange={(e) => setImageUrl(e.target.value)}
           placeholder="https://... o /uploads/..."
         />
-      </div>
 
-      <div className="flex items-center gap-3">
-        <Switch checked={isActive} onCheckedChange={setIsActive} />
-        <Label className="text-sm">{isActive ? "Activo" : "Inactivo"}</Label>
-      </div>
+      <SwitchField id="combo-active" label="Combo activo" description="Los combos inactivos se conservan en el historial pero no aparecen para vender." checked={isActive} onCheckedChange={setIsActive} />
 
       {/* Items */}
       <div className="space-y-3">

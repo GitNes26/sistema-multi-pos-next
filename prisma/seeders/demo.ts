@@ -974,6 +974,9 @@ async function cleanupDemo(orgIds: string[], emails: string[]) {
   await d.orderItem.deleteMany()
   await d.order.deleteMany()
   await d.tableSession.deleteMany()
+  await d.tableReservation.deleteMany()
+  await d.tableWaitlist.deleteMany()
+  await d.planNode.deleteMany()
   await d.table.deleteMany()
   await d.tableRoom.deleteMany()
   await d.reservationPolicy.deleteMany()
@@ -987,6 +990,7 @@ async function cleanupDemo(orgIds: string[], emails: string[]) {
   await d.employeeCommission.deleteMany()
   await d.coupon.deleteMany()
   await d.loyaltyTransaction.deleteMany()
+  await d.promotionCustomerUse.deleteMany()
   await d.promotionTarget.deleteMany()
   await d.promotion.deleteMany()
   await d.inventoryRevisionItem.deleteMany()
@@ -994,6 +998,16 @@ async function cleanupDemo(orgIds: string[], emails: string[]) {
   await d.variantPriceHistory.deleteMany()
   await d.inventoryMovement.deleteMany()
   await d.inventory.deleteMany()
+  // Compras: una recepción enlaza orden, renglón e inventario. Se elimina
+  // completa antes de recrear productos, variantes y ubicaciones demo.
+  await d.goodsReceiptItem.deleteMany()
+  await d.goodsReceipt.deleteMany()
+  await d.purchaseOrderItem.deleteMany()
+  await d.purchaseOrder.deleteMany()
+  await d.purchaseQuoteItem.deleteMany()
+  await d.purchaseQuote.deleteMany()
+  await d.supplierProduct.deleteMany()
+  await d.supplier.deleteMany()
   // Transferencias, snapshots y pares (dependen de productos/ubicaciones)
   await d.transferItem.deleteMany()
   await d.transfer.deleteMany()
@@ -1017,8 +1031,10 @@ async function cleanupDemo(orgIds: string[], emails: string[]) {
   await d.productOption.deleteMany()
   await d.product.deleteMany()
   await d.category.deleteMany()
+  await d.unitOfMeasure.deleteMany()
   // Crédito, segmentos y métodos de pago del cliente
   await d.customerSegment.deleteMany()
+  await d.creditPaymentIntent.deleteMany()
   await d.creditTransaction.deleteMany()
   await d.customerCredit.deleteMany()
   await d.creditPolicy.deleteMany()
@@ -1031,6 +1047,8 @@ async function cleanupDemo(orgIds: string[], emails: string[]) {
   await d.employee.deleteMany()
   await d.employeePosition.deleteMany()
   await d.membership.deleteMany()
+  await d.rolePermission.deleteMany()
+  await d.role.deleteMany({ where: { organizationId: { in: orgIds } } })
   await d.userInvitation.deleteMany()
   await d.notification.deleteMany()
   await d.publication.deleteMany()
@@ -1038,6 +1056,12 @@ async function cleanupDemo(orgIds: string[], emails: string[]) {
   await d.companyProfile.deleteMany()
   await d.appSettings.deleteMany()
   await d.profile.deleteMany()
+  await d.subscriptionPayment.deleteMany({
+    where: { organizationId: { in: orgIds } },
+  })
+  await d.organizationSubscription.deleteMany({
+    where: { organizationId: { in: orgIds } },
+  })
   await d.organization.deleteMany({ where: { id: { in: orgIds } } })
   // Conserva cuentas que siguen siendo dueñas de otra organización (ownerId
   // de organizations es NOT NULL): si otro org de prueba usa al dueño demo,
@@ -1535,6 +1559,7 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
         data: {
           productId: product.id,
           name: opt.name,
+          kind: "topic",
           position: optPos,
           required: opt.required,
           minSelect: opt.minSelect,

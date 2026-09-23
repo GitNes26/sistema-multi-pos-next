@@ -255,8 +255,14 @@ export function ProductsForm({
     )
   )
 
+  const initialOptions = (initial?.options as ProductOption[]) ?? []
   const [options, setOptions] = useState<ProductOption[]>(
-    (initial?.options as ProductOption[]) ?? []
+    initial?.productType === "custom"
+      ? initialOptions.filter((option) => option.kind !== "variant")
+      : initialOptions
+  )
+  const [variantOptions, setVariantOptions] = useState<ProductOption[]>(
+    initialOptions.filter((option) => option.kind === "variant")
   )
   const [optionsBusy, setOptionsBusy] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -423,6 +429,12 @@ export function ProductsForm({
         price: numOrEmpty(variantPrice),
         cost: numOrEmpty(variantCost),
       }
+      payload.variantOptions = variantOptions
+        .filter((o) => o.name.trim() && o.values.some((v) => v.value.trim()))
+        .map((o) => ({ name: o.name.trim(), values: o.values.map((v) => v.value.trim()).filter(Boolean) }))
+      payload.topicOptions = options
+        .filter((o) => o.name.trim() && o.values.some((v) => v.value.trim()))
+        .map((o) => ({ name: o.name.trim(), values: o.values.map((v) => v.value.trim()).filter(Boolean) }))
     } else {
       const hasOptions = options.some(
         (o) => o.name.trim() && o.values.some((v) => v.value.trim())
@@ -488,8 +500,8 @@ export function ProductsForm({
               isActive: v.isActive !== false,
             })),
         }))
-      const res = await optionsApi.save(String(initial.id), cleaned)
-      setOptions(res.rows)
+      const res = await optionsApi.save(String(initial.id), cleaned, "topic")
+      setOptions(res.rows.filter((option) => option.kind === "topic"))
       swalToast("Tópicos guardados")
     } catch (err) {
       setOptionsError(
@@ -501,6 +513,44 @@ export function ProductsForm({
       setOptionsBusy(false)
     }
   }
+
+  const saveVariantOptions = async () => {
+    if (!initial?.id) return
+    setOptionsBusy(true)
+    setOptionsError(undefined)
+    try {
+      const cleaned = variantOptions
+        .filter((o) => o.name.trim())
+        .map((o) => ({
+          id: o.id,
+          name: o.name.trim(),
+          values: o.values.filter((v) => v.value.trim()).map((v) => ({ id: v.id, value: v.value.trim() })),
+        }))
+      const res = await optionsApi.save(String(initial.id), cleaned, "variant")
+      setVariantOptions(res.rows.filter((option) => option.kind === "variant"))
+      swalToast("Opciones y variantes guardadas")
+    } catch (err) {
+      setOptionsError(err instanceof Error ? err.message : "No se pudieron guardar las variantes")
+    } finally {
+      setOptionsBusy(false)
+    }
+  }
+
+  const addVariantOption = () =>
+    setVariantOptions((prev) => [
+      ...prev,
+      { name: "", kind: "variant", values: [{ value: "" }] },
+    ])
+  const updateVariantOption = (index: number, patch: Partial<ProductOption>) =>
+    setVariantOptions((prev) => prev.map((option, current) => current === index ? { ...option, ...patch } : option))
+  const addVariantValue = (index: number) =>
+    setVariantOptions((prev) => prev.map((option, current) => current === index
+      ? { ...option, values: [...option.values, { value: "" }] }
+      : option))
+  const updateVariantValue = (index: number, valueIndex: number, value: string) =>
+    setVariantOptions((prev) => prev.map((option, current) => current === index
+      ? { ...option, values: option.values.map((item, itemIndex) => itemIndex === valueIndex ? { ...item, value } : item) }
+      : option))
 
   const addOption = () => {
     setOptions((prev) => [
@@ -907,6 +957,72 @@ export function ProductsForm({
             value={variantBarcode}
             onChange={(e) => setVariantBarcode(e.target.value)}
           />
+
+          <FieldRow label="Opciones y variantes" full icon={<ListTree className="size-4" />}>
+            <p className="text-xs text-muted-foreground">
+              Crea las versiones vendibles del servicio o producto. Ejemplo: Tamaño
+              (clásico, completo) o Presentación (servicio, servicio + producto). Cada
+              combinación tendrá su propio precio, disponibilidad y receta de insumos.
+            </p>
+            <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
+              {variantOptions.length === 0 && (
+                <div className="rounded-lg border border-dashed bg-background/60 p-3">
+                  <p className="text-sm font-medium">Aún hay una sola variante base</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Agrega una opción cuando el cliente deba elegir entre versiones del servicio.
+                  </p>
+                </div>
+              )}
+              {variantOptions.map((option, index) => (
+                <div key={option.id ?? index} className="space-y-2 rounded-lg border bg-background p-3">
+                  <div className="flex items-center gap-2">
+                    <InputGroupField
+                      label={`Opción ${index + 1}`}
+                      leftIcon={<ListTree className="size-4" />}
+                      value={option.name}
+                      onChange={(event) => updateVariantOption(index, { name: event.target.value })}
+                      placeholder="Ej. Presentación"
+                      containerClassName="flex-1"
+                    />
+                    <Button type="button" variant="ghost" size="icon" className="mt-6 text-destructive" aria-label="Eliminar opción" onClick={() => setVariantOptions((prev) => prev.filter((_, current) => current !== index))}>
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {option.values.map((item, valueIndex) => (
+                      <div key={item.id ?? valueIndex} className="flex items-center gap-1.5">
+                        <InputGroupField
+                          label={`Valor ${valueIndex + 1}`}
+                          leftIcon={<Type className="size-4" />}
+                          value={item.value}
+                          onChange={(event) => updateVariantValue(index, valueIndex, event.target.value)}
+                          placeholder="Ej. Servicio + producto"
+                          containerClassName="flex-1"
+                        />
+                        <Button type="button" variant="ghost" size="icon" className="mt-6" aria-label="Eliminar valor" onClick={() => updateVariantOption(index, { values: option.values.filter((_, current) => current !== valueIndex) })}>
+                          <X className="size-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => addVariantValue(index)}>
+                    <Plus className="size-3.5" /> Agregar valor
+                  </Button>
+                </div>
+              ))}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={addVariantOption}>
+                  <Plus className="size-4" /> Agregar opción
+                </Button>
+                {isEdit && (
+                  <Button type="button" size="sm" onClick={saveVariantOptions} disabled={optionsBusy}>
+                    {optionsBusy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+                    Guardar y generar variantes
+                  </Button>
+                )}
+              </div>
+            </div>
+          </FieldRow>
 
           {/* Tópicos — personalización del producto */}
           <FieldRow label="Personalízalo — tópicos" full>

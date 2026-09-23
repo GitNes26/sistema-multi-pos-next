@@ -18,8 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormCombobox } from "@/components/base/form-combobox";
+import { InputGroupField } from "@/components/base/input-group-field";
+import { DatePicker } from "@/components/base/date-picker";
+import { TimePicker } from "@/components/base/time-picker";
 import { cn } from "@/lib/utils";
 import {
   type AgendaCita,
@@ -234,12 +236,10 @@ export function CitaCreateDialog({
           {creatingNew && (
             <div className="mt-2 flex flex-wrap items-end gap-2 rounded-xl border bg-muted/40 p-2.5">
               <div className="min-w-40 flex-1">
-                <Label className="text-xs">Nombre completo</Label>
-                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ana Torres" />
+                <InputGroupField label="Nombre completo" required value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ana Torres" />
               </div>
               <div className="w-36">
-                <Label className="text-xs">Teléfono</Label>
-                <Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="55…" />
+                <InputGroupField label="Teléfono" type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="55…" />
               </div>
               <Button size="sm" onClick={() => void createCustomer()} disabled={savingNew || !newName.trim()}>
                 {savingNew ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
@@ -249,56 +249,14 @@ export function CitaCreateDialog({
           )}
         </div>
 
-        <div>
-          <Label className="text-xs">Personal</Label>
-          <Select value={employeeId} onValueChange={(v) => { setEmployeeId(v); setServiceVariantId(""); }}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar…" />
-            </SelectTrigger>
-            <SelectContent>
-              {staff.map((s) => (
-                <SelectItem key={s.id} value={s.id} disabled={s.services.length === 0}>
-                  {s.fullName}
-                  {s.services.length === 0 ? " (sin servicios)" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <FormCombobox label="Personal" required value={employeeId} onChange={(value) => { setEmployeeId(value); setServiceVariantId(""); }} options={staff.map((person) => ({ value: person.id, label: person.fullName, meta: person.services.length ? `${person.services.length} servicios` : "Sin servicios asignados", disabled: person.services.length === 0 }))} placeholder="Seleccionar personal…" helper="Primero asigna servicios al empleado desde la sección Personal de esta Agenda." />
 
-        <div>
-          <Label className="text-xs">Servicio</Label>
-          <Select value={serviceVariantId} onValueChange={setServiceVariantId} disabled={!employee}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar…" />
-            </SelectTrigger>
-            <SelectContent>
-              {services.length === 0 && (
-                <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                  Este empleado no tiene servicios asignados.
-                </p>
-              )}
-              {services.map((sv) => (
-                <SelectItem key={sv.variantId} value={sv.variantId}>
-                  {sv.name} · {fmtMoney(sv.price)} · {sv.durationMin} min
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <FormCombobox label="Servicio" required value={serviceVariantId} onChange={setServiceVariantId} disabled={!employee} options={services.map((item) => ({ value: item.variantId, label: item.name, meta: `${fmtMoney(item.price)} · ${item.durationMin} min` }))} placeholder={employee ? "Seleccionar servicio…" : "Selecciona primero al personal"} emptyText="Este empleado no tiene servicios asignados" />
 
-        <div>
-          <Label className="text-xs">Fecha</Label>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Hora</Label>
-          <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
-        </div>
+        <DatePicker label="Fecha" required value={date ? fromYMD(date) : null} onChange={(value) => setDate(value ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}` : "")} clearable={false} />
+        <TimePicker label="Hora" required value={time} onChange={(value) => setTime(value ?? "")} clearable={false} />
 
-        <div>
-          <Label className="text-xs">Duración (min)</Label>
-          <Input
+        <InputGroupField label="Duración" rightAddon="min" helper="Se propone la duración configurada para el servicio; puedes ajustarla para esta cita."
             type="number"
             min={5}
             max={480}
@@ -306,7 +264,6 @@ export function CitaCreateDialog({
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
           />
-        </div>
 
         <div className="sm:col-span-2">
           <Label className="text-xs">Notas</Label>

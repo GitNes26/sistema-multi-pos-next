@@ -29,8 +29,8 @@ export async function PUT(req: NextRequest) {
   if ("response" in guard) return guard.response;
 
   try {
-    const body = (await req.json()) as { options?: SaveOptionInput[] };
-    const options = await saveProductOptions(guard.organizationId, id, body.options ?? []);
+    const body = (await req.json()) as { options?: SaveOptionInput[]; kind?: "variant" | "topic" };
+    const options = await saveProductOptions(guard.organizationId, id, body.options ?? [], body.kind);
     return NextResponse.json({ ok: true, rows: options });
   } catch (err) {
     return crudErrorResponse(err);

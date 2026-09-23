@@ -798,15 +798,16 @@ export interface ProductOption {
   required?: boolean;
   minSelect?: number;
   maxSelect?: number;
+  kind?: "variant" | "topic";
   values: ProductOptionValue[];
 }
 
 export const optionsApi = {
   list: (productId: string) =>
     request<{ ok: boolean; rows: ProductOption[] }>(`/api/crud/products/${productId}/options`),
-  save: (productId: string, options: ProductOption[]) =>
+  save: (productId: string, options: ProductOption[], kind?: "variant" | "topic") =>
     request<{ ok: boolean; rows: ProductOption[] }>(`/api/crud/products/${productId}/options`, {
       method: "PUT",
-      body: JSON.stringify({ options }),
+      body: JSON.stringify({ options, kind }),
     }),
 };

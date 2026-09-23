@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.20.3.0] — 2026-09-23
+- **Tipo:** `fix` (Patch)
+- fix: mejoras en combos, cocina, reservas, mesas y las variantes en producto personalizado
+
 ### [0.20.2.2] — 2026-09-23
 - **Tipo:** `chore` (Revision)
 - doc: fix de inicio movil v2

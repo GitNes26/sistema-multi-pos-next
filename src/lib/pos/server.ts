@@ -399,7 +399,7 @@ export async function getPosCatalog(
       raw?.product?.productType === "custom" &&
       raw?.product?.options
     ) {
-      p.options = raw.product.options.map((o) => ({
+      p.options = raw.product.options.filter((o) => o.kind === "topic").map((o) => ({
         id: o.id,
         name: o.name,
         required: o.required,

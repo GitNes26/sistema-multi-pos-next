@@ -1019,11 +1019,17 @@ model ProductOption {
   required  Boolean @default(true)
   minSelect Int     @default(1)
   maxSelect Int     @default(1)
+  kind      ProductOptionKind @default(variant)
 
   product Product              @relation(fields: [productId], references: [id])
   values  ProductOptionValue[]
 
   @@map("product_options")
+}
+
+enum ProductOptionKind {
+  variant
+  topic
 }
 
 model ProductOptionValue {
@@ -1802,7 +1808,8 @@ model Table {
   status         TableStatus @default(free)
   qrToken        String?     @unique
   posX           Int? // Posición en el mapa (grid)
-  posY           Int? // Posición en el mapa (grid)
+    posY           Int? // Posición en el mapa (grid)
+    rotation       Int         @default(0)
   isActive       Boolean     @default(true)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -1867,6 +1874,7 @@ model PlanNode {
   label          String?
   posX           Int // Posición en el lienzo del plano (px)
   posY           Int
+  rotation       Int          @default(0)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 

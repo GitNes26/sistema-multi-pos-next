@@ -162,6 +162,27 @@ test("producto: crear una categoría conserva el formulario padre y selecciona l
   await expect(page.locator("#product-category")).toContainText(categoryName)
 })
 
+test("producto personalizado: muestra variantes vendibles y tópicos como secciones independientes", async ({ page }, testInfo) => {
+  test.setTimeout(120_000)
+  await loginOwner(page)
+  const organizationSwitcher = page.locator('button[aria-label="Cambiar de organización"]:visible').first()
+  await organizationSwitcher.click()
+  await page.getByRole("menuitem").filter({ hasText: "Restaurante Demo" }).click()
+  await expect(organizationSwitcher).toContainText("Restaurante Demo", { timeout: 30_000 })
+  await page.goto("/admin/products", { waitUntil: "domcontentloaded" })
+  await page.getByRole("button", { name: /^nuevo$/i }).click()
+  await page.getByRole("button", { name: "Personalizado", exact: true }).click()
+
+  const form = page.locator("#product-form")
+  await expect(form.getByText("Opciones y variantes", { exact: true })).toBeVisible()
+  await expect(form.getByText("Personalízalo — tópicos", { exact: true })).toBeVisible()
+  await expect(form.getByRole("button", { name: "Agregar opción" })).toBeVisible()
+  await form.getByRole("button", { name: "Agregar opción" }).click()
+  await expect(form.getByLabel("Opción 1")).toBeVisible()
+  await expect(form.getByLabel("Valor 1")).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath("producto-personalizado-opciones.png"), fullPage: true })
+})
+
 test("portal: Enter en login vacío muestra errores sin desbordamiento", async ({ page }, testInfo) => {
   await page.goto("/portal/auth/login", { waitUntil: "domcontentloaded" })
   await expect(page.getByTestId("app-splash")).toBeHidden({ timeout: 10_000 })

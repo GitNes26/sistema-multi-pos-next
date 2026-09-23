@@ -19,8 +19,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormCombobox } from "@/components/base/form-combobox";
+import { InputGroupField } from "@/components/base/input-group-field";
+import { DatePicker } from "@/components/base/date-picker";
 import { cn } from "@/lib/utils";
 import {
   type RentUnit,
@@ -229,12 +230,10 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
       {creatingNew && (
         <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/40 p-2.5">
           <div className="min-w-40 flex-1">
-            <Label className="text-xs">Nombre completo</Label>
-            <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ana Torres" />
+            <InputGroupField label="Nombre completo" required value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ana Torres" />
           </div>
           <div className="w-36">
-            <Label className="text-xs">Teléfono</Label>
-            <Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="55…" />
+            <InputGroupField label="Teléfono" type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="55…" />
           </div>
           <Button size="sm" onClick={() => void createCustomer()} disabled={savingNew || !newName.trim()}>
             {savingNew ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
@@ -244,14 +243,8 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label className="text-xs">Entrega (día)</Label>
-          <Input type="date" value={startYmd} onChange={(e) => setStartYmd(e.target.value)} />
-        </div>
-        <div>
-          <Label className="text-xs">Regreso (día)</Label>
-          <Input type="date" value={endYmd} onChange={(e) => setEndYmd(e.target.value)} />
-        </div>
+        <DatePicker label="Entrega" required value={startYmd ? fromYMD(startYmd) : null} onChange={(value) => setStartYmd(value ? toYMD(value) : "")} clearable={false} />
+        <DatePicker label="Regreso" required value={endYmd ? fromYMD(endYmd) : null} onChange={(value) => setEndYmd(value ? toYMD(value) : "")} clearable={false} disabledBefore={startYmd ? fromYMD(startYmd) : undefined} />
       </div>
 
       <div className="space-y-2">
@@ -261,25 +254,10 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
           return (
             <div key={line.key} className="flex items-end gap-2 rounded-xl border bg-card p-2.5">
               <div className="min-w-0 flex-1">
-                <Select
-                  value={line.variantId}
-                  onValueChange={(v) => patchLine(line.key, { variantId: v, quantity: 1 })}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar artículo…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.map((u) => (
-                      <SelectItem key={u.variantId} value={u.variantId}>
-                        {u.name} · {u.totalUnits} disp. · {fmtMoney(u.price)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormCombobox label="Artículo" required value={line.variantId} onChange={(value) => patchLine(line.key, { variantId: value, quantity: 1 })} options={units.map((item) => ({ value: item.variantId, label: item.name, meta: `${item.totalUnits} disponibles · ${fmtMoney(item.price)}` }))} placeholder="Seleccionar artículo…" />
               </div>
               <div className="w-24">
-                <Label className="text-xs">Unidades</Label>
-                <Input
+                <InputGroupField label="Unidades"
                   type="number"
                   min={1}
                   max={unit?.totalUnits ?? 1}

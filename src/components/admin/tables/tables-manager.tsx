@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DialogComponent } from "@/components/ui/dialog";
 import { InputGroupField } from "@/components/base/input-group-field";
+import { FormCombobox } from "@/components/base/form-combobox";
 import { Spinner } from "@/components/base/spinner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ResizableSplit } from "@/components/ui/resizable-split";
@@ -53,6 +54,7 @@ interface TableData {
   height: number | null;
   posX: number | null;
   posY: number | null;
+  rotation: number;
   room: { id: string; name: string } | null;
   location: { id: string; name: string } | null;
   // Aviso de llegada: reservación confirmada próxima (la manda /api/tables).
@@ -120,6 +122,7 @@ const planOf = (t: TableData): PlanTable & {
   posX: t.posX,
   posY: t.posY,
   status: t.status,
+  rotation: t.rotation ?? 0,
   upcomingReservation: t.upcomingReservation ?? null,
 });
 
@@ -841,7 +844,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
                 )}
               >
                 {/* Actions on hover */}
-                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute right-2 top-2 flex gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                   <button
                     onClick={(e) => { e.stopPropagation(); setHistoryTable(t); }}
                     title="Historial"
@@ -944,44 +947,9 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
             onChange={(e) => setFormCapacity(e.target.value)}
             leftIcon={<Users className="w-4 h-4 text-slate-400" />}
           />
-          <div>
-            <label className="text-sm font-medium mb-1 block">Sucursal</label>
-            <select
-              value={formLocation}
-              onChange={(e) => setFormLocation(e.target.value)}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Sin sucursal</option>
-              {locations.map((l) => (
-                <option key={l.id} value={l.id}>{l.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Sala</label>
-            <select
-              value={formRoom}
-              onChange={(e) => setFormRoom(e.target.value)}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Sin sala</option>
-              {rooms.map((r) => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-1 block">Forma</label>
-            <select
-              value={formShape}
-              onChange={(e) => setFormShape(e.target.value)}
-              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              {SHAPE_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
-          </div>
+          <FormCombobox label="Sucursal" icon={<MapPin className="size-4" />} value={formLocation} onChange={setFormLocation} onClear={() => setFormLocation("")} options={locations.map((location) => ({ value: location.id, label: location.name }))} placeholder="Sin sucursal" helper="La mesa sólo estará disponible en la sucursal seleccionada." />
+          <FormCombobox label="Sala" icon={<DoorOpen className="size-4" />} value={formRoom} onChange={setFormRoom} onClear={() => setFormRoom("")} options={rooms.map((room) => ({ value: room.id, label: room.name }))} placeholder="Sin sala" helper="Agruparla en una sala permite colocarla dentro de su plano visual." />
+          <FormCombobox label="Forma" required icon={<Armchair className="size-4" />} value={formShape} onChange={setFormShape} clearable={false} options={SHAPE_OPTIONS} helper="La forma y orientación ayudan al equipo a reconocer la mesa en el plano." />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancelar
@@ -998,6 +966,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         open={roomDialogOpen}
         onOpenChange={setRoomDialogOpen}
         title={roomEditing ? `Renombrar sala` : "Nueva sala"}
+        description={roomEditing ? "Actualiza el nombre con el que el equipo identifica este espacio." : "Una sala agrupa mesas dentro de un mismo espacio, por ejemplo Salón principal, Terraza o Bar."}
       >
         <div className="space-y-4 p-4">
           <InputGroupField

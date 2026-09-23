@@ -118,7 +118,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { number, name, capacity, locationId, roomId, shape, width, height, posX, posY } = body;
+    const { number, name, capacity, locationId, roomId, shape, width, height, posX, posY, rotation } = body;
 
     if (!number) {
       return NextResponse.json({ ok: false, error: "Número de mesa requerido" }, { status: 400 });
@@ -148,6 +148,7 @@ export async function POST(req: Request) {
         qrToken,
         posX: posX != null ? Number(posX) : null,
         posY: posY != null ? Number(posY) : null,
+        rotation: rotation != null ? Math.round(Number(rotation)) % 360 : 0,
       },
     });
 
@@ -170,7 +171,7 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, number, name, capacity, status, locationId, roomId, shape, width, height, posX, posY } = body;
+    const { id, number, name, capacity, status, locationId, roomId, shape, width, height, posX, posY, rotation } = body;
 
     if (!id) {
       return NextResponse.json({ ok: false, error: "ID de mesa requerido" }, { status: 400 });
@@ -186,7 +187,8 @@ export async function PUT(req: Request) {
       width !== undefined ||
       height !== undefined ||
       posX !== undefined ||
-      posY !== undefined;
+      posY !== undefined ||
+      rotation !== undefined;
     const isStatusChange = typeof status === "string" && status.length > 0;
 
     if (isConfigChange && !hasPermission(session, "locations.manage")) {
@@ -219,6 +221,7 @@ export async function PUT(req: Request) {
         height: height !== undefined ? (height != null ? Number(height) : null) : undefined,
         posX: posX !== undefined ? (posX != null ? Number(posX) : null) : undefined,
         posY: posY !== undefined ? (posY != null ? Number(posY) : null) : undefined,
+        rotation: rotation !== undefined ? ((Math.round(Number(rotation)) % 360) + 360) % 360 : undefined,
       },
       include: {
         location: { select: { name: true } },

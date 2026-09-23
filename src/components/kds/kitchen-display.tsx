@@ -561,8 +561,10 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
             variant={soundEnabled ? "default" : "outline"}
             size="sm"
             onClick={() => setSoundEnabled(!soundEnabled)}
+            aria-label={soundEnabled ? "Desactivar alertas sonoras" : "Activar alertas sonoras"}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            <span className="hidden sm:inline">{soundEnabled ? "Sonido activo" : "Sin sonido"}</span>
           </Button>
           <Button variant="outline" size="sm" onClick={load}>
             Actualizar
@@ -628,10 +630,12 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
 
       {/* Orders grid */}
       {orders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed bg-card/70 px-6 text-center text-muted-foreground">
           <ChefHat className="w-12 h-12 mb-4 opacity-30" />
           <p className="text-lg font-medium">Sin órdenes pendientes</p>
           <p className="text-sm">Las nuevas órdenes aparecerán aquí automáticamente.</p>
+          <p className="mt-1 max-w-md text-xs">Cuando llegue una orden, inicia su preparación desde la tarjeta, marca cada artículo listo y finalmente avisa que el pedido está completo.</p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={load}>Comprobar ahora</Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

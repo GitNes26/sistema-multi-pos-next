@@ -69,6 +69,7 @@ export async function POST(req: Request) {
         label: typeof body?.label === "string" && body.label.trim() ? body.label.trim().slice(0, 60) : null,
         posX,
         posY,
+        rotation: body?.rotation != null ? ((Math.round(Number(body.rotation)) % 360) + 360) % 360 : 0,
       },
     });
     return NextResponse.json({ ok: true, node });
@@ -111,6 +112,7 @@ export async function PUT(req: Request) {
         posX: body.posX != null ? Math.round(Number(body.posX)) : undefined,
         posY: body.posY != null ? Math.round(Number(body.posY)) : undefined,
         roomId: body.roomId !== undefined ? body.roomId || null : undefined,
+        rotation: body.rotation !== undefined ? ((Math.round(Number(body.rotation)) % 360) + 360) % 360 : undefined,
       },
     });
     return NextResponse.json({ ok: true, node });

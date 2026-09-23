@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, Loader2, MapPin, Minus, MousePointer2, Plus, Trash2 } from "lucide-react";
+import { Clock, Loader2, MapPin, Minus, MousePointer2, Plus, RotateCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { swalError, swalToast } from "@/lib/swal";
@@ -236,6 +236,27 @@ export function FloorPlanEditor({
       onChanged();
     } catch (err) {
       swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
+    }
+  };
+
+  const rotateSelected = async () => {
+    if (selectedTable) {
+      await patchTable(selectedTable.id, { rotation: ((selectedTable.rotation ?? 0) + 45) % 360 });
+      return;
+    }
+    if (selectedNode) {
+      try {
+        const response = await fetch("/api/tables/plan-nodes", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: selectedNode.id, rotation: ((selectedNode.rotation ?? 0) + 45) % 360 }),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || !body.ok) throw new Error(body.error || "No se pudo girar");
+        onChanged();
+      } catch (error) {
+        swalError("No se pudo girar el elemento", error instanceof Error ? error.message : undefined);
+      }
     }
   };
 
@@ -475,6 +496,9 @@ export function FloorPlanEditor({
             />
           </div>
           <div className="ml-auto flex gap-2">
+            <Button variant="outline" size="sm" onClick={rotateSelected} title="Girar 45 grados">
+              <RotateCw className="size-3.5" /> Girar
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
               Cerrar
             </Button>
@@ -505,6 +529,9 @@ export function FloorPlanEditor({
             />
           </div>
           <div className="ml-auto flex gap-2">
+            <Button variant="outline" size="sm" onClick={rotateSelected} title="Girar 45 grados">
+              <RotateCw className="size-3.5" /> Girar
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
               Cerrar
             </Button>

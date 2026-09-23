@@ -16,6 +16,7 @@ export interface PlanTable {
   posX: number | null;
   posY: number | null;
   status: string;
+  rotation?: number;
 }
 
 export interface PlanNode {
@@ -25,6 +26,7 @@ export interface PlanNode {
   roomId: string | null;
   posX: number;
   posY: number;
+  rotation?: number;
 }
 
 export const PLAN_NODE_META: Record<
@@ -103,7 +105,7 @@ export function PlanTableElement({
         selected && "z-10 ring-2 ring-primary",
         className
       )}
-      style={{ left: x, top: y, width: w, height: h, transform: "translate(-50%, -50%)" }}
+      style={{ left: x, top: y, width: w, height: h, transform: `translate(-50%, -50%) rotate(${table.rotation ?? 0}deg)` }}
       title={`Mesa ${table.number} · ${table.capacity} pers.${label ? ` · ${label}` : ""}`}
     >
       <span className="text-sm font-bold leading-none">{table.number}</span>
@@ -150,7 +152,7 @@ export function PlanNodeElement({
         selected && "z-10 ring-2 ring-primary",
         className
       )}
-      style={{ left: x, top: y, width: 64, height: 48, transform: "translate(-50%, -50%)" }}
+      style={{ left: x, top: y, width: 64, height: 48, transform: `translate(-50%, -50%) rotate(${node.rotation ?? 0}deg)` }}
       title={node.label ? `${meta.label} · ${node.label}` : meta.label}
     >
       <span className="text-sm leading-none">{meta.icon}</span>

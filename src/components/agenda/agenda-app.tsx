@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowLeft,
   CalendarDays,
@@ -577,9 +578,16 @@ function AssignmentDialog({
     >
       <div className="max-h-[50vh] space-y-1.5 overflow-y-auto pr-1">
         {services.length === 0 && (
-          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-            No hay servicios en el catálogo. Crea productos sin inventario en Catálogos → Productos.
-          </p>
+          <div className="rounded-xl border border-dashed p-6 text-center">
+            <p className="text-sm font-semibold">Primero registra los servicios</p>
+            <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
+              Ve a Catálogos → Productos y servicios, crea un registro de tipo «Personalizado» y
+              define sus variantes. Después vuelve aquí para asignarlo al personal y establecer su duración.
+            </p>
+            <Button asChild size="sm" className="mt-3">
+              <Link href="/admin/products"><Plus className="size-4" /> Crear servicio</Link>
+            </Button>
+          </div>
         )}
         {services.map((sv) => {
           const row = rows[sv.variantId];

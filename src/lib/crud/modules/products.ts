@@ -22,6 +22,7 @@ export interface ProductOptionDto {
   required: boolean;
   minSelect: number;
   maxSelect: number;
+  kind: "variant" | "topic";
   values: { id: string; value: string; position: number; extraPrice: number; isActive: boolean }[];
 }
 
@@ -88,6 +89,7 @@ type ProductRow = {
     required: boolean;
     minSelect: number;
     maxSelect: number;
+    kind: "variant" | "topic";
     values: { id: string; value: string; position: number; extraPrice: { toNumber(): number } | number; isActive: boolean }[];
   }[];
   variants: {
@@ -120,6 +122,7 @@ const include = {
       required: true,
       minSelect: true,
       maxSelect: true,
+      kind: true,
       values: {
         select: { id: true, value: true, position: true, extraPrice: true, isActive: true },
         orderBy: { position: "asc" },
@@ -201,6 +204,7 @@ function serialize(p: ProductRow): ProductDto {
       required: o.required,
       minSelect: o.minSelect,
       maxSelect: o.maxSelect,
+      kind: o.kind,
       values: o.values.map((v) => ({
         id: v.id,
         value: v.value,
@@ -327,10 +331,12 @@ export const productsModule: CrudModule<ProductDto> = {
     // generan variantes (se crean manualmente vía Variantes).
     if (productType === "standard" || productType === "custom") {
       const options = parseOptions(data.options);
-      if (productType === "standard" && options.length > 0) {
+      const variantOptions = parseOptions(data.variantOptions);
+      const topicOptions = parseOptions(data.topicOptions);
+      if ((productType === "standard" && options.length > 0) || (productType === "custom" && variantOptions.length > 0)) {
         // Opciones definidas → generar combinaciones de variantes automáticamente.
         const base = data.initialVariant as Record<string, unknown> | undefined;
-        await createOptionsWithVariants(organizationId, product.id, options, {
+        await createOptionsWithVariants(organizationId, product.id, productType === "custom" ? variantOptions : options, {
           price: Number(base?.price) || 0,
           cost: Number(base?.cost) || 0,
         });
@@ -349,6 +355,9 @@ export const productsModule: CrudModule<ProductDto> = {
           },
         });
         await syncVariantInventory(organizationId, product.id, variant.id);
+      }
+      if (productType === "custom" && topicOptions.length > 0) {
+        await createTopics(product.id, topicOptions);
       }
     }
 
@@ -520,7 +529,7 @@ async function createOptionsWithVariants(
   for (const opt of options) {
     pos += 1;
     const option = await prisma.productOption.create({
-      data: { productId, name: opt.name, position: pos },
+      data: { productId, name: opt.name, position: pos, kind: "variant" },
     });
     const values: { valueId: string; value: string }[] = [];
     let vpos = 0;
@@ -548,6 +557,24 @@ async function createOptionsWithVariants(
       },
     });
     await syncVariantInventory(organizationId, productId, variant.id);
+  }
+}
+
+async function createTopics(productId: string, options: OptionInput[]) {
+  let pos = 0;
+  for (const opt of options) {
+    pos += 1;
+    await prisma.productOption.create({
+      data: {
+        productId,
+        name: opt.name,
+        position: pos,
+        kind: "topic",
+        values: {
+          create: opt.values.map((value, index) => ({ value, position: index + 1 })),
+        },
+      },
+    });
   }
 }
 
@@ -747,6 +774,7 @@ const optionsInclude = {
       required: true,
       minSelect: true,
       maxSelect: true,
+      kind: true,
       values: {
         select: { id: true, value: true, position: true, extraPrice: true, isActive: true },
         orderBy: { position: "asc" },
@@ -769,6 +797,7 @@ export async function getProductOptions(organizationId: string, productId: strin
     required: o.required,
     minSelect: o.minSelect,
     maxSelect: o.maxSelect,
+    kind: o.kind,
     values: o.values.map((v) => ({
       id: v.id,
       value: v.value,
@@ -789,7 +818,7 @@ export async function getProductOptions(organizationId: string, productId: strin
 async function regenerateVariantsFromOptions(organizationId: string, productId: string) {
   // 1. Fetch fresh option values grouped by option (in position order)
   const freshOptions = await prisma.productOption.findMany({
-    where: { productId },
+    where: { productId, kind: "variant" },
     orderBy: { position: "asc" },
     select: {
       name: true,
@@ -922,7 +951,8 @@ export interface SaveOptionInput {
 export async function saveProductOptions(
   organizationId: string,
   productId: string,
-  options: SaveOptionInput[]
+  options: SaveOptionInput[],
+  requestedKind?: "variant" | "topic"
 ): Promise<ProductOptionDto[]> {
   const product = await prisma.product.findFirst({
     where: { id: productId, organizationId, productType: { in: ["standard", "custom"] } },
@@ -930,9 +960,10 @@ export async function saveProductOptions(
   });
   if (!product) throw new CrudError("Producto no encontrado o no es estándar/personalizado", 400);
   const isCustom = product.productType === "custom";
+  const kind = isCustom ? (requestedKind ?? "topic") : "variant";
 
   const existing = await prisma.productOption.findMany({
-    where: { productId },
+    where: { productId, kind },
     select: { id: true },
   });
   const existingIds = new Set(existing.map((o) => o.id));
@@ -966,6 +997,7 @@ export async function saveProductOptions(
             required: opt.required !== false,
             minSelect,
             maxSelect,
+            kind,
           },
         })
       : await prisma.productOption.create({
@@ -976,6 +1008,7 @@ export async function saveProductOptions(
             required: opt.required !== false,
             minSelect,
             maxSelect,
+            kind,
           },
         });
 
@@ -1022,7 +1055,7 @@ export async function saveProductOptions(
   // ── Regenerar variantes solo en productos estándar: en productos
   // personalizados las opciones son tópicos del constructor y NO generan
   // combinaciones de variantes (estas se crean manualmente).
-  if (!isCustom) {
+  if (!isCustom || kind === "variant") {
     await regenerateVariantsFromOptions(organizationId, productId);
   }
 
