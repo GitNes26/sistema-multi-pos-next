@@ -19,14 +19,16 @@ import {
   ImageIcon,
   ListTree,
   MessageSquareText,
+  SlidersHorizontal,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { InputGroupField } from "@/components/base/input-group-field"
+import { FormCombobox } from "@/components/base/form-combobox"
 import { cn } from "@/lib/utils"
-import { optionsApi, type ProductOption } from "@/lib/api"
+import { optionsApi, type ProductOption, type ProductOptionVariantRule } from "@/lib/api"
 import { swalToast } from "@/lib/swal"
 import { OptionSelect } from "./option-select"
 import { Attachment } from "@/components/base/attachment"
@@ -264,6 +266,8 @@ export function ProductsForm({
   const [variantOptions, setVariantOptions] = useState<ProductOption[]>(
     initialOptions.filter((option) => option.kind === "variant")
   )
+  const saleVariants = ((initial?.variants as { id?: string; name?: string }[]) ?? [])
+    .filter((variant): variant is { id: string; name?: string } => Boolean(variant.id))
   const [optionsBusy, setOptionsBusy] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState<string>()
@@ -491,6 +495,7 @@ export function ProductsForm({
             Math.max(0, Number(o.minSelect) || 0),
             Number(o.maxSelect) || 1
           ),
+          variantRules: o.variantRules ?? [],
           values: o.values
             .filter((v) => v.value.trim())
             .map((v) => ({
@@ -568,6 +573,25 @@ export function ProductsForm({
     setOptions((prev) =>
       prev.map((o, idx) => (idx === i ? { ...o, ...patch } : o))
     )
+  }
+  const enableVariantRules = (i: number) => {
+    const option = options[i]
+    const maximum = Math.max(1, Number(option.maxSelect) || 1)
+    updateOption(i, {
+      variantRules: saleVariants.map((variant) => ({
+        variantId: variant.id,
+        included: maximum,
+        maxSelect: maximum,
+        overageMode: "blocked",
+        overagePrice: 0,
+      })),
+    })
+  }
+  const updateVariantRule = (i: number, variantId: string, patch: Partial<ProductOptionVariantRule>) => {
+    const current = options[i].variantRules ?? []
+    updateOption(i, {
+      variantRules: current.map((rule) => rule.variantId === variantId ? { ...rule, ...patch } : rule),
+    })
   }
   const removeOption = (i: number) => {
     setOptions((prev) => prev.filter((_, idx) => idx !== i))
@@ -1161,6 +1185,92 @@ export function ProductsForm({
                       <Plus className="size-3" /> Valor
                     </Button>
                   </div>
+                  {saleVariants.length > 0 && (
+                    <div className="space-y-2 rounded-lg border bg-muted/20 p-2.5">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="flex items-center gap-1.5 text-sm font-medium">
+                            <SlidersHorizontal className="size-4 text-muted-foreground" />
+                            Reglas por tamaño o presentación
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Define cuántas elecciones incluye cada variante y cómo cobrar las adicionales.
+                          </p>
+                        </div>
+                        {(opt.variantRules?.length ?? 0) === 0 ? (
+                          <Button type="button" variant="outline" size="sm" onClick={() => enableVariantRules(i)}>
+                            Configurar por variante
+                          </Button>
+                        ) : (
+                          <Button type="button" variant="ghost" size="sm" onClick={() => updateOption(i, { variantRules: [] })}>
+                            Usar una regla general
+                          </Button>
+                        )}
+                      </div>
+                      {(opt.variantRules?.length ?? 0) > 0 && (
+                        <div className="space-y-2">
+                          {saleVariants.map((variant) => {
+                            const rule = opt.variantRules?.find((item) => item.variantId === variant.id)
+                            if (!rule) return null
+                            return (
+                              <div key={variant.id} className="grid gap-2 rounded-lg border bg-background p-2 sm:grid-cols-[minmax(7rem,1fr)_7rem_7rem_minmax(10rem,1.3fr)] sm:items-end">
+                                <div className="pb-2 text-sm font-medium">{variant.name || "Presentación"}</div>
+                                <InputGroupField
+                                  id={`topic-${i}-${variant.id}-included`}
+                                  label="Incluidas"
+                                  leftIcon={<Check className="size-4" />}
+                                  type="number"
+                                  min={0}
+                                  value={String(rule.included)}
+                                  onChange={(event) => {
+                                    const included = Math.max(0, Number(event.target.value) || 0)
+                                    updateVariantRule(i, variant.id, { included, maxSelect: Math.max(included, rule.maxSelect) })
+                                  }}
+                                />
+                                <InputGroupField
+                                  id={`topic-${i}-${variant.id}-maximum`}
+                                  label="Máximo"
+                                  leftIcon={<Hash className="size-4" />}
+                                  type="number"
+                                  min={rule.included}
+                                  disabled={rule.overageMode === "blocked"}
+                                  value={String(rule.overageMode === "blocked" ? rule.included : rule.maxSelect)}
+                                  onChange={(event) => updateVariantRule(i, variant.id, { maxSelect: Math.max(rule.included, Number(event.target.value) || 0) })}
+                                />
+                                <FormCombobox
+                                    id={`topic-${i}-${variant.id}-charge`}
+                                    label="Al superar lo incluido"
+                                    icon={<DollarSign className="size-4" />}
+                                    value={rule.overageMode}
+                                    options={[
+                                      { value: "blocked", label: "No permitir adicionales" },
+                                      { value: "value_price", label: "Cobrar precio de cada opción" },
+                                      { value: "fixed", label: "Cobrar tarifa fija por adicional" },
+                                    ]}
+                                    onChange={(value) => updateVariantRule(i, variant.id, { overageMode: value as ProductOptionVariantRule["overageMode"] })}
+                                  />
+                                {rule.overageMode === "fixed" && (
+                                  <InputGroupField
+                                    id={`topic-${i}-${variant.id}-overagePrice`}
+                                    label="Tarifa por adicional"
+                                    leftIcon={<DollarSign className="size-4" />}
+                                    type="number"
+                                    min={0}
+                                    step="0.01"
+                                    value={String(rule.overagePrice)}
+                                    onChange={(event) => updateVariantRule(i, variant.id, { overagePrice: Math.max(0, Number(event.target.value) || 0) })}
+                                  />
+                                )}
+                              </div>
+                            )
+                          })}
+                          <p className="text-xs text-muted-foreground">
+                            Ejemplo: Ch incluye 1 sabor; Md incluye 2; Gr incluye 3. Puedes permitir un sabor extra con tarifa fija o con el precio asignado a ese sabor.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               <div className="flex items-center justify-between gap-2">

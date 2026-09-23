@@ -8,6 +8,7 @@ import {
   getCashierContext,
 } from "../helpers";
 import type { PosSalePayload } from "@/types/pos";
+import { attachPointPaymentToSale, claimPointPayment, releasePointPaymentClaim } from "@/lib/payments/server";
 
 export async function POST(req: Request) {
   const guard = await requirePosSession();
@@ -41,14 +42,31 @@ export async function POST(req: Request) {
     }
 
     const locationId = await resolveLocationId(organizationId, body.locationId);
-    const sale = await createSale(organizationId, locationId, body.payload, {
-      userId: session.user.id,
-      employeeId: (await getCashierContext(session.user.id, organizationId)).employeeId,
-    });
+    const pointReferences = await Promise.all(
+      body.payload.payments
+        .filter((payment) => payment.reference?.startsWith("mp_point:"))
+        .map((payment) => claimPointPayment(organizationId, payment.reference!, payment.amount))
+    );
+    let sale;
+    try {
+      sale = await createSale(organizationId, locationId, body.payload, {
+        userId: session.user.id,
+        employeeId: (await getCashierContext(session.user.id, organizationId)).employeeId,
+      });
+    } catch (error) {
+      await Promise.all(pointReferences.filter((id): id is string => Boolean(id)).map(releasePointPaymentClaim));
+      throw error;
+    }
+    for (const intentId of pointReferences) {
+      if (intentId) await attachPointPaymentToSale(intentId, sale.id);
+    }
     return NextResponse.json({ ok: true, sale });
   } catch (err) {
     if (err instanceof PosError) {
       return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
+    }
+    if (err instanceof Error && /Point|Mercado Pago/i.test(err.message)) {
+      return NextResponse.json({ ok: false, error: err.message }, { status: 409 });
     }
     console.error("[pos/sales]", err);
     return NextResponse.json({ ok: false, error: "Error al registrar la venta" }, { status: 500 });

@@ -39,7 +39,8 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
     prisma.organization.findUnique({ where: { id: organizationId }, select: { pointValue: true } }),
   ]);
 
-  const estimatedHeight = Math.max(360, 285 + sale.items.length * 34 + sale.discounts.length * 12 + sale.payments.length * 12 + (company?.ticketFooter ? 28 : 0));
+  const optionLineCount = sale.items.reduce((sum, item) => sum + (Array.isArray(item.selectedOptions) ? item.selectedOptions.length : 0), 0);
+  const estimatedHeight = Math.max(420, 320 + sale.items.length * 42 + optionLineCount * 12 + sale.discounts.length * 14 + sale.payments.length * 14 + (company?.ticketFooter ? 40 : 0));
 
   const doc = new PDFDocument({
     size: [226.77, estimatedHeight],
@@ -54,9 +55,10 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
   });
 
   const line = (l: string, r: string) => {
-    doc.font("Courier").fontSize(8);
-    doc.text(l, 12, undefined, { continued: true, width: 200 });
-    doc.text(r, { align: "right", width: 200 });
+    const y = doc.y;
+    doc.font("Courier").fontSize(8).text(l, 12, y, { width: 128, lineBreak: false });
+    doc.text(r, 140, y, { align: "right", width: 74, lineBreak: false });
+    doc.y = y + 11;
   };
 
   // Logo de la empresa — use absolute URL
@@ -103,11 +105,16 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
 
   // Items
   for (const i of sale.items) {
-    doc.font("Courier-Bold").fontSize(8).text(i.productName, 12);
+    doc.font("Courier-Bold").fontSize(8).text([i.productName, i.variantName].filter(Boolean).join(" · "), 12, doc.y, { width: 202 });
     doc.font("Courier").fontSize(7);
     if (i.bulkQuantityDisplay) doc.text(i.bulkQuantityDisplay, 12);
-    doc.text(`${Number(i.quantity)} x ${MXN(Number(i.unitPrice))}`, 12, doc.y, { continued: true, width: 200 });
-    doc.text(MXN(Number(i.lineTotal ?? 0)), { align: "right", width: 200 });
+    if (Array.isArray(i.selectedOptions)) {
+      for (const selected of i.selectedOptions as Array<{ optionName?: string; values?: Array<{ value?: string; extraPrice?: number }> }>) {
+        const values = (selected.values ?? []).map((value) => `${value.value ?? ""}${Number(value.extraPrice ?? 0) > 0 ? ` +${MXN(Number(value.extraPrice))}` : ""}`).join(", ");
+        if (values) doc.text(`${selected.optionName ?? "Opción"}: ${values}`, 16, doc.y, { width: 196 });
+      }
+    }
+    line(`${Number(i.quantity)} x ${MXN(Number(i.unitPrice))}`, MXN(Number(i.lineTotal ?? 0)));
   }
 
   doc.moveTo(12, doc.y + 4).lineTo(214.77, doc.y + 4).dash(2, { space: 2 }).stroke();

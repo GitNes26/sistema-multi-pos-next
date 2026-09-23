@@ -1,5 +1,9 @@
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
+import {
+  parseRecipeVariantSelections,
+  resolveRecipeIngredientVariant,
+} from "@/lib/inventory/recipe-selection"
 
 export interface RecipeInput {
   variantId?: string | null
@@ -172,6 +176,19 @@ export async function consumeRecipeIngredients(
     where: { organizationId, productId: { in: productIds } },
   })
   if (!recipes.length) return
+  const generalIngredientIds = [...new Set(recipes.map((recipe) => recipe.ingredientProductId).filter((id): id is string => Boolean(id)))]
+  const generalVariants = generalIngredientIds.length
+    ? await tx.productVariant.findMany({
+        where: { organizationId, productId: { in: generalIngredientIds }, isActive: true, isAvailable: true },
+        select: { id: true, productId: true },
+      })
+    : []
+  const variantsByProduct = new Map<string, { id: string }[]>()
+  for (const variant of generalVariants) {
+    const list = variantsByProduct.get(variant.productId) ?? []
+    list.push(variant)
+    variantsByProduct.set(variant.productId, list)
+  }
   const totals = new Map<
     string,
     { productId: string | null; variantId: string | null; quantity: number }
@@ -183,11 +200,26 @@ export async function consumeRecipeIngredients(
           option.valueIds ?? option.values?.map((value) => value.id) ?? []
       )
     )
+    const recipeVariantSelections = parseRecipeVariantSelections(valueIds)
     for (const recipe of recipes) {
       if (recipe.productId !== sold.productId) continue
       if (recipe.variantId && recipe.variantId !== sold.variantId) continue
       if (recipe.optionValueId && !valueIds.has(recipe.optionValueId)) continue
-      const key = recipe.ingredientVariantId ?? recipe.ingredientProductId
+      let resolvedIngredientVariantId = recipe.ingredientVariantId
+      let resolvedIngredientProductId = recipe.ingredientProductId
+      if (!resolvedIngredientVariantId && resolvedIngredientProductId) {
+        const candidates = variantsByProduct.get(resolvedIngredientProductId) ?? []
+        const selectedId = resolveRecipeIngredientVariant(
+          recipe.id,
+          candidates.map((candidate) => candidate.id),
+          recipeVariantSelections
+        )
+        if (selectedId) {
+          resolvedIngredientVariantId = selectedId
+          resolvedIngredientProductId = null
+        }
+      }
+      const key = resolvedIngredientVariantId ?? resolvedIngredientProductId
       if (!key) continue
       const required =
         Number(recipe.quantity) *
@@ -195,8 +227,8 @@ export async function consumeRecipeIngredients(
         (1 + Number(recipe.wastePercent) / 100)
       const current = totals.get(key)
       totals.set(key, {
-        productId: recipe.ingredientProductId,
-        variantId: recipe.ingredientVariantId,
+        productId: resolvedIngredientProductId,
+        variantId: resolvedIngredientVariantId,
         quantity: (current?.quantity ?? 0) + required,
       })
     }

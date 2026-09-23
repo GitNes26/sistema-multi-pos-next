@@ -43,6 +43,22 @@ export interface PosProductOption {
   minSelect: number
   maxSelect: number
   position: number
+  /** Opción derivada de receta que solo aplica a una variante del servicio. */
+  appliesToVariantId?: string | null
+  variantRules?: {
+    variantId: string
+    included: number
+    maxSelect: number
+    overageMode: "value_price" | "fixed" | "blocked"
+    overagePrice: number
+  }[]
+  effectiveRule?: {
+    variantId: string
+    included: number
+    maxSelect: number
+    overageMode: "value_price" | "fixed" | "blocked"
+    overagePrice: number
+  } | null
   values: PosProductOptionValue[]
 }
 

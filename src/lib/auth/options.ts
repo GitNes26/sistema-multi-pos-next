@@ -65,6 +65,7 @@ declare module "next-auth/jwt" {
     /** Sesión invalidada por re-validación en BD (usuario desactivado/eliminado). */
     invalid?: boolean
     authCheckedAt?: number
+    authVersion?: number
   }
 }
 
@@ -76,6 +77,7 @@ type ResolvedLoginUser = {
   passwordHash: string
   isActive: boolean
   isSuperadmin: boolean
+  authVersion: number
   /** Última organización activa recordada (para retomarla al volver a entrar). */
   lastOrganizationId: string | null
   employees: { organizationId: string }[]
@@ -103,6 +105,7 @@ export async function resolveLoginUser(
       passwordHash: true,
       isActive: true,
       isSuperadmin: true,
+      authVersion: true,
       lastOrganizationId: true,
       employees: { select: { organizationId: true } },
       customers: { select: { organizationId: true } },
@@ -143,6 +146,7 @@ export async function resolveLoginUser(
           passwordHash: true,
           isActive: true,
           isSuperadmin: true,
+          authVersion: true,
           lastOrganizationId: true,
           memberships: {
             select: { organizationId: true, role: true, roleId: true },
@@ -163,6 +167,7 @@ export async function resolveLoginUser(
       passwordHash: u.passwordHash,
       isActive: u.isActive,
       isSuperadmin: u.isSuperadmin,
+      authVersion: u.authVersion,
       lastOrganizationId: u.lastOrganizationId,
       employees: [{ organizationId: byEmployee.organizationId }],
       customers: [],
@@ -187,6 +192,7 @@ export async function resolveLoginUser(
           passwordHash: true,
           isActive: true,
           isSuperadmin: true,
+          authVersion: true,
           lastOrganizationId: true,
         },
       },
@@ -204,6 +210,7 @@ export async function resolveLoginUser(
       passwordHash: u.passwordHash,
       isActive: u.isActive,
       isSuperadmin: u.isSuperadmin,
+      authVersion: u.authVersion,
       lastOrganizationId: u.lastOrganizationId,
       employees: [],
       customers: [{ organizationId: byCustomer.organizationId }],
@@ -391,6 +398,7 @@ export const authOptions: NextAuthOptions = {
           businessMode,
           permissions,
           scope: kind.scope,
+          authVersion: user.authVersion,
         }
       },
     }),
@@ -420,6 +428,7 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email
         token.picture = user.image ?? token.picture
         token.authCheckedAt = Date.now()
+        token.authVersion = (user as typeof user & { authVersion?: number }).authVersion ?? 0
         return token
       }
 
@@ -497,7 +506,7 @@ export const authOptions: NextAuthOptions = {
         const [dbUser, activeOrganization] = await Promise.all([
           prisma.user.findUnique({
             where: { id: token.id },
-            select: { id: true, isActive: true },
+            select: { id: true, isActive: true, authVersion: true },
           }),
           activeOrganizationId
             ? prisma.organization.findUnique({
@@ -507,7 +516,7 @@ export const authOptions: NextAuthOptions = {
             : Promise.resolve(null),
         ])
         token.authCheckedAt = Date.now()
-        if (!dbUser || !dbUser.isActive) {
+        if (!dbUser || !dbUser.isActive || dbUser.authVersion !== (token.authVersion ?? 0)) {
           token.invalid = true
         } else if (activeOrganization) {
           token.organizationName = activeOrganization.name

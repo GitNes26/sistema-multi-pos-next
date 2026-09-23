@@ -18,6 +18,7 @@ import { customerMayUsePromotion, reservePromotionCustomerUse } from "@/lib/prom
 import { isFeatureEnabled } from "@/lib/features"
 import type { BusinessMode } from "@/lib/auth/options"
 import { maybeNotifyLowStock } from "@/lib/inventory/server"
+import { calculateOptionExtra, optionRuleForVariant, parseOptionVariantRules } from "@/lib/products/option-rules"
 import { consumeRecipeIngredients } from "@/lib/inventory/recipes"
 import { notifySaleCompleted } from "@/lib/notifications/events"
 import { notifyStaff } from "@/lib/notifications/staff"
@@ -233,6 +234,35 @@ export async function getPosCatalog(
     if (inv.productId) productStock.set(inv.productId, q)
   }
 
+  // Recetas que consumen un producto completo con varias variantes. Se
+  // convierten en una opción obligatoria del constructor para que el operador
+  // elija, por ejemplo, el color de tinte realmente utilizado.
+  const recipeChoiceRows = await prisma.productRecipeItem.findMany({
+    where: { organizationId, ingredientProductId: { not: null } },
+    select: {
+      id: true,
+      productId: true,
+      variantId: true,
+      ingredientProductId: true,
+    },
+  })
+  const recipeIngredientIds = [...new Set(recipeChoiceRows.map((row) => row.ingredientProductId).filter((id): id is string => Boolean(id)))]
+  const recipeIngredients = recipeIngredientIds.length
+    ? await prisma.product.findMany({
+        where: { organizationId, id: { in: recipeIngredientIds }, isActive: true, trackInventory: true },
+        select: {
+          id: true,
+          name: true,
+          variants: {
+            where: { isActive: true, isAvailable: true },
+            orderBy: { name: "asc" },
+            select: { id: true, name: true },
+          },
+        },
+      })
+    : []
+  const recipeIngredientMap = new Map(recipeIngredients.map((ingredient) => [ingredient.id, ingredient]))
+
   const products: PosProduct[] = []
 
   // Agrupar variantes estándar por producto (una card por producto).
@@ -406,6 +436,7 @@ export async function getPosCatalog(
         minSelect: o.minSelect,
         maxSelect: o.maxSelect,
         position: o.position,
+        variantRules: parseOptionVariantRules(o.variantRules),
         values: o.values.map((v) => ({
           id: v.id,
           value: v.value,
@@ -414,6 +445,28 @@ export async function getPosCatalog(
           isActive: v.isActive,
         })),
       }))
+      for (const recipe of recipeChoiceRows.filter((row) => row.productId === p.productId)) {
+        const ingredient = recipe.ingredientProductId
+          ? recipeIngredientMap.get(recipe.ingredientProductId)
+          : null
+        if (!ingredient || ingredient.variants.length <= 1) continue
+        p.options.push({
+          id: `recipe:${recipe.id}`,
+          name: `Elige ${ingredient.name}`,
+          required: true,
+          minSelect: 1,
+          maxSelect: 1,
+          position: 10_000 + p.options.length,
+          appliesToVariantId: recipe.variantId,
+          values: ingredient.variants.map((variant) => ({
+            id: `recipevar:${recipe.id}:${variant.id}`,
+            value: variant.name,
+            extraPrice: 0,
+            imageUrl: null,
+            isActive: (variantStock.get(variant.id) ?? 0) > 0,
+          })),
+        })
+      }
       p.hasOptions = p.options.length > 0
     } else {
       p.options = []
@@ -802,8 +855,9 @@ async function validateSaleAmounts(
               .variants?.[0]?.price ?? 0
           )
     let optionsExtra = 0
-    if (Array.isArray(item.selectedOptions) && item.selectedOptions.length) {
-      const valueIds = item.selectedOptions.flatMap(
+    if (product.productType === "custom") {
+      const submittedOptions = Array.isArray(item.selectedOptions) ? item.selectedOptions : []
+      const valueIds = submittedOptions.flatMap(
         (option) => option.valueIds ?? []
       )
       if (!valueIds.length)
@@ -811,21 +865,64 @@ async function validateSaleAmounts(
           "Las opciones del producto deben volver a seleccionarse",
           400
         )
-      const values = await prisma.productOptionValue.findMany({
-        where: {
-          id: { in: valueIds },
-          isActive: true,
-          option: { productId: item.productId },
-        },
-        select: { id: true, extraPrice: true },
+      const recipeValueIds = valueIds.filter((id) => id.startsWith("recipevar:"))
+      const regularValueIds = valueIds.filter((id) => !id.startsWith("recipevar:"))
+      const configuredOptions = await prisma.productOption.findMany({
+        where: { productId: item.productId, kind: "topic" },
+        include: { values: { where: { isActive: true } } },
       })
-      if (values.length !== new Set(valueIds).size) {
-        throw new PosError("Una opción elegida ya no está disponible", 409)
-      }
-      optionsExtra = values.reduce(
-        (sum, value) => sum + Math.max(0, toNum(value.extraPrice)),
-        0
+      const submittedByOption = new Map(
+        submittedOptions
+          .filter((submitted) => submitted.optionId && !submitted.optionId.startsWith("recipe:"))
+          .map((submitted) => [submitted.optionId!, submitted.valueIds ?? []])
       )
+      if ([...submittedByOption.keys()].some((id) => !configuredOptions.some((option) => option.id === id)))
+        throw new PosError("Opciones de producto inválidas", 400)
+      for (const option of configuredOptions) {
+        const selectedIds = [...new Set(submittedByOption.get(option.id) ?? [])]
+        const rule = optionRuleForVariant(option.variantRules, item.variantId)
+        const maximum = rule?.maxSelect ?? option.maxSelect
+        const minimum = option.required ? Math.max(1, option.minSelect) : option.minSelect
+        if (selectedIds.length < minimum || selectedIds.length > maximum)
+          throw new PosError(`Completa correctamente la opción "${option.name}"`, 400)
+        const selectedValues = selectedIds.map((id) => option.values.find((value) => value.id === id))
+        if (selectedValues.some((value) => !value))
+          throw new PosError("Una opción elegida ya no está disponible", 409)
+        optionsExtra += calculateOptionExtra(
+          selectedValues.map((value) => toNum(value!.extraPrice)),
+          rule
+        )
+      }
+      if (configuredOptions.length && regularValueIds.length !== new Set(regularValueIds).size)
+        throw new PosError("Las opciones elegidas están duplicadas", 400)
+      for (const encoded of recipeValueIds) {
+        const [, recipeId, ingredientVariantId] = encoded.split(":")
+        const recipe = await prisma.productRecipeItem.findFirst({
+          where: {
+            id: recipeId,
+            organizationId,
+            productId: item.productId,
+            ...(item.variantId
+              ? { OR: [{ variantId: null }, { variantId: item.variantId }] }
+              : { variantId: null }),
+          },
+          select: { ingredientProductId: true },
+        })
+        const ingredientVariant = recipe?.ingredientProductId
+          ? await prisma.productVariant.findFirst({
+              where: {
+                id: ingredientVariantId,
+                organizationId,
+                productId: recipe.ingredientProductId,
+                isActive: true,
+                isAvailable: true,
+              },
+              select: { id: true },
+            })
+          : null
+        if (!recipe || !ingredientVariant)
+          throw new PosError("La variante de insumo elegida ya no está disponible", 409)
+      }
     }
     const trustedUnitPrice = round2(basePrice + optionsExtra)
     if (Math.abs(Number(item.unitPrice) - trustedUnitPrice) > 0.01) {

@@ -22,7 +22,7 @@ export default async function PaymentsSettingsPage() {
       <PageHeader
         icon={<CreditCard className="size-5" />}
         title="Pasarelas de pago"
-        description="Elige entre Stripe o MercadoPago para cobrar en línea."
+        description="Configura pagos en línea y cobros presenciales con Mercado Pago Point."
       />
       <PaymentsForm />
     </div>

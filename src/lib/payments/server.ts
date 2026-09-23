@@ -1,4 +1,4 @@
-import { paymentMatches, verifyStripeSignature, verifyMercadoPagoSignature } from "./verification";
+import { isMercadoPagoPointPaid, paymentMatches, verifyStripeSignature, verifyMercadoPagoSignature } from "./verification";
 export { verifyStripeSignature } from "./verification";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
@@ -6,6 +6,7 @@ import { broadcastOrderStatus } from "@/lib/portal/live";
 import { notifyOrderEvent } from "@/lib/notifications/events";
 import { notifyStaff } from "@/lib/notifications/staff";
 import { persistNotification } from "@/lib/notifications/helpers";
+import { randomUUID } from "node:crypto";
 
 // FASE 16 — Pasarelas de pago (Stripe + MercadoPago).
 // Estructura y lógica; las claves se configuran por empresa en /admin/settings/payments.
@@ -23,13 +24,21 @@ export interface GatewayConfig {
     accessToken: string;
     publicKey: string;
     webhookSecret: string;
+    pointEnabled: boolean;
+    terminalId: string;
   };
 }
 
 const EMPTY_CONFIG: GatewayConfig = {
   provider: "none",
   stripe: { secretKey: "", publicKey: "", webhookSecret: "" },
-  mercadopago: { accessToken: "", publicKey: "", webhookSecret: "" },
+  mercadopago: {
+    accessToken: "",
+    publicKey: "",
+    webhookSecret: "",
+    pointEnabled: false,
+    terminalId: "",
+  },
 };
 
 function appUrl(): string {
@@ -40,17 +49,197 @@ function appUrl(): string {
   ).replace(/\/$/, "");
 }
 
+export function mercadoPagoWebhookUrl(organizationId: string) {
+  const base = (process.env.MERCADOPAGO_WEBHOOK_URL ?? `${appUrl()}/api/payments/webhook/mercadopago`).replace(/\?+$/, "");
+  const separator = base.includes("?") ? "&" : "?";
+  return `${base}${separator}org=${encodeURIComponent(organizationId)}`;
+}
+
 export async function getPaymentConfig(organizationId: string): Promise<GatewayConfig> {
   const org = await prisma.organization.findUnique({
     where: { id: organizationId },
     select: { paymentGateway: true },
   });
   const raw = (org?.paymentGateway ?? {}) as Partial<GatewayConfig>;
+  const storedMercadoPago: Partial<GatewayConfig["mercadopago"]> = raw.mercadopago ?? {};
   return {
     provider: raw.provider ?? "none",
     stripe: { ...EMPTY_CONFIG.stripe, ...(raw.stripe ?? {}) },
-    mercadopago: { ...EMPTY_CONFIG.mercadopago, ...(raw.mercadopago ?? {}) },
+    mercadopago: {
+      ...EMPTY_CONFIG.mercadopago,
+      ...storedMercadoPago,
+      accessToken: storedMercadoPago.accessToken || process.env.MERCADOPAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN || "",
+      publicKey: storedMercadoPago.publicKey || process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || process.env.MERCADOPAGO_PUBLIC_KEY || process.env.MP_PUBLIC_KEY || "",
+      webhookSecret: storedMercadoPago.webhookSecret || process.env.MERCADOPAGO_WEBHOOK_SECRET || process.env.MP_WEBHOOK_SECRET || "",
+    },
   };
+}
+
+export interface MercadoPagoTerminal {
+  id: string;
+  posId?: string;
+  storeId?: string;
+  externalPosId?: string;
+  operatingMode?: string;
+}
+
+type PointOrderResponse = {
+  id?: string;
+  type?: string;
+  external_reference?: string;
+  status?: string;
+  status_detail?: string;
+  transactions?: { payments?: Array<{ id?: string; amount?: string; status?: string; status_detail?: string }> };
+  message?: string;
+  error?: string;
+  errors?: Array<{ message?: string; details?: string }>;
+};
+
+function mercadoPagoError(data: PointOrderResponse, fallback: string) {
+  return data.message ?? data.error ?? data.errors?.map((item) => item.message ?? item.details).filter(Boolean).join(" · ") ?? fallback;
+}
+
+export async function listMercadoPagoTerminals(organizationId: string): Promise<MercadoPagoTerminal[]> {
+  const config = await getPaymentConfig(organizationId);
+  if (!config.mercadopago.accessToken) throw new Error("Access token de Mercado Pago no configurado");
+  const res = await fetch("https://api.mercadopago.com/terminals/v1/list?limit=50&offset=0", {
+    headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+  const data = (await res.json()) as { data?: { terminals?: Array<Record<string, string>> }; message?: string; error?: string };
+  if (!res.ok) throw new Error(data.message ?? data.error ?? "Mercado Pago no pudo consultar las terminales");
+  return (data.data?.terminals ?? []).map((terminal) => ({
+    id: terminal.id,
+    posId: terminal.pos_id,
+    storeId: terminal.store_id,
+    externalPosId: terminal.external_pos_id,
+    operatingMode: terminal.operating_mode,
+  }));
+}
+
+export async function createPointPayment(input: {
+  organizationId: string;
+  locationId: string;
+  userId: string;
+  amount: number;
+}): Promise<{ intentId: string; orderId: string; status: string; statusDetail?: string }> {
+  const config = await getPaymentConfig(input.organizationId);
+  const mp = config.mercadopago;
+  if (config.provider !== "mercadopago" || !mp.pointEnabled) throw new Error("Mercado Pago Point no está habilitado");
+  if (!mp.accessToken) throw new Error("Access token de Mercado Pago no configurado");
+  if (!mp.terminalId) throw new Error("Selecciona una terminal Point en Configuración → Pagos");
+  if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error("El monto del cobro no es válido");
+  const organization = await prisma.organization.findUniqueOrThrow({ where: { id: input.organizationId }, select: { currency: true } });
+  const idempotencyKey = randomUUID();
+  const externalReference = `pos_${randomUUID().replace(/-/g, "")}`.slice(0, 64);
+  const intent = await prisma.pointPaymentIntent.create({ data: {
+    organizationId: input.organizationId,
+    locationId: input.locationId,
+    userId: input.userId,
+    externalReference,
+    terminalId: mp.terminalId,
+    amount: Math.round(input.amount * 100) / 100,
+    currency: organization.currency,
+  } });
+  try {
+    const res = await fetch("https://api.mercadopago.com/v1/orders", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${mp.accessToken}`,
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        type: "point",
+        external_reference: externalReference,
+        expiration_time: "PT16M",
+        transactions: { payments: [{ amount: input.amount.toFixed(2) }] },
+        config: {
+          point: { terminal_id: mp.terminalId, print_on_terminal: "no_ticket" },
+          payment_method: { default_type: "credit_card" },
+        },
+        description: "Venta Multi-POS",
+      }),
+    });
+    const data = (await res.json()) as PointOrderResponse;
+    if (!res.ok || !data.id) throw new Error(mercadoPagoError(data, "Mercado Pago no pudo enviar el cobro a la terminal"));
+    const payment = data.transactions?.payments?.[0];
+    await prisma.pointPaymentIntent.update({ where: { id: intent.id }, data: {
+      orderId: data.id,
+      paymentId: payment?.id,
+      status: data.status ?? payment?.status ?? "created",
+      statusDetail: data.status_detail ?? payment?.status_detail,
+    } });
+    return { intentId: intent.id, orderId: data.id, status: data.status ?? "created", statusDetail: data.status_detail };
+  } catch (error) {
+    await prisma.pointPaymentIntent.update({ where: { id: intent.id }, data: { status: "failed", statusDetail: error instanceof Error ? error.message.slice(0, 190) : "Error" } });
+    throw error;
+  }
+}
+
+function pointIsPaid(data: PointOrderResponse) {
+  const payment = data.transactions?.payments?.[0];
+  return isMercadoPagoPointPaid(data.status, payment?.status);
+}
+
+export async function refreshPointPayment(organizationId: string, orderId: string) {
+  const config = await getPaymentConfig(organizationId);
+  const intent = await prisma.pointPaymentIntent.findFirst({ where: { organizationId, orderId } });
+  if (!intent || !config.mercadopago.accessToken) throw new Error("Cobro Point no encontrado");
+  const res = await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(orderId)}`, {
+    headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, "Content-Type": "application/json" }, cache: "no-store",
+  });
+  const data = (await res.json()) as PointOrderResponse;
+  if (!res.ok) throw new Error(mercadoPagoError(data, "No se pudo consultar el cobro Point"));
+  const payment = data.transactions?.payments?.[0];
+  const paid = pointIsPaid(data);
+  await prisma.pointPaymentIntent.update({ where: { id: intent.id }, data: {
+    paymentId: payment?.id ?? intent.paymentId,
+    status: ["claiming", "reconciled"].includes(intent.status)
+      ? intent.status
+      : paid ? "paid" : (data.status ?? payment?.status ?? intent.status),
+    statusDetail: data.status_detail ?? payment?.status_detail,
+    paidAt: paid && !intent.paidAt ? new Date() : intent.paidAt,
+  } });
+  return { intentId: intent.id, orderId, paymentId: payment?.id, status: paid ? "paid" : (data.status ?? payment?.status ?? intent.status), statusDetail: data.status_detail ?? payment?.status_detail, paid };
+}
+
+export async function cancelPointPayment(organizationId: string, orderId: string) {
+  const config = await getPaymentConfig(organizationId);
+  const intent = await prisma.pointPaymentIntent.findFirst({ where: { organizationId, orderId } });
+  if (!intent || !config.mercadopago.accessToken) throw new Error("Cobro Point no encontrado");
+  const res = await fetch(`https://api.mercadopago.com/v1/orders/${encodeURIComponent(orderId)}/cancel`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.mercadopago.accessToken}`, "Content-Type": "application/json", "X-Idempotency-Key": randomUUID() },
+  });
+  const data = (await res.json()) as PointOrderResponse;
+  if (!res.ok) throw new Error(mercadoPagoError(data, "La orden debe cancelarse desde la terminal"));
+  await prisma.pointPaymentIntent.update({ where: { id: intent.id }, data: { status: "canceled", statusDetail: data.status_detail ?? "canceled" } });
+  return { ok: true };
+}
+
+export async function claimPointPayment(organizationId: string, reference: string, amount: number) {
+  if (!reference.startsWith("mp_point:")) return null;
+  const orderId = reference.slice("mp_point:".length);
+  const refreshed = await refreshPointPayment(organizationId, orderId);
+  if (!refreshed.paid) throw new Error("El cobro en la terminal Point aún no está aprobado");
+  const intent = await prisma.pointPaymentIntent.findFirst({ where: { organizationId, orderId } });
+  if (!intent || intent.saleId || Math.round(Number(intent.amount) * 100) !== Math.round(amount * 100)) throw new Error("El cobro Point no coincide o ya fue utilizado");
+  const claimed = await prisma.pointPaymentIntent.updateMany({
+    where: { id: intent.id, saleId: null, status: "paid" },
+    data: { status: "claiming" },
+  });
+  if (!claimed.count) throw new Error("El cobro Point ya está siendo conciliado con otra venta");
+  return intent.id;
+}
+
+export async function attachPointPaymentToSale(intentId: string, saleId: string) {
+  const result = await prisma.pointPaymentIntent.updateMany({ where: { id: intentId, saleId: null, status: "claiming" }, data: { saleId, status: "reconciled" } });
+  if (!result.count) throw new Error("El cobro Point ya fue conciliado con otra venta");
+}
+
+export async function releasePointPaymentClaim(intentId: string) {
+  await prisma.pointPaymentIntent.updateMany({ where: { id: intentId, saleId: null, status: "claiming" }, data: { status: "paid" } });
 }
 
 export async function updatePaymentConfig(
@@ -261,7 +450,7 @@ async function createMercadoPagoPreference(
         currency_id: input.currency,
       })),
       external_reference: input.orderId,
-      notification_url: `${appUrl()}/api/payments/webhook/mercadopago?org=${organizationId}`,
+      notification_url: mercadoPagoWebhookUrl(organizationId),
       back_urls: { success, failure: cancel, pending: cancel },
       auto_return: "approved",
     }),
@@ -379,6 +568,16 @@ export async function processMercadoPagoWebhook(
   if (config.provider !== "mercadopago" || !config.mercadopago.accessToken ||
       headers.dataId !== String(paymentId) ||
       !verifyMercadoPagoSignature(headers.dataId, headers.requestId, headers.signature, config.mercadopago.webhookSecret)) return { ok: false };
+
+  // La API unificada de Point notifica el tópico `order`. La intención ya
+  // existe en nuestra BD, por lo que refrescarla deja el cobro conciliable
+  // incluso si el navegador del POS se cerró después de la aprobación.
+  if (payload.type === "order") {
+    const intent = await prisma.pointPaymentIntent.findFirst({ where: { organizationId, orderId: String(paymentId) } });
+    if (!intent) return { ok: true };
+    await refreshPointPayment(organizationId, String(paymentId));
+    return { ok: true };
+  }
 
   const res = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`, {
     headers: { Authorization: `Bearer ${config.mercadopago.accessToken}` },

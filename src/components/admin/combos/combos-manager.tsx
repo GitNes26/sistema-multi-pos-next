@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { InputGroupField } from "@/components/base/input-group-field"
+import { FormCombobox } from "@/components/base/form-combobox"
 import { SwitchField } from "@/components/base/switch-field"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -267,15 +268,17 @@ function ComboForm({
             return (
               <div
                 key={idx}
-                className="flex items-center gap-2 rounded-xl border bg-muted/30 p-3"
+                className="grid gap-2 rounded-xl border bg-muted/30 p-3 sm:grid-cols-[auto_minmax(12rem,1fr)_minmax(9rem,.7fr)_auto_auto_auto] sm:items-end"
               >
                 <GripVertical className="size-4 shrink-0 text-muted-foreground" />
 
                 {/* Product selector */}
-                <select
+                <FormCombobox
+                  id={`combo-product-${idx}`}
+                  label={`Producto ${idx + 1}`}
+                  icon={<Package className="size-4" />}
                   value={item.productId}
-                  onChange={(e) => {
-                    const newProductId = e.target.value
+                  onChange={(newProductId) => {
                     const newProduct = products.find((p) => p.id === newProductId)
                     const firstVariant = newProduct?.variants?.[0]
                     updateItem(idx, {
@@ -283,29 +286,21 @@ function ComboForm({
                       variantId: firstVariant?.id ?? "",
                     })
                   }}
-                  className="rounded-lg border bg-background px-2 py-1.5 text-sm"
-                >
-                  <option value="">Producto...</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  options={products.map((product) => ({ value: product.id, label: product.name, meta: product.variants.length > 1 ? `${product.variants.length} variantes` : money(product.variants[0]?.price ?? 0) }))}
+                  placeholder="Busca un producto"
+                  emptyText="No hay productos disponibles"
+                />
 
                 {/* Variant selector (only if multiple variants) */}
                 {hasMultipleVariants && (
-                  <select
+                  <FormCombobox
+                    id={`combo-variant-${idx}`}
+                    label="Variante"
+                    icon={<Puzzle className="size-4" />}
                     value={item.variantId}
-                    onChange={(e) => updateItem(idx, { variantId: e.target.value })}
-                    className="w-36 rounded-lg border bg-background px-2 py-1.5 text-sm"
-                  >
-                    {product?.variants?.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name} — {money(v.price)}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(variantId) => updateItem(idx, { variantId })}
+                    options={(product?.variants ?? []).map((variant) => ({ value: variant.id, label: variant.name, meta: money(variant.price) }))}
+                  />
                 )}
 
                 <div className="flex items-center gap-1">
@@ -518,12 +513,12 @@ export function CombosManager() {
           return (
             <div className="flex flex-wrap gap-1">
               {items.slice(0, 3).map((item) => (
-                <Badge key={item.id} variant="secondary" className="text-[10px]">
+                <Badge key={item.id} variant="secondary" className="text-xs">
                   {item.quantity}× {item.product.name}{item.variant?.name && item.variant.name !== "Default" ? ` (${item.variant.name})` : ""}
                 </Badge>
               ))}
               {items.length > 3 && (
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-xs">
                   +{items.length - 3}
                 </Badge>
               )}
@@ -674,7 +669,7 @@ export function CombosManager() {
                 </Badge>
               </div>              <div className="flex flex-wrap gap-1">
                 {combo.items.slice(0, 4).map((item) => (
-                  <Badge key={item.id} variant="secondary" className="text-[10px]">
+                  <Badge key={item.id} variant="secondary" className="text-xs">
                     {item.quantity}× {item.product.name}{item.variant?.name && item.variant.name !== "Default" ? ` (${item.variant.name})` : ""}
                   </Badge>
                 ))}

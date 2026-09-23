@@ -18,6 +18,7 @@ import {
   consumeRecipeIngredients,
   restoreRecipeIngredients,
 } from "@/lib/inventory/recipes"
+import { calculateOptionExtra, optionRuleForVariant, parseOptionVariantRules, type OptionVariantRule } from "@/lib/products/option-rules"
 import { categoryBranchIds } from "@/lib/catalog/categories"
 
 // FASE 13 — Servidor del portal de clientes: catálogo, pedidos, lealtad,
@@ -139,6 +140,8 @@ export interface PortalProductOption {
   required: boolean
   minSelect: number
   maxSelect: number
+  appliesToVariantId?: string | null
+  variantRules?: OptionVariantRule[]
   values: PortalProductOptionValue[]
 }
 
@@ -287,6 +290,7 @@ export async function getStorefront(
               required: o.required,
               minSelect: o.minSelect,
               maxSelect: o.maxSelect,
+              variantRules: parseOptionVariantRules(o.variantRules),
               values: o.values.map((val) => ({
                 id: val.id,
                 value: val.value,
@@ -311,6 +315,44 @@ export async function getStorefront(
   }
 
   const products: PortalProduct[] = [...stdByProduct.values()]
+
+  if (builderMode) {
+    const recipeRows = await prisma.productRecipeItem.findMany({
+      where: { organizationId, ingredientProductId: { not: null } },
+      select: { id: true, productId: true, variantId: true, ingredientProductId: true },
+    })
+    const ingredientIds = [...new Set(recipeRows.map((row) => row.ingredientProductId).filter((id): id is string => Boolean(id)))]
+    const ingredients = ingredientIds.length
+      ? await prisma.product.findMany({
+          where: { organizationId, id: { in: ingredientIds }, isActive: true, trackInventory: true },
+          select: { id: true, name: true, variants: { where: { isActive: true, isAvailable: true }, orderBy: { name: "asc" }, select: { id: true, name: true } } },
+        })
+      : []
+    const ingredientMap = new Map(ingredients.map((ingredient) => [ingredient.id, ingredient]))
+    for (const product of products) {
+      if (product.kind !== "custom") continue
+      for (const recipe of recipeRows.filter((row) => row.productId === product.productId)) {
+        const ingredient = recipe.ingredientProductId ? ingredientMap.get(recipe.ingredientProductId) : null
+        if (!ingredient || ingredient.variants.length <= 1) continue
+        product.options.push({
+          id: `recipe:${recipe.id}`,
+          name: `Elige ${ingredient.name}`,
+          position: 10_000 + product.options.length,
+          required: true,
+          minSelect: 1,
+          maxSelect: 1,
+          appliesToVariantId: recipe.variantId,
+          values: ingredient.variants.map((variant) => ({
+            id: `recipevar:${recipe.id}:${variant.id}`,
+            value: variant.name,
+            extraPrice: 0,
+            imageUrl: null,
+            isActive: (variantStock.get(variant.id) ?? 0) > 0,
+          })),
+        })
+      }
+    }
+  }
 
   for (const p of bulkRaw) {
     products.push({
@@ -1202,12 +1244,18 @@ export async function createPortalOrder(
       const submittedOptions = Array.isArray(item.selectedOptions)
         ? item.selectedOptions
         : []
-      const submittedByOption = new Map(
-        submittedOptions.map((option) => [option.optionId, option])
+      const recipeSelections = submittedOptions.filter((option) =>
+        option.optionId.startsWith("recipe:")
       )
-      if (submittedByOption.size !== submittedOptions.length)
+      const regularSelections = submittedOptions.filter(
+        (option) => !option.optionId.startsWith("recipe:")
+      )
+      const submittedByOption = new Map(
+        regularSelections.map((option) => [option.optionId, option])
+      )
+      if (submittedByOption.size !== regularSelections.length)
         throw new PortalError("Opciones de producto inválidas")
-      for (const submitted of submittedOptions) {
+      for (const submitted of regularSelections) {
         if (
           !configuredOptions.some((option) => option.id === submitted.optionId)
         ) {
@@ -1218,26 +1266,68 @@ export async function createPortalOrder(
         const submitted = submittedByOption.get(option.id)
         const submittedValues = submitted?.values ?? []
         const uniqueIds = new Set(submittedValues.map((value) => value.id))
+        const rule = optionRuleForVariant(option.variantRules, item.variantId)
         const minimum = option.required
           ? Math.max(1, option.minSelect)
           : option.minSelect
         if (
           uniqueIds.size !== submittedValues.length ||
           uniqueIds.size < minimum ||
-          uniqueIds.size > option.maxSelect
+          uniqueIds.size > (rule?.maxSelect ?? option.maxSelect)
         ) {
           throw new PortalError(
             `Completa correctamente la opción "${option.name}"`
           )
         }
+        const trustedPrices: number[] = []
         for (const valueId of uniqueIds) {
           const trustedValue = option.values.find(
             (value) => value.id === valueId
           )
           if (!trustedValue)
             throw new PortalError("Valor de opción no disponible")
-          optionsExtra = round2(optionsExtra + toNum(trustedValue.extraPrice))
+          trustedPrices.push(toNum(trustedValue.extraPrice))
         }
+        optionsExtra = round2(optionsExtra + calculateOptionExtra(trustedPrices, rule))
+      }
+      for (const selection of recipeSelections) {
+        const recipeId = selection.optionId.slice("recipe:".length)
+        if (
+          selection.values.length !== 1 ||
+          !selection.values[0]?.id.startsWith(`recipevar:${recipeId}:`)
+        ) {
+          throw new PortalError("Selecciona una variante válida del insumo")
+        }
+        const ingredientVariantId = selection.values[0].id.slice(
+          `recipevar:${recipeId}:`.length
+        )
+        const recipe = await prisma.productRecipeItem.findFirst({
+          where: {
+            id: recipeId,
+            organizationId,
+            productId: item.productId,
+            ...(item.variantId
+              ? { OR: [{ variantId: null }, { variantId: item.variantId }] }
+              : { variantId: null }),
+          },
+          select: { ingredientProductId: true },
+        })
+        const ingredientVariant = recipe?.ingredientProductId
+          ? await prisma.productVariant.findFirst({
+              where: {
+                id: ingredientVariantId,
+                organizationId,
+                productId: recipe.ingredientProductId,
+                isActive: true,
+                isAvailable: true,
+              },
+              select: { id: true },
+            })
+          : null
+        if (!recipe || !ingredientVariant)
+          throw new PortalError(
+            "La variante de insumo elegida ya no está disponible"
+          )
       }
     } else if (
       (item.selectedOptions?.length ?? 0) > 0 ||

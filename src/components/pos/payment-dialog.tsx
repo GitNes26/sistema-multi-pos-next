@@ -17,6 +17,9 @@ import {
   Wallet,
   Zap,
   ListChecks,
+  Loader2,
+  RadioTower,
+  XCircle,
 } from "lucide-react"
 import { DialogComponent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -98,6 +101,10 @@ export function PaymentDialog({
   const [tipMode, setTipMode] = useState<"none" | "percent" | "custom">("none")
   const [tipPercent, setTipPercent] = useState(15)
   const [tipCustom, setTipCustom] = useState("")
+  const [pointAvailable, setPointAvailable] = useState(false)
+  const [pointOrder, setPointOrder] = useState<{ orderId: string; amount: number } | null>(null)
+  const [pointStatus, setPointStatus] = useState("")
+  const [pointBusy, setPointBusy] = useState(false)
   const features = usePosStore((s) => s.features)
 
   const maxPoints = t.customer
@@ -129,8 +136,78 @@ export function PaymentDialog({
       setTipMode("none")
       setTipPercent(15)
       setTipCustom("")
+      setPointOrder(null)
+      setPointStatus("")
+      fetch("/api/pos/payments/mercadopago/point")
+        .then((response) => response.json())
+        .then((data: { available?: boolean }) => setPointAvailable(Boolean(data.available)))
+        .catch(() => setPointAvailable(false))
     }
   }, [open])
+
+  useEffect(() => {
+    if (!pointOrder) return
+    let active = true
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/pos/payments/mercadopago/point?orderId=${encodeURIComponent(pointOrder.orderId)}`)
+        const data = await response.json() as { payment?: { paid?: boolean; status?: string; statusDetail?: string }; error?: string }
+        if (!response.ok) throw new Error(data.error ?? "No se pudo consultar la terminal")
+        if (!active) return
+        setPointStatus(data.payment?.statusDetail ?? data.payment?.status ?? "Esperando terminal")
+        if (data.payment?.paid) {
+          addPayment("card", pointOrder.amount, `mp_point:${pointOrder.orderId}`)
+          setPointOrder(null)
+          setPointStatus("Pago aprobado por Point")
+          playSound("sale-complete")
+        }
+      } catch (pollError) {
+        if (active) setError(pollError instanceof Error ? pollError.message : "No se pudo consultar la terminal")
+      }
+    }
+    void poll()
+    const timer = window.setInterval(poll, 2_500)
+    return () => { active = false; window.clearInterval(timer) }
+  // addPayment usa únicamente setters estables; no reiniciar el intervalo al cambiar el total.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pointOrder])
+
+  const startPointPayment = async () => {
+    if (remaining <= 0 || pointBusy || pointOrder) return
+    setPointBusy(true)
+    setError("")
+    try {
+      const response = await fetch("/api/pos/payments/mercadopago/point", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: remaining, locationId: usePosStore.getState().location.id }),
+      })
+      const data = await response.json() as { payment?: { orderId: string; status?: string; statusDetail?: string }; error?: string }
+      if (!response.ok || !data.payment?.orderId) throw new Error(data.error ?? "No se pudo enviar el cobro a Point")
+      setPointOrder({ orderId: data.payment.orderId, amount: remaining })
+      setPointStatus(data.payment.statusDetail ?? data.payment.status ?? "Enviado a la terminal")
+    } catch (pointError) {
+      setError(pointError instanceof Error ? pointError.message : "No se pudo enviar el cobro a Point")
+    } finally {
+      setPointBusy(false)
+    }
+  }
+
+  const cancelPoint = async () => {
+    if (!pointOrder || pointBusy) return
+    setPointBusy(true)
+    try {
+      const response = await fetch(`/api/pos/payments/mercadopago/point?orderId=${encodeURIComponent(pointOrder.orderId)}`, { method: "DELETE" })
+      const data = await response.json() as { error?: string }
+      if (!response.ok) throw new Error(data.error ?? "No se pudo cancelar el cobro")
+      setPointOrder(null)
+      setPointStatus("")
+    } catch (pointError) {
+      setError(pointError instanceof Error ? pointError.message : "Cancela el cobro desde la terminal")
+    } finally {
+      setPointBusy(false)
+    }
+  }
 
   const onKey = (key: NumpadKey) => {
     if (key === "clear") return setCashStr("")
@@ -148,14 +225,14 @@ export function PaymentDialog({
     setPointsStr("")
   }
 
-  const addPayment = (m: $Enums.PaymentMethod, amount: number) => {
+  const addPayment = (m: $Enums.PaymentMethod, amount: number, paymentReference?: string) => {
     if (amount <= 0) return
     setEntries((prev) => [
       ...prev,
       {
         method: m,
         amount: round2(amount),
-        reference: reference.trim() || undefined,
+        reference: paymentReference ?? (reference.trim() || undefined),
       },
     ])
     setCashStr("")
@@ -325,7 +402,7 @@ export function PaymentDialog({
     <DialogComponent
       open={open}
       onOpenChange={(o) => {
-        if (!o && !loading) {
+        if (!o && !loading && !pointOrder) {
           setEntries([])
           setCashStr("")
           setPointsStr("")
@@ -357,7 +434,7 @@ export function PaymentDialog({
         <Button
           size="lg"
           className="h-14 w-full text-base font-bold"
-          disabled={loading || paid - totalWithTip < -0.01}
+          disabled={loading || Boolean(pointOrder) || paid - totalWithTip < -0.01}
           onClick={complete}
         >
           <BadgeCheck className="size-5" />
@@ -471,14 +548,15 @@ export function PaymentDialog({
                     </button>
                     <button
                       type="button"
-                      onClick={() => addRemaining("card")}
+                      onClick={() => pointAvailable ? void startPointPayment() : addRemaining("card")}
+                      disabled={pointBusy || Boolean(pointOrder)}
                       className={cn(
                         "flex items-center justify-center gap-2 rounded-xl border px-4 py-3.5 text-sm font-bold transition active:scale-[0.97]",
                         METHOD_COLORS.card.selected
                       )}
                     >
-                      <CreditCard className="size-5" />
-                      Tarjeta · {money(remaining)}
+                      {pointBusy ? <Loader2 className="size-5 animate-spin" /> : pointAvailable ? <RadioTower className="size-5" /> : <CreditCard className="size-5" />}
+                      {pointAvailable ? "Cobrar con Point" : "Tarjeta"} · {money(remaining)}
                     </button>
                   </div>
                 )}
@@ -545,6 +623,22 @@ export function PaymentDialog({
               </motion.div>
             )}
           </AnimatePresence>
+
+          {pointOrder && (
+            <div role="status" className="rounded-xl border border-sky-500/40 bg-sky-500/5 p-3">
+              <div className="flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sky-600"><RadioTower className="size-5 animate-pulse" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">Completa el pago en la terminal Point</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{pointStatus || "La terminal está recibiendo el cobro…"} · {money(pointOrder.amount)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">No cierres esta ventana. La venta se habilitará cuando Mercado Pago confirme la aprobación.</p>
+                </div>
+                <Button type="button" size="sm" variant="outline" onClick={cancelPoint} disabled={pointBusy}>
+                  <XCircle className="size-4" /> Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Info de crédito */}
           {method === "credit" && creditInfo && (

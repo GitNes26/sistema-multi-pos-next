@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPaymentConfig, updatePaymentConfig } from "@/lib/payments/server";
+import { getPaymentConfig, mercadoPagoWebhookUrl, updatePaymentConfig } from "@/lib/payments/server";
 import { settingsManageGuard, settingsErrorResponse } from "../guard";
 
 // FASE 16.3/16.4 — Configuración de pasarela de pago por empresa.
@@ -12,7 +12,7 @@ export async function GET() {
 
   try {
     const config = await getPaymentConfig(guard.organizationId);
-    return NextResponse.json({ ok: true, config });
+    return NextResponse.json({ ok: true, config, webhookUrl: mercadoPagoWebhookUrl(guard.organizationId) });
   } catch (err) {
     return settingsErrorResponse(err);
   }

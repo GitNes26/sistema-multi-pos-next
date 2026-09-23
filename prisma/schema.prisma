@@ -216,6 +216,9 @@ model User {
   // FASE 2.5 — Recuperación de contraseña (token guardado hasheado)
   passwordResetToken   String?   @unique
   passwordResetExpires DateTime?
+  passwordChangeCodeHash String?
+  passwordChangeCodeExpires DateTime?
+  authVersion            Int       @default(0)
   // Recuerda la última organización activa del usuario (multi-org): al volver
   // a entrar se retoma esa org si el usuario sigue teniendo acceso. Columna
   // simple (sin FK): se valida contra membresías/empleo al iniciar sesión.
@@ -325,6 +328,7 @@ model Organization {
   customerSegments       CustomerSegment[]
   subscription           OrganizationSubscription?
   subscriptionPayments   SubscriptionPayment[]
+  pointPaymentIntents    PointPaymentIntent[]
 
   @@map("organizations")
 }
@@ -1020,6 +1024,8 @@ model ProductOption {
   minSelect Int     @default(1)
   maxSelect Int     @default(1)
   kind      ProductOptionKind @default(variant)
+  /// Reglas opcionales por variante vendible: cupo incluido, máximo y cobro de excedentes.
+  variantRules Json?
 
   product Product              @relation(fields: [productId], references: [id])
   values  ProductOptionValue[]
@@ -1524,6 +1530,33 @@ model SalePayment {
   sale Sale @relation(fields: [saleId], references: [id])
 
   @@map("sale_payments")
+}
+
+/// Intento de cobro presencial enviado a una terminal Mercado Pago Point.
+/// Se conserva antes de crear la venta para poder conciliar un pago aunque el
+/// navegador se cierre después de que la terminal lo apruebe.
+model PointPaymentIntent {
+  id                String   @id @default(cuid())
+  organizationId    String
+  locationId        String
+  userId            String
+  externalReference String   @unique
+  orderId           String?  @unique
+  paymentId         String?
+  terminalId        String
+  amount            Decimal  @db.Decimal(12, 2)
+  currency          String   @default("MXN")
+  status            String   @default("creating")
+  statusDetail      String?
+  saleId            String?  @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  paidAt            DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, status, createdAt])
+  @@map("point_payment_intents")
 }
 
 model SaleDiscount {

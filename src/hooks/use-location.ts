@@ -132,6 +132,10 @@ export function useLocation(): UseLocationReturn {
   const hasGoogleMaps = isGoogleMapsAvailable()
 
   const detectMyLocation = useCallback(async (): Promise<LocationResult | null> => {
+    if (!window.isSecureContext) {
+      setError("La ubicación requiere abrir el sistema mediante HTTPS.")
+      return null
+    }
     if (!("geolocation" in navigator)) {
       setError("Tu navegador no soporta geolocalización.")
       return null
@@ -141,8 +145,7 @@ export function useLocation(): UseLocationReturn {
     setError(null)
 
     return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
+      const success = async (pos: GeolocationPosition) => {
           const lat = pos.coords.latitude
           const lon = pos.coords.longitude
           try {
@@ -175,18 +178,25 @@ export function useLocation(): UseLocationReturn {
           } finally {
             setLoading(false)
           }
-        },
-        (err) => {
+        }
+      const failure = (err: GeolocationPositionError, retried = false) => {
+          if (!retried && err.code !== err.PERMISSION_DENIED) {
+            navigator.geolocation.getCurrentPosition(success, (finalError) => failure(finalError, true), { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 })
+            return
+          }
           setLoading(false)
           if (err.code === 1) {
-            setError("Permiso de ubicación denegado. Actívalo en la configuración de tu navegador.")
+            setError("Ubicación bloqueada. En el navegador abre los permisos de este sitio, permite Ubicación y vuelve a intentarlo.")
+          } else if (err.code === 2) {
+            setError("El teléfono no pudo determinar la ubicación. Activa GPS y precisión de ubicación.")
+          } else if (err.code === 3) {
+            setError("La ubicación tardó demasiado. Muévete a un lugar con mejor señal y vuelve a intentarlo.")
           } else {
             setError("No se pudo obtener tu ubicación.")
           }
           resolve(null)
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      )
+        }
+      navigator.geolocation.getCurrentPosition(success, failure, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 })
     })
   }, [hasGoogleMaps])
 

@@ -13,7 +13,7 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const paymentsApi = {
-  config: () => json<{ ok: boolean; config: GatewayConfig }>("/api/settings/payments"),
+  config: () => json<{ ok: boolean; config: GatewayConfig; webhookUrl: string }>("/api/settings/payments"),
   updateConfig: (input: Partial<GatewayConfig>) =>
     json<{ ok: boolean; config: GatewayConfig }>("/api/settings/payments", {
       method: "PATCH",

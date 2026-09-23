@@ -116,12 +116,21 @@ export function RecipeDialog({
         .filter((item) => item.id !== product?.id && item.trackInventory)
         .flatMap((item) => {
           const variants = item.variants ?? []
-          return variants.length
-            ? variants.map((v) => ({
+          return variants.length > 1
+            ? [
+                {
+                  value: `product:${item.id}`,
+                  label: `${item.name} · elegir variante al vender`,
+                  meta: "El POS preguntará cuál presentación se consumió",
+                },
+                ...variants.map((v) => ({
                 value: `variant:${v.id}`,
                 label: `${item.name} · ${v.name}`,
-              }))
-            : [{ value: `product:${item.id}`, label: item.name }]
+                })),
+              ]
+            : variants.length === 1
+              ? [{ value: `variant:${variants[0].id}`, label: `${item.name} · ${variants[0].name}` }]
+              : [{ value: `product:${item.id}`, label: item.name }]
         }),
     [catalog, product]
   )
@@ -215,6 +224,8 @@ export function RecipeDialog({
           La merma agrega un margen al consumo teórico. Ejemplo: 0.12 kg con 5%
           descuenta 0.126 kg. Si falta un insumo, la venta se detiene para
           evitar existencias negativas.
+          Para un insumo con variantes, elige «elegir variante al vender» para
+          que el POS pregunte la presentación o color utilizado.
         </div>
         {formError && (
           <p role="alert" className="text-sm text-destructive">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import * as yup from "yup";
-import { AlertCircle, CreditCard, Globe, KeyRound, ShieldCheck } from "lucide-react";
+import { AlertCircle, Copy, CreditCard, Globe, KeyRound, RefreshCw, ShieldCheck, TabletSmartphone } from "lucide-react";
 import { paymentsApi } from "@/lib/payments/client";
 import type { GatewayConfig, GatewayProvider } from "@/lib/payments/server";
 import { swalToast } from "@/lib/swal";
@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { cn } from "@/lib/utils";
 import { useFocusInvalid } from "@/hooks/use-focus-invalid";
+import { SwitchField } from "@/components/base/switch-field";
+import { FormCombobox, type ComboboxOption } from "@/components/base/form-combobox";
 
 const PROVIDERS: { value: GatewayProvider; label: string }[] = [
   { value: "none", label: "Sin pasarela (pago en sucursal)" },
@@ -23,12 +25,18 @@ export function PaymentsForm() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string>();
+  const [terminals, setTerminals] = useState<ComboboxOption[]>([]);
+  const [loadingTerminals, setLoadingTerminals] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState("");
   const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
 
   useEffect(() => {
     paymentsApi
       .config()
-      .then((d) => setConfig(d.config))
+      .then((d) => {
+        setConfig(d.config);
+        setWebhookUrl(d.webhookUrl);
+      })
       .catch(() => setFormError("No se pudo cargar la configuración de pagos"));
   }, []);
 
@@ -46,7 +54,12 @@ export function PaymentsForm() {
     const schema = config.provider === "stripe"
       ? yup.object({ stripe: yup.object({ secretKey: requiredSecret, publicKey: requiredSecret, webhookSecret: requiredSecret }) })
       : config.provider === "mercadopago"
-        ? yup.object({ mercadopago: yup.object({ accessToken: requiredSecret, publicKey: requiredSecret, webhookSecret: requiredSecret }) })
+        ? yup.object({ mercadopago: yup.object({
+            accessToken: requiredSecret,
+            publicKey: requiredSecret,
+            webhookSecret: requiredSecret,
+            terminalId: yup.string().when("pointEnabled", { is: true, then: (schema) => schema.trim().required("Selecciona una terminal Point") }),
+          }) })
         : yup.object({});
     try {
       await schema.validate(config, { abortEarly: false });
@@ -71,6 +84,25 @@ export function PaymentsForm() {
       setFormError(err instanceof Error ? err.message : "No se pudo guardar la configuración");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const loadTerminals = async () => {
+    setLoadingTerminals(true);
+    setFormError(undefined);
+    try {
+      const response = await fetch("/api/settings/payments/mercadopago/terminals");
+      const data = await response.json() as { terminals?: Array<{ id: string; externalPosId?: string; operatingMode?: string }>; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "No se pudieron consultar las terminales");
+      setTerminals((data.terminals ?? []).map((terminal) => ({
+        value: terminal.id,
+        label: terminal.externalPosId || `Point · ${terminal.id.slice(-8)}`,
+        meta: `${terminal.id}${terminal.operatingMode ? ` · ${terminal.operatingMode}` : ""}`,
+      })));
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "No se pudieron consultar las terminales");
+    } finally {
+      setLoadingTerminals(false);
     }
   };
 
@@ -159,7 +191,10 @@ export function PaymentsForm() {
 
       {config.provider === "mercadopago" && (
         <div className="space-y-3 rounded-lg border p-4">
-          <p className="text-sm font-semibold">MercadoPago</p>
+          <div>
+            <p className="text-sm font-semibold">Mercado Pago</p>
+            <p className="text-xs text-muted-foreground">Checkout Pro cobra en línea desde el portal. Point envía el importe del POS a una terminal física vinculada.</p>
+          </div>
           <InputGroupField
             id="payments-mercadopago-accessToken"
             label="Access token"
@@ -205,13 +240,70 @@ export function PaymentsForm() {
             required
             error={errors["mercadopago.webhookSecret"]}
           />
+          <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
+            <p className="text-sm font-medium">URL de notificaciones de esta empresa</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border bg-background px-3 py-2 text-xs">
+                {webhookUrl}
+              </code>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(webhookUrl);
+                  swalToast("URL de notificaciones copiada");
+                }}
+                disabled={!webhookUrl}
+              >
+                <Copy className="size-4" /> Copiar URL
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Regístrala en Mercado Pago para los eventos Pagos y Orders/Point.
+            </p>
+          </div>
+          <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
+            <SwitchField
+              id="payments-mercadopago-pointEnabled"
+              label="Cobros presenciales con Point"
+              description="Envía el total desde el POS y espera la aprobación de la terminal antes de registrar la venta."
+              icon={<TabletSmartphone className="size-4" />}
+              checked={config.mercadopago.pointEnabled}
+              onCheckedChange={(pointEnabled) => setConfig({ ...config, mercadopago: { ...config.mercadopago, pointEnabled } })}
+            />
+            {config.mercadopago.pointEnabled && (
+              <>
+                <FormCombobox
+                  id="payments-mercadopago-terminalId"
+                  label="Terminal Point"
+                  required
+                  icon={<TabletSmartphone className="size-4" />}
+                  options={terminals.some((terminal) => terminal.value === config.mercadopago.terminalId)
+                    ? terminals
+                    : config.mercadopago.terminalId
+                      ? [{ value: config.mercadopago.terminalId, label: `Point · ${config.mercadopago.terminalId.slice(-8)}`, meta: config.mercadopago.terminalId }, ...terminals]
+                      : terminals}
+                  value={config.mercadopago.terminalId}
+                  onChange={(terminalId) => setConfig({ ...config, mercadopago: { ...config.mercadopago, terminalId } })}
+                  placeholder="Consulta y selecciona una terminal"
+                  emptyText="No se encontraron terminales vinculadas"
+                  loading={loadingTerminals}
+                  error={errors["mercadopago.terminalId"]}
+                  infoTooltip="La terminal debe iniciar sesión con la misma cuenta propietaria del Access Token."
+                />
+                <Button type="button" variant="outline" onClick={loadTerminals} disabled={loadingTerminals || !config.mercadopago.accessToken}>
+                  <RefreshCw className={cn("size-4", loadingTerminals && "animate-spin")} />
+                  {loadingTerminals ? "Consultando…" : "Consultar terminales vinculadas"}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       )}
 
       {config.provider !== "none" && (
         <p className="text-xs text-muted-foreground">
-          El webhook de MercadoPago se envía a{" "}
-          <code>/api/payments/webhook/mercadopago?org=&#123;id&#125;</code>; <br />
+          En Mercado Pago usa la URL de notificaciones mostrada arriba. Activa los eventos <strong>Pagos</strong> y <strong>Orders/Point</strong>;<br />
            el de Stripe a{" "}
           <code>/api/payments/webhook/stripe</code>.
         </p>

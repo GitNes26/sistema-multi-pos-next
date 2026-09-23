@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, Loader2, MapPin, Minus, MousePointer2, Plus, RotateCw, Trash2 } from "lucide-react";
+import { Clock, Loader2, MapPin, Minus, MousePointer2, Plus, RotateCcw, RotateCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { swalError, swalToast } from "@/lib/swal";
@@ -80,11 +80,15 @@ export function FloorPlanEditor({
   const [draft, setDraft] = useState<{ shape: string; capacity: string; name: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState<{ kind: "table" | "node"; id: string; dx: number; dy: number } | null>(null);
+  const [tableOverrides, setTableOverrides] = useState<Record<string, Partial<PlanTable>>>({});
+  const [nodeOverrides, setNodeOverrides] = useState<Record<string, Partial<PlanNode>>>({});
   const dragRef = useRef<{ kind: "table" | "node"; id: string; startX: number; startY: number; moved: boolean } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const selectedTable = selected?.kind === "table" ? tables.find((t) => t.id === selected.id) ?? null : null;
-  const selectedNode = selected?.kind === "node" ? nodes.find((n) => n.id === selected.id) ?? null : null;
+  const selectedTableBase = selected?.kind === "table" ? tables.find((t) => t.id === selected.id) ?? null : null;
+  const selectedNodeBase = selected?.kind === "node" ? nodes.find((n) => n.id === selected.id) ?? null : null;
+  const selectedTable = selectedTableBase ? { ...selectedTableBase, ...tableOverrides[selectedTableBase.id] } : null;
+  const selectedNode = selectedNodeBase ? { ...selectedNodeBase, ...nodeOverrides[selectedNodeBase.id] } : null;
 
   const select = useCallback(
     (kind: "table" | "node", id: string) => {
@@ -111,6 +115,7 @@ export function FloorPlanEditor({
 
   const patchTable = useCallback(
     async (id: string, data: Record<string, unknown>) => {
+      setTableOverrides((current) => ({ ...current, [id]: { ...current[id], ...data } }));
       try {
         const res = await fetch("/api/tables", {
           method: "PUT",
@@ -119,8 +124,8 @@ export function FloorPlanEditor({
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok || !body.ok) throw new Error(body.error || "No se pudo guardar");
-        onChanged();
       } catch (err) {
+        setTableOverrides((current) => { const next = { ...current }; delete next[id]; return next; });
         swalError("No se pudo guardar", err instanceof Error ? err.message : undefined);
       }
     },
@@ -239,9 +244,9 @@ export function FloorPlanEditor({
     }
   };
 
-  const rotateSelected = async () => {
+  const rotateSelected = async (delta: number) => {
     if (selectedTable) {
-      await patchTable(selectedTable.id, { rotation: ((selectedTable.rotation ?? 0) + 45) % 360 });
+      await patchTable(selectedTable.id, { rotation: ((selectedTable.rotation ?? 0) + delta + 360) % 360 });
       return;
     }
     if (selectedNode) {
@@ -249,11 +254,11 @@ export function FloorPlanEditor({
         const response = await fetch("/api/tables/plan-nodes", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: selectedNode.id, rotation: ((selectedNode.rotation ?? 0) + 45) % 360 }),
+          body: JSON.stringify({ id: selectedNode.id, rotation: ((selectedNode.rotation ?? 0) + delta + 360) % 360 }),
         });
         const body = await response.json().catch(() => ({}));
         if (!response.ok || !body.ok) throw new Error(body.error || "No se pudo girar");
-        onChanged();
+        setNodeOverrides((current) => ({ ...current, [selectedNode.id]: { ...current[selectedNode.id], rotation: ((selectedNode.rotation ?? 0) + delta + 360) % 360 } }));
       } catch (error) {
         swalError("No se pudo girar el elemento", error instanceof Error ? error.message : undefined);
       }
@@ -292,7 +297,7 @@ export function FloorPlanEditor({
     const offset = dragging;
     setDragging(null);
     if (!offset) return;
-    const items = drag.kind === "table" ? tables : nodes;
+    const items = drag.kind === "table" ? tables.map((item) => ({ ...item, ...tableOverrides[item.id] })) : nodes.map((item) => ({ ...item, ...nodeOverrides[item.id] }));
     const item = items.find((i) => i.id === drag.id) as PlanTable | PlanNode | undefined;
     if (!item) return;
     const px = item.posX ?? 0;
@@ -301,11 +306,11 @@ export function FloorPlanEditor({
     const ny = Math.max(8, Math.min(CANVAS_H - 8, Math.round(py + offset.dy / zoom)));
     if (drag.kind === "table") void patchTable(drag.id, { posX: nx, posY: ny });
     else
-      void fetch("/api/tables/plan-nodes", {
+      { setNodeOverrides((current) => ({ ...current, [drag.id]: { ...current[drag.id], posX: nx, posY: ny } })); void fetch("/api/tables/plan-nodes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: drag.id, posX: nx, posY: ny }),
-      }).then(() => onChanged());
+      }); }
   };
 
   // Soltar un elemento de la paleta sobre el lienzo.
@@ -348,11 +353,11 @@ export function FloorPlanEditor({
       <div className="flex flex-wrap items-center gap-2">
         <MapPin className="size-4 text-muted-foreground" />
         <p className="text-sm font-semibold">{roomName ? `Plano · ${roomName}` : "Mesas sin sala"}</p>
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-xs">
           {tables.length} {tables.length === 1 ? "mesa" : "mesas"} · {nodes.length} elementos
         </Badge>
         {tables.some((t) => t.status === "reserved") && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
             <Clock className="size-3" /> con reservación
           </span>
         )}
@@ -360,7 +365,7 @@ export function FloorPlanEditor({
           <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 10) / 10))} title="Alejar">
             <Minus className="size-3.5" />
           </Button>
-          <span className="w-10 text-center text-[11px] tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
+          <span className="w-10 text-center text-xs tabular-nums text-muted-foreground">{Math.round(zoom * 100)}%</span>
           <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom((z) => Math.min(1.5, Math.round((z + 0.1) * 10) / 10))} title="Acercar">
             <Plus className="size-3.5" />
           </Button>
@@ -369,7 +374,7 @@ export function FloorPlanEditor({
 
       {canManage && (
         <div className="flex flex-wrap gap-1.5 rounded-xl border bg-muted/30 p-2">
-          <span className="mr-1 inline-flex items-center gap-1 self-center text-[11px] font-semibold text-muted-foreground">
+          <span className="mr-1 inline-flex items-center gap-1 self-center text-xs font-semibold text-muted-foreground">
             <MousePointer2 className="size-3" /> Arrastra al plano:
           </span>
           {PALETTE.map((item) => {
@@ -380,7 +385,7 @@ export function FloorPlanEditor({
                 key={key}
                 draggable
                 onDragStart={(e) => e.dataTransfer.setData("application/x-plan-item", key)}
-                className="flex cursor-grab items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-[11px] font-medium shadow-sm transition hover:bg-primary/10 active:cursor-grabbing"
+                className="flex cursor-grab items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-xs font-medium shadow-sm transition hover:bg-primary/10 active:cursor-grabbing"
                 title={`Arrastra «${item.label}» al plano`}
               >
                 {item.type === "table" ? (
@@ -420,7 +425,8 @@ export function FloorPlanEditor({
             </div>
           ) : (
             <>
-              {tables.map((t, i) => {
+              {tables.map((base, i) => {
+                const t = { ...base, ...tableOverrides[base.id] };
                 const { x, y } = posOf(t, i);
                 const offset = dragging?.id === t.id ? { x: dragging.dx / zoom, y: dragging.dy / zoom } : { x: 0, y: 0 };
                 return (
@@ -438,7 +444,8 @@ export function FloorPlanEditor({
                   />
                 );
               })}
-              {nodes.map((n) => {
+              {nodes.map((base) => {
+                const n = { ...base, ...nodeOverrides[base.id] };
                 const offset = dragging?.id === n.id ? { x: dragging.dx / zoom, y: dragging.dy / zoom } : { x: 0, y: 0 };
                 return (
                   <PlanNodeElement
@@ -453,6 +460,21 @@ export function FloorPlanEditor({
                   />
                 );
               })}
+              {canManage && selected && (selectedTable || selectedNode) && (() => {
+                const selectedIndex = selectedTable ? tables.findIndex((table) => table.id === selectedTable.id) : -1;
+                const position = selectedTable ? posOf(selectedTable, Math.max(0, selectedIndex)) : { x: selectedNode!.posX, y: selectedNode!.posY };
+                return (
+                  <div
+                    className="absolute z-30 flex -translate-x-1/2 -translate-y-full gap-1 rounded-lg border bg-background/95 p-1 opacity-40 shadow-sm transition-opacity hover:opacity-100 focus-within:opacity-100"
+                    style={{ left: position.x, top: Math.max(42, position.y - 34) }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
+                    <Button type="button" variant="ghost" size="icon" className="size-8" title="Girar a la izquierda" onClick={() => rotateSelected(-45)}><RotateCcw className="size-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" className="size-8" title="Girar a la derecha" onClick={() => rotateSelected(45)}><RotateCw className="size-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" className="size-8 text-destructive" title="Eliminar" onClick={deleteSelected}><Trash2 className="size-4" /></Button>
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
@@ -496,8 +518,11 @@ export function FloorPlanEditor({
             />
           </div>
           <div className="ml-auto flex gap-2">
-            <Button variant="outline" size="sm" onClick={rotateSelected} title="Girar 45 grados">
-              <RotateCw className="size-3.5" /> Girar
+            <Button variant="outline" size="icon" onClick={() => rotateSelected(-45)} title="Girar 45 grados a la izquierda">
+              <RotateCcw className="size-3.5" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => rotateSelected(45)} title="Girar 45 grados a la derecha">
+              <RotateCw className="size-3.5" />
             </Button>
             <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
               Cerrar
@@ -529,8 +554,11 @@ export function FloorPlanEditor({
             />
           </div>
           <div className="ml-auto flex gap-2">
-            <Button variant="outline" size="sm" onClick={rotateSelected} title="Girar 45 grados">
-              <RotateCw className="size-3.5" /> Girar
+            <Button variant="outline" size="icon" onClick={() => rotateSelected(-45)} title="Girar 45 grados a la izquierda">
+              <RotateCcw className="size-3.5" />
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => rotateSelected(45)} title="Girar 45 grados a la derecha">
+              <RotateCw className="size-3.5" />
             </Button>
             <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
               Cerrar
@@ -543,7 +571,7 @@ export function FloorPlanEditor({
       )}
 
       {canManage && (
-        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span>Arrastra para reubicar · clic para editar · Supr elimina el seleccionado.</span>
           <span className="ml-auto flex items-center gap-1">
             {NODE_KIND_OPTIONS.slice(0, 3).map((k) => (

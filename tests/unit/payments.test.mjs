@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
-import { verifyStripeSignature, verifyMercadoPagoSignature, paymentMatches } from "../../src/lib/payments/verification.ts";
+import { verifyStripeSignature, verifyMercadoPagoSignature, paymentMatches, isMercadoPagoPointPaid } from "../../src/lib/payments/verification.ts";
 
 const secret = "test-only-signing-secret";
 const body = '{"type":"checkout.session.completed"}';
@@ -33,4 +33,12 @@ test("payment must match stored amount and currency", () => {
   assert.equal(paymentMatches(123.45, "MXN", 123.45, "mxn"), true);
   for (const amount of [undefined, NaN, Infinity, -1, 1, "123.45"]) assert.equal(paymentMatches(123.45, "MXN", amount, "mxn"), false);
   assert.equal(paymentMatches(123.45, "MXN", 123.45, "USD"), false);
+});
+
+test("Point only treats processed or approved orders as paid", () => {
+  assert.equal(isMercadoPagoPointPaid("processed", "processed"), true);
+  assert.equal(isMercadoPagoPointPaid("at_terminal", "approved"), true);
+  assert.equal(isMercadoPagoPointPaid("created", "pending"), false);
+  assert.equal(isMercadoPagoPointPaid("canceled", "canceled"), false);
+  assert.equal(isMercadoPagoPointPaid("expired", undefined), false);
 });

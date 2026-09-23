@@ -1059,6 +1059,9 @@ async function cleanupDemo(orgIds: string[], emails: string[]) {
   await d.subscriptionPayment.deleteMany({
     where: { organizationId: { in: orgIds } },
   })
+  await d.pointPaymentIntent.deleteMany({
+    where: { organizationId: { in: orgIds } },
+  })
   await d.organizationSubscription.deleteMany({
     where: { organizationId: { in: orgIds } },
   })

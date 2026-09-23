@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.20.3.2] — 2026-09-23
+- **Tipo:** `ux` (Revision)
+- ux: se mejoro la experiencia para mesas y para el producto personalizado, dando varias maneras de generar el producto/servicio, y se implementa correos para recuperar contraseña y cambiarla
+
 ### [0.20.3.1] — 2026-09-23
 - **Tipo:** `ux` (Revision)
 - ux: se mejoraron UX de cocina, mesas, reservaciones, servicios

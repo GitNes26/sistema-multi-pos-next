@@ -12,6 +12,7 @@ import type {
   PosProductOption,
   PosProductOptionValue,
 } from "@/types/pos"
+import { calculateOptionExtra, calculateOptionValueCharges, optionRuleForVariant, type OptionVariantRule } from "@/lib/products/option-rules"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -48,6 +49,9 @@ interface PortalProductLike {
     required: boolean
     minSelect: number
     maxSelect: number
+    appliesToVariantId?: string | null
+    variantRules?: OptionVariantRule[]
+    effectiveRule?: OptionVariantRule | null
     values: {
       id: string
       value: string
@@ -153,7 +157,7 @@ function OptionPill({
       {value.extraPrice > 0 && (
         <span
           className={cn(
-            "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+            "rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums",
             isSelected
               ? "bg-white/20 text-white"
               : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
@@ -204,7 +208,7 @@ function OptionSection({
             {option.name}
           </h3>
           {option.required && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+            <Badge variant="destructive" className="text-xs px-1.5 py-0">
               Requerido
             </Badge>
           )}
@@ -218,6 +222,16 @@ function OptionSection({
           {activeCount}/{maxLabel}
         </span>
       </div>
+      {option.effectiveRule && (
+        <p className="text-xs text-muted-foreground">
+          Incluye {option.effectiveRule.included} sin costo
+          {option.effectiveRule.overageMode === "blocked"
+            ? "; no admite adicionales."
+            : option.effectiveRule.overageMode === "fixed"
+              ? `; cada elección adicional cuesta ${money(option.effectiveRule.overagePrice)}.`
+              : "; las adicionales conservan el precio indicado."}
+        </p>
+      )}
 
       {/* Pills grid */}
       <div className="flex flex-wrap gap-2">
@@ -384,6 +398,18 @@ export function ProductBuilder({
   const portalVariants = portalProduct?.variants ?? []
   const selectedVariant =
     portalVariants.find((v) => v.id === variantId) ?? portalVariants[0] ?? null
+  const effectiveVariantId = portalProduct ? selectedVariant?.id : product?.variantId
+  const activeOptions = useMemo(
+    () => (activeProduct?.options ?? []).filter(
+      (option) => !option.appliesToVariantId || option.appliesToVariantId === effectiveVariantId
+    ).map((option) => {
+      const effectiveRule = optionRuleForVariant(option.variantRules, effectiveVariantId)
+      return effectiveRule
+        ? { ...option, maxSelect: effectiveRule.maxSelect, effectiveRule }
+        : { ...option, effectiveRule: null }
+    }),
+    [activeProduct, effectiveVariantId]
+  )
 
   const resetSelections = useCallback(() => {
     setSelections(new Map())
@@ -432,47 +458,49 @@ export function ProductBuilder({
   const totalExtraPrice = useMemo(() => {
     if (!activeProduct) return 0
     let total = 0
-    for (const option of activeProduct.options) {
+    for (const option of activeOptions) {
       const selected = selections.get(option.id) ?? new Set()
-      for (const value of option.values) {
-        if (selected.has(value.id)) total += value.extraPrice
-      }
+      total += calculateOptionExtra(
+        option.values.filter((value) => selected.has(value.id)).map((value) => value.extraPrice),
+        option.effectiveRule
+      )
     }
     return total
-  }, [activeProduct, selections])
+  }, [activeProduct, activeOptions, selections])
 
   const isValid = useMemo(() => {
     if (!activeProduct) return false
-    for (const option of activeProduct.options) {
+    for (const option of activeOptions) {
       if (option.required) {
         const selected = selections.get(option.id) ?? new Set()
         if (selected.size < option.minSelect) return false
       }
     }
     return true
-  }, [activeProduct, selections])
+  }, [activeProduct, activeOptions, selections])
 
   const buildSelectedOptions = useCallback((): SelectedOption[] => {
     if (!activeProduct) return []
     const result: SelectedOption[] = []
-    for (const option of activeProduct.options) {
+    for (const option of activeOptions) {
       const selected = selections.get(option.id) ?? new Set()
       if (selected.size === 0) continue
       const values = option.values
         .filter((v) => selected.has(v.id))
-        .map((v) => ({
+      const charges = calculateOptionValueCharges(values, option.effectiveRule)
+      const pricedValues = values.map((v) => ({
           id: v.id,
           value: v.value,
-          extraPrice: v.extraPrice,
+          extraPrice: charges.get(v.id) ?? 0,
         }))
       result.push({
         optionId: option.id,
         optionName: option.name,
-        values,
+        values: pricedValues,
       })
     }
     return result
-  }, [activeProduct, selections])
+  }, [activeProduct, activeOptions, selections])
 
   const handleAdd = useCallback(
     (e?: React.MouseEvent) => {
@@ -601,7 +629,7 @@ export function ProductBuilder({
             )}
 
             {/* Options */}
-            {activeProduct.options.map((option) => {
+            {activeOptions.map((option) => {
               const selected = selections.get(option.id) ?? new Set()
               return (
                 <OptionSection
@@ -618,7 +646,7 @@ export function ProductBuilder({
                 de configuración y la variante no se eligió antes de abrirlo. */}
             {portalProduct && portalVariants.length > 1 && (
               <div>
-                <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
                   Tamaño
                 </h4>
                 <div className="flex flex-wrap items-center gap-2">
@@ -679,7 +707,7 @@ export function ProductBuilder({
                       >
                         {v.value}
                         {v.extraPrice > 0 && (
-                          <span className="text-[10px]">
+                          <span className="text-xs">
                             +{money(v.extraPrice)}
                           </span>
                         )}

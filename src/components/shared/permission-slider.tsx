@@ -65,14 +65,14 @@ const PERMISSION_CONFIG: Record<
     browserPermission: "geolocation" as PermissionName,
     requestFn: async () => {
       return new Promise((resolve) => {
-        if (!navigator.geolocation) {
+        if (!window.isSecureContext || !navigator.geolocation) {
           resolve(false)
           return
         }
         navigator.geolocation.getCurrentPosition(
           () => resolve(true),
           () => resolve(false),
-          { timeout: 10000 }
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 }
         )
       })
     },

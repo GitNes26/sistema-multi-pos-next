@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { signOut } from "next-auth/react"
 import { useForm } from "react-hook-form"
 import { yupResolver } from "@hookform/resolvers/yup"
 import * as yup from "yup"
-import { CheckCircle2, KeyRound, Loader2, Lock } from "lucide-react"
+import { CheckCircle2, KeyRound, Loader2, Lock, MailCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { InputGroupField } from "@/components/base/input-group-field"
@@ -21,6 +22,7 @@ const schema = yup.object({
     .string()
     .oneOf([yup.ref("newPassword")], "Las contraseñas no coinciden")
     .required("Confirma tu contraseña"),
+  code: yup.string().matches(/^\d{6}$/, "Ingresa los 6 dígitos").required("Código requerido"),
 })
 
 type Values = yup.InferType<typeof schema>
@@ -32,6 +34,7 @@ export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?
     | { kind: "ok" }
     | { kind: "error"; message: string }
   >({ kind: "idle" })
+  const [codeSentTo, setCodeSentTo] = useState("")
 
   const {
     register,
@@ -48,6 +51,7 @@ export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?
       body: JSON.stringify({
         oldPassword: values.oldPassword,
         newPassword: values.newPassword,
+        code: values.code,
       }),
     })
     const data = (await res.json().catch(() => null)) as {
@@ -62,6 +66,7 @@ export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?
     }
     reset()
     setStatus({ kind: "ok" })
+    window.setTimeout(() => void signOut({ callbackUrl: returnHref.includes("portal") ? "/portal/auth/login" : "/auth/login" }), 1200)
   }
 
   return (
@@ -120,6 +125,35 @@ export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?
             error={errors.confirm?.message}
             {...register("confirm")}
           />
+
+          <div className="space-y-2">
+            <InputGroupField
+              id="code"
+              label="Código de verificación"
+              leftIcon={<MailCheck className="size-4" />}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              error={errors.code?.message}
+              {...register("code")}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={async () => {
+                setStatus({ kind: "loading" })
+                const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "request-code" }) })
+                const data = await response.json().catch(() => ({})) as { error?: string; maskedEmail?: string }
+                if (!response.ok) setStatus({ kind: "error", message: data.error ?? "No se pudo enviar el código" })
+                else { setCodeSentTo(data.maskedEmail ?? "tu correo"); setStatus({ kind: "idle" }) }
+              }}
+              disabled={status.kind === "loading"}
+            >
+              <MailCheck className="size-4" /> {codeSentTo ? "Reenviar código" : "Enviar código a mi correo"}
+            </Button>
+            {codeSentTo && <p className="text-xs text-muted-foreground">Código enviado a {codeSentTo}. Vence en 10 minutos.</p>}
+          </div>
 
           <Button
             type="submit"

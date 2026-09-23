@@ -23,7 +23,38 @@ export interface ProductOptionDto {
   minSelect: number;
   maxSelect: number;
   kind: "variant" | "topic";
+  variantRules: ProductOptionVariantRuleDto[];
   values: { id: string; value: string; position: number; extraPrice: number; isActive: boolean }[];
+}
+
+export interface ProductOptionVariantRuleDto {
+  variantId: string;
+  included: number;
+  maxSelect: number;
+  overageMode: "value_price" | "fixed" | "blocked";
+  overagePrice: number;
+}
+
+function normalizeVariantRules(value: unknown): ProductOptionVariantRuleDto[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((raw) => {
+    if (!raw || typeof raw !== "object") return [];
+    const rule = raw as Record<string, unknown>;
+    const variantId = typeof rule.variantId === "string" ? rule.variantId : "";
+    if (!variantId) return [];
+    const included = Math.max(0, Math.floor(Number(rule.included) || 0));
+    const requestedMax = Math.max(0, Math.floor(Number(rule.maxSelect) || 0));
+    const overageMode = ["value_price", "fixed", "blocked"].includes(String(rule.overageMode))
+      ? rule.overageMode as ProductOptionVariantRuleDto["overageMode"]
+      : "value_price";
+    return [{
+      variantId,
+      included,
+      maxSelect: overageMode === "blocked" ? included : Math.max(included, requestedMax),
+      overageMode,
+      overagePrice: Math.max(0, Number(rule.overagePrice) || 0),
+    }];
+  });
 }
 
 export interface ProductDto {
@@ -90,6 +121,7 @@ type ProductRow = {
     minSelect: number;
     maxSelect: number;
     kind: "variant" | "topic";
+    variantRules: unknown;
     values: { id: string; value: string; position: number; extraPrice: { toNumber(): number } | number; isActive: boolean }[];
   }[];
   variants: {
@@ -123,6 +155,7 @@ const include = {
       minSelect: true,
       maxSelect: true,
       kind: true,
+      variantRules: true,
       values: {
         select: { id: true, value: true, position: true, extraPrice: true, isActive: true },
         orderBy: { position: "asc" },
@@ -205,6 +238,7 @@ function serialize(p: ProductRow): ProductDto {
       minSelect: o.minSelect,
       maxSelect: o.maxSelect,
       kind: o.kind,
+      variantRules: normalizeVariantRules(o.variantRules),
       values: o.values.map((v) => ({
         id: v.id,
         value: v.value,
@@ -775,6 +809,7 @@ const optionsInclude = {
       minSelect: true,
       maxSelect: true,
       kind: true,
+      variantRules: true,
       values: {
         select: { id: true, value: true, position: true, extraPrice: true, isActive: true },
         orderBy: { position: "asc" },
@@ -798,6 +833,7 @@ export async function getProductOptions(organizationId: string, productId: strin
     minSelect: o.minSelect,
     maxSelect: o.maxSelect,
     kind: o.kind,
+    variantRules: normalizeVariantRules(o.variantRules),
     values: o.values.map((v) => ({
       id: v.id,
       value: v.value,
@@ -945,6 +981,7 @@ export interface SaveOptionInput {
   required?: boolean;
   minSelect?: number;
   maxSelect?: number;
+  variantRules?: ProductOptionVariantRuleDto[];
   values: { id?: string; value: string; extraPrice?: number; isActive?: boolean }[];
 }
 
@@ -956,7 +993,7 @@ export async function saveProductOptions(
 ): Promise<ProductOptionDto[]> {
   const product = await prisma.product.findFirst({
     where: { id: productId, organizationId, productType: { in: ["standard", "custom"] } },
-    select: { id: true, productType: true },
+    select: { id: true, productType: true, variants: { select: { id: true } } },
   });
   if (!product) throw new CrudError("Producto no encontrado o no es estándar/personalizado", 400);
   const isCustom = product.productType === "custom";
@@ -988,6 +1025,8 @@ export async function saveProductOptions(
     const optId = opt.id && keepIds.has(opt.id) ? opt.id : undefined;
     const minSelect = Math.max(0, Math.floor(Number(opt.minSelect) || (opt.required !== false ? 1 : 0)));
     const maxSelect = Math.max(minSelect, Math.floor(Number(opt.maxSelect) || 1));
+    const validVariantIds = new Set(product.variants.map((variant) => variant.id));
+    const variantRules = normalizeVariantRules(opt.variantRules).filter((rule) => validVariantIds.has(rule.variantId));
     const option = optId
       ? await prisma.productOption.update({
           where: { id: optId },
@@ -998,6 +1037,7 @@ export async function saveProductOptions(
             minSelect,
             maxSelect,
             kind,
+            variantRules: variantRules as unknown as Prisma.InputJsonValue,
           },
         })
       : await prisma.productOption.create({
@@ -1009,6 +1049,7 @@ export async function saveProductOptions(
             minSelect,
             maxSelect,
             kind,
+            variantRules: variantRules as unknown as Prisma.InputJsonValue,
           },
         });
 

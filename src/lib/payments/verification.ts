@@ -30,3 +30,7 @@ export function paymentMatches(expected: number, currency: string, amount: unkno
     Math.round(expected * 100) === Math.round(amount * 100) &&
     typeof paidCurrency === "string" && currency.toUpperCase() === paidCurrency.toUpperCase();
 }
+
+export function isMercadoPagoPointPaid(orderStatus: unknown, paymentStatus: unknown): boolean {
+  return [orderStatus, paymentStatus].some((status) => status === "processed" || status === "approved");
+}

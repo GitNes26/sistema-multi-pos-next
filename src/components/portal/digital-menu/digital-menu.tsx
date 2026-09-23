@@ -39,6 +39,7 @@ interface MenuItem {
     required: boolean;
     minSelect: number;
     maxSelect: number;
+    variantRules?: import("@/lib/products/option-rules").OptionVariantRule[];
     values: {
       id: string;
       value: string;
@@ -112,6 +113,7 @@ export function DigitalMenu({ tableId, tableToken }: DigitalMenuProps) {
                 required: o.required || false,
                 minSelect: o.minSelect || 0,
                 maxSelect: o.maxSelect || 10,
+                variantRules: o.variantRules || [],
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 values: (o.values || []).map((v: any) => ({
                   id: v.id,

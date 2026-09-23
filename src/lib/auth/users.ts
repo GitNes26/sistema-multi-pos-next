@@ -146,17 +146,21 @@ export async function setMembership(
 export async function changePassword(
   userId: string,
   oldPassword: string,
-  newPassword: string
+  newPassword: string,
+  code: string
 ): Promise<{ ok: boolean; error?: string }> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return { ok: false, error: "Usuario no encontrado" };
 
   const valid = await verifyPassword(oldPassword, user.passwordHash);
   if (!valid) return { ok: false, error: "La contraseña actual es incorrecta" };
+  const codeHash = createHash("sha256").update(code.trim()).digest("hex");
+  if (!user.passwordChangeCodeHash || user.passwordChangeCodeHash !== codeHash || !user.passwordChangeCodeExpires || user.passwordChangeCodeExpires < new Date())
+    return { ok: false, error: "El código es inválido o expiró" };
 
   await prisma.user.update({
     where: { id: userId },
-    data: { passwordHash: await hashPassword(newPassword) },
+    data: { passwordHash: await hashPassword(newPassword), passwordChangeCodeHash: null, passwordChangeCodeExpires: null, authVersion: { increment: 1 } },
   });
   return { ok: true };
 }
@@ -198,7 +202,22 @@ export async function applyPasswordResetToken(
       passwordHash: await hashPassword(newPassword),
       passwordResetToken: null,
       passwordResetExpires: null,
+      authVersion: { increment: 1 },
     },
   });
   return { ok: true };
+}
+
+export async function issuePasswordChangeCode(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, isActive: true } });
+  if (!user?.isActive) return null;
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      passwordChangeCodeHash: createHash("sha256").update(code).digest("hex"),
+      passwordChangeCodeExpires: new Date(Date.now() + 10 * 60 * 1000),
+    },
+  });
+  return { email: user.email, code };
 }

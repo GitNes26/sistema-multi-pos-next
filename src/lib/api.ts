@@ -799,7 +799,18 @@ export interface ProductOption {
   minSelect?: number;
   maxSelect?: number;
   kind?: "variant" | "topic";
+  variantRules?: ProductOptionVariantRule[];
   values: ProductOptionValue[];
+}
+
+export type ProductOptionOverageMode = "value_price" | "fixed" | "blocked";
+
+export interface ProductOptionVariantRule {
+  variantId: string;
+  included: number;
+  maxSelect: number;
+  overageMode: ProductOptionOverageMode;
+  overagePrice: number;
 }
 
 export const optionsApi = {
