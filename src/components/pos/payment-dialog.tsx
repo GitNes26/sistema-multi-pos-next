@@ -67,7 +67,7 @@ const METHOD_COLORS: Record<string, { unselected: string; selected: string }> = 
   },
   wallet: {
     unselected: "border-violet-500/50 text-violet-600 hover:bg-violet-500/10 hover:border-violet-500/70",
-    selected: "border-violet-500 bg-gradient-to-br from-violet-500 to-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.35)]",
+    selected: "border-violet-600 bg-violet-600 text-white shadow-sm",
   },
   credit: {
     unselected: "border-amber-500/50 text-amber-600 hover:bg-amber-500/10 hover:border-amber-500/70",
@@ -354,7 +354,7 @@ export function PaymentDialog({
         <Button
           variant="outline"
           size="sm"
-          className="h-8 flex-1"
+          className="h-11 flex-1"
           onClick={() => setTipMode(tipMode === "custom" ? "none" : "custom")}
         >
           {tipMode === "custom" ? "Cancelar" : "Otro monto"}
@@ -365,7 +365,7 @@ export function PaymentDialog({
             onChange={(e) => setTipCustom(e.target.value.replace(/[^\d.,]/g, ""))}
             placeholder="$0.00"
             inputMode="decimal"
-            className="h-8 w-24"
+            className="h-11 w-28"
           />
         )}
       </div>
@@ -389,7 +389,7 @@ export function PaymentDialog({
             key={d}
             type="button"
             onClick={() => addPayment("cash", d)}
-            className="rounded-xl border bg-background py-2.5 text-sm font-bold tabular-nums transition hover:bg-muted active:scale-[0.97]"
+            className="rounded-xl border bg-background py-3.5 text-sm font-bold tabular-nums transition hover:bg-muted active:scale-[0.97]"
           >
             ${d}
           </button>
@@ -581,7 +581,7 @@ export function PaymentDialog({
                       type="button"
                       onClick={() => setMethod(m)}
                       className={cn(
-                        "flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-[10px] font-medium transition",
+                        "flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-xs font-medium transition",
                         method === m
                           ? METHOD_COLORS[m].selected
                           : METHOD_COLORS[m].unselected
@@ -681,12 +681,12 @@ export function PaymentDialog({
                   placeholder={`${Math.floor(t.customer.points)} pts`}
                   inputMode="numeric"
                   aria-label="Puntos a canjear"
-                  className="h-9"
+                  className="h-11"
                 />
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 shrink-0"
+                  className="h-11 shrink-0"
                   onClick={() => applyPoints(Number(pointsStr))}
                 >
                   Aplicar
@@ -694,7 +694,7 @@ export function PaymentDialog({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 shrink-0"
+                  className="h-11 shrink-0"
                   onClick={() => applyPoints(maxPoints)}
                   disabled={maxPoints <= 0}
                 >
@@ -723,7 +723,7 @@ export function PaymentDialog({
             onChange={(e) => setReference(e.target.value)}
             placeholder="Referencia (opcional) — últimos 4, folio…"
             aria-label="Referencia"
-            className="h-9"
+            className="h-11"
           />
         </div>
 
@@ -733,7 +733,7 @@ export function PaymentDialog({
             <div className="flex items-center gap-2 border-b px-4 py-3">
               <ListChecks className="size-4 text-muted-foreground" />
               <span className="text-sm font-semibold">Pagos realizados</span>
-              <span className="ml-auto flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+              <span className="ml-auto flex size-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                 {entries.length}
               </span>
             </div>
@@ -770,7 +770,7 @@ export function PaymentDialog({
                       <button
                         type="button"
                         onClick={() => removeEntry(i)}
-                        className="text-muted-foreground hover:text-destructive"
+                        className="flex size-11 items-center justify-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       >
                         <Trash2 className="size-4" />
                       </button>

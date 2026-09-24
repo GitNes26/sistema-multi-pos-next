@@ -120,9 +120,9 @@ function OptionPill({
   size?: "sm" | "md" | "lg"
 }) {
   const sizeClasses = {
-    sm: "px-3 py-1.5 text-xs gap-1.5",
-    md: "px-4 py-2 text-sm gap-2",
-    lg: "px-5 py-2.5 text-base gap-2.5",
+    sm: "min-h-11 px-3 py-2 text-xs gap-1.5",
+    md: "min-h-12 px-4 py-2.5 text-sm gap-2",
+    lg: "min-h-13 px-5 py-3 text-base gap-2.5",
   }
 
   return (
@@ -130,7 +130,7 @@ function OptionPill({
       type="button"
       onClick={onToggle}
       className={cn(
-        "relative inline-flex items-center rounded-full border-2 font-medium transition-all duration-200",
+        "relative inline-flex touch-manipulation items-center rounded-xl border-2 font-medium transition-all duration-200",
         "hover:shadow-md active:scale-95",
         sizeClasses[size],
         isSelected
@@ -663,7 +663,7 @@ export function ProductBuilder({
                         disabled={unavailable}
                         onClick={() => setVariantId(v.id)}
                         className={cn(
-                          "inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                          "inline-flex min-h-11 touch-manipulation items-center rounded-xl border px-4 py-2 text-sm font-medium transition-colors active:scale-[0.97]",
                           active
                             ? "border-stone-900 bg-stone-900 text-white dark:border-white dark:bg-white dark:text-stone-900"
                             : "border-stone-200 bg-white text-stone-700 hover:border-stone-400 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300",
@@ -721,7 +721,7 @@ export function ProductBuilder({
         </ScrollArea>
 
         {/* Footer — sticky bottom bar */}
-        <div className="border-t border-stone-200 bg-white/80 px-6 py-4 backdrop-blur-lg dark:border-stone-800 dark:bg-stone-950/80">
+        <div className="border-t border-stone-200 bg-white/95 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-lg sm:px-6 dark:border-stone-800 dark:bg-stone-950/95">
           {/* Price breakdown */}
           <div className="mb-3 space-y-1">
             <div className="flex items-center justify-between text-sm">

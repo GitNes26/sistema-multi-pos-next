@@ -21,20 +21,20 @@ interface ProductCardProps {
 function StockBadge({ stock }: { stock: number }) {
   if (stock <= 0) {
     return (
-      <span className="rounded-full bg-destructive/90 px-1.5 py-0.5 text-[10px] font-bold text-white">
+      <span className="rounded-full bg-destructive/90 px-1.5 py-0.5 text-xs font-bold text-white">
         Sin stock
       </span>
     );
   }
   if (stock <= 8) {
     return (
-      <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+      <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-xs font-bold text-white">
         {stock} u
       </span>
     );
   }
   return (
-    <span className="rounded-full bg-emerald-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white">
+    <span className="rounded-full bg-emerald-600/90 px-1.5 py-0.5 text-xs font-bold text-white">
       {stock} u
     </span>
   );
@@ -56,7 +56,7 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
     <motion.div
       whileTap={{ scale: 0.96 }}
       className={cn(
-        "group relative flex h-full w-full flex-col gap-2 rounded-2xl border bg-card p-2.5 text-left shadow-sm transition",
+        "group relative flex min-h-40 w-full touch-manipulation flex-col gap-2 rounded-2xl border bg-card p-3 text-left shadow-sm transition",
         "hover:border-primary/50 hover:shadow-md",
         (!product.isAvailable || (product.trackInventory && product.stock <= 0)) && "opacity-60",
         added && "border-primary bg-primary/5"
@@ -85,12 +85,12 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
       </AnimatePresence>
 
       {product.bulk && (
-        <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-violet-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+        <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-violet-600 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
           <Scale className="size-3" /> A granel
         </span>
       )}
       {hot && (
-        <span className="absolute right-11 top-2 z-10 rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase text-primary-foreground">
+        <span className="absolute right-11 top-2 z-10 rounded-md bg-primary px-1.5 py-0.5 text-xs font-bold uppercase text-primary-foreground">
           Vigente
         </span>
       )}
@@ -100,13 +100,13 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
           event.stopPropagation();
           setInfoOpen(true);
         }}
-        className="absolute right-2 top-2 z-30 flex size-8 items-center justify-center rounded-full border border-border/60 bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute right-1.5 top-1.5 z-30 flex size-11 touch-manipulation items-center justify-center rounded-xl border border-border/60 bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={`Ver información de ${product.name}`}
         title="Ver información del producto"
       >
         <Info className="size-4" />
       </button>
-      <div className="relative flex h-16 items-center justify-center rounded-xl bg-muted/40">
+      <div className="relative flex h-20 items-center justify-center rounded-xl bg-muted/40">
         {product.imageUrl ? (
           <ThumbImage
             src={product.imageUrl}
@@ -127,20 +127,20 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
           </span>
         )}
         {product.variantCount > 1 && (
-          <span className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">
+          <span className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1.5 py-0.5 text-xs font-bold text-white">
             {product.variantCount} variantes
           </span>
         )}
       </div>
       <div className="flex flex-1 flex-col justify-between gap-1">
         <div className="flex items-start justify-between gap-1">
-          <p className="line-clamp-2 text-xs font-medium leading-tight">{product.name}</p>
+          <p className="line-clamp-2 text-sm font-semibold leading-tight">{product.name}</p>
         </div>
         <div className="flex items-end justify-between gap-1">
-          <p className="text-sm font-bold tabular-nums">
+          <p className="text-base font-bold tabular-nums">
             {money(product.price)}
             {product.bulk && (
-              <span className="ml-0.5 text-[9px] font-medium text-muted-foreground">
+              <span className="ml-0.5 text-xs font-medium text-muted-foreground">
                 /{product.bulk.unitAbbrev}
               </span>
             )}
@@ -148,7 +148,7 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
           {product.trackInventory ? (
             <StockBadge stock={Math.floor(product.stock)} />
           ) : (
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
               —
             </span>
           )}

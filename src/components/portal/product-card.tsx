@@ -202,7 +202,7 @@ export function ProductCard({
               type="button"
               disabled={favBusy}
               onClick={handleFavorite}
-              className="absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-full bg-background/70 backdrop-blur-sm"
+              className="absolute right-2 top-2 z-10 flex size-11 touch-manipulation items-center justify-center rounded-xl bg-background/85 backdrop-blur-sm active:scale-95"
               whileTap={{ scale: 0.75 }}
               aria-label="Favorito"
             >
@@ -265,7 +265,7 @@ export function ProductCard({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 w-full rounded-xl text-xs"
+                className="h-11 w-full rounded-xl text-sm"
                 onClick={() =>
                   swalToast(
                     product.availabilityNote ||
@@ -281,7 +281,7 @@ export function ProductCard({
               <Button
                 size="sm"
                 className={cn(
-                  "h-9 w-full rounded-xl text-xs font-semibold shadow-sm transition-all",
+                  "h-11 w-full touch-manipulation rounded-xl text-sm font-semibold shadow-sm transition-all",
                   justAdded && "bg-emerald-500 hover:bg-emerald-500"
                 )}
                 onClick={handleAdd}

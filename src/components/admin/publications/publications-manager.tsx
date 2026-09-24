@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import * as yup from "yup";
-import { AlertCircle, Check, FileText, Megaphone, Palette, Pencil, Plus, Trash2, Heading } from "lucide-react";
+import { AlertCircle, Check, FileText, Megaphone, PackageSearch, Palette, Pencil, Plus, Trash2, Heading } from "lucide-react";
 import { publicationsApi } from "@/lib/publications/client";
 import {
   PUBLICATION_TYPES,
@@ -29,6 +29,7 @@ import { useFocusInvalid } from "@/hooks/use-focus-invalid";
 import { PUBLICATION_DESIGNS } from "@/lib/publications/designs";
 import { PublicationFlyer, flyerColors } from "@/components/publications/publication-flyer";
 import { cn } from "@/lib/utils";
+import { crudApi } from "@/lib/api";
 
 const TYPE_COLORS: Record<string, string> = {
   product_new: "bg-emerald-500 text-white",
@@ -55,6 +56,7 @@ export function PublicationsManager() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string>();
+  const [products, setProducts] = useState<{ id: string; name: string; imageUrl: string | null }[]>([]);
   const { focusFirstEnabled, focusFirstInvalid } = useFocusInvalid();
 
   const load = useCallback(() => {
@@ -66,6 +68,9 @@ export function PublicationsManager() {
 
   useEffect(() => {
     load();
+    crudApi.list("products", { pageSize: 500, active: "true" }).then(({ rows }) => {
+      setProducts(rows.filter((row) => row.isActive !== false).map((row) => ({ id: String(row.id), name: String(row.name), imageUrl: typeof row.imageUrl === "string" ? row.imageUrl : null })));
+    }).catch(() => undefined);
   }, [load]);
 
   const openCreate = () => { setErrors({}); setFormError(undefined); setForm({ ...EMPTY_FORM }); };
@@ -83,7 +88,7 @@ export function PublicationsManager() {
       publishedAt: p.publishedAt,
       startsAt: p.startsAt,
       endsAt: p.endsAt,
-      metadata: { designId: p.designId ?? "general", primaryColor: p.primaryColor ?? flyerColors(p.designId)[0], secondaryColor: p.secondaryColor ?? flyerColors(p.designId)[1] },
+      metadata: { designId: p.designId ?? "general", primaryColor: p.primaryColor ?? flyerColors(p.designId)[0], secondaryColor: p.secondaryColor ?? flyerColors(p.designId)[1], productId: p.productId },
     });
   };
 
@@ -257,12 +262,27 @@ export function PublicationsManager() {
                 searchable={false}
                 clearable={false}
               />
-              {!form.imageUrl && (
-                <div className="space-y-2">
+              {form.type === "product_new" && (
+                <FormCombobox
+                  id="publication-product"
+                  label="Producto relacionado"
+                  infoTooltip="Selecciona el producto para incorporar automáticamente su nombre e imagen en los diseños del flyer."
+                  icon={<PackageSearch className="size-4" />}
+                  value={typeof (form.metadata as { productId?: unknown } | null)?.productId === "string" ? String((form.metadata as { productId: string }).productId) : null}
+                  onChange={(value) => {
+                    const product = products.find((item) => item.id === value);
+                    setForm({ ...form, title: form.title || product?.name || "", imageUrl: product?.imageUrl ?? form.imageUrl, metadata: { ...(form.metadata ?? {}), productId: value || null } });
+                  }}
+                  options={products.map((product) => ({ value: product.id, label: product.name }))}
+                  placeholder="Busca el producto que deseas anunciar"
+                  emptyText="No hay productos activos disponibles"
+                />
+              )}
+              <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
                     <Palette className="size-4 text-muted-foreground" />
                     <Label>Diseño rápido</Label>
-                    <span className="text-xs text-muted-foreground">Se usa cuando no subes una imagen</span>
+                    <span className="text-xs text-muted-foreground">La imagen cargada se integra automáticamente al diseño</span>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {PUBLICATION_DESIGNS.filter((design) => design.type === form.type).map((design) => {
@@ -276,7 +296,7 @@ export function PublicationsManager() {
                           className={cn("relative overflow-hidden rounded-xl border text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", selected && "ring-2 ring-primary ring-offset-2")}
                         >
                           {selected && <Check className="absolute right-2 top-2 size-4" />}
-                          <PublicationFlyer compact designId={design.id} title={form.title || design.title} content={form.content || design.content} />
+                          <PublicationFlyer compact designId={design.id} title={form.title || design.title} content={form.content || design.content} imageUrl={form.imageUrl} />
                         </button>
                       );
                     })}
@@ -289,9 +309,8 @@ export function PublicationsManager() {
                       <input type="color" aria-label="Color secundario del flyer" value={flyerMeta.secondaryColor ?? defaultSecondary} onChange={(event) => setForm({ ...form, metadata: { ...(form.metadata ?? {}), secondaryColor: event.target.value } })} className="h-11 w-full cursor-pointer rounded-lg border bg-background p-1" />
                     </label>
                   </div>
-                  <PublicationFlyer designId={flyerMeta.designId} title={form.title || "Título de la publicación"} content={form.content || "Aquí aparecerá el contenido del aviso."} primaryColor={flyerMeta.primaryColor} secondaryColor={flyerMeta.secondaryColor} />
+                  <PublicationFlyer designId={flyerMeta.designId} title={form.title || "Título de la publicación"} content={form.content || "Aquí aparecerá el contenido del aviso."} imageUrl={form.imageUrl} primaryColor={flyerMeta.primaryColor} secondaryColor={flyerMeta.secondaryColor} />
                 </div>
-              )}
               <div className="grid grid-cols-2 gap-3">
                 <DatePicker
                   id="publication-startsAt"

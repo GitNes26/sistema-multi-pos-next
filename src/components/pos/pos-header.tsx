@@ -57,7 +57,7 @@ export function PosHeader({
   const router = useRouter();
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card/80 px-3 backdrop-blur lg:px-4">
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-card/80 px-2 backdrop-blur sm:gap-3 sm:px-3 lg:px-4 [&_button]:min-h-11 [&_button]:min-w-11">
       <Button
         variant="ghost"
         size="icon"
@@ -76,7 +76,7 @@ export function PosHeader({
       <Logo logoUrl={logoUrl} className="h-8 w-auto" />
       <div className="hidden min-w-0 sm:block">
         <p className="text-sm font-bold leading-tight">Punto de venta</p>
-        <p className="truncate text-[11px] leading-tight text-muted-foreground">
+        <p className="truncate text-xs leading-tight text-muted-foreground">
           {orgName ? `${orgName} · ` : ""}
           {location.name} · {cashier.name || "Cajero"}
         </p>
@@ -93,15 +93,15 @@ export function PosHeader({
         role={sessionUser?.role}
         className="hidden sm:inline-flex"
       />
-      <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline">v{packageJson.version}</span>
+      <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground lg:inline">v{packageJson.version}</span>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="scrollbar-none ml-auto flex min-w-0 items-center gap-1.5 overflow-x-auto">
         {canOperateCash && (
         <button
           type="button"
           onClick={onOpenCash}
           className={cn(
-            "flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition hover:bg-muted",
+            "flex h-11 touch-manipulation items-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition hover:bg-muted active:scale-[0.98]",
             session && session.status === "open"
               ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
               : "border-destructive/40 bg-destructive/10 text-destructive"

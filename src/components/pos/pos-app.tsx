@@ -92,7 +92,7 @@ function PosSplit({
         onLayoutChanged={onLayoutChanged}
         className="size-full"
       >
-        <ResizablePanel id="ticket" defaultSize="46" minSize="34" maxSize="72" className="min-h-0">
+        <ResizablePanel id="ticket" defaultSize="40" minSize="30" maxSize="68" className="min-h-0">
           <div className="scrollbar-none h-full min-h-0 overflow-y-auto overscroll-contain">
             <TicketPanel
               onEditBulk={handlers.onEditBulk}
@@ -107,7 +107,7 @@ function PosSplit({
           withHandle
           className="h-2 w-full shrink-0 items-center justify-center bg-border/70"
         />
-        <ResizablePanel id="catalog" defaultSize="54" minSize="30" className="min-h-0">
+        <ResizablePanel id="catalog" defaultSize="60" minSize="32" className="min-h-0">
           <CatalogPanel
             onSelect={handlers.onSelect}
             onSelectCombo={handlers.onSelectCombo}

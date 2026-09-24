@@ -138,7 +138,7 @@ export function CatalogPanel({
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addFirst()}
             placeholder="Buscar por nombre, SKU o código de barras…"
-            className="h-10 pl-9 md:pl-9 pr-16 md:pr-16"
+            className="h-11 pl-9 pr-16 text-base md:h-11 md:pl-9 md:pr-16"
             aria-label="Buscar productos"
           />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -149,7 +149,7 @@ export function CatalogPanel({
           type="button"
           variant={keyboardOpen ? "secondary" : "outline"}
           size="icon"
-          className="size-10 shrink-0"
+          className="size-11 shrink-0 touch-manipulation"
           onClick={() => {
             const next = !keyboardOpen
             setKeyboardOpen(next)
@@ -196,7 +196,7 @@ export function CatalogPanel({
             }}
             whileTap={{ scale: 0.95 }}
             className={cn(
-              "h-9 shrink-0 rounded-full border px-3 text-xs font-medium transition",
+              "h-11 shrink-0 touch-manipulation rounded-xl border px-4 text-sm font-medium transition active:scale-[0.97]",
               activeCategory === (c.id || null)
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-background text-muted-foreground hover:bg-muted"
@@ -234,7 +234,7 @@ export function CatalogPanel({
             </div>
           ) : (
             <motion.div
-              className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5"
+              className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 md:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]"
               variants={STAGGER_COMPACT.container}
               initial="hidden"
               animate="show"
@@ -259,7 +259,7 @@ export function CatalogPanel({
           </div>
         ) : (
           <motion.div
-            className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5"
+            className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 md:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]"
             variants={STAGGER_COMPACT.container}
             initial="hidden"
             animate="show"

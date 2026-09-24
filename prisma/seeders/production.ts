@@ -1,7 +1,7 @@
-import bcrypt from "bcryptjs";
-import { Prisma } from "@prisma/client";
-import { prisma } from "../../src/lib/db/client";
-import { PERMISSIONS } from "../../src/lib/auth/permission-keys";
+import bcrypt from "bcryptjs"
+import { Prisma } from "@prisma/client"
+import { prisma } from "../../src/lib/db/client"
+import { PERMISSIONS } from "../../src/lib/auth/permission-keys"
 
 // FASE 1.3.1 + FASE 2.8 — Seed de producción (base mínima)
 // - SuperAdmin default
@@ -11,13 +11,15 @@ import { PERMISSIONS } from "../../src/lib/auth/permission-keys";
 //   agente, rental → agente de renta; hybrid → mesero/cocina).
 // - Unidades de medida del sistema (PLAN §6b)
 
-const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL ?? "admin@multi-pos.com";
-const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD ?? "Admin123!";
-const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME ?? "Super Admin";
+const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL ?? "admin@multi-pos.com"
+const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD ?? "Admin123!"
+const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME ?? "Super Admin"
 
 // organizations.manage es exclusivo del superAdmin (no va en owner/admin).
-const allPermissionKeys = PERMISSIONS.map((p) => p.key);
-const appPermissionKeys = PERMISSIONS.filter((p) => p.key !== "organizations.manage").map((p) => p.key);
+const allPermissionKeys = PERMISSIONS.map((p) => p.key)
+const appPermissionKeys = PERMISSIONS.filter(
+  (p) => p.key !== "organizations.manage"
+).map((p) => p.key)
 
 // ── Roles de sistema por businessMode ──────────────────────────────────────
 // Los compartidos (businessMode = null) aplican a cualquier organización.
@@ -26,16 +28,16 @@ const appPermissionKeys = PERMISSIONS.filter((p) => p.key !== "organizations.man
 // Los ids son estables para upsert: `system-{name}` (compartidos, mantienen
 // el fallback por enum en permissionsForRole) y `system-{mode}-{name}`.
 
-type BusinessMode = "retail" | "food_service" | "services" | "rental" | "hybrid";
+type BusinessMode = "retail" | "food_service" | "services" | "rental" | "hybrid"
 
 type SystemRoleDef = {
-  id: string;
-  name: string;
-  description: string;
+  id: string
+  name: string
+  description: string
   /** null = compartido a todas las organizaciones. */
-  businessMode?: BusinessMode | null;
-  permissions: readonly string[];
-};
+  businessMode?: BusinessMode | null
+  permissions: readonly string[]
+}
 
 // Mesero: toma pedidos, atiende mesas y los manda a cocina (no toca caja).
 const WAITER_PERMISSIONS = [
@@ -48,11 +50,15 @@ const WAITER_PERMISSIONS = [
   "orders.view",
   "orders.manage",
   "locations.view",
-] as const;
+] as const
 
 // Cocina (KDS): ve los pedidos y opera el tablero (kds.operate). SIN
 // orders.manage ni delivery.manage: la cocina no confirma pedidos ni entregas.
-const KITCHEN_PERMISSIONS = ["orders.view", "kds.operate", "products.view"] as const;
+const KITCHEN_PERMISSIONS = [
+  "orders.view",
+  "kds.operate",
+  "products.view",
+] as const
 
 export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
   // ── Compartidos (todos los modos de negocio) ─────────────────────────────
@@ -102,8 +108,14 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
   {
     id: "system-courier",
     name: "Repartidor",
-    description: "Repartidor: entrega a domicilio y su estatus (no opera el KDS)",
-    permissions: ["orders.view", "delivery.manage", "customers.view", "locations.view"],
+    description:
+      "Repartidor: entrega a domicilio y su estatus (no opera el KDS)",
+    permissions: [
+      "orders.view",
+      "delivery.manage",
+      "customers.view",
+      "locations.view",
+    ],
   },
   {
     id: "system-customer",
@@ -124,7 +136,8 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
     id: "system-food_service-kitchen",
     name: "Cocina (KDS)",
     businessMode: "food_service",
-    description: "Cocina (KDS): ve y actualiza pedidos en la pantalla de cocina",
+    description:
+      "Cocina (KDS): ve y actualiza pedidos en la pantalla de cocina",
     permissions: KITCHEN_PERMISSIONS,
   },
 
@@ -133,7 +146,8 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
     id: "system-services-attendant",
     name: "Agente de atención",
     businessMode: "services",
-    description: "Agente de atención: agenda de citas, clientes y cobro en caja",
+    description:
+      "Agente de atención: agenda de citas, clientes y cobro en caja",
     permissions: [
       "pos.use",
       "products.view",
@@ -154,7 +168,8 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
     id: "system-rental-agent",
     name: "Agente de renta",
     businessMode: "rental",
-    description: "Agente de renta: reservaciones y disponibilidad, clientes y cobro en caja",
+    description:
+      "Agente de renta: reservaciones y disponibilidad, clientes y cobro en caja",
     permissions: [
       "pos.use",
       "products.view",
@@ -182,89 +197,531 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
     id: "system-hybrid-kitchen",
     name: "Cocina (KDS)",
     businessMode: "hybrid",
-    description: "Cocina (KDS): ve y actualiza pedidos en la pantalla de cocina",
+    description:
+      "Cocina (KDS): ve y actualiza pedidos en la pantalla de cocina",
     permissions: KITCHEN_PERMISSIONS,
   },
-];
+]
 
 // Unidades del sistema (organizationId = null → globales)
 export const SYSTEM_UNITS = [
-  { name: "Kilogramo", abbreviation: "kg", type: "weight", baseUnit: "g", conversionFactor: "1000" },
-  { name: "Gramo", abbreviation: "g", type: "weight", baseUnit: "g", conversionFactor: "1" },
-  { name: "Litro", abbreviation: "lt", type: "volume", baseUnit: "ml", conversionFactor: "1000" },
-  { name: "Mililitro", abbreviation: "ml", type: "volume", baseUnit: "ml", conversionFactor: "1" },
-  { name: "Pieza", abbreviation: "pza", type: "piece", baseUnit: "pza", conversionFactor: "1" },
-  { name: "Metro", abbreviation: "m", type: "length", baseUnit: "cm", conversionFactor: "100" },
-  { name: "Centímetro", abbreviation: "cm", type: "length", baseUnit: "cm", conversionFactor: "1" },
-  { name: "Peso (monto)", abbreviation: "peso", type: "amount", baseUnit: "peso", conversionFactor: "1" },
-] as const;
+  {
+    name: "Kilogramo",
+    abbreviation: "kg",
+    type: "weight",
+    baseUnit: "g",
+    conversionFactor: "1000",
+  },
+  {
+    name: "Gramo",
+    abbreviation: "g",
+    type: "weight",
+    baseUnit: "g",
+    conversionFactor: "1",
+  },
+  {
+    name: "Litro",
+    abbreviation: "lt",
+    type: "volume",
+    baseUnit: "ml",
+    conversionFactor: "1000",
+  },
+  {
+    name: "Mililitro",
+    abbreviation: "ml",
+    type: "volume",
+    baseUnit: "ml",
+    conversionFactor: "1",
+  },
+  {
+    name: "Pieza",
+    abbreviation: "pza",
+    type: "piece",
+    baseUnit: "pza",
+    conversionFactor: "1",
+  },
+  {
+    name: "Metro",
+    abbreviation: "m",
+    type: "length",
+    baseUnit: "cm",
+    conversionFactor: "100",
+  },
+  {
+    name: "Centímetro",
+    abbreviation: "cm",
+    type: "length",
+    baseUnit: "cm",
+    conversionFactor: "1",
+  },
+  {
+    name: "Pulgada",
+    abbreviation: "in",
+    type: "length",
+    baseUnit: "cm",
+    conversionFactor: "2.54",
+  },
+  {
+    name: "Peso (monto)",
+    abbreviation: "peso",
+    type: "amount",
+    baseUnit: "peso",
+    conversionFactor: "1",
+  },
+] as const
 
 // FASE 14.4 — Menú dinámico predefinido (global, ids fijos para upsert).
 type SystemMenuDef = {
-  id: string;
-  parentId: string | null;
-  type: "section" | "item";
-  label: string;
-  icon: string;
-  href?: string | null;
-  permissionKey?: string | null;
-  sortOrder: number;
-};
+  id: string
+  parentId: string | null
+  type: "section" | "item"
+  label: string
+  icon: string
+  href?: string | null
+  permissionKey?: string | null
+  sortOrder: number
+}
 
 export const SYSTEM_MENUS: SystemMenuDef[] = [
-  { id: "menu-principal", parentId: null, type: "section", label: "Principal", icon: "LayoutDashboard", sortOrder: 1 },
-  { id: "menu-panel", parentId: "menu-principal", type: "item", label: "Panel", icon: "LayoutDashboard", href: "/admin", sortOrder: 1 },
-  { id: "menu-pos", parentId: "menu-principal", type: "item", label: "POS", icon: "Store", href: "/pos", permissionKey: "pos.use", sortOrder: 2 },
-  { id: "menu-ventas", parentId: "menu-principal", type: "item", label: "Ventas", icon: "ShoppingCart", href: "/admin/sales", permissionKey: "sales.view", sortOrder: 3 },
-  { id: "menu-reportes", parentId: "menu-principal", type: "item", label: "Reportes", icon: "BarChart3", href: "/admin/reports", permissionKey: "reports.view", sortOrder: 4 },
-  { id: "menu-bi", parentId: "menu-principal", type: "item", label: "BI", icon: "Sparkles", href: "/admin/reports/bi", permissionKey: "reports.view", sortOrder: 4.5 },
-  { id: "menu-notificaciones", parentId: "menu-principal", type: "item", label: "Notificaciones", icon: "BellRing", href: "/admin/notifications", sortOrder: 5 },
+  {
+    id: "menu-principal",
+    parentId: null,
+    type: "section",
+    label: "Principal",
+    icon: "LayoutDashboard",
+    sortOrder: 1,
+  },
+  {
+    id: "menu-panel",
+    parentId: "menu-principal",
+    type: "item",
+    label: "Panel",
+    icon: "LayoutDashboard",
+    href: "/admin",
+    sortOrder: 1,
+  },
+  {
+    id: "menu-pos",
+    parentId: "menu-principal",
+    type: "item",
+    label: "POS",
+    icon: "Store",
+    href: "/pos",
+    permissionKey: "pos.use",
+    sortOrder: 2,
+  },
+  {
+    id: "menu-ventas",
+    parentId: "menu-principal",
+    type: "item",
+    label: "Ventas",
+    icon: "ShoppingCart",
+    href: "/admin/sales",
+    permissionKey: "sales.view",
+    sortOrder: 3,
+  },
+  {
+    id: "menu-reportes",
+    parentId: "menu-principal",
+    type: "item",
+    label: "Reportes",
+    icon: "ChartColumn",
+    href: "/admin/reports",
+    permissionKey: "reports.view",
+    sortOrder: 4,
+  },
+  {
+    id: "menu-bi",
+    parentId: "menu-principal",
+    type: "item",
+    label: "BI",
+    icon: "Sparkles",
+    href: "/admin/reports/bi",
+    permissionKey: "reports.view",
+    sortOrder: 4.5,
+  },
+  {
+    id: "menu-notificaciones",
+    parentId: "menu-principal",
+    type: "item",
+    label: "Notificaciones",
+    icon: "BellRing",
+    href: "/admin/notifications",
+    sortOrder: 5,
+  },
 
-  { id: "menu-catalogos", parentId: null, type: "section", label: "Catálogos", icon: "Package", sortOrder: 2 },
-  { id: "menu-productos", parentId: "menu-catalogos", type: "item", label: "Productos", icon: "Package", href: "/admin/products", permissionKey: "products.view", sortOrder: 1 },
-  { id: "menu-categorias", parentId: "menu-catalogos", type: "item", label: "Categorías", icon: "Tags", href: "/admin/categories", permissionKey: "categories.manage", sortOrder: 2 },
-  { id: "menu-medidas", parentId: "menu-catalogos", type: "item", label: "Medidas", icon: "Ruler", href: "/admin/units", permissionKey: "products.manage", sortOrder: 3 },
-  { id: "menu-clientes", parentId: "menu-catalogos", type: "item", label: "Clientes", icon: "Users", href: "/admin/customers", permissionKey: "customers.view", sortOrder: 4 },
-  { id: "menu-empleados", parentId: "menu-catalogos", type: "item", label: "Empleados", icon: "UserCog", href: "/admin/employees", permissionKey: "employees.view", sortOrder: 5 },
-  { id: "menu-puestos", parentId: "menu-catalogos", type: "item", label: "Puestos", icon: "Briefcase", href: "/admin/positions", permissionKey: "employees.view", sortOrder: 6 },
-  { id: "menu-combos", parentId: "menu-catalogos", type: "item", label: "Combos", icon: "Puzzle", href: "/admin/combos", permissionKey: "products.manage", sortOrder: 7 },
-  { id: "menu-promociones", parentId: "menu-catalogos", type: "item", label: "Promociones", icon: "Percent", href: "/admin/promotions", permissionKey: "promotions.view", sortOrder: 8 },
-  { id: "menu-publicaciones", parentId: "menu-catalogos", type: "item", label: "Publicaciones", icon: "Megaphone", href: "/admin/publications", permissionKey: "publications.manage", sortOrder: 9 },
+  {
+    id: "menu-catalogos",
+    parentId: null,
+    type: "section",
+    label: "Catálogos",
+    icon: "Package",
+    sortOrder: 2,
+  },
+  {
+    id: "menu-productos",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Productos",
+    icon: "Package",
+    href: "/admin/products",
+    permissionKey: "products.view",
+    sortOrder: 1,
+  },
+  {
+    id: "menu-categorias",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Categorías",
+    icon: "Tags",
+    href: "/admin/categories",
+    permissionKey: "categories.manage",
+    sortOrder: 2,
+  },
+  {
+    id: "menu-medidas",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Medidas",
+    icon: "Ruler",
+    href: "/admin/units",
+    permissionKey: "products.manage",
+    sortOrder: 3,
+  },
+  {
+    id: "menu-clientes",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Clientes",
+    icon: "Users",
+    href: "/admin/customers",
+    permissionKey: "customers.view",
+    sortOrder: 4,
+  },
+  {
+    id: "menu-empleados",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Empleados",
+    icon: "UserCog",
+    href: "/admin/employees",
+    permissionKey: "employees.view",
+    sortOrder: 5,
+  },
+  {
+    id: "menu-puestos",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Puestos",
+    icon: "Briefcase",
+    href: "/admin/positions",
+    permissionKey: "employees.view",
+    sortOrder: 6,
+  },
+  {
+    id: "menu-combos",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Combos",
+    icon: "Puzzle",
+    href: "/admin/combos",
+    permissionKey: "products.manage",
+    sortOrder: 7,
+  },
+  {
+    id: "menu-promociones",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Promociones",
+    icon: "Percent",
+    href: "/admin/promotions",
+    permissionKey: "promotions.view",
+    sortOrder: 8,
+  },
+  {
+    id: "menu-publicaciones",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Publicaciones",
+    icon: "Megaphone",
+    href: "/admin/publications",
+    permissionKey: "publications.manage",
+    sortOrder: 9,
+  },
 
-  { id: "menu-operacion", parentId: null, type: "section", label: "Operación", icon: "Boxes", sortOrder: 3 },
-  { id: "menu-inventario", parentId: "menu-operacion", type: "item", label: "Inventario", icon: "Boxes", href: "/admin/inventory", permissionKey: "inventory.view", sortOrder: 1 },
-  { id: "menu-compras", parentId: "menu-operacion", type: "item", label: "Proveedores y compras", icon: "Truck", href: "/admin/purchasing", permissionKey: "purchasing.view", sortOrder: 1.5 },
-  { id: "menu-sucursales", parentId: "menu-operacion", type: "item", label: "Sucursales", icon: "MapPin", href: "/admin/locations", permissionKey: "locations.view", sortOrder: 2 },
-  { id: "menu-cajas", parentId: "menu-operacion", type: "item", label: "Cajas", icon: "Banknote", href: "/admin/cashRegisters", permissionKey: "locations.view", sortOrder: 3 },
-  { id: "menu-pedidos", parentId: "menu-operacion", type: "item", label: "Pedidos", icon: "ClipboardList", href: "/admin/orders", permissionKey: "orders.view", sortOrder: 4 },
-  { id: "menu-pedidos-monitoreo", parentId: "menu-pedidos", type: "item", label: "Monitoreo", icon: "Activity", href: "/admin/orders/monitoring", permissionKey: "orders.view", sortOrder: 1 },
-  { id: "menu-cedis", parentId: "menu-operacion", type: "item", label: "CEDIS", icon: "Warehouse", href: "/admin/cedis", permissionKey: "cedis.manage", sortOrder: 5 },
-  { id: "menu-creditos", parentId: "menu-operacion", type: "item", label: "Crédito", icon: "Landmark", href: "/admin/credits", permissionKey: "orders.view", sortOrder: 6 },
-  { id: "menu-mesas", parentId: "menu-operacion", type: "item", label: "Mesas", icon: "Armchair", href: "/admin/tables", permissionKey: "locations.view", sortOrder: 7 },
-  { id: "menu-kds", parentId: "menu-operacion", type: "item", label: "Cocina (KDS)", icon: "ChefHat", href: "/kds", permissionKey: "orders.view", sortOrder: 8 },
-  { id: "menu-agenda", parentId: "menu-operacion", type: "item", label: "Agenda de citas", icon: "CalendarDays", href: "/agenda", permissionKey: "appointments.view", sortOrder: 9 },
-  { id: "menu-reservaciones", parentId: "menu-operacion", type: "item", label: "Reservaciones", icon: "CalendarRange", href: "/reservaciones", permissionKey: "reservations.view", sortOrder: 10 },
+  {
+    id: "menu-operacion",
+    parentId: null,
+    type: "section",
+    label: "Operación",
+    icon: "Boxes",
+    sortOrder: 3,
+  },
+  {
+    id: "menu-inventario",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Inventario",
+    icon: "Boxes",
+    href: "/admin/inventory",
+    permissionKey: "inventory.view",
+    sortOrder: 1,
+  },
+  {
+    id: "menu-compras",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Proveedores y compras",
+    icon: "Truck",
+    href: "/admin/purchasing",
+    permissionKey: "purchasing.view",
+    sortOrder: 1.5,
+  },
+  {
+    id: "menu-sucursales",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Sucursales",
+    icon: "MapPin",
+    href: "/admin/locations",
+    permissionKey: "locations.view",
+    sortOrder: 2,
+  },
+  {
+    id: "menu-cajas",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Cajas",
+    icon: "Banknote",
+    href: "/admin/cashRegisters",
+    permissionKey: "locations.view",
+    sortOrder: 3,
+  },
+  {
+    id: "menu-pedidos",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Pedidos",
+    icon: "ClipboardList",
+    href: "/admin/orders",
+    permissionKey: "orders.view",
+    sortOrder: 4,
+  },
+  {
+    id: "menu-pedidos-monitoreo",
+    parentId: "menu-pedidos",
+    type: "item",
+    label: "Monitoreo",
+    icon: "Activity",
+    href: "/admin/orders/monitoring",
+    permissionKey: "orders.view",
+    sortOrder: 1,
+  },
+  {
+    id: "menu-cedis",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "CEDIS",
+    icon: "Warehouse",
+    href: "/admin/cedis",
+    permissionKey: "cedis.manage",
+    sortOrder: 5,
+  },
+  {
+    id: "menu-creditos",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Crédito",
+    icon: "Landmark",
+    href: "/admin/credits",
+    permissionKey: "orders.view",
+    sortOrder: 6,
+  },
+  {
+    id: "menu-mesas",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Mesas",
+    icon: "Armchair",
+    href: "/admin/tables",
+    permissionKey: "locations.view",
+    sortOrder: 7,
+  },
+  {
+    id: "menu-kds",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Cocina (KDS)",
+    icon: "ChefHat",
+    href: "/kds",
+    permissionKey: "orders.view",
+    sortOrder: 8,
+  },
+  {
+    id: "menu-agenda",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Agenda de citas",
+    icon: "CalendarDays",
+    href: "/agenda",
+    permissionKey: "appointments.view",
+    sortOrder: 9,
+  },
+  {
+    id: "menu-reservaciones",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Reservaciones",
+    icon: "CalendarRange",
+    href: "/reservaciones",
+    permissionKey: "reservations.view",
+    sortOrder: 10,
+  },
 
-  { id: "menu-ajustes", parentId: null, type: "section", label: "Ajustes", icon: "Settings", sortOrder: 4 },
-  { id: "menu-apariencia", parentId: "menu-ajustes", type: "item", label: "Apariencia", icon: "Palette", href: "/admin/settings/appearance", permissionKey: "settings.manage", sortOrder: 1 },
-  { id: "menu-empresa", parentId: "menu-ajustes", type: "item", label: "Empresa", icon: "Building2", href: "/admin/settings/company", permissionKey: "settings.manage", sortOrder: 2 },
-  { id: "menu-lealtad", parentId: "menu-ajustes", type: "item", label: "Lealtad", icon: "Sparkles", href: "/admin/settings/loyalty", permissionKey: "settings.manage", sortOrder: 3 },
-  { id: "menu-supervisor", parentId: "menu-ajustes", type: "item", label: "Supervisor", icon: "ShieldCheck", href: "/admin/settings/supervisor", permissionKey: "settings.manage", sortOrder: 4 },
-  { id: "menu-pagos", parentId: "menu-ajustes", type: "item", label: "Pagos", icon: "CreditCard", href: "/admin/settings/payments", permissionKey: "settings.manage", sortOrder: 5 },
-  { id: "menu-entrega", parentId: "menu-ajustes", type: "item", label: "Entrega", icon: "Truck", href: "/admin/settings/delivery-policy", permissionKey: "settings.manage", sortOrder: 5.5 },
-  { id: "menu-credito", parentId: "menu-ajustes", type: "item", label: "Crédito", icon: "Landmark", href: "/admin/settings/credit-policy", permissionKey: "settings.manage", sortOrder: 5.6 },
+  {
+    id: "menu-ajustes",
+    parentId: null,
+    type: "section",
+    label: "Ajustes",
+    icon: "Settings",
+    sortOrder: 4,
+  },
+  {
+    id: "menu-apariencia",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Apariencia",
+    icon: "Palette",
+    href: "/admin/settings/appearance",
+    permissionKey: "settings.manage",
+    sortOrder: 1,
+  },
+  {
+    id: "menu-empresa",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Empresa",
+    icon: "Building2",
+    href: "/admin/settings/company",
+    permissionKey: "settings.manage",
+    sortOrder: 2,
+  },
+  {
+    id: "menu-lealtad",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Lealtad",
+    icon: "Sparkles",
+    href: "/admin/settings/loyalty",
+    permissionKey: "settings.manage",
+    sortOrder: 3,
+  },
+  {
+    id: "menu-supervisor",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Supervisor",
+    icon: "ShieldCheck",
+    href: "/admin/settings/supervisor",
+    permissionKey: "settings.manage",
+    sortOrder: 4,
+  },
+  {
+    id: "menu-pagos",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Politicas de Pagos",
+    icon: "CreditCard",
+    href: "/admin/settings/payments",
+    permissionKey: "settings.manage",
+    sortOrder: 5,
+  },
+  {
+    id: "menu-entrega",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Politicas de Entrega",
+    icon: "Truck",
+    href: "/admin/settings/delivery-policy",
+    permissionKey: "settings.manage",
+    sortOrder: 5.5,
+  },
+  {
+    id: "menu-credito",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Politicas de Crédito",
+    icon: "Landmark",
+    href: "/admin/settings/credit-policy",
+    permissionKey: "settings.manage",
+    sortOrder: 5.6,
+  },
   // { id: "menu-ajustes-general", parentId: "menu-ajustes", type: "item", label: "Ajustes", icon: "Settings", href: "/admin/settings", permissionKey: "settings.manage", sortOrder: 6 },
-  { id: "menu-usuarios", parentId: "menu-ajustes", type: "item", label: "Usuarios y permisos", icon: "ShieldCheck", href: "/admin/settings/users", permissionKey: "users.manage", sortOrder: 6 },
-  { id: "menu-menus", parentId: "menu-ajustes", type: "item", label: "Menú", icon: "Menu", href: "/admin/settings/menus", permissionKey: "users.manage", sortOrder: 7 },
-  { id: "menu-organizations", parentId: "menu-ajustes", type: "item", label: "Organizaciones y roles", icon: "Building2", href: "/admin/settings/organizations", permissionKey: "organizations.manage", sortOrder: 8 },
-  { id: "menu-my-plan", parentId: "menu-ajustes", type: "item", label: "Mi plan", icon: "CreditCard", href: "/admin/settings/my-plan", permissionKey: "settings.manage", sortOrder: 8.1 },
-  { id: "menu-subscriptions", parentId: "menu-ajustes", type: "item", label: "Control de suscripciones", icon: "ShieldCheck", href: "/admin/settings/subscriptions", permissionKey: "organizations.manage", sortOrder: 8.2 },
-  { id: "menu-plans", parentId: "menu-ajustes", type: "item", label: "Planes del sistema", icon: "CreditCard", href: "/admin/settings/plans", permissionKey: "organizations.manage", sortOrder: 8.3 },
-];
+  {
+    id: "menu-usuarios",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Usuarios y permisos",
+    icon: "ShieldCheck",
+    href: "/admin/settings/users",
+    permissionKey: "users.manage",
+    sortOrder: 6,
+  },
+  {
+    id: "menu-menus",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Menú",
+    icon: "Menu",
+    href: "/admin/settings/menus",
+    permissionKey: "users.manage",
+    sortOrder: 7,
+  },
+  {
+    id: "menu-organizations",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Organizaciones y roles",
+    icon: "Building2",
+    href: "/admin/settings/organizations",
+    permissionKey: "organizations.manage",
+    sortOrder: 8,
+  },
+  {
+    id: "menu-my-plan",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Mi plan",
+    icon: "CreditCard",
+    href: "/admin/settings/my-plan",
+    permissionKey: "settings.manage",
+    sortOrder: 8.1,
+  },
+  {
+    id: "menu-subscriptions",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Control de suscripciones",
+    icon: "ShieldCheck",
+    href: "/admin/settings/subscriptions",
+    permissionKey: "organizations.manage",
+    sortOrder: 8.2,
+  },
+  {
+    id: "menu-plans",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Planes del sistema",
+    icon: "CreditCard",
+    href: "/admin/settings/plans",
+    permissionKey: "organizations.manage",
+    sortOrder: 8.3,
+  },
+]
 
 export async function seedProduction() {
   // SuperAdmin
-  const passwordHash = await bcrypt.hash(SUPERADMIN_PASSWORD, 10);
+  const passwordHash = await bcrypt.hash(SUPERADMIN_PASSWORD, 10)
   await prisma.user.upsert({
     where: { email: SUPERADMIN_EMAIL },
     update: { isActive: true, isSuperadmin: true },
@@ -275,15 +732,20 @@ export async function seedProduction() {
       isActive: true,
       isSuperadmin: true,
     },
-  });
+  })
 
   // Permisos
   for (const p of PERMISSIONS) {
     await prisma.permission.upsert({
       where: { key: p.key },
       update: { module: p.module, action: p.action, label: p.label },
-      create: { key: p.key, module: p.module, action: p.action, label: p.label },
-    });
+      create: {
+        key: p.key,
+        module: p.module,
+        action: p.action,
+        label: p.label,
+      },
+    })
   }
 
   // Roles de sistema (compartidos + por modo de negocio)
@@ -303,8 +765,10 @@ export async function seedProduction() {
         isSystem: true,
         businessMode: def.businessMode ?? null,
       },
-    });
-    await prisma.rolePermission.deleteMany({ where: { roleId: role.id, organizationId: null } });
+    })
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: role.id, organizationId: null },
+    })
     if (def.permissions.length > 0) {
       await prisma.rolePermission.createMany({
         data: def.permissions.map((key) => ({
@@ -312,7 +776,7 @@ export async function seedProduction() {
           permissionKey: key,
           allowed: true,
         })),
-      });
+      })
     }
   }
 
@@ -320,19 +784,19 @@ export async function seedProduction() {
   for (const u of SYSTEM_UNITS) {
     const existing = await prisma.unitOfMeasure.findFirst({
       where: { organizationId: null, abbreviation: u.abbreviation },
-    });
+    })
     const data = {
       name: u.name,
       type: u.type,
       baseUnit: u.baseUnit,
       conversionFactor: new Prisma.Decimal(u.conversionFactor),
-    };
+    }
     if (existing) {
-      await prisma.unitOfMeasure.update({ where: { id: existing.id }, data });
+      await prisma.unitOfMeasure.update({ where: { id: existing.id }, data })
     } else {
       await prisma.unitOfMeasure.create({
         data: { ...data, abbreviation: u.abbreviation },
-      });
+      })
     }
   }
 
@@ -365,15 +829,59 @@ export async function seedProduction() {
         sortOrder: m.sortOrder,
         isActive: true,
       },
-    });
+    })
   }
 
   const plans = [
-    { name: "Esencial", description: "Operación inicial para un negocio pequeño.", monthlyPrice: 699, includedLocations: 1, includedEmployees: 5, extraLocationPrice: 249, extraEmployeePackSize: 5, extraEmployeePackPrice: 149, sortOrder: 10 },
-    { name: "Crecimiento", description: "Más capacidad para equipos y sucursales en expansión.", monthlyPrice: 1499, includedLocations: 3, includedEmployees: 20, extraLocationPrice: 199, extraEmployeePackSize: 10, extraEmployeePackPrice: 199, sortOrder: 20 },
-    { name: "Multi-sucursal", description: "Control centralizado para operaciones de mayor escala.", monthlyPrice: 2999, includedLocations: 10, includedEmployees: 75, extraLocationPrice: 149, extraEmployeePackSize: 25, extraEmployeePackPrice: 299, sortOrder: 30 },
-  ];
-  for (const plan of plans) await prisma.subscriptionPlan.upsert({ where: { name: plan.name }, update: plan, create: { ...plan, features: ["Punto de venta", "Panel administrativo", "Portal de clientes", "Inventario y compras", "Reportes PDF y Excel"] } });
+    {
+      name: "Esencial",
+      description: "Operación inicial para un negocio pequeño.",
+      monthlyPrice: 699,
+      includedLocations: 1,
+      includedEmployees: 5,
+      extraLocationPrice: 249,
+      extraEmployeePackSize: 5,
+      extraEmployeePackPrice: 149,
+      sortOrder: 10,
+    },
+    {
+      name: "Crecimiento",
+      description: "Más capacidad para equipos y sucursales en expansión.",
+      monthlyPrice: 1499,
+      includedLocations: 3,
+      includedEmployees: 20,
+      extraLocationPrice: 199,
+      extraEmployeePackSize: 10,
+      extraEmployeePackPrice: 199,
+      sortOrder: 20,
+    },
+    {
+      name: "Multi-sucursal",
+      description: "Control centralizado para operaciones de mayor escala.",
+      monthlyPrice: 2999,
+      includedLocations: 10,
+      includedEmployees: 75,
+      extraLocationPrice: 149,
+      extraEmployeePackSize: 25,
+      extraEmployeePackPrice: 299,
+      sortOrder: 30,
+    },
+  ]
+  for (const plan of plans)
+    await prisma.subscriptionPlan.upsert({
+      where: { name: plan.name },
+      update: plan,
+      create: {
+        ...plan,
+        features: [
+          "Punto de venta",
+          "Panel administrativo",
+          "Portal de clientes",
+          "Inventario y compras",
+          "Reportes PDF y Excel",
+        ],
+      },
+    })
 }
 
-export { SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD, SUPERADMIN_NAME };
+export { SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD, SUPERADMIN_NAME }

@@ -57,7 +57,7 @@ export const TicketItemRow = memo(function TicketItemRow({
           if (info.offset.x < -72 || info.velocity.x < -400) onRemove(item.key);
         }}
         className={cn(
-          "relative rounded-xl border bg-card p-2.5",
+          "relative rounded-xl border bg-card p-3",
           flashing && "ticket-flash"
         )}
       >
@@ -66,20 +66,20 @@ export const TicketItemRow = memo(function TicketItemRow({
             <ThumbImage
               src={item.imageUrl}
               alt={item.name}
-              className="size-10 shrink-0 rounded-md border object-cover"
+              className="size-12 shrink-0 rounded-lg border object-cover"
             />
           ) : (
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground">
-              <Package className="size-4" />
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-lg border bg-muted text-muted-foreground">
+              <Package className="size-5" />
             </span>
           )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <p className="line-clamp-1 text-sm font-medium leading-tight">{item.name}</p>
+              <p className="line-clamp-2 text-sm font-semibold leading-tight">{item.name}</p>
               {(item.sentQty ?? 0) > 0 && (
                 <span
                   className={cn(
-                    "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide",
+                    "shrink-0 rounded-full px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide",
                     (item.sentQty ?? 0) >= item.qty
                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                       : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
@@ -93,7 +93,7 @@ export const TicketItemRow = memo(function TicketItemRow({
             {item.selectedOptions && item.selectedOptions.length > 0 && (
               <div className="mt-0.5 flex flex-wrap gap-1">
                 {item.selectedOptions.map((opt, i) => (
-                  <span key={i} className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                  <span key={i} className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
                     {opt.optionName}: {opt.value}
                     {opt.extraPrice > 0 && <span className="font-medium">+{money(opt.extraPrice)}</span>}
                   </span>
@@ -102,16 +102,16 @@ export const TicketItemRow = memo(function TicketItemRow({
             )}
             {/* Item notes */}
             {item.notes && (
-              <p className="mt-0.5 text-[10px] italic text-amber-600 dark:text-amber-400">
+              <p className="mt-0.5 text-xs italic text-amber-600 dark:text-amber-400">
                 📝 {item.notes}
               </p>
             )}
             {item.bulkQuantityDisplay ? (
-              <p className="mt-0.5 text-[11px] leading-tight text-violet-600">
+              <p className="mt-0.5 text-xs leading-tight text-violet-600">
                 {item.bulkQuantityDisplay}
               </p>
             ) : (
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {money(item.unitPrice)} c/u
               </p>
             )}
@@ -125,10 +125,10 @@ export const TicketItemRow = memo(function TicketItemRow({
               type="button"
               onClick={() => onDecrement(item.key)}
               disabled={item.qty <= 1}
-              className="flex size-7 items-center justify-center rounded-lg border transition hover:bg-muted disabled:opacity-40"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-xl border transition hover:bg-muted active:scale-95 disabled:opacity-40"
               aria-label="Disminuir"
             >
-              <Minus className="size-3.5" />
+              <Minus className="size-4" />
             </button>
             <span className="min-w-9 text-center text-sm font-semibold tabular-nums">
               {item.qty} {item.unitAbbrev}
@@ -136,19 +136,19 @@ export const TicketItemRow = memo(function TicketItemRow({
             <button
               type="button"
               onClick={() => onIncrement(item.key)}
-              className="flex size-7 items-center justify-center rounded-lg border transition hover:bg-muted"
+              className="flex size-11 touch-manipulation items-center justify-center rounded-xl border transition hover:bg-muted active:scale-95"
               aria-label="Aumentar"
             >
-              <Plus className="size-3.5" />
+              <Plus className="size-4" />
             </button>
             {item.kind === "bulk" && onEdit && (
               <button
                 type="button"
                 onClick={() => onEdit(item)}
-                className="flex size-7 items-center justify-center rounded-lg border transition hover:bg-muted"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-xl border transition hover:bg-muted active:scale-95"
                 aria-label="Editar cantidad"
               >
-                <Pencil className="size-3.5" />
+                <Pencil className="size-4" />
               </button>
             )}
           </div>
@@ -156,7 +156,7 @@ export const TicketItemRow = memo(function TicketItemRow({
             type="button"
             onClick={() => onRemove(item.key)}
             className={cn(
-              "flex size-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+              "flex size-11 touch-manipulation items-center justify-center rounded-xl text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive active:scale-95"
             )}
             aria-label="Eliminar"
           >

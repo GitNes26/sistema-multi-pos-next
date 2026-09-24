@@ -245,7 +245,7 @@ export function TicketPanel({
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-amber-600">
+                      <span className="text-xs font-bold text-amber-600">
                         {pct}%
                       </span>
                     </div>
@@ -309,7 +309,7 @@ export function TicketPanel({
       </div>
 
       {/* Totals + actions — fixed bottom */}
-      <div className="space-y-3 border-t bg-card px-4 py-3">
+      <div className="space-y-3 border-t bg-card px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
         {/* Customer */}
         <AnimatePresence>
           {customer && (
@@ -417,7 +417,7 @@ export function TicketPanel({
                 size="sm"
                 data-guide="pos-table"
                 onClick={() => setTableDialogOpen(true)}
-                className="h-9 flex-1"
+                className="h-11 flex-1 text-sm"
               >
                 <Armchair className="size-4" />
                 {selectedTable ? `Mesa ${selectedTable.number}` : "Mesa"}
@@ -426,7 +426,7 @@ export function TicketPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-9 px-2 text-destructive"
+                  className="h-11 min-w-11 px-3 text-destructive"
                   disabled={releasingTable}
                   onClick={() => {
                     const tableId = selectedTable.id
@@ -551,7 +551,7 @@ export function TicketPanel({
                   key={n}
                   variant="outline"
                   size="sm"
-                  className="h-7 w-7 p-0 text-xs"
+                  className="size-11 p-0 text-sm"
                   onClick={() => onSplitBill(n)}
                 >
                   {n}
@@ -568,7 +568,7 @@ export function TicketPanel({
           disabled={!items.length || t.payable <= 0}
           onClick={onCheckout}
           className={cn(
-            "relative h-14 w-full text-base font-bold",
+            "relative h-16 w-full touch-manipulation text-base font-bold",
             t.payable > 0 && "shadow-lg shadow-primary/25"
           )}
         >
@@ -591,7 +591,7 @@ export function TicketPanel({
                 exit={{ opacity: 0, y: -10 }}
                 className="flex items-center gap-2"
               >
-                Cobrar ·{" "}
+                Cobrar · {items.length} {items.length === 1 ? "artículo" : "artículos"} ·{" "}
                 <AnimatedNumber
                   value={t.payable}
                   format={money}

@@ -253,7 +253,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
       <div className="relative">
         <Link
           href="/portal/store"
-          className="absolute left-3 top-3 z-20 flex size-9 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm shadow-sm"
+          className="absolute left-3 top-3 z-20 flex size-11 touch-manipulation items-center justify-center rounded-xl bg-background/90 backdrop-blur-sm shadow-sm active:scale-95"
         >
           <ArrowLeft className="size-5" />
         </Link>
@@ -261,7 +261,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
         <button
           type="button"
           onClick={handleShare}
-          className="absolute right-3 top-3 z-20 flex size-9 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm shadow-sm"
+          className="absolute right-3 top-3 z-20 flex size-11 touch-manipulation items-center justify-center rounded-xl bg-background/90 backdrop-blur-sm shadow-sm active:scale-95"
         >
           <Share2 className="size-4" />
         </button>
@@ -305,7 +305,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
               type="button"
               disabled={favBusy}
               onClick={handleFavorite}
-              className="flex size-10 shrink-0 items-center justify-center rounded-full border bg-background shadow-sm"
+              className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-xl border bg-background shadow-sm active:scale-95"
               whileTap={{ scale: 0.75 }}
               aria-label="Favorito"
             >
@@ -379,7 +379,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
                       haptic.light()
                     }}
                     className={cn(
-                      "flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm transition",
+                      "flex min-h-11 shrink-0 touch-manipulation items-center gap-2 rounded-xl border px-3 py-2 text-sm transition active:scale-[0.98]",
                       vOut && "cursor-not-allowed opacity-40",
                       selectedVariantIdx === i
                         ? "border-primary bg-primary/10 font-semibold text-primary"
@@ -415,7 +415,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
                   haptic.light()
                 }}
                 disabled={quantity <= 1}
-                className="flex size-10 items-center justify-center rounded-full border bg-background transition active:bg-muted disabled:opacity-40"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-xl border bg-background transition active:scale-95 active:bg-muted disabled:opacity-40"
               >
                 <Minus className="size-4" />
               </button>
@@ -430,7 +430,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
                   haptic.light()
                 }}
                 disabled={quantity >= (selectedVariant?.stock ?? 99)}
-                className="flex size-10 items-center justify-center rounded-full border bg-background transition active:bg-muted disabled:opacity-40"
+                className="flex size-11 touch-manipulation items-center justify-center rounded-xl border bg-background transition active:scale-95 active:bg-muted disabled:opacity-40"
               >
                 <Plus className="size-4" />
               </button>

@@ -35,6 +35,7 @@ import { PortalComboCard } from "@/components/portal/combo-card"
 import { MaskReveal, MaskRevealImage } from "@/components/shared/mask-reveal"
 import { useParallax } from "@/hooks/use-parallax"
 import { PullToRefresh } from "@/components/shared/pull-to-refresh"
+import { PublicationFlyer } from "@/components/publications/publication-flyer"
 
 const PUB_TYPE_LABELS: Record<string, string> = {
   product_new: "Nuevo",
@@ -98,25 +99,6 @@ function HeroParallaxCard({ points }: { points: number }) {
         </div>
       </Link>
     </motion.div>
-  )
-}
-
-/* ─────────────────────────────────────────────────────────────
- *  BannerParallaxImage — Image with vertical parallax inside
- *  horizontally scrolling banner container
- * ───────────────────────────────────────────────────────────── */
-function BannerParallaxImage({ src, alt }: { src: string; alt: string }) {
-  const { ref, y } = useParallax(0.15, { offset: ["start end", "end start"] })
-
-  return (
-    <div ref={ref} className="h-40 w-72 overflow-hidden">
-      <motion.img
-        src={src}
-        alt={alt}
-        className="h-[120%] w-full object-cover -mt-[10%]"
-        style={{ y }}
-      />
-    </div>
   )
 }
 
@@ -289,35 +271,7 @@ export function HomeClient() {
                 onClick={() => setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
                 onKeyDown={(e) => e.key === "Enter" && setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
               >
-                {pub.imageUrl ? (
-                  <>
-                    <BannerParallaxImage src={pub.imageUrl} alt={pub.title} />
-                    <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-3.5">
-                      <Badge
-                        className={PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}
-                      >
-                        {PUB_TYPE_LABELS[pub.type] ?? pub.type}
-                      </Badge>
-                      <p className="mt-1.5 line-clamp-2 text-sm font-bold text-white">
-                        {pub.title}
-                      </p>
-                      {pub.content && (
-                        <p className="mt-0.5 line-clamp-1 text-xs text-white/80">
-                          {pub.content}
-                        </p>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex h-44 w-[min(19rem,calc(100vw-2rem))] flex-col rounded-2xl border bg-card p-4 text-foreground">
-                    <Badge className={`w-fit ${PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}`}>
-                      {PUB_TYPE_LABELS[pub.type] ?? pub.type}
-                    </Badge>
-                    <p className="mt-3 line-clamp-2 text-base font-bold leading-snug">{pub.title}</p>
-                    {pub.content && <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{pub.content}</p>}
-                    <span className="mt-auto pt-2 text-xs font-semibold text-primary">Ver aviso completo</span>
-                  </div>
-                )}
+                <PublicationFlyer className="w-[min(19rem,calc(100vw-2rem))]" compact designId={pub.designId} title={pub.title} content={pub.content} imageUrl={pub.imageUrl} primaryColor={pub.primaryColor} secondaryColor={pub.secondaryColor} />
               </div>
             ))}
           </div>
