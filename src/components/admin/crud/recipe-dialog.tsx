@@ -12,9 +12,10 @@ import { swalError, swalToast } from "@/lib/swal"
 export type RecipeProduct = Record<string, unknown> & {
   id: string
   name: string
+  productType?: "standard" | "bulk" | "custom"
   trackInventory?: boolean
-  variants?: { id: string; name: string }[]
-  options?: { name: string; values: { id: string; value: string }[] }[]
+  variants?: { id: string; name: string; optionValues?: { optionId: string; optionName: string; valueId: string; value: string }[] }[]
+  options?: { name: string; kind?: "variant" | "topic"; values: { id: string; value: string }[] }[]
 }
 type Row = {
   id: string
@@ -75,7 +76,12 @@ export function RecipeDialog({
             source: item.variantId
               ? `variant:${item.variantId}`
               : item.optionValueId
-                ? `option:${item.optionValueId}`
+                ? (() => {
+                    const variant = product.variants?.find((candidate) =>
+                      candidate.optionValues?.some((value) => value.valueId === item.optionValueId)
+                    )
+                    return variant ? `variant:${variant.id}` : "base"
+                  })()
                 : "base",
             ingredient: item.ingredientVariantId
               ? `variant:${item.ingredientVariantId}`
@@ -96,18 +102,15 @@ export function RecipeDialog({
 
   const sourceOptions = useMemo(() => {
     if (!product) return []
+    const variants = product.variants ?? []
     return [
       { value: "base", label: "Siempre que se venda" },
-      ...(product.variants ?? []).map((v) => ({
+      ...variants.map((v) => ({
         value: `variant:${v.id}`,
-        label: `Variante · ${v.name}`,
+        label: v.optionValues?.length
+          ? v.optionValues.map((value) => `${value.optionName} · ${value.value}`).join(" + ")
+          : v.name === "Default" ? "Presentación estándar" : v.name,
       })),
-      ...(product.options ?? []).flatMap((option) =>
-        option.values.map((value) => ({
-          value: `option:${value.id}`,
-          label: `${option.name} · ${value.value}`,
-        }))
-      ),
     ]
   }, [product])
   const ingredientOptions = useMemo(
@@ -241,7 +244,7 @@ export function RecipeDialog({
         {rows.map((row, index) => (
           <div
             key={row.id}
-            className="grid gap-3 rounded-xl ring-1 ring-foreground/10 p-3 md:grid-cols-[1fr_1.2fr_.55fr_.45fr_auto]"
+            className="grid min-w-0 gap-3 rounded-xl p-3 ring-1 ring-foreground/10 md:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_minmax(15rem,1.3fr)_minmax(8rem,.55fr)_minmax(7rem,.45fr)_auto]"
           >
             <FormCombobox
               id={`recipe-source-${index}`}
@@ -251,6 +254,8 @@ export function RecipeDialog({
               onChange={(value) => update(row.id, { source: value })}
               options={sourceOptions}
               clearable={false}
+              className="min-w-0"
+              contentClassName="max-w-[min(34rem,calc(100vw-2rem))]"
             />
             <FormCombobox
               id={`recipe-ingredient-${index}`}
@@ -261,6 +266,8 @@ export function RecipeDialog({
               onChange={(value) => update(row.id, { ingredient: value })}
               options={ingredientOptions}
               placeholder="Selecciona materia prima"
+              className="min-w-0"
+              contentClassName="max-w-[min(38rem,calc(100vw-2rem))]"
             />
             <InputGroupField
               id={`recipe-quantity-${index}`}
@@ -288,7 +295,7 @@ export function RecipeDialog({
               }
             />
             <Button
-              className="self-end"
+              className="self-end justify-self-end md:col-span-2 xl:col-span-1"
               variant="ghost"
               size="icon"
               aria-label="Quitar insumo"

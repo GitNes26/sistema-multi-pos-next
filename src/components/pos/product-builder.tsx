@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback } from "react"
+import { motion } from "framer-motion"
 import { Check, Minus, Plus, ShoppingCart, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +14,7 @@ import type {
   PosProductOptionValue,
 } from "@/types/pos"
 import { calculateOptionExtra, calculateOptionValueCharges, optionRuleForVariant, type OptionVariantRule } from "@/lib/products/option-rules"
+import { ThumbImage } from "@/components/base/thumb-image"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -113,11 +115,13 @@ function OptionPill({
   isSelected,
   onToggle,
   size = "md",
+  disabled = false,
 }: {
   value: PosProductOptionValue
   isSelected: boolean
   onToggle: () => void
   size?: "sm" | "md" | "lg"
+  disabled?: boolean
 }) {
   const sizeClasses = {
     sm: "min-h-11 px-3 py-2 text-xs gap-1.5",
@@ -128,10 +132,11 @@ function OptionPill({
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onToggle}
       className={cn(
         "relative inline-flex touch-manipulation items-center rounded-xl border-2 font-medium transition-all duration-200",
-        "hover:shadow-md active:scale-95",
+        "hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-none",
         sizeClasses[size],
         isSelected
           ? "border-emerald-600 bg-emerald-600 text-white shadow-lg shadow-emerald-600/25"
@@ -152,6 +157,7 @@ function OptionPill({
 
       {/* Label */}
       <span>{value.value}</span>
+      {disabled && <span className="text-xs font-normal">Sin stock</span>}
 
       {/* Price badge */}
       {value.extraPrice > 0 && (
@@ -168,7 +174,7 @@ function OptionPill({
       )}
 
       {/* Active ring pulse */}
-      {isSelected && (
+      {isSelected && !disabled && (
         <span className="absolute inset-0 rounded-full animate-[ringPulse_2s_ease-in-out_infinite] border-2 border-emerald-400/50" />
       )}
     </button>
@@ -200,7 +206,7 @@ function OptionSection({
         : "0-1"
 
   return (
-    <div className="space-y-3">
+    <motion.div className="space-y-3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
       {/* Section header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -235,17 +241,21 @@ function OptionSection({
 
       {/* Pills grid */}
       <div className="flex flex-wrap gap-2">
-        {option.values
-          .filter((v) => v.isActive)
-          .map((value) => (
+        {option.values.map((value) => (
             <OptionPill
               key={value.id}
               value={value}
               isSelected={selected.has(value.id)}
-              onToggle={() => onToggle(value.id)}
+              disabled={!value.isActive}
+              onToggle={() => value.isActive && onToggle(value.id)}
             />
           ))}
       </div>
+      {option.values.length > 0 && option.values.every((value) => !value.isActive) && (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+          Este insumo forma parte de la configuración, pero ninguna presentación tiene existencias. No puede seleccionarse por ahora.
+        </p>
+      )}
 
       {/* Validation message */}
       {!isValid && showValidation && (
@@ -254,7 +264,7 @@ function OptionSection({
           Selecciona al menos {option.minSelect} {option.name.toLowerCase()}
         </p>
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -424,6 +434,17 @@ export function ProductBuilder({
     onClose()
   }, [resetSelections, onClose])
 
+  useEffect(() => {
+    if (!open) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      event.preventDefault()
+      handleClose()
+    }
+    window.addEventListener("keydown", closeOnEscape)
+    return () => window.removeEventListener("keydown", closeOnEscape)
+  }, [handleClose, open])
+
   const toggleValue = useCallback(
     (option: PosProductOption, valueId: string) => {
       setSelections((prev) => {
@@ -531,6 +552,8 @@ export function ProductBuilder({
       notes,
       quantity,
       handleClose,
+      portalProduct,
+      selectedVariant,
     ]
   )
 
@@ -561,17 +584,23 @@ export function ProductBuilder({
       <div
         className={cn(
           "fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-white shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-stone-950",
-          "max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:max-h-[90vh] max-md:rounded-t-3xl",
+          "max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:h-[95dvh] max-md:max-h-[95dvh] max-md:rounded-t-3xl",
           "md:inset-y-0 md:right-0 md:bottom-0 md:left-auto md:w-[520px] md:rounded-l-3xl",
-          open ? "translate-x-0" : "translate-x-full"
+          open
+            ? "max-md:translate-y-0 md:translate-x-0"
+            : "max-md:translate-y-full md:translate-x-full"
         )}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Configurar ${activeProduct.name}`}
       >
+        <div className="mx-auto mt-2 h-1 w-12 shrink-0 rounded-full bg-stone-300 md:hidden dark:bg-stone-700" />
         {/* Header */}
         <div className="relative flex items-center gap-4 border-b border-stone-200 px-6 py-4 dark:border-stone-800">
           {/* Product image thumbnail */}{" "}
           {activeProduct.imageUrl && (
             <div className="relative size-14 shrink-0 overflow-hidden rounded-2xl border-2 border-stone-100 dark:border-stone-800">
-              <img
+              <ThumbImage
                 src={activeProduct.imageUrl}
                 alt={activeProduct.name}
                 className="size-full object-cover"
@@ -597,13 +626,13 @@ export function ProductBuilder({
         </div>
 
         {/* Scrollable options */}
-        <ScrollArea className="flex-1 px-6 py-5">
+        <ScrollArea className="min-h-0 flex-1 px-4 py-4 sm:px-6 sm:py-5">
           <div className="space-y-6">
             {/* Product hero image (if exists) */}
             {activeProduct.imageUrl && (
               <div className="flex justify-center">
                 <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 p-6 dark:from-emerald-950/30 dark:to-teal-950/30">
-                  <img
+                  <ThumbImage
                     src={activeProduct.imageUrl}
                     alt={activeProduct.name}
                     className="h-36 w-36 rounded-2xl object-cover shadow-xl transition-transform duration-500 hover:scale-110"

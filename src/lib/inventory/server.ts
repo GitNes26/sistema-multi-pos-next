@@ -74,7 +74,7 @@ export async function ensureInventoryRows(
   });
   const targets: { productId: string; variantId: string | null; unitId: string | null }[] = [];
   for (const p of products) {
-    if (p.productType === "standard") {
+    if (p.productType === "standard" || p.productType === "custom") {
       if (p.variants.length > 0) {
         for (const v of p.variants) targets.push({ productId: p.id, variantId: v.id, unitId: null });
       } else {
@@ -143,14 +143,14 @@ export async function inventorySnapshot(
           ],
         }
       : {}),
-    ...(productType === "standard" || productType === "bulk" ? { product: { productType } } : {}),
+    ...(productType === "standard" || productType === "bulk" || productType === "custom" ? { product: { productType } } : {}),
   };
 
   const rows = await prisma.inventory.findMany({
     where,
     include: {
       product: {
-        select: { id: true, name: true, productType: true, trackInventory: true, imageUrl: true },
+        select: { id: true, name: true, productType: true, trackInventory: true, imageUrl: true, variants: { select: { id: true } } },
       },
       variant: { select: { id: true, name: true, sku: true, barcode: true } },
       unit: { select: { name: true, abbreviation: true } },
@@ -158,7 +158,12 @@ export async function inventorySnapshot(
     orderBy: [{ product: { name: "asc" } }, { variant: { name: "asc" } }],
   });
 
-  const mapped: InventorySnapshotRow[] = rows.map((r) => {
+  const mapped: InventorySnapshotRow[] = rows
+  // Compatibilidad con datos anteriores: antes se creaba una fila general
+  // adicional para productos personalizados. Las combinaciones reales viven
+  // en sus variantes, por lo que esa fila obsoleta no debe mostrarse.
+  .filter((r) => !(r.product?.productType === "custom" && !r.variantId && r.product.variants.length > 0))
+  .map((r) => {
     const quantity = num(r.quantity);
     const min = num(r.minThreshold);
     const status = quantity <= 0 ? "empty" : quantity <= min ? "low" : "ok";

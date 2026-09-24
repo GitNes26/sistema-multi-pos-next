@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.20.3.4] — 2026-09-24
+- **Tipo:** `ux` (Revision)
+- ux: se mejoro interfaz de POS de productos tipo Personalizada
+
 ### [0.20.3.3] — 2026-09-24
 - **Tipo:** `ux` (Revision)
 - ux: se mejoro interfaz de POS, se agregaron más opciones de catalogos

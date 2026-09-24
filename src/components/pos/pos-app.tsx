@@ -372,7 +372,10 @@ export function PosApp({
         onSelect={(variant) => {
           if (!variantTarget) return;
           setVariantTarget(null);
-          if (variantTarget.hasOptions && variantTarget.options.length > 0) {
+          const hasApplicableOptions = variantTarget.options.some(
+            (option) => !option.appliesToVariantId || option.appliesToVariantId === variant.id
+          );
+          if (variantTarget.hasOptions && hasApplicableOptions) {
             // Personalizado: tras elegir el tamaño, sigue el constructor.
             openBuilderWithVariant(variantTarget, variant.id);
           } else {
