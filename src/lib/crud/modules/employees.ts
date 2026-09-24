@@ -244,7 +244,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
           _count: { select: { sales: true } },
         },
       });
-      if (emailRaw && mailConfigured()) await sendWelcomeLink(emailRaw);
+      if (emailRaw && mailConfigured()) await sendWelcomeLink(emailRaw, { fullName, accountType: "empleado" });
       return serialize(employee as EmployeeRow);
     } catch (err) {
       // Cleanup orphaned user/membership on create failure
@@ -326,7 +326,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
         select: { passwordHash: true },
       });
       if (userRow && (await verifyPassword(existing.user?.email ?? "", userRow.passwordHash)) && mailConfigured()) {
-        await sendWelcomeLink(emailRaw);
+        await sendWelcomeLink(emailRaw, { fullName: fullName ?? existing.fullName, accountType: "empleado" });
         await prisma.user.update({
           where: { id: existing.userId },
           data: { passwordHash: await hashPassword(randomBytes(32).toString("hex")) },

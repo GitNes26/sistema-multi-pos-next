@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/layout/logo";
 import { BusinessModeBadge } from "@/components/shared/business-mode-badge";
 import { RoleBadge } from "@/components/shared/role-badge";
+import { TooltipButton } from "@/components/shared/tooltip-button";
 import type { BusinessMode } from "@/lib/auth/options";
 import packageJson from "../../../package.json";
 
@@ -58,7 +59,8 @@ export function PosHeader({
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-card/80 px-2 backdrop-blur sm:gap-3 sm:px-3 lg:px-4 [&_button]:min-h-11 [&_button]:min-w-11">
-      <Button
+      <TooltipButton
+        label="Volver al panel"
         variant="ghost"
         size="icon"
         className="shrink-0"
@@ -72,7 +74,7 @@ export function PosHeader({
         }}
       >
         <ArrowLeft className="size-5" />
-      </Button>
+      </TooltipButton>
       <Logo logoUrl={logoUrl} className="h-8 w-auto" />
       <div className="hidden min-w-0 sm:block">
         <p className="text-sm font-bold leading-tight">Punto de venta</p>
@@ -127,18 +129,18 @@ export function PosHeader({
         )}
 
         {canViewAgenda && (
-          <Button variant="ghost" size="icon" asChild aria-label="Agenda de citas">
+          <TooltipButton label="Agenda de citas" side="bottom" variant="ghost" size="icon" asChild aria-label="Agenda de citas">
             <Link href="/agenda">
               <CalendarDays className="size-4" />
             </Link>
-          </Button>
+          </TooltipButton>
         )}
         {canViewReservations && (
-          <Button variant="ghost" size="icon" asChild aria-label="Reservaciones">
+          <TooltipButton label="Reservaciones" side="bottom" variant="ghost" size="icon" asChild aria-label="Reservaciones">
             <Link href="/reservaciones">
               <CalendarRange className="size-4" />
             </Link>
-          </Button>
+          </TooltipButton>
         )}
 
         {onOpenGuide && (
@@ -155,15 +157,17 @@ export function PosHeader({
           </Button>
         )}
 
-        <Button variant="ghost" size="icon" onClick={onOpenCatalogs} aria-label="Catálogos y pedidos">
+        <TooltipButton label="Catálogos y pedidos" side="bottom" variant="ghost" size="icon" onClick={onOpenCatalogs} aria-label="Catálogos y pedidos">
           <ClipboardList className="size-4" />
-        </Button>
+        </TooltipButton>
 
         <Button
           variant="ghost"
           size="sm"
           onClick={() => void logout()}
           className="text-muted-foreground"
+          title="Cerrar sesión"
+          aria-label="Cerrar sesión"
         >
           <LogOut className="size-4" />
           <span className="hidden md:inline">Salir</span>

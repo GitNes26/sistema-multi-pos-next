@@ -308,7 +308,7 @@
     position: fixed;
     left: 0;
     top: 0;
-    width: 80mm;
+    width: var(--receipt-width, 80mm);
   }
   * {
     -webkit-print-color-adjust: exact;

@@ -8,7 +8,7 @@ import { generateTicketPdf } from "@/lib/pos/ticket-pdf";
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requirePosSession();
@@ -17,7 +17,9 @@ export async function GET(
 
   const { id } = await params;
   try {
-    const buffer = await generateTicketPdf(organizationId, id);
+    const requestedPaper = new URL(req.url).searchParams.get("paper");
+    const paper = requestedPaper === "58" ? 58 : 80;
+    const buffer = await generateTicketPdf(organizationId, id, paper);
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",

@@ -152,10 +152,12 @@ export const usePosStore = create<PosState>()((set, get) => ({
   pointsRedeemed: 0,
 
   setCatalog: (catalog) => {
-    set({
+    set((state) => ({
       ...catalog,
-      registerId: catalog.registers[0]?.id ?? "",
-    })
+      registerId: catalog.registers.some((register) => register.id === state.registerId)
+        ? state.registerId
+        : catalog.registers[0]?.id ?? "",
+    }))
   },
 
   setRegister: (registerId) => set({ registerId }),

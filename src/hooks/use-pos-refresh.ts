@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { usePosStore } from "@/stores/pos-store";
 
 /**
@@ -9,8 +9,11 @@ import { usePosStore } from "@/stores/pos-store";
  */
 export function usePosRefresh() {
   const setCatalog = usePosStore((s) => s.setCatalog);
+  const pending = useRef<Promise<unknown> | null>(null);
 
   return useCallback(async () => {
+    if (pending.current) return pending.current;
+    const request = (async () => {
     try {
       const res = await fetch("/api/pos/catalog", { cache: "no-store" });
       const data = await res.json();
@@ -21,7 +24,12 @@ export function usePosRefresh() {
       return null;
     } catch {
       return null;
+    } finally {
+      pending.current = null;
     }
+    })();
+    pending.current = request;
+    return request;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

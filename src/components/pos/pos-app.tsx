@@ -191,11 +191,36 @@ export function PosApp({
     payload: PosSalePayload;
   } | null>(null);
   const [splitParts, setSplitParts] = useState<number | null>(null);
+  const [ticketPaper, setTicketPaper] = useState<58 | 80>(80);
 
   useEffect(() => {
     setCatalog(catalog);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog]);
+
+  useEffect(() => {
+    setTicketPaper(window.localStorage.getItem("multipos.ticket-paper") === "58" ? 58 : 80);
+  }, []);
+
+  const chooseTicketPaper = (paper: 58 | 80) => {
+    setTicketPaper(paper);
+    window.localStorage.setItem("multipos.ticket-paper", String(paper));
+  };
+
+  useEffect(() => {
+    const sync = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    const timer = window.setInterval(sync, 20_000);
+    window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", sync);
+    sync();
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [refresh]);
 
   const selectProduct = (product: PosProduct) => {
     if (!product.isAvailable || (product.trackInventory && product.stock <= 0)) {
@@ -305,7 +330,7 @@ export function PosApp({
 
   const printReceipt = () => {
     if (lastSale) {
-      window.open(`/api/pos/ticket/${lastSale.sale.id}`, "_blank");
+      window.open(`/api/pos/ticket/${lastSale.sale.id}?paper=${ticketPaper}`, "_blank");
     }
   };
 
@@ -433,6 +458,15 @@ export function PosApp({
         }
       >
           {lastSale && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-xl border bg-muted/40 p-2 text-xs">
+                <span className="font-medium">Papel de la impresora</span>
+                <div className="flex gap-1" role="group" aria-label="Ancho del papel">
+                  {([58, 80] as const).map((paper) => (
+                    <Button key={paper} type="button" size="sm" variant={ticketPaper === paper ? "default" : "ghost"} className="h-8" onClick={() => chooseTicketPaper(paper)}>{paper} mm</Button>
+                  ))}
+                </div>
+              </div>
             <Receipt
               sale={lastSale.sale}
               payload={lastSale.payload}
@@ -440,7 +474,9 @@ export function PosApp({
               registerName={catalog.session?.registerName}
               company={catalog.company}
               customer={selectCustomer(lastSale.payload.customerId ?? null)}
+              paperWidth={ticketPaper}
             />
+            </div>
           )}
       </DialogComponent>
     </SupervisorProvider>

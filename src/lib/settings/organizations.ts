@@ -294,7 +294,7 @@ export async function createUser(input: {
   })
   if (mailConfigured()) {
     try {
-      await sendWelcomeLink(email)
+      await sendWelcomeLink(email, { fullName: input.fullName.trim(), accountType: "propietario" })
     } catch (error) {
       console.error("[settings/organizations] No se pudo enviar la invitación:", error)
       await prisma.user.delete({ where: { id: created.id } })

@@ -16,7 +16,9 @@ const PAYMENT_LABELS: Record<$Enums.PaymentMethod, string> = {
   credit: "Crédito",
 };
 
-export async function generateTicketPdf(organizationId: string, saleId: string): Promise<Buffer> {
+export type TicketPaperWidth = 58 | 80;
+
+export async function generateTicketPdf(organizationId: string, saleId: string, paperWidth: TicketPaperWidth = 80): Promise<Buffer> {
   const sale = await prisma.sale.findFirst({
     where: { id: saleId, organizationId },
     include: {
@@ -42,9 +44,13 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
   const optionLineCount = sale.items.reduce((sum, item) => sum + (Array.isArray(item.selectedOptions) ? item.selectedOptions.length : 0), 0);
   const estimatedHeight = Math.max(420, 320 + sale.items.length * 42 + optionLineCount * 12 + sale.discounts.length * 14 + sale.payments.length * 14 + (company?.ticketFooter ? 40 : 0));
 
+  const pageWidth = paperWidth * 2.83465;
+  const margin = paperWidth === 58 ? 9 : 12;
+  const contentWidth = pageWidth - margin * 2;
+  const amountWidth = paperWidth === 58 ? 54 : 74;
   const doc = new PDFDocument({
-    size: [226.77, estimatedHeight],
-    margin: 12,
+    size: [pageWidth, estimatedHeight],
+    margin,
     font: "Courier",
   });
   const chunks: Buffer[] = [];
@@ -56,8 +62,8 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
 
   const line = (l: string, r: string) => {
     const y = doc.y;
-    doc.font("Courier").fontSize(8).text(l, 12, y, { width: 128, lineBreak: false });
-    doc.text(r, 140, y, { align: "right", width: 74, lineBreak: false });
+    doc.font("Courier").fontSize(paperWidth === 58 ? 7 : 8).text(l, margin, y, { width: contentWidth - amountWidth - 4, lineBreak: false, ellipsis: true });
+    doc.text(r, pageWidth - margin - amountWidth, y, { align: "right", width: amountWidth, lineBreak: false });
     doc.y = y + 11;
   };
 
@@ -71,7 +77,7 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
       if (res.ok) {
         const buf = Buffer.from(await res.arrayBuffer());
         const imgWidth = 40;
-        const imgX = (226.77 - imgWidth) / 2;
+        const imgX = (pageWidth - imgWidth) / 2;
         doc.image(buf, imgX, doc.y, { width: imgWidth });
         doc.moveDown(1.5);
       }
@@ -82,42 +88,43 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
 
   // Encabezado — monospace to match receipt
   doc.font("Courier-Bold");
-  doc.fontSize(12).text(company?.tradeName ?? company?.legalName ?? "Empresa", 12, doc.y, { align: "center", width: 200 });
-  doc.fontSize(8).text(sale.location.name, { align: "center", width: 200 });
+  doc.fontSize(paperWidth === 58 ? 10 : 12).text(company?.tradeName ?? company?.legalName ?? "Empresa", margin, doc.y, { align: "center", width: contentWidth });
+  doc.fontSize(8).text(sale.location.name, { align: "center", width: contentWidth });
   doc.font("Courier").fontSize(7);
-  if (company?.address) doc.text([company.address, company.city].filter(Boolean).join(", "), { align: "center", width: 200 });
-  if (company?.phone) doc.text(`Tel: ${company.phone}`, { align: "center", width: 200 });
-  doc.text(`Ticket: ${sale.saleNumber}`, { align: "center", width: 200 });
-  doc.text(new Date(sale.createdAt).toLocaleString("es-MX"), { align: "center", width: 200 });
-  if (sale.cashRegister) doc.text(`Caja: ${sale.cashRegister.name}`, { align: "center", width: 200 });
-  doc.text(`Cajero: ${sale.cashier?.fullName ?? "—"}`, { align: "center", width: 200 });
+  if (company?.address) doc.text([company.address, company.city].filter(Boolean).join(", "), { align: "center", width: contentWidth });
+  if (company?.phone) doc.text(`Tel: ${company.phone}`, { align: "center", width: contentWidth });
+  doc.text(`Ticket: ${sale.saleNumber}`, { align: "center", width: contentWidth });
+  doc.text(new Date(sale.createdAt).toLocaleString("es-MX"), { align: "center", width: contentWidth });
+  if (sale.cashRegister) doc.text(`Caja: ${sale.cashRegister.name}`, { align: "center", width: contentWidth });
+  doc.text(`Cajero: ${sale.cashier?.fullName ?? "—"}`, { align: "center", width: contentWidth });
 
-  doc.moveTo(12, doc.y + 4).lineTo(214.77, doc.y + 4).dash(2, { space: 2 }).stroke();
+  doc.moveTo(margin, doc.y + 4).lineTo(pageWidth - margin, doc.y + 4).dash(2, { space: 2 }).stroke();
   doc.undash();
   doc.moveDown(1);
 
   // Cliente
   if (sale.customer) {
-    doc.font("Courier-Bold").fontSize(8).text("Cliente:", 12);
-    doc.font("Courier").text(`${sale.customer.fullName}${sale.customer.customerCode ? ` · Nº ${sale.customer.customerCode}` : ""}`, 12);
+    doc.font("Courier-Bold").fontSize(8).text("Cliente:", margin);
+    doc.font("Courier").text(`${sale.customer.fullName}${sale.customer.customerCode ? ` · Nº ${sale.customer.customerCode}` : ""}`, margin);
     doc.moveDown(0.5);
   }
 
   // Items
   for (const i of sale.items) {
-    doc.font("Courier-Bold").fontSize(8).text([i.productName, i.variantName].filter(Boolean).join(" · "), 12, doc.y, { width: 202 });
+    doc.font("Courier-Bold").fontSize(8).text([i.productName, i.variantName].filter(Boolean).join(" · "), margin, doc.y, { width: contentWidth });
     doc.font("Courier").fontSize(7);
-    if (i.bulkQuantityDisplay) doc.text(i.bulkQuantityDisplay, 12);
+    if (i.bulkQuantityDisplay) doc.text(i.bulkQuantityDisplay, margin, doc.y, { width: contentWidth });
     if (Array.isArray(i.selectedOptions)) {
-      for (const selected of i.selectedOptions as Array<{ optionName?: string; values?: Array<{ value?: string; extraPrice?: number }> }>) {
-        const values = (selected.values ?? []).map((value) => `${value.value ?? ""}${Number(value.extraPrice ?? 0) > 0 ? ` +${MXN(Number(value.extraPrice))}` : ""}`).join(", ");
-        if (values) doc.text(`${selected.optionName ?? "Opción"}: ${values}`, 16, doc.y, { width: 196 });
+      for (const selected of i.selectedOptions as Array<{ optionName?: string; value?: string; extraPrice?: number; values?: Array<{ value?: string; extraPrice?: number }> }>) {
+        const normalizedValues = selected.values ?? [{ value: selected.value, extraPrice: selected.extraPrice }];
+        const values = normalizedValues.map((value) => `${value.value ?? ""}${Number(value.extraPrice ?? 0) > 0 ? ` +${MXN(Number(value.extraPrice))}` : ""}`).filter(Boolean).join(", ");
+        if (values) doc.text(`${selected.optionName ?? "Opción"}: ${values}`, margin + 4, doc.y, { width: contentWidth - 4 });
       }
     }
     line(`${Number(i.quantity)} x ${MXN(Number(i.unitPrice))}`, MXN(Number(i.lineTotal ?? 0)));
   }
 
-  doc.moveTo(12, doc.y + 4).lineTo(214.77, doc.y + 4).dash(2, { space: 2 }).stroke();
+  doc.moveTo(margin, doc.y + 4).lineTo(pageWidth - margin, doc.y + 4).dash(2, { space: 2 }).stroke();
   doc.undash();
   doc.moveDown(0.5);
 
@@ -134,7 +141,7 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
   doc.font("Courier").fontSize(8);
   if (Number(sale.changeGiven) > 0) line("Cambio", MXN(Number(sale.changeGiven)));
 
-  doc.moveTo(12, doc.y + 4).lineTo(214.77, doc.y + 4).dash(2, { space: 2 }).stroke();
+  doc.moveTo(margin, doc.y + 4).lineTo(pageWidth - margin, doc.y + 4).dash(2, { space: 2 }).stroke();
   doc.undash();
   doc.moveDown(0.5);
 
@@ -142,17 +149,17 @@ export async function generateTicketPdf(organizationId: string, saleId: string):
 
   if (sale.customer) {
     doc.font("Courier").fontSize(8);
-    doc.text(`Puntos ganados: ${Math.floor(Number(sale.pointsEarned))}`, 12);
+    doc.text(`Puntos ganados: ${Math.floor(Number(sale.pointsEarned))}`, margin);
     const newPoints = Math.floor(Number(sale.customer.points));
-    doc.text(`Puntos totales: ${newPoints}`, 12);
+    doc.text(`Puntos totales: ${newPoints}`, margin);
   }
 
   doc.moveDown(1);
   if (company?.ticketFooter) {
-    doc.font("Courier").fontSize(7).text(company.ticketFooter, { align: "center", width: 200 });
+    doc.font("Courier").fontSize(7).text(company.ticketFooter, { align: "center", width: contentWidth });
     doc.moveDown(0.5);
   }
-  doc.font("Courier-Bold").fontSize(8).text("¡Gracias por su compra!", { align: "center", width: 200 });
+  doc.font("Courier-Bold").fontSize(8).text("¡Gracias por su compra!", { align: "center", width: contentWidth });
 
   doc.end();
   return result;

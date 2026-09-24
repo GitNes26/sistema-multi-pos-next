@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.20.3.5] — 2026-09-24
+- **Tipo:** `ui` (Revision)
+- ui: se mejoro la experiencia para guardar clientes y enviar correo
+
 ### [0.20.3.4] — 2026-09-24
 - **Tipo:** `ux` (Revision)
 - ux: se mejoro interfaz de POS de productos tipo Personalizada

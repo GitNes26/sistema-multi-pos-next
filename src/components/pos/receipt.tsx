@@ -1,8 +1,10 @@
 "use client"
 
+import type { CSSProperties } from "react"
+
 import type { PosCustomer, PosSalePayload } from "@/types/pos"
 import { money, qty } from "@/lib/pos/money"
-import { PAYMENT_METHOD_LABELS, RECEIPT_WIDTH } from "@/lib/pos/config"
+import { PAYMENT_METHOD_LABELS } from "@/lib/pos/config"
 
 interface ReceiptProps {
   sale: { id: string; saleNumber: string; locationName: string }
@@ -18,6 +20,7 @@ interface ReceiptProps {
     ticketFooter: string | null
   }
   customer?: PosCustomer | null
+  paperWidth?: 58 | 80
 }
 
 /**
@@ -31,6 +34,7 @@ export function Receipt({
   registerName,
   company,
   customer,
+  paperWidth = 80,
 }: ReceiptProps) {
   const date = new Date().toLocaleString("es-MX", {
     dateStyle: "short",
@@ -45,7 +49,7 @@ export function Receipt({
     <div
       id="receipt-print"
       className="mx-auto bg-white px-3 py-4 font-mono text-[10px] leading-snug text-black"
-      style={{ width: RECEIPT_WIDTH }}
+      style={{ width: `${paperWidth}mm`, "--receipt-width": `${paperWidth}mm` } as CSSProperties}
     >
       <div className="text-center">
         {company?.logoUrl && (
@@ -93,6 +97,12 @@ export function Receipt({
           {i.bulkQuantityDisplay && (
             <p className="text-[9px] text-black/70">{i.bulkQuantityDisplay}</p>
           )}
+          {i.variantName && i.variantName !== "Default" && <p className="text-[9px] text-black/70">Variante: {i.variantName}</p>}
+          {i.selectedOptions?.map((option, optionIndex) => (
+            <p key={`${option.optionId ?? option.optionName}-${optionIndex}`} className="pl-1 text-[9px] text-black/70">
+              {option.optionName}: {option.value}{option.extraPrice > 0 ? ` (+${money(option.extraPrice)})` : ""}
+            </p>
+          ))}
           <div className="flex justify-between">
             <span className="text-[9px]">
               {qty(i.quantity)} × {money(i.unitPrice)}
