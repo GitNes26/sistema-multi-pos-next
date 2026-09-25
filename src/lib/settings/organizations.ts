@@ -234,6 +234,7 @@ export async function listAllUsers(): Promise<UserRow[]> {
       fullName: true,
       email: true,
       isActive: true,
+      activationRequired: true,
       isSuperadmin: true,
       memberships: {
         select: {
@@ -282,6 +283,9 @@ export async function createUser(input: {
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) throw new Error("Ya existe un usuario con ese email")
+  if (process.env.NODE_ENV === "production" && !mailConfigured()) {
+    throw new Error("Configura el correo SMTP antes de crear una cuenta con acceso")
+  }
 
   const created = await prisma.user.create({
     data: {
@@ -289,6 +293,7 @@ export async function createUser(input: {
       fullName: input.fullName.trim(),
       passwordHash: await hashPassword(input.password),
       isActive: true,
+      activationRequired: mailConfigured(),
     },
     select: { id: true },
   })

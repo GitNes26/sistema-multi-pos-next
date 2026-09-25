@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { parseTicketCode } from "@/lib/sales/ticket-code";
 import ExcelJS from "exceljs";
 import { buildSalesPdf } from "@/lib/sales/pdf";
 
@@ -102,8 +103,16 @@ export async function listSales(
 
   if (query.q) {
     const term = query.q.trim();
+    const ticket = parseTicketCode(term);
+    if (ticket) {
+      const ticketSale = await prisma.sale.findUnique({ where: { id: ticket.saleId }, include: { location: { select: { name: true } } } });
+      if (!ticketSale) throw Object.assign(new Error("No encontramos una venta asociada a este ticket"), { status: 404 });
+      if (ticketSale.organizationId !== organizationId) throw Object.assign(new Error("Este ticket pertenece a otra empresa y no puede consultarse aquí"), { status: 400 });
+      if (query.locationId && query.locationId !== ticketSale.locationId) throw Object.assign(new Error(`Este ticket pertenece a la sucursal ${ticketSale.location.name}. Cambia la sucursal para consultarlo`), { status: 409 });
+      where.id = ticket.saleId;
+    }
     const numeric = /^\d+$/.test(term) ? Number(term) : null;
-    where.OR = [
+    if (!ticket) where.OR = [
       { customer: { fullName: { contains: term } } },
       { customer: { customerCode: { contains: term } } },
       { cashier: { fullName: { contains: term } } },

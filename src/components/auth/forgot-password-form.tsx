@@ -51,10 +51,9 @@ export function ForgotPasswordForm() {
   return (
     <Card className="max-w-sm w-full">
       <CardHeader>
-        <CardTitle className="text-center text-lg">Recuperar contraseña</CardTitle>
+        <CardTitle className="text-center text-lg">Recuperar acceso</CardTitle>
         <CardDescription>
-          Ingresa el correo de tu cuenta y te enviaremos (o mostraremos en desarrollo) el enlace para
-          restablecerla.
+          Ingresa tu correo para restablecer la contraseña o reenviar la activación si todavía no confirmaste tu cuenta.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -62,15 +61,14 @@ export function ForgotPasswordForm() {
           <Alert>
             <AlertDescription className="space-y-2">
               <p>
-                Si el correo existe, se generó un enlace válido por 1 hora. En este entorno de
-                desarrollo:
+                Si el correo existe, enviamos un enlace válido por 1 hora para recuperar o activar la cuenta.
               </p>
               {status.devResetUrl ? (
                 <a
                   href={status.devResetUrl}
                   className="font-semibold text-primary underline underline-offset-4"
                 >
-                  Abrir enlace de restablecimiento
+                  Abrir enlace de acceso
                 </a>
               ) : (
                 <p className="text-xs text-muted-foreground">
@@ -100,7 +98,7 @@ export function ForgotPasswordForm() {
 
           <Button type="submit" className="w-full" disabled={status.kind === "loading"}>
             {status.kind === "loading" ? <Loader2 className="animate-spin" /> : <Send />}
-            Enviar enlace
+            Enviar enlace de acceso
           </Button>
         </form>
       </CardContent>

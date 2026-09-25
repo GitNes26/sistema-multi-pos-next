@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { assertSubscriptionCapacity } from "@/lib/billing/subscriptions";
 import { hashPassword, setMembership, verifyPassword } from "@/lib/auth/users";
-import { mailConfigured, sendWelcomeLink } from "@/lib/auth/mail";
+import { mailConfigured, sendOrganizationWelcomeLink } from "@/lib/auth/mail";
 import { roleAllowedInOrg, roleIdToEnum } from "@/lib/settings/system-roles";
 import { CrudError, type CrudModule, type ListParams, type CrudListResult } from "../types";
 
@@ -212,7 +212,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     }
 
     const user = await prisma.user.create({
-      data: { email, passwordHash, fullName, phone, isActive: true },
+      data: { email, passwordHash, fullName, phone, isActive: true, activationRequired: Boolean(emailRaw) },
     });
 
     const salaryType = data.salaryType ? String(data.salaryType) : "";
@@ -244,7 +244,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
           _count: { select: { sales: true } },
         },
       });
-      if (emailRaw && mailConfigured()) await sendWelcomeLink(emailRaw, { fullName, accountType: "empleado" });
+      if (emailRaw && mailConfigured()) await sendOrganizationWelcomeLink(emailRaw, organizationId, { fullName, accountType: "empleado", locationName: employee.location?.name });
       return serialize(employee as EmployeeRow);
     } catch (err) {
       // Cleanup orphaned user/membership on create failure
@@ -326,10 +326,10 @@ export const employeesModule: CrudModule<EmployeeDto> = {
         select: { passwordHash: true },
       });
       if (userRow && (await verifyPassword(existing.user?.email ?? "", userRow.passwordHash)) && mailConfigured()) {
-        await sendWelcomeLink(emailRaw, { fullName: fullName ?? existing.fullName, accountType: "empleado" });
+        await sendOrganizationWelcomeLink(emailRaw, organizationId, { fullName: fullName ?? existing.fullName, accountType: "empleado" });
         await prisma.user.update({
           where: { id: existing.userId },
-          data: { passwordHash: await hashPassword(randomBytes(32).toString("hex")) },
+          data: { passwordHash: await hashPassword(randomBytes(32).toString("hex")), activationRequired: true, emailVerified: null },
         });
       }
     }

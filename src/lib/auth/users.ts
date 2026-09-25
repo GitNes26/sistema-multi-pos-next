@@ -187,7 +187,8 @@ export async function issuePasswordResetToken(
 /** Aplica un token de reset: resetea la contraseña si es válido. */
 export async function applyPasswordResetToken(
   token: string,
-  newPassword: string
+  newPassword: string,
+  acceptedLegal = false
 ): Promise<{ ok: boolean; error?: string }> {
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const user = await prisma.user.findUnique({ where: { passwordResetToken: tokenHash } });
@@ -200,6 +201,9 @@ export async function applyPasswordResetToken(
     where: { id: user.id },
     data: {
       passwordHash: await hashPassword(newPassword),
+      emailVerified: user.emailVerified ?? new Date(),
+      activationRequired: false,
+      ...(acceptedLegal ? { legalAcceptedAt: new Date(), legalVersion: "2026-09-25" } : {}),
       passwordResetToken: null,
       passwordResetExpires: null,
       authVersion: { increment: 1 },

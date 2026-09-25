@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, Banknote, CreditCard, Globe, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, Home, Plus, Trash2, Sparkles, Navigation } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePortalStore, cartSubtotal, cartTax } from "@/stores/portal-store";
@@ -942,6 +943,7 @@ export function CheckoutClient() {
 
           {/* La acción permanece encima de la navegación fija del portal. */}
           <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t bg-background/95 px-4 pb-3 pt-3 backdrop-blur">
+            <p className="mb-2 text-center text-xs leading-5 text-muted-foreground">Al confirmar aceptas las <Link href="/legal/comercio" target="_blank" className="underline underline-offset-4">condiciones de compra</Link> y el <Link href="/legal/privacidad" target="_blank" className="underline underline-offset-4">aviso de privacidad</Link>.</p>
             {submitError && (
               <p role="alert" className="mb-2 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {submitError}

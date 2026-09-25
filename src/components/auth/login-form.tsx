@@ -244,7 +244,7 @@ export function LoginForm({
                   href={isPortal ? "/portal/auth/forgot" : "/auth/forgot"}
                   className="text-xs text-primary underline-offset-4 hover:underline"
                 >
-                  ¿Olvidaste?
+                  Recuperar o activar cuenta
                 </Link>
               </div>
               <div className="relative">

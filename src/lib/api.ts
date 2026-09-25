@@ -75,7 +75,11 @@ async function restore(module: string, id: string) {
   });
 }
 
-export const crudApi = { list, get, create, update, remove, restore };
+async function resendActivation(module: string, id: string) {
+  return request<{ ok: boolean }>(`/api/crud/${module}/${id}?action=resend-activation`, { method: "POST" });
+}
+
+export const crudApi = { list, get, create, update, remove, restore, resendActivation };
 
 // ── Inventario (FASE 8) ───────────────────────────────────────────────────────
 

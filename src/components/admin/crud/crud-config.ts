@@ -268,6 +268,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
       { key: "customerCode", label: "Nº cliente", type: "badge" },
       { key: "phone", label: "Teléfono" },
       { key: "email", label: "Correo" },
+      { key: "accessStatus", label: "Acceso al portal", type: "badge", displayMap: { not_invited: "Sin invitación", pending: "Activación pendiente", active: "Activo" } },
       { key: "points", label: "Puntos" },
       { key: "isActive", label: "Estado", type: "boolean" },
     ],
@@ -302,7 +303,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         label: "Correo",
         type: "email",
         placeholder: "cliente@correo.com",
-        help: "Se asocia a una cuenta de usuario del portal. Contraseña inicial: la misma dirección (el cliente la cambia en su primer acceso).",
+        help: "Se enviará una invitación para confirmar la cuenta y crear una contraseña segura.",
         transform: "lowercase",
         yup: { email: { message: "Ingresa un correo válido" } },
       },
@@ -953,6 +954,27 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
     beforeFields: PromotionDescriptionPreview,
 
   },
+}
+
+/** Formulario homologado usado dentro del flujo documental de compras. */
+export const SUPPLIER_FORM_CONFIG: CrudUiConfig = {
+  module: "purchasing-suppliers",
+  title: "Proveedor",
+  description: "Datos comerciales y condiciones habituales del proveedor.",
+  columns: [],
+  fields: [
+    { key: "businessName", label: "Razón social", type: "text", icon: "Building2", required: true, requiredMessage: "Ingresa la razón social", transform: "trim" },
+    { key: "tradeName", label: "Nombre comercial", type: "text", icon: "Store", transform: "trim" },
+    { key: "taxId", label: "RFC", type: "text", icon: "FileText", transform: "uppercase", maxLength: 13 },
+    { key: "contactName", label: "Persona de contacto", type: "text", icon: "UserRound", transform: "trim" },
+    { key: "email", label: "Correo", type: "email", icon: "Mail", transform: "lowercase", yup: { email: { message: "Ingresa un correo válido" } } },
+    { key: "phone", label: "Teléfono", type: "phone", icon: "Phone" },
+    { key: "paymentTerms", label: "Condiciones de pago", type: "text", icon: "CalendarDays", placeholder: "Ej. Crédito a 30 días" },
+    { key: "leadTimeDays", label: "Tiempo de entrega (días)", type: "number", icon: "Truck", min: 0, defaultValue: 0 },
+    { key: "address", label: "Dirección", type: "address", icon: "MapPin", full: true },
+    { key: "notes", label: "Notas", type: "textarea", icon: "NotebookPen", full: true, maxLength: 1000 },
+    { key: "isActive", label: "Proveedor activo", type: "boolean", icon: "ToggleLeft", defaultValue: true, description: "Los proveedores inactivos se conservan en el historial, pero no aparecen para nuevas compras." },
+  ],
 }
 
 export function getCrudUi(module: string): CrudUiConfig | undefined {

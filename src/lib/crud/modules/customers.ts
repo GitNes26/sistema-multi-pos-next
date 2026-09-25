@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { hashPassword, setMembership, verifyPassword } from "@/lib/auth/users";
-import { mailConfigured, sendWelcomeLink } from "@/lib/auth/mail";
+import { hashPassword, setMembership } from "@/lib/auth/users";
+import { mailConfigured, sendOrganizationWelcomeLink } from "@/lib/auth/mail";
 import { CrudError, type CrudModule, type ListParams, type CrudListResult } from "../types";
 
 export interface CustomerDto {
@@ -18,6 +18,7 @@ export interface CustomerDto {
   isActive: boolean;
   salesCount: number;
   ordersCount: number;
+  accessStatus: "not_invited" | "pending" | "active";
 }
 
 type CustomerRow = {
@@ -32,7 +33,7 @@ type CustomerRow = {
   latitude: { toNumber(): number } | number | null;
   longitude: { toNumber(): number } | number | null;
   isActive: boolean;
-  user: { email: string | null } | null;
+  user: { email: string | null; activationRequired: boolean; emailVerified: Date | null } | null;
   _count: { sales: number; orders: number };
 };
 
@@ -59,6 +60,7 @@ function serialize(c: CustomerRow): CustomerDto {
     isActive: c.isActive,
     salesCount: c._count.sales,
     ordersCount: c._count.orders,
+    accessStatus: !c.email ? "not_invited" : c.user?.activationRequired ? "pending" : "active",
   };
 }
 
@@ -103,7 +105,7 @@ export const customersModule: CrudModule<CustomerDto> = {
     const [rows, total] = await Promise.all([
       prisma.customer.findMany({
         where,
-        include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true } } },
+        include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true, activationRequired: true, emailVerified: true } } },
         orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -117,7 +119,7 @@ export const customersModule: CrudModule<CustomerDto> = {
   async get(organizationId, id) {
     const c = await prisma.customer.findFirst({
       where: { id, organizationId },
-      include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true } } },
+      include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true, activationRequired: true, emailVerified: true } } },
     });
     if (!c) throw new CrudError("Cliente no encontrado", 404);
     return serialize(c);
@@ -152,7 +154,7 @@ export const customersModule: CrudModule<CustomerDto> = {
     const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
 
     const user = await prisma.user.create({
-      data: { email, passwordHash, fullName, phone, isActive: true },
+      data: { email, passwordHash, fullName, phone, isActive: true, activationRequired: Boolean(emailRaw) },
     });
 
     try {
@@ -176,9 +178,14 @@ export const customersModule: CrudModule<CustomerDto> = {
           isActive: data.isActive !== false,
           ...(data.points !== undefined ? { points: Number(data.points) || 0 } : {}),
         },
-        include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true } } },
+        include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true, activationRequired: true, emailVerified: true } } },
       });
-      if (emailRaw && mailConfigured()) await sendWelcomeLink(emailRaw, { fullName, accountType: "cliente" });
+      if (emailRaw && mailConfigured()) {
+        const registrationLocation = data.registrationLocationId
+          ? await prisma.location.findFirst({ where: { id: String(data.registrationLocationId), organizationId }, select: { name: true } })
+          : null;
+        await sendOrganizationWelcomeLink(emailRaw, organizationId, { fullName, accountType: "cliente", locationName: registrationLocation?.name });
+      }
       return serialize(customer);
     } catch (err) {
       // Cleanup orphaned user/membership on create failure
@@ -223,6 +230,7 @@ export const customersModule: CrudModule<CustomerDto> = {
       data.fullName !== undefined
         ? String(data.fullName).trim() || existing.fullName
         : undefined;
+    const emailChanged = Boolean(emailRaw && emailRaw !== existing.email);
 
     await prisma.user.update({
       where: { id: existing.userId },
@@ -230,24 +238,16 @@ export const customersModule: CrudModule<CustomerDto> = {
         ...(fullName ? { fullName } : {}),
         ...(phone !== undefined && phone !== null ? { phone } : {}),
         ...(emailRaw ? { email: emailRaw } : {}),
+        ...(emailChanged ? {
+          passwordHash: await hashPassword(randomBytes(32).toString("hex")),
+          activationRequired: true,
+          emailVerified: null,
+          passwordResetToken: null,
+          passwordResetExpires: null,
+          authVersion: { increment: 1 },
+        } : {}),
       },
     });
-
-    // Las cuentas heredadas con contraseña igual al correo reciben un enlace
-    // para elegir una nueva; nunca sustituimos el secreto por el nuevo correo.
-    if (emailRaw && emailRaw !== existing.email) {
-      const userRow = await prisma.user.findUnique({
-        where: { id: existing.userId },
-        select: { passwordHash: true },
-      });
-      if (userRow && (await verifyPassword(existing.email ?? "", userRow.passwordHash)) && mailConfigured()) {
-        await sendWelcomeLink(emailRaw, { fullName: fullName ?? existing.fullName, accountType: "cliente" });
-        await prisma.user.update({
-          where: { id: existing.userId },
-          data: { passwordHash: await hashPassword(randomBytes(32).toString("hex")) },
-        });
-      }
-    }
 
     const customer = await prisma.customer.update({
       where: { id },
@@ -269,8 +269,13 @@ export const customersModule: CrudModule<CustomerDto> = {
           ? { customerCode: data.customerCode ? String(data.customerCode).trim().toUpperCase() : null }
           : {}),
       },
-      include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true } } },
+      include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true, activationRequired: true, emailVerified: true } } },
     });
+    // Cambiar el correo invalida las sesiones, actualiza primero ambas fuentes
+    // y luego invita a confirmar la dirección nueva.
+    if (emailChanged && emailRaw && mailConfigured()) {
+      await sendOrganizationWelcomeLink(emailRaw, organizationId, { fullName: fullName ?? existing.fullName, accountType: "cliente" });
+    }
     return serialize(customer);
   },
 

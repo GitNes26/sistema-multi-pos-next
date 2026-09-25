@@ -1,6 +1,8 @@
 import PDFDocument from "pdfkit";
 import { prisma } from "@/lib/db";
 import type { $Enums } from "@prisma/client";
+import bwipjs from "bwip-js/node";
+import { buildTicketCode } from "@/lib/sales/ticket-code";
 
 // FASE 6.12 (rediseño) — Ticket térmico en PDF (80mm) para impresión.
 
@@ -42,7 +44,7 @@ export async function generateTicketPdf(organizationId: string, saleId: string, 
   ]);
 
   const optionLineCount = sale.items.reduce((sum, item) => sum + (Array.isArray(item.selectedOptions) ? item.selectedOptions.length : 0), 0);
-  const estimatedHeight = Math.max(420, 320 + sale.items.length * 42 + optionLineCount * 12 + sale.discounts.length * 14 + sale.payments.length * 14 + (company?.ticketFooter ? 40 : 0));
+  const estimatedHeight = Math.max(490, 390 + sale.items.length * 42 + optionLineCount * 12 + sale.discounts.length * 14 + sale.payments.length * 14 + (company?.ticketFooter ? 40 : 0));
 
   const pageWidth = paperWidth * 2.83465;
   const margin = paperWidth === 58 ? 9 : 12;
@@ -160,6 +162,13 @@ export async function generateTicketPdf(organizationId: string, saleId: string, 
     doc.moveDown(0.5);
   }
   doc.font("Courier-Bold").fontSize(8).text("¡Gracias por su compra!", { align: "center", width: contentWidth });
+
+  const ticketCode = buildTicketCode({ saleId: sale.id });
+  const barcode = await bwipjs.toBuffer({ bcid: "code128", text: ticketCode, height: 10, scale: 2, includetext: false, padding: 0 });
+  doc.moveDown(0.7);
+  doc.image(barcode, margin + 4, doc.y, { fit: [contentWidth - 8, 34], align: "center" });
+  doc.moveDown(3.4);
+  doc.font("Courier").fontSize(6).text("Escanea para consultar la venta", { align: "center", width: contentWidth });
 
   doc.end();
   return result;

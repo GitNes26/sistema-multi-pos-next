@@ -104,6 +104,11 @@ export function NavDrawer({
           <span className="flex-1">Personalizar navegación</span>
           <ChevronRight className="size-4 text-muted-foreground/60" />
         </Link>
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 px-3 text-xs text-muted-foreground">
+          <Link href="/legal/terminos" onClick={() => setNavOpen(false)} className="hover:text-foreground hover:underline">Términos</Link>
+          <Link href="/legal/privacidad" onClick={() => setNavOpen(false)} className="hover:text-foreground hover:underline">Privacidad</Link>
+          <Link href="/legal/comercio" onClick={() => setNavOpen(false)} className="hover:text-foreground hover:underline">Compras</Link>
+        </div>
       </div>
       </SheetContent>
     </Sheet>

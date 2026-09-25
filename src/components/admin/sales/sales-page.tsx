@@ -26,6 +26,7 @@ import { money, qty } from "@/lib/pos/money"
 import { PAYMENT_METHOD_LABELS } from "@/lib/pos/config"
 import { ReturnDialog } from "./return-dialog"
 import { ReturnsTab } from "./returns-tab"
+import { parseTicketCode } from "@/lib/sales/ticket-code"
 
 // FASE 9 — Historial de ventas del POS.
 
@@ -112,6 +113,11 @@ export function SalesPage({
       })
       setRows(res.rows)
       setTotal(res.total)
+      if (parseTicketCode(debouncedQ) && res.rows.length === 1) {
+        const result = await salesApi.detail(res.rows[0].id)
+        setDetail(result.sale)
+        setDetailOpen(true)
+      }
     } catch (err) {
       swalError(
         "No se pudo cargar las ventas",
@@ -791,6 +797,12 @@ function PrintReceipt({ sale }: { sale: SaleDetail }) {
 
       <div className="mt-3 text-center">
         <p>¡Gracias por su compra!</p>
+        <img
+          src={`/api/pos/ticket/${sale.id}/barcode`}
+          alt={`Código de barras del ticket ${sale.locationSaleNumber ?? sale.saleNumber}`}
+          className="mx-auto mt-3 h-10 max-w-full object-fill"
+        />
+        <p className="mt-1 text-[8px]">Escanea este código para consultar la venta</p>
       </div>
     </div>
   )

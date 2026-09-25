@@ -30,6 +30,7 @@ import { ScrollCue } from "@/components/landing/scroll-cue"
 import { AnimatedStats } from "@/components/landing/animated-stats"
 import packageJson from "../../package.json"
 import { prisma } from "@/lib/db"
+import { planWhatsappUrl, whatsappUrl } from "@/lib/whatsapp"
 
 // Los planes se administran en la base de datos. La portada debe resolverlos
 // al atender la petición, cuando Dokploy ya inyectó DATABASE_URL al contenedor,
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
     "Multi-POS: punto de venta multi-sucursal, panel administrativo y portal de clientes. Ventas, inventario, pedidos en línea y lealtad en una sola plataforma.",
 }
 
-const WHATSAPP_URL = `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}?text=${process.env.NEXT_PUBLIC_WHATSAPP_MESSAGE ?? ""}`
+const WHATSAPP_URL = whatsappUrl()
 
 const FEATURES = [
   {
@@ -260,7 +261,7 @@ export default async function LandingPage() {
 
       {plans.length > 0 && <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6" id="planes">
         <div className="mx-auto max-w-2xl text-center"><h2 className="text-3xl font-bold tracking-tight">Un plan para cada etapa</h2><p className="mt-3 text-muted-foreground">Todos incluyen Punto de venta, Panel administrativo y Portal de clientes. La capacidad cambia según tu operación.</p></div>
-        <div className="mt-10 grid gap-4 lg:grid-cols-3">{plans.map((plan)=><div key={plan.id} className="rounded-2xl border bg-card p-6"><h3 className="text-xl font-semibold">{plan.name}</h3><p className="mt-1 min-h-10 text-sm text-muted-foreground">{plan.description}</p><p className="mt-5 text-3xl font-semibold">${Number(plan.monthlyPrice).toLocaleString("es-MX")}<span className="text-sm font-normal text-muted-foreground">/mes</span></p><div className="mt-4 space-y-2 text-sm"><p><Building2 className="mr-2 inline size-4"/>{plan.includedLocations} sucursal(es) incluida(s)</p><p><Users className="mr-2 inline size-4"/>{plan.includedEmployees} empleados incluidos</p><p className="text-muted-foreground">Sucursal extra: ${Number(plan.extraLocationPrice).toLocaleString("es-MX")}/mes</p><p className="text-muted-foreground">{plan.extraEmployeePackSize} empleados extra: ${Number(plan.extraEmployeePackPrice).toLocaleString("es-MX")}/mes</p></div><ul className="mt-4 space-y-2 text-sm">{(plan.features as string[]).map(feature=><li key={feature} className="flex gap-2"><Check className="size-4 text-emerald-600"/>{feature}</li>)}</ul><Button asChild className="mt-6 w-full"><a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">Solicitar este plan</a></Button></div>)}</div>
+        <div className="mt-10 grid gap-4 lg:grid-cols-3">{plans.map((plan)=><div key={plan.id} className="rounded-2xl border bg-card p-6"><h3 className="text-xl font-semibold">{plan.name}</h3><p className="mt-1 min-h-10 text-sm text-muted-foreground">{plan.description}</p><p className="mt-5 text-3xl font-semibold">${Number(plan.monthlyPrice).toLocaleString("es-MX")}<span className="text-sm font-normal text-muted-foreground">/mes</span></p><div className="mt-4 space-y-2 text-sm"><p><Building2 className="mr-2 inline size-4"/>{plan.includedLocations} sucursal(es) incluida(s)</p><p><Users className="mr-2 inline size-4"/>{plan.includedEmployees} empleados incluidos</p><p className="text-muted-foreground">Sucursal extra: ${Number(plan.extraLocationPrice).toLocaleString("es-MX")}/mes</p><p className="text-muted-foreground">{plan.extraEmployeePackSize} empleados extra: ${Number(plan.extraEmployeePackPrice).toLocaleString("es-MX")}/mes</p></div><ul className="mt-4 space-y-2 text-sm">{(plan.features as string[]).map(feature=><li key={feature} className="flex gap-2"><Check className="size-4 text-emerald-600"/>{feature}</li>)}</ul><Button asChild className="mt-6 w-full"><a href={planWhatsappUrl(plan)} target="_blank" rel="noopener noreferrer">Solicitar este plan</a></Button></div>)}</div>
       </section>}
 
       {/* ── Features ──────────────────────────────────────────── */}
@@ -356,6 +357,9 @@ export default async function LandingPage() {
             <Link href="/portal/auth/login" className="hover:text-foreground hover:underline">
               Portal de clientes
             </Link>
+            <Link href="/legal/terminos" className="hover:text-foreground hover:underline">Términos</Link>
+            <Link href="/legal/privacidad" className="hover:text-foreground hover:underline">Privacidad</Link>
+            <Link href="/legal/comercio" className="hover:text-foreground hover:underline">Condiciones de compra</Link>
             <span>© {new Date().getFullYear()} Multi-POS v{packageJson.version}</span>
           </div>
         </div>

@@ -3,6 +3,8 @@ import { salesGuard, salesErrorResponse } from "../../../guard";
 import { getReturnDetail } from "@/lib/returns/server";
 import { prisma } from "@/lib/db";
 import PDFDocument from "pdfkit";
+import bwipjs from "bwip-js/node";
+import { buildTicketCode } from "@/lib/sales/ticket-code";
 
 // GET /api/sales/returns/[returnId]/ticket — Ticket de devolución PDF
 export async function GET(req: NextRequest, { params }: { params: Promise<{ returnId: string }> }) {
@@ -37,8 +39,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ retu
       other: "Otro medio",
     };
 
+    const originalTicketCode = buildTicketCode({ saleId: ret.sale.id });
+    const barcode = await bwipjs.toBuffer({ bcid: "code128", text: originalTicketCode, height: 10, scale: 2, includetext: false, padding: 0 });
     const buffer = await new Promise<Buffer>((resolve, reject) => {
-      const doc = new PDFDocument({ size: [226, 400], margin: 20 }); // Thermal receipt 80mm
+      const doc = new PDFDocument({ size: [226, 470], margin: 20 }); // Thermal receipt 80mm
       const chunks: Buffer[] = [];
       doc.on("data", (c: Buffer) => chunks.push(Buffer.from(c)));
       doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -119,6 +123,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ retu
       // Footer
       y += 20;
       doc.fontSize(6).fillColor("666666").text("Gracias por su preferencia", cx, y, { width: W, align: "center" });
+      y += 16;
+      doc.image(barcode, cx + 4, y, { fit: [W - 8, 34], align: "center" });
+      y += 38;
+      doc.fontSize(6).text("Escanea para consultar la venta original", cx, y, { width: W, align: "center" });
 
       doc.end();
     });

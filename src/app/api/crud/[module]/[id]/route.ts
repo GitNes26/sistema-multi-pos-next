@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardCrud, crudErrorResponse } from "../../guard";
 import { prisma } from "@/lib/db";
+import { mailConfigured, sendOrganizationWelcomeLink } from "@/lib/auth/mail";
 
 /** Table → model mapping for generic soft-delete restore. */
 const MODEL_MAP: Record<string, { table: string; userTable?: string }> = {
@@ -86,9 +87,9 @@ export async function DELETE(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const [module, id] = req.nextUrl.pathname.split("/").filter(Boolean).slice(-2);
 
-  // Only handle restore action
   const url = new URL(req.url);
-  if (url.searchParams.get("action") !== "restore") {
+  const action = url.searchParams.get("action");
+  if (action !== "restore" && action !== "resend-activation") {
     return NextResponse.json({ ok: false, error: "Acción no válida" }, { status: 400 });
   }
 
@@ -97,6 +98,15 @@ export async function POST(req: NextRequest) {
   const { entry, organizationId } = guard;
 
   try {
+    if (action === "resend-activation") {
+      if (module !== "customers") throw new Error("Esta acción solo está disponible para clientes");
+      if (!mailConfigured()) throw new Error("El correo SMTP no está configurado");
+      const customer = await prisma.customer.findFirst({ where: { id, organizationId }, select: { fullName: true, email: true, user: { select: { activationRequired: true } } } });
+      if (!customer?.email) throw new Error("El cliente no tiene un correo de acceso registrado");
+      if (!customer.user.activationRequired) throw new Error("La cuenta del cliente ya está activa");
+      await sendOrganizationWelcomeLink(customer.email, organizationId, { fullName: customer.fullName, accountType: "cliente" });
+      return NextResponse.json({ ok: true });
+    }
     if (entry.module.restore) {
       await entry.module.restore(organizationId, id);
     } else {

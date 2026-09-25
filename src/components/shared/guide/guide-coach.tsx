@@ -168,23 +168,27 @@ export function GuideCoach() {
 
   // Posición del tooltip respecto al elemento resaltado.
   let tooltipStyle: React.CSSProperties | undefined;
-  const W = 340;
+  const W = Math.min(340, window.innerWidth - 24);
+  const tooltipHeight = Math.min(430, window.innerHeight - 72);
   if (rect) {
     const margin = 12;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const fits = {
-      bottom: rect.top + rect.height + margin + 180 <= vh,
-      top: rect.top - margin - 180 >= 0,
+      bottom: rect.top + rect.height + margin + tooltipHeight <= vh - 8,
+      top: rect.top - margin - tooltipHeight >= 8,
       right: rect.left + rect.width + margin + W <= vw,
       left: rect.left - margin - W >= 0,
     };
     const preferred: ("bottom" | "top" | "right" | "left")[] = ["bottom", "top", "right", "left"];
-    const chosen = preferred.find((p) => fits[p]) ?? "bottom";
+    const chosen = preferred.find((p) => fits[p]);
+    if (!chosen) {
+      tooltipStyle = { bottom: 12, left: Math.max(12, (vw - W) / 2) };
+    }
     if (chosen === "bottom") tooltipStyle = { top: rect.top + rect.height + margin, left: Math.max(12, Math.min(rect.left + rect.width / 2 - W / 2, vw - W - 12)) };
-    if (chosen === "top") tooltipStyle = { top: Math.max(12, rect.top - margin - 190), left: Math.max(12, Math.min(rect.left + rect.width / 2 - W / 2, vw - W - 12)) };
-    if (chosen === "right") tooltipStyle = { top: Math.max(12, Math.min(rect.top + rect.height / 2 - 100, vh - 220)), left: rect.left + rect.width + margin };
-    if (chosen === "left") tooltipStyle = { top: Math.max(12, Math.min(rect.top + rect.height / 2 - 100, vh - 220)), left: Math.max(12, rect.left - margin - W) };
+    if (chosen === "top") tooltipStyle = { top: Math.max(12, rect.top - margin - tooltipHeight), left: Math.max(12, Math.min(rect.left + rect.width / 2 - W / 2, vw - W - 12)) };
+    if (chosen === "right") tooltipStyle = { top: Math.max(12, Math.min(rect.top + rect.height / 2 - tooltipHeight / 2, vh - tooltipHeight - 12)), left: rect.left + rect.width + margin };
+    if (chosen === "left") tooltipStyle = { top: Math.max(12, Math.min(rect.top + rect.height / 2 - tooltipHeight / 2, vh - tooltipHeight - 12)), left: Math.max(12, rect.left - margin - W) };
   } else {
     // Paso centrado: tooltip en el centro de la pantalla.
     tooltipStyle = { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
@@ -248,7 +252,7 @@ export function GuideCoach() {
 
       {/* Tooltip */}
       <div
-        className="guide-fade-in fixed z-[9999] w-[340px] max-w-[calc(100vw-24px)] rounded-2xl border bg-background/98 p-4 shadow-2xl shadow-black/40"
+        className="guide-fade-in fixed z-[9999] flex max-h-[calc(100dvh-4.5rem)] w-[340px] max-w-[calc(100vw-24px)] flex-col overflow-y-auto overscroll-contain rounded-2xl border bg-background/98 p-4 shadow-2xl shadow-black/40"
         style={tooltipStyle}
       >
         <button
@@ -267,7 +271,7 @@ export function GuideCoach() {
         </div>
         <h3 className="text-base font-black tracking-tight">{step.title}</h3>
         <div className="mt-1 text-sm leading-relaxed text-muted-foreground">{step.body}</div>
-        <div className="mt-3.5 flex items-center justify-between gap-2">
+        <div className="sticky -bottom-4 z-10 -mx-4 mt-3.5 flex items-center justify-between gap-2 border-t bg-background/98 px-4 py-3 pb-[max(.75rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center gap-1">
             {stepIndex > 0 && (
               <Button type="button" variant="ghost" size="sm" onClick={prev}>

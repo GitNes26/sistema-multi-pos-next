@@ -30,9 +30,9 @@ Ejecuta `node scripts/test-env.mjs prepare demo` para una base demo desechable y
 1. “Primero elijo el tipo de negocio; el sistema prepara el espacio de trabajo.” Completa el Wizard 1.
 2. En `/admin`, abre **Agrega tu primer producto**. Di: “La guía no sustituye la pantalla: me acompaña dentro del formulario que usaré todos los días”. Muestra el resaltado de **Nuevo**, tipo, nombre, categoría e impuesto; crea el producto, revisa su fila y variantes; continúa a Inventario con búsqueda, **Movimiento**, **Mínimo** y **Transferir**. Momento wow: el mismo recorrido cruza módulos sin perder el paso.
 3. Abre **Realiza tu primera compra**. Registra el proveedor, vincula un producto, crea la cotización y conviértela en orden. Aprueba, marca el envío y registra una recepción parcial antes de completar el saldo. Di: “Cada entrega actualiza inventario sin perder lo que todavía debe el proveedor”. Momento wow: cotización, autorización y dos entradas físicas conservan una sola trazabilidad.
-4. En `/pos`, abre caja, agrega una variante o producto a granel, aplica un descuento mayor a 10% con el PIN de supervisor, cobra y visualiza el ticket.
+4. En `/pos`, abre caja, agrega una variante o producto a granel, aplica un descuento mayor a 10% con el PIN de supervisor, cobra y visualiza el ticket. Imprime en 58 y 80 mm, escanea el código de barras en **Ventas** y muestra que abre la venta; cambia el filtro de sucursal para explicar el aviso cuando el ticket corresponde a otra sede de la misma empresa.
 5. En food_service o hybrid, ocupa una mesa, envía la comanda a `/kds`, cambia su estado y cobra en caja.
-6. En **Prueba tu portal**, crea un cliente desde el formulario real, abre `/portal/auth/login` en otra pestaña, agrega al carrito y confirma un pedido. Regresa a **Operación → Pedidos**. Momento wow: la operación del cliente termina visible en el panel.
+6. En **Prueba tu portal**, crea un cliente desde el formulario real, enseña el correo con alias `MultiPOS - [Nombre del negocio]`, activa la cuenta y abre `/portal/auth/login` en otra pestaña. Agrega al carrito y confirma un pedido. Regresa a **Operación → Pedidos**. Momento wow: la operación del cliente termina visible en el panel.
 7. Abre `/reservar` y `/reservar/verificar` para mostrar la reserva pública y su confirmación.
 
 ### Mapa de acciones guiadas por intención
@@ -58,6 +58,8 @@ En Inventario, pulsa **Plantilla** antes de **Importar** y enseña sus tres hoja
 | Empresa | Ajustes → Empresa → datos/logo → Guardar | Identidad compartida en las superficies visibles. |
 | Portal | Clientes → Nuevo → portal en otra pestaña → pedido → Pedidos | Cierra el círculo cliente-operación. |
 | POS restaurante | Mesa → ticket → Enviar a cocina → KDS → Cobrar | La guía acompaña el flujo entre POS y KDS. |
+
+Las tarjetas de planes de la portada y **Ajustes → Mi plan** abren WhatsApp con el paquete, precio y capacidad ya escritos. En pantallas pequeñas, desplázate dentro de la tarjeta de la guía: sus acciones quedan fijas y el botón **Siguiente** siempre debe permanecer visible.
 
 ## Objeciones
 

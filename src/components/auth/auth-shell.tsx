@@ -66,6 +66,9 @@ export function AuthShell({
 
       <div className="relative z-10 mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         {footerLinks}
+        <Link href="/legal/terminos" className="hover:text-foreground hover:underline">Términos</Link>
+        <Link href="/legal/privacidad" className="hover:text-foreground hover:underline">Privacidad</Link>
+        <Link href="/legal/cookies" className="hover:text-foreground hover:underline">Cookies</Link>
       </div>
 
       <p className="relative z-10 mt-4 text-[0.65rem] text-muted-foreground/50">

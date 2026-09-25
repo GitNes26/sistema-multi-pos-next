@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.20.3.6] — 2026-09-25
+- **Tipo:** `ui` (Revision)
+- ui: se mejoro el ticekt, se la leyenda que se envia por whats, las politicas y los correos y los wizard
+
 ### [0.20.3.5] — 2026-09-24
 - **Tipo:** `ui` (Revision)
 - ui: se mejoro la experiencia para guardar clientes y enviar correo

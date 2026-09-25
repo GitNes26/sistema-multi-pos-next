@@ -1,0 +1,2 @@
+ALTER TABLE `users` ADD COLUMN `legalAcceptedAt` DATETIME(3) NULL,
+ADD COLUMN `legalVersion` VARCHAR(191) NULL;

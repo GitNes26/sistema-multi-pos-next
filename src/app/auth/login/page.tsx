@@ -53,7 +53,7 @@ export default async function PosLoginPage({
             href="/auth/forgot"
             className="hover:text-foreground hover:underline"
           >
-            Recuperar contraseña
+            Recuperar contraseña o activar cuenta
           </Link>
           <span>
             © {new Date().getFullYear()} Multi-POS v{packageJson.version}

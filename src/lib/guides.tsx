@@ -879,9 +879,10 @@ const paymentsGuide: GuideDef = {
       title: "Pagos en línea",
       body: (
         <p>
-          Conecta tu cuenta de <strong>Stripe o MercadoPago</strong> para que el
-          cliente pague en línea al pedir en el portal. Sin esto, el cliente
-          solo podrá pagar en tienda o contra entrega.
+          Conecta <strong>Mercado Pago</strong> para cobrar en línea desde el
+          portal y configura <strong>Point</strong> para enviar cobros a la
+          terminal física desde caja. Stripe permanece disponible como
+          alternativa para pagos en línea.
         </p>
       ),
     },
@@ -891,8 +892,9 @@ const paymentsGuide: GuideDef = {
       title: "También en caja",
       body: (
         <p>
-          Los métodos que actives aquí también aparecen en la caja (POS):
-          efectivo, tarjeta, transferencia y pago en línea.
+          Guarda primero credenciales de prueba y realiza una compra sandbox.
+          En el POS, verifica que la terminal seleccionada reciba el importe y
+          que la venta solo concluya cuando Mercado Pago confirme el cobro.
         </p>
       ),
     },
@@ -951,8 +953,8 @@ const portalGuide: GuideDef = {
         <p>
           El portal es para tus <strong>clientes</strong>. Para probarlo
           necesitas una cuenta de cliente: créala en{" "}
-          <strong>Catálogos → Clientes</strong> (se le asigna una contraseña
-          inicial).
+          <strong>Catálogos → Clientes</strong>. Recibirá un correo con la
+          identidad del negocio y un enlace de activación de un solo uso.
         </p>
       ),
       advanceOnClick: true,
@@ -963,9 +965,9 @@ const portalGuide: GuideDef = {
       title: "Completa la cuenta real",
       body: (
         <p>
-          Captura nombre, correo y los datos necesarios. Guarda la cuenta y
-          conserva sus credenciales de prueba para abrir el portal en una sesión
-          separada.
+          Captura nombre y correo. Al guardar, comprueba el estado de activación;
+          si el enlace venció, puedes reenviarlo desde la lista de clientes o
+          desde «Olvidé mi contraseña / reenviar activación».
         </p>
       ),
     },
@@ -1107,9 +1109,10 @@ const purchasingGuide: GuideDef = {
       title: "Completa su ficha comercial",
       body: (
         <p>
-          Solo la razón social es obligatoria. El código se genera
-          automáticamente. Los demás datos ayudan a comparar condiciones y dar
-          seguimiento sin buscar información fuera del sistema.
+          Solo la razón social es obligatoria. El formulario comparte las mismas
+          validaciones, foco de errores y controles del resto de catálogos. El
+          código se genera automáticamente y los datos comerciales quedan listos
+          para cotizaciones y órdenes.
         </p>
       ),
     },

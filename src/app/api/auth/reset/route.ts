@@ -6,6 +6,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as {
     token?: string
     password?: string
+    acceptedLegal?: boolean
   } | null
 
   const token = body?.token?.trim()
@@ -17,8 +18,11 @@ export async function POST(req: Request) {
       { status: 400 }
     )
   }
+  if (body?.acceptedLegal !== true) {
+    return NextResponse.json({ error: "Debes aceptar los términos y el aviso de privacidad" }, { status: 400 })
+  }
 
-  const result = await applyPasswordResetToken(token, password)
+  const result = await applyPasswordResetToken(token, password, true)
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 })
   }

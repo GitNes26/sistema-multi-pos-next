@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { issuePasswordResetToken } from "@/lib/auth/users";
-import { mailConfigured, sendPasswordLink } from "@/lib/auth/mail";
+import { mailConfigured, sendOrganizationWelcomeLink, sendPasswordLink } from "@/lib/auth/mail";
+import { prisma } from "@/lib/db";
 
 // Solicitud de recuperación; en desarrollo sin SMTP se ofrece un enlace local.
 export async function POST(req: Request) {
@@ -25,7 +26,18 @@ export async function POST(req: Request) {
 
   if (token && mailConfigured()) {
     try {
-      await sendPasswordLink(email, token, "reset");
+      const account = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+        select: { fullName: true, activationRequired: true, customers: { take: 1, select: { organizationId: true } }, employees: { take: 1, select: { organizationId: true, location: { select: { name: true } } } }, memberships: { take: 1, select: { organizationId: true, role: true } } },
+      });
+      if (account?.activationRequired) {
+        const organizationId = account.customers[0]?.organizationId ?? account.employees[0]?.organizationId ?? account.memberships[0]?.organizationId;
+        const accountType = account.customers.length ? "cliente" : account.employees.length ? "empleado" : "propietario";
+        if (organizationId) await sendOrganizationWelcomeLink(email, organizationId, { fullName: account.fullName, accountType, locationName: account.employees[0]?.location?.name });
+        else await sendPasswordLink(email, token, "welcome", { fullName: account.fullName, accountType });
+      } else {
+        await sendPasswordLink(email, token, "reset");
+      }
     } catch (error) {
       console.error("[auth/forgot] Falló el envío de correo:", error);
       // Misma respuesta para cuentas existentes e inexistentes.

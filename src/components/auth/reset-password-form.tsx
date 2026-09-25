@@ -7,6 +7,7 @@ import { yupResolver } from "@hookform/resolvers/yup"
 import * as yup from "yup"
 import { CheckCircle2, KeyRound, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { InputGroupField } from "@/components/base/input-group-field"
 import {
@@ -26,6 +27,7 @@ const schema = yup.object({
     .string()
     .oneOf([yup.ref("password")], "Las contraseñas no coinciden")
     .required("Confirma tu contraseña"),
+  acceptedLegal: yup.boolean().oneOf([true], "Debes aceptar los términos y el aviso de privacidad").required(),
 })
 
 type Values = yup.InferType<typeof schema>
@@ -41,6 +43,8 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<Values>({ resolver: yupResolver(schema) })
 
@@ -70,7 +74,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
     const res = await fetch("/api/auth/reset", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, password: values.password }),
+      body: JSON.stringify({ token, password: values.password, acceptedLegal: values.acceptedLegal }),
     })
     const data = (await res.json().catch(() => null)) as {
       error?: string
@@ -129,6 +133,14 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
             error={errors.password?.message}
             {...register("password")}
           />
+
+          <div className="space-y-2">
+            <label htmlFor="acceptedLegal" className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm leading-5">
+              <Checkbox id="acceptedLegal" checked={watch("acceptedLegal") === true} onCheckedChange={(checked) => setValue("acceptedLegal", checked === true, { shouldValidate: true })} aria-invalid={Boolean(errors.acceptedLegal)} />
+              <span>Acepto los <Link href="/legal/terminos" target="_blank" className="font-medium text-primary underline underline-offset-4">Términos de uso</Link>, las <Link href="/legal/comercio" target="_blank" className="font-medium text-primary underline underline-offset-4">Condiciones de compra</Link> y el <Link href="/legal/privacidad" target="_blank" className="font-medium text-primary underline underline-offset-4">Aviso de privacidad</Link>.</span>
+            </label>
+            {errors.acceptedLegal && <p role="alert" className="text-xs text-destructive">{errors.acceptedLegal.message}</p>}
+          </div>
 
           <InputGroupField
             id="confirm"

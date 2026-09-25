@@ -78,6 +78,7 @@ type ResolvedLoginUser = {
   isActive: boolean
   isSuperadmin: boolean
   authVersion: number
+  activationRequired: boolean
   /** Última organización activa recordada (para retomarla al volver a entrar). */
   lastOrganizationId: string | null
   employees: { organizationId: string }[]
@@ -106,6 +107,7 @@ export async function resolveLoginUser(
       isActive: true,
       isSuperadmin: true,
       authVersion: true,
+      activationRequired: true,
       lastOrganizationId: true,
       employees: { select: { organizationId: true } },
       customers: { select: { organizationId: true } },
@@ -147,6 +149,7 @@ export async function resolveLoginUser(
           isActive: true,
           isSuperadmin: true,
           authVersion: true,
+          activationRequired: true,
           lastOrganizationId: true,
           memberships: {
             select: { organizationId: true, role: true, roleId: true },
@@ -168,6 +171,7 @@ export async function resolveLoginUser(
       isActive: u.isActive,
       isSuperadmin: u.isSuperadmin,
       authVersion: u.authVersion,
+      activationRequired: u.activationRequired,
       lastOrganizationId: u.lastOrganizationId,
       employees: [{ organizationId: byEmployee.organizationId }],
       customers: [],
@@ -193,6 +197,7 @@ export async function resolveLoginUser(
           isActive: true,
           isSuperadmin: true,
           authVersion: true,
+          activationRequired: true,
           lastOrganizationId: true,
         },
       },
@@ -211,6 +216,7 @@ export async function resolveLoginUser(
       isActive: u.isActive,
       isSuperadmin: u.isSuperadmin,
       authVersion: u.authVersion,
+      activationRequired: u.activationRequired,
       lastOrganizationId: u.lastOrganizationId,
       employees: [],
       customers: [{ organizationId: byCustomer.organizationId }],
@@ -286,6 +292,9 @@ export const authOptions: NextAuthOptions = {
 
         const user = await resolveLoginUser(credentials.identifier)
         if (!user) return null
+        if (user.activationRequired) {
+          throw new Error("Activa tu cuenta desde el correo de bienvenida o solicita un enlace nuevo en Olvidé mi contraseña.")
+        }
 
         const valid = await verifyPassword(
           credentials.password,

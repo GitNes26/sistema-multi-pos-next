@@ -181,6 +181,12 @@ export function Receipt({
           </p>
         )}
         <p>¡Gracias por su compra!</p>
+        <img
+          src={`/api/pos/ticket/${sale.id}/barcode`}
+          alt={`Código de barras del ticket ${sale.saleNumber}`}
+          className="mx-auto mt-3 h-10 max-w-full object-fill"
+        />
+        <p className="mt-1 text-[8px]">Escanea este código para consultar la venta</p>
       </div>
     </div>
   )

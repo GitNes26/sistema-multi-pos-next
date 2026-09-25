@@ -12,6 +12,7 @@ import {
   Layers,
   Layers3,
   Loader2,
+  MailCheck,
   Package,
   PackagePlus,
   CookingPot,
@@ -158,6 +159,7 @@ export function CrudPage({
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null)
   const [formSaving, setFormSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [resendingId, setResendingId] = useState<string | null>(null)
   const [excelBusy, setExcelBusy] = useState<"export" | "import" | null>(null)
   const [preview, setPreview] = useState<ExcelPreviewResult | null>(null)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
@@ -690,6 +692,29 @@ export function CrudPage({
                       <Eye className="size-4" />
                     </Button>
                   )}
+                  {moduleKey === "customers" && row.original.accessStatus === "pending" && (
+                    <TooltipButton
+                      label="Reenviar activación"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-primary"
+                      disabled={resendingId === String(row.original.id)}
+                      onClick={async () => {
+                        const id = String(row.original.id)
+                        setResendingId(id)
+                        try {
+                          await crudApi.resendActivation("customers", id)
+                          swalToast("Correo de activación reenviado")
+                        } catch (error) {
+                          swalError("No se pudo reenviar", error instanceof Error ? error.message : undefined)
+                        } finally {
+                          setResendingId(null)
+                        }
+                      }}
+                    >
+                      {resendingId === String(row.original.id) ? <Loader2 className="size-4 animate-spin" /> : <MailCheck className="size-4" />}
+                    </TooltipButton>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -769,7 +794,7 @@ export function CrudPage({
       },
     ]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, canDelete, moduleKey, restoringId])
+  }, [canManage, canDelete, moduleKey, restoringId, resendingId])
 
   const activeColumns = isProducts(moduleKey) ? productsColumns : columns
   const tableColumns = canManage

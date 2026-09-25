@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import * as yup from "yup"
 import {
   Building2,
   CalendarDays,
@@ -35,6 +34,8 @@ import { Label } from "@/components/ui/label"
 import { SwitchField } from "@/components/base/switch-field"
 import { cn } from "@/lib/utils"
 import { useGuideStore } from "@/stores/guide-store"
+import { CrudForm } from "@/components/admin/crud/crud-form"
+import { SUPPLIER_FORM_CONFIG } from "@/components/admin/crud/crud-config"
 
 type Item = {
   id: string
@@ -148,12 +149,6 @@ const emptySupplier = {
   isActive: true,
 }
 
-const supplierSchema = yup.object({
-  businessName: yup.string().trim().required("Ingresa la razón social"),
-  email: yup.string().trim().email("Ingresa un correo válido"),
-  leadTimeDays: yup.number().min(0, "Los días de entrega no pueden ser negativos"),
-})
-
 async function request(body?: Record<string, unknown>) {
   const response = await fetch(
     "/api/purchasing",
@@ -206,10 +201,8 @@ export function PurchasingPage({
   >(null)
   const [selected, setSelected] = React.useState<Supplier | Order | null>(null),
     [saving, setSaving] = React.useState(false)
-  const [supplierErrors, setSupplierErrors] = React.useState<Record<string, string>>({})
   const [operationError, setOperationError] = React.useState<string | null>(null)
-  const [supplier, setSupplier] = React.useState(emptySupplier),
-    [doc, setDoc] = React.useState({
+  const [doc, setDoc] = React.useState({
       supplierId: "",
       quoteId: "",
       locationType: "location",
@@ -247,28 +240,7 @@ export function PurchasingPage({
     setSelected(null)
     setItems([])
     setReceiveQty({})
-    setSupplierErrors({})
     setOperationError(null)
-  }
-  const submitSupplier = async () => {
-    try {
-      await supplierSchema.validate(supplier, { abortEarly: false })
-      setSupplierErrors({})
-    } catch (error) {
-      if (error instanceof yup.ValidationError) {
-        const next: Record<string, string> = {}
-        for (const issue of error.inner.length ? error.inner : [error]) {
-          if (issue.path && !next[issue.path]) next[issue.path] = issue.message
-        }
-        setSupplierErrors(next)
-        const first = ["businessName", "email", "leadTimeDays"].find((key) => next[key])
-        const inputId = first === "businessName" ? "supplier-name" : first === "email" ? "supplier-email" : "supplier-lead"
-        requestAnimationFrame(() => document.getElementById(inputId)?.focus())
-        return
-      }
-      throw error
-    }
-    await run({ action: selected ? "supplier.update" : "supplier.create", ...(selected ? { id: selected.id } : {}), ...supplier }, "Proveedor guardado")
   }
   const run = async (body: Record<string, unknown>, message: string, keepLinkOpen = false) => {
     setSaving(true)
@@ -367,7 +339,6 @@ export function PurchasingPage({
               <Button
                 data-guide="supplier-new"
                 onClick={() => {
-                  setSupplier(emptySupplier)
                   setDialog("supplier")
                 }}
               >
@@ -501,19 +472,6 @@ export function PurchasingPage({
                         variant="outline"
                         onClick={() => {
                           setSelected(s)
-                          setSupplier({
-                            businessName: s.businessName,
-                            tradeName: s.tradeName ?? "",
-                            taxId: s.taxId ?? "",
-                            contactName: s.contactName ?? "",
-                            email: s.email ?? "",
-                            phone: s.phone ?? "",
-                            address: s.address ?? "",
-                            paymentTerms: s.paymentTerms ?? "",
-                            leadTimeDays: s.leadTimeDays,
-                            notes: s.notes ?? "",
-                            isActive: s.isActive,
-                          })
                           setDialog("supplier")
                         }}
                       >
@@ -769,115 +727,19 @@ export function PurchasingPage({
         }
       >
         {operationError && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{operationError}</p>}
-        <form id="supplier-form" noValidate onSubmit={(event) => { event.preventDefault(); void submitSupplier() }} className="grid gap-4 sm:grid-cols-2">
-          <InputGroupField
-            id="supplier-name"
-            label="Razón social"
-            required
-            leftIcon={<Building2 />}
-            value={supplier.businessName}
-            onChange={(e) => { setSupplier((v) => ({ ...v, businessName: e.target.value })); setSupplierErrors((v) => ({ ...v, businessName: "" })) }}
-            error={supplierErrors.businessName}
-            autoFocus
-          />
-          <InputGroupField
-            id="supplier-trade"
-            label="Nombre comercial"
-            leftIcon={<Building2 />}
-            value={supplier.tradeName}
-            onChange={(e) =>
-              setSupplier((v) => ({ ...v, tradeName: e.target.value }))
-            }
-          />
-          <InputGroupField
-            id="supplier-tax"
-            label="RFC"
-            leftIcon={<FileText />}
-            value={supplier.taxId}
-            onChange={(e) =>
-              setSupplier((v) => ({
-                ...v,
-                taxId: e.target.value.toUpperCase(),
-              }))
-            }
-          />
-          <InputGroupField
-            id="supplier-contact"
-            label="Persona de contacto"
-            leftIcon={<UserRound />}
-            value={supplier.contactName}
-            onChange={(e) =>
-              setSupplier((v) => ({ ...v, contactName: e.target.value }))
-            }
-          />
-          <InputGroupField
-            id="supplier-email"
-            label="Correo"
-            type="email"
-            leftIcon={<Mail />}
-            value={supplier.email}
-            onChange={(e) => { setSupplier((v) => ({ ...v, email: e.target.value })); setSupplierErrors((v) => ({ ...v, email: "" })) }}
-            error={supplierErrors.email}
-          />
-          <InputGroupField
-            id="supplier-phone"
-            label="Teléfono"
-            leftIcon={<Phone />}
-            value={supplier.phone}
-            onChange={(e) =>
-              setSupplier((v) => ({ ...v, phone: e.target.value }))
-            }
-          />
-          <InputGroupField
-            id="supplier-terms"
-            label="Condiciones de pago"
-            leftIcon={<CalendarDays />}
-            value={supplier.paymentTerms}
-            onChange={(e) =>
-              setSupplier((v) => ({ ...v, paymentTerms: e.target.value }))
-            }
-            placeholder="Ej. Crédito a 30 días"
-          />
-          <InputGroupField
-            id="supplier-lead"
-            label="Tiempo de entrega (días)"
-            type="number"
-            min={0}
-            leftIcon={<Truck />}
-            value={supplier.leadTimeDays}
-            onChange={(e) => { setSupplier((v) => ({ ...v, leadTimeDays: Number(e.target.value) })); setSupplierErrors((v) => ({ ...v, leadTimeDays: "" })) }}
-            error={supplierErrors.leadTimeDays}
-          />
-          <div className="sm:col-span-2">
-            <InputGroupField
-              id="supplier-address"
-              label="Dirección"
-              leftIcon={<MapPin />}
-              value={supplier.address}
-              onChange={(e) =>
-                setSupplier((v) => ({ ...v, address: e.target.value }))
-              }
-            />
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="supplier-notes">Notas</Label>
-            <Textarea
-              id="supplier-notes"
-              value={supplier.notes}
-              onChange={(e) =>
-                setSupplier((v) => ({ ...v, notes: e.target.value }))
-              }
-            />
-          </div>
-          <SwitchField
-            id="supplier-active"
-            label="Proveedor activo"
-            checked={supplier.isActive}
-            onCheckedChange={(isActive) =>
-              setSupplier((v) => ({ ...v, isActive }))
-            }
-          />
-        </form>
+        <CrudForm
+          formId="supplier-form"
+          config={SUPPLIER_FORM_CONFIG}
+          initial={selected ? { ...emptySupplier, ...selected } : null}
+          onSavingChange={setSaving}
+          onSubmit={async (values) => {
+            await request({ action: selected ? "supplier.update" : "supplier.create", ...(selected ? { id: selected.id } : {}), ...values })
+            toast.success("Proveedor guardado")
+            close()
+            await load()
+          }}
+        />
+
       </DialogComponent>
 
       <DialogComponent

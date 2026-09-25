@@ -27,6 +27,7 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
   const customerId = usePosStore((s) => s.customerId);
   const setCustomer = usePosStore((s) => s.setCustomer);
   const loyalty = usePosStore((s) => s.loyalty);
+  const locationId = usePosStore((s) => s.location.id);
   const refresh = usePosRefresh();
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState(false);
@@ -57,7 +58,7 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
     }
     setSaving(true);
     try {
-      const result = await crudApi.create("customers", { ...draft, isActive: true });
+      const result = await crudApi.create("customers", { ...draft, isActive: true, registrationLocationId: locationId });
       const id = String(result.row.id);
       await refresh();
       setCustomer(id);
