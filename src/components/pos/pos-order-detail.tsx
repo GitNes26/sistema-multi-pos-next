@@ -143,16 +143,16 @@ export function PosOrderDetail({
           )}
 
           {order.tableNumber != null && (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/40 bg-warning/5 px-3 py-2 text-sm">
               <Flame className={cn(
-                "size-4 shrink-0 text-amber-600",
+                "size-4 shrink-0 text-warning-ink",
                 order.status === "preparing" && "animate-pulse"
               )} />
               <span className="font-semibold">En cocina · Pedido #{order.orderNumber}</span>
               <span className={cn(
                 "rounded-full px-2 py-0.5 text-[0.65rem] font-semibold",
                 KITCHEN_OPEN_STATUSES.has(order.status)
-                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                  ? "bg-warning/15 text-warning-ink"
                   : "bg-muted text-muted-foreground"
               )}>
                 {order.status === "preparing"
@@ -194,7 +194,7 @@ export function PosOrderDetail({
                   <div className="min-w-0">
                     <span className="font-medium">
                       {i.bulkQuantityDisplay ?? `${i.quantity} × ${i.productName}`}
-                      {i.variantName && i.productName !== i.variantName ? ` (${i.variantName})` : ""}
+                      {i.variantName && i.variantName !== "Default" && i.productName !== i.variantName ? ` (${i.variantName})` : ""}
                     </span>
                     {i.comment && (
                       <span className="mt-0.5 block text-xs text-muted-foreground">&quot;{i.comment}&quot;</span>

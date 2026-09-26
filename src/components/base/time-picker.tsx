@@ -32,11 +32,11 @@ const SIZE_MAP: Record<TimePickerSize, {
   xs: {
     container: "h-6 gap-0.5 rounded px-1",
     icon: "size-3",
-    trigger: "h-4 w-16 text-[10px]",
-    dot: "text-[10px]",
+    trigger: "h-4 w-16 text-xs",
+    dot: "text-xs",
     clearBtn: "size-5",
     clearIcon: "size-2.5",
-    placeholder: "text-[10px]",
+    placeholder: "text-xs",
   },
   sm: {
     container: "h-7 gap-0.5 rounded-md px-1",

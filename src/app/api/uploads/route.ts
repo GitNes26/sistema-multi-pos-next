@@ -10,7 +10,7 @@ import { uploadedFilePath, uploadedMediaUrl } from "@/lib/uploads/storage";
 
 // FASE 7.11 — Subida de imágenes (Attachment) a almacenamiento local.
 // POST /api/uploads (multipart, campo "file"). Las imágenes quedan en
-// /public/uploads/<orgId>/ y se sirven desde /uploads/<orgId>/…
+// <UPLOADS_DIR>/<UPLOADS_PROJECT>/<orgId>/ y se sirven mediante /api/media/…
 //
 // Toda imagen se normaliza antes de guardarse (ver lib/uploads/image-process):
 // reescalado a 1024px y recodificación a WebP, para acotar el almacenamiento y

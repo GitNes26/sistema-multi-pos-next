@@ -543,8 +543,9 @@ npm start</code></pre>
             repositorio.
           </p>
           <p>
-            Monta <code>UPLOADS_DIR</code> en un volumen persistente y compartido
-            por las instancias que sirvan la aplicación. Las imágenes nuevas se
+            Monta <code>UPLOADS_DIR</code> en un volumen persistente y configura
+            <code>UPLOADS_PROJECT</code> con un nombre exclusivo para cada proyecto
+            (por ejemplo, <code>multi-pos</code>). Las imágenes nuevas se
             sirven mediante <code>/api/media</code>; las URL antiguas de
             <code>/uploads</code> se redirigen a esa ruta. Sin el volumen, una
             imagen puede desaparecer tras reiniciar o al cambiar de instancia.

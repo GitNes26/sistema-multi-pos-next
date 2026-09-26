@@ -37,8 +37,8 @@ export const ComboCard = memo(function ComboCard({ combo, onSelect }: ComboCardP
       whileTap={{ scale: 0.96 }}
       className={cn(
         "group relative flex h-full w-full flex-col gap-2 rounded-2xl border-2 border-dashed bg-card p-2.5 text-left shadow-sm transition",
-        "hover:border-emerald-500/70 hover:shadow-md hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20",
-        added && "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
+        "hover:border-primary/70 desk:hover:shadow-e2 hover:bg-primary/10",
+        added && "border-primary bg-primary/10"
       )}
     >
       {/* Added feedback overlay */}
@@ -48,9 +48,9 @@ export const ComboCard = memo(function ComboCard({ combo, onSelect }: ComboCardP
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.5 }}
-            className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-emerald-500/10"
+            className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-primary/10"
           >
-            <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg">
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-e2">
               <Check className="size-5" />
             </div>
           </motion.div>
@@ -58,17 +58,17 @@ export const ComboCard = memo(function ComboCard({ combo, onSelect }: ComboCardP
       </AnimatePresence>
 
       {/* Combo badge */}
-      <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+      <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
         <Puzzle className="size-3" /> Combo
       </span>
 
       {/* Item count badge */}
-      <span className="absolute right-2 top-2 z-10 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">
+      <span className="absolute right-2 top-2 z-10 rounded-md bg-black/60 px-1.5 py-0.5 text-xs font-bold text-white">
         {combo.items.length} productos
       </span>
 
       {/* Image or placeholder */}
-      <div className="relative flex h-16 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/30">
+      <div className="relative flex h-16 items-center justify-center rounded-xl bg-primary/10">
         {combo.imageUrl ? (
           <ThumbImage
             src={combo.imageUrl}
@@ -76,7 +76,7 @@ export const ComboCard = memo(function ComboCard({ combo, onSelect }: ComboCardP
             className="size-full rounded-xl object-cover"
           />
         ) : (
-          <Puzzle className="size-6 text-emerald-500" />
+          <Puzzle className="size-6 text-primary" />
         )}
       </div>
 
@@ -90,13 +90,13 @@ export const ComboCard = memo(function ComboCard({ combo, onSelect }: ComboCardP
           {combo.items.slice(0, 3).map((item) => (
             <span
               key={item.id}
-              className="rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground"
+              className="rounded bg-muted px-1 py-0.5 text-xs text-muted-foreground"
             >
               {item.quantity}× {item.productName}
             </span>
           ))}
           {combo.items.length > 3 && (
-            <span className="rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground">
+            <span className="rounded bg-muted px-1 py-0.5 text-xs text-muted-foreground">
               +{combo.items.length - 3}
             </span>
           )}
@@ -104,11 +104,11 @@ export const ComboCard = memo(function ComboCard({ combo, onSelect }: ComboCardP
 
         <div className="flex items-end justify-between gap-1">
           <div className="flex flex-col">
-            <p className="text-sm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+            <p className="text-sm font-bold tabular-nums text-primary">
               {money(combo.comboPrice)}
             </p>
             {savings > 0 && (
-              <span className="flex items-center gap-0.5 text-[9px] text-emerald-500">
+              <span className="flex items-center gap-0.5 text-xs text-success-ink">
                 <Tag className="size-2.5" />
                 Ahorro {money(savings)}
               </span>

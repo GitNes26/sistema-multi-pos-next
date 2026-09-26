@@ -68,7 +68,7 @@ function Elapsed({ iso }: { iso: string }) {
   }, []);
   const mins = minutesAgo(iso);
   return (
-    <span className={cn("text-[10px] text-muted-foreground", mins >= STALE_MIN && "font-semibold text-amber-600 dark:text-amber-400")}>
+    <span className={cn("text-xs text-muted-foreground", mins >= STALE_MIN && "font-semibold text-warning-ink")}>
       {mins < 1 ? "ahora" : `hace ${mins} min`}
     </span>
   );
@@ -318,7 +318,7 @@ export function DeliveriesBoard() {
         key={row.id}
         className={cn(
           "rounded-xl border bg-card px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md",
-          stale ? "border-amber-400/70" : "border-border"
+          stale ? "border-warning/70" : "border-border"
         )}
       >
         <div className="flex items-center gap-2">
@@ -329,7 +329,7 @@ export function DeliveriesBoard() {
               "text-[0.65rem]",
               kind === "delivery"
                 ? "border-violet-300 bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-300"
-                : "border-sky-300 bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300"
+                : "border-info/30 bg-info/10 text-info-ink"
             )}
           >
             {kind === "delivery" ? "A domicilio" : "Mostrador"}
@@ -364,7 +364,7 @@ export function DeliveriesBoard() {
           {row.status === "at_destination" && (
             <Button
               size="sm"
-              className="h-8 flex-1 bg-blue-600 hover:bg-blue-700"
+              className="h-8 flex-1 bg-info hover:bg-info/90"
               onClick={() => setConfirmTarget({ id: row.id, orderNumber: row.orderNumber, mode: kind })}
             >
               <CircleCheckBig className="size-3.5" />
@@ -404,7 +404,7 @@ export function DeliveriesBoard() {
       <h3 className="flex items-center gap-1.5 text-sm font-semibold">
         {icon}
         {title}
-        <Badge variant="outline" className="ml-1 text-[0.65rem]">
+        <Badge variant="outline" className="ml-1 text-xs">
           {colRows.length}
         </Badge>
       </h3>
@@ -429,7 +429,7 @@ export function DeliveriesBoard() {
     if (inTransit.length === 0) return null;
     if (gpsState === "denied")
       return (
-        <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+        <span className="flex items-center gap-1 text-xs font-medium text-warning-ink">
           <LocateFixed className="size-3.5" /> GPS sin permiso
         </span>
       );
@@ -442,7 +442,7 @@ export function DeliveriesBoard() {
     if (gpsState === "active") {
       const secs = gpsLastAt ? Math.floor((Date.now() - gpsLastAt) / 1000) : null;
       return (
-        <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+        <span className="flex items-center gap-1 text-xs font-medium text-success-ink">
           <LocateFixed className="size-3.5 animate-pulse" />
           GPS en vivo{secs != null ? ` · hace ${secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`}` : ""}
         </span>

@@ -99,7 +99,7 @@ export function Numpad({ onKey, onEnter, className, disabled }: NumpadProps) {
           disabled={disabled}
           onClick={() => trigger(k)}
           className={cn(
-            "h-14 rounded-xl border bg-background text-xl font-semibold transition hover:bg-muted/60 active:scale-95 active:bg-muted disabled:opacity-40",
+            "h-16 touch-manipulation rounded-2xl bg-card text-2xl font-medium shadow-e1 ring-1 ring-foreground/8 transition-[transform,background-color] duration-150 tabular hover:bg-muted/60 active:scale-95 active:bg-muted disabled:opacity-40 desk:h-14 desk:rounded-xl desk:text-xl",
             pressed === k && "scale-95 bg-muted ring-2 ring-primary"
           )}
         >
@@ -111,7 +111,7 @@ export function Numpad({ onKey, onEnter, className, disabled }: NumpadProps) {
         disabled={disabled}
         onClick={() => trigger("clear")}
         className={cn(
-          "col-span-3 h-11 rounded-xl border bg-destructive/10 text-sm font-semibold text-destructive transition hover:bg-destructive/20 active:scale-95 disabled:opacity-40",
+          "col-span-3 h-12 touch-manipulation rounded-2xl bg-destructive/10 text-sm font-semibold text-destructive transition hover:bg-destructive/20 active:scale-95 disabled:opacity-40 desk:h-11 desk:rounded-xl",
           pressed === "clear" && "scale-95 bg-destructive/20 ring-2 ring-destructive"
         )}
       >

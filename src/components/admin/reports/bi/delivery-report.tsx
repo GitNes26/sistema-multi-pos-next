@@ -63,7 +63,7 @@ export function DeliveryReport({ from, to }: Props) {
                     <td className="py-2 pr-4 text-right tabular-nums">{r.avgDeliveryMinutes == null ? "Sin datos" : `${r.avgDeliveryMinutes.toFixed(1)} min`}</td>
                     <td className="py-2 pr-4 text-right">{Math.round(r.totalOrders * r.cancelRate / 100)}</td>
                     <td className="py-2 text-right">
-                      <span className={r.cancelRate > 10 ? "text-red-600 font-medium" : "text-muted-foreground"}>
+                      <span className={r.cancelRate > 10 ? "text-destructive font-medium" : "text-muted-foreground"}>
                         {r.cancelRate.toFixed(1)}%
                       </span>
                     </td>

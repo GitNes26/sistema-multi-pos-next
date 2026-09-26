@@ -15,6 +15,11 @@ export type FontFamily = (typeof FONT_FAMILIES)[number];
 export const SIDEBAR_STYLES = ["full", "compact", "icon"] as const;
 export type SidebarStyle = (typeof SIDEBAR_STYLES)[number];
 
+// Tono de las superficies neutras (fondo, tarjetas, bordes): cuánto se tiñen
+// hacia el matiz primario. "neutral" = blanco/negro puros como antes.
+export const SURFACE_TONES = ["neutral", "subtle", "tinted"] as const;
+export type SurfaceTone = (typeof SURFACE_TONES)[number];
+
 export interface AppearanceParams {
   primaryHue: number;
   accentHue: number;
@@ -24,6 +29,7 @@ export interface AppearanceParams {
   borderRadius: number;
   cardSize: CardSize;
   sidebarStyle: SidebarStyle;
+  surfaceTone: SurfaceTone;
 }
 
 export const DEFAULT_APPEARANCE: AppearanceParams = {
@@ -35,6 +41,7 @@ export const DEFAULT_APPEARANCE: AppearanceParams = {
   borderRadius: 0.75,
   cardSize: "md",
   sidebarStyle: "full",
+  surfaceTone: "subtle",
 };
 
 export const FONT_VAR: Record<FontFamily, string> = {
@@ -109,6 +116,8 @@ export function sanitizeAppearance(
   if (card) out.cardSize = card;
   const side = pick("sidebarStyle", SIDEBAR_STYLES);
   if (side) out.sidebarStyle = side;
+  const tone = pick("surfaceTone", SURFACE_TONES);
+  if (tone) out.surfaceTone = tone;
 
   return out;
 }

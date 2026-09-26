@@ -119,7 +119,7 @@ export function DiscountDialog({ open, onClose }: DiscountDialogProps) {
             </div>
 
             {manualDiscount ? (
-              <div className="flex items-center justify-between rounded-xl border bg-emerald-500/10 px-3 py-2 text-sm">
+              <div className="flex items-center justify-between rounded-xl border bg-success/10 px-3 py-2 text-sm">
                 <span className="font-medium">
                   {manualDiscount.kind === "percent" ? `${manualDiscount.value}%` : money(manualDiscount.value)}
                 </span>
@@ -159,7 +159,7 @@ export function DiscountDialog({ open, onClose }: DiscountDialogProps) {
                 Aplicar descuento
               </Button>
             )}
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Descuentos mayores al {POS_MANUAL_DISCOUNT_LIMIT_PERCENT}% requieren aprobación de supervisor.
             </p>
           </div>

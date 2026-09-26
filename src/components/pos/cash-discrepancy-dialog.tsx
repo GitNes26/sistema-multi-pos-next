@@ -50,9 +50,9 @@ export function CashDiscrepancyDialog({ open, onClose, summary }: Props) {
       onOpenChange={(o) => !o && onClose()}
       icon={
         hasDiscrepancy ? (
-          <AlertTriangle className="size-5 text-amber-500" />
+          <AlertTriangle className="size-5 text-warning-ink" />
         ) : (
-          <CircleCheck className="size-5 text-emerald-500" />
+          <CircleCheck className="size-5 text-success-ink" />
         )
       }
       title="Corte de caja"
@@ -76,9 +76,9 @@ export function CashDiscrepancyDialog({ open, onClose, summary }: Props) {
           "flex items-center gap-4 rounded-xl border-2 p-4",
           hasDiscrepancy
             ? isShortage
-              ? "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/40"
-              : "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40"
-            : "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40"
+              ? "border-destructive/30 bg-destructive/10"
+              : "border-warning/30 bg-warning/10"
+            : "border-success/30 bg-success/10"
         )}
       >
         <div
@@ -86,9 +86,9 @@ export function CashDiscrepancyDialog({ open, onClose, summary }: Props) {
             "flex size-12 shrink-0 items-center justify-center rounded-full",
             hasDiscrepancy
               ? isShortage
-                ? "bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400"
-                : "bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400"
-              : "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400"
+                ? "bg-destructive/10 text-destructive"
+                : "bg-warning/10 text-warning-ink"
+              : "bg-success/10 text-success-ink"
           )}
         >
           {hasDiscrepancy ? (
@@ -107,9 +107,9 @@ export function CashDiscrepancyDialog({ open, onClose, summary }: Props) {
               "text-2xl font-black tabular-nums",
               hasDiscrepancy
                 ? isShortage
-                  ? "text-red-700 dark:text-red-400"
-                  : "text-amber-700 dark:text-amber-400"
-                : "text-emerald-700 dark:text-emerald-400"
+                  ? "text-destructive"
+                  : "text-warning-ink"
+                : "text-success-ink"
             )}
           >
             {hasDiscrepancy ? (isShortage ? "-" : "+") : ""}{money(absDiff)}
@@ -135,19 +135,19 @@ export function CashDiscrepancyDialog({ open, onClose, summary }: Props) {
           icon={<Receipt className="size-3.5" />}
           label={`Ventas en efectivo (${summary.salesCount} ventas)`}
           value={summary.cashPayments}
-          className="text-emerald-600 dark:text-emerald-400"
+          className="text-success-ink"
         />
         <Row
           icon={<TrendingDown className="size-3.5" />}
           label="Cambio entregado"
           value={-summary.changeGiven}
-          className="text-red-500 dark:text-red-400"
+          className="text-destructive"
         />
         <Row
           icon={<CircleMinus className="size-3.5" />}
           label="Reembolsos en efectivo"
           value={-summary.cashRefunds}
-          className="text-red-500 dark:text-red-400"
+          className="text-destructive"
         />
         <div className="border-t pt-2">
           <Row

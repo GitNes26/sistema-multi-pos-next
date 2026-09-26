@@ -30,16 +30,16 @@ import { OrderPaymentDialog } from "./order-payment-dialog";
 const FLOW: OrderStatusKey[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "at_destination", "delivered"];
 
 function getNextAction(status: string, isDelivery: boolean): { label: string; icon: React.ReactNode; color: string } | "navigate" | null {
-  if (status === "pending") return { label: "Confirmar", icon: <CircleCheckBig className="size-4" />, color: "bg-sky-600 hover:bg-sky-700" };
+  if (status === "pending") return { label: "Confirmar", icon: <CircleCheckBig className="size-4" />, color: "bg-info hover:bg-info/90" };
   if (status === "confirmed") return "navigate"; // → /prepare
   if (status === "preparing") return "navigate"; // → /prepare
   if (status === "ready") {
     return isDelivery
       ? { label: "Enviar a domicilio", icon: <Truck className="size-4" />, color: "bg-violet-600 hover:bg-violet-700" }
-      : { label: "Confirmar recogida (PIN/QR)", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" };
+      : { label: "Confirmar recogida (PIN/QR)", icon: <CircleCheckBig className="size-4" />, color: "bg-info hover:bg-info/90" };
   }
   if (status === "in_transit") return { label: "Confirmar llegada", icon: <MapPin className="size-4" />, color: "bg-purple-600 hover:bg-purple-700" };
-  if (status === "at_destination") return { label: "Confirmar entrega (PIN/QR)", icon: <CircleCheckBig className="size-4" />, color: "bg-blue-600 hover:bg-blue-700" };
+  if (status === "at_destination") return { label: "Confirmar entrega (PIN/QR)", icon: <CircleCheckBig className="size-4" />, color: "bg-info hover:bg-info/90" };
   return null;
 }
 
@@ -166,7 +166,7 @@ export function OrderDetailDialog({
                 <div key={s} className={cn("flex items-center", i < visibleFlow.length - 1 && "flex-1")}>
                   <div
                     className={cn(
-                      "flex size-6 items-center justify-center rounded-full text-[10px] font-bold",
+                      "flex size-6 items-center justify-center rounded-full text-xs font-bold",
                       i <= currentFlowIdx
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground"
@@ -227,9 +227,9 @@ export function OrderDetailDialog({
             {/* Estado de pago */}
             <div className="mt-2 flex items-center gap-2 border-t pt-2">
               {order.isPaid ? (
-                <Badge className="bg-emerald-600 text-white">Pagado</Badge>
+                <Badge className="bg-success text-success-foreground">Pagado</Badge>
               ) : (
-                <Badge variant="secondary" className="bg-amber-500 text-white">Pendiente de pago</Badge>
+                <Badge variant="secondary" className="bg-warning text-warning-foreground">Pendiente de pago</Badge>
               )}
               {order.paymentMethod && (
                 <span className="text-xs text-muted-foreground">
@@ -246,7 +246,7 @@ export function OrderDetailDialog({
             (!isDelivery && order.status === "ready")
           ) && (
             <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              className="w-full bg-success hover:bg-success/90"
               onClick={() => setPayOpen(true)}
             >
               <CircleCheckBig className="mr-2 size-4" /> Cobrar pedido · {money(order.total)}

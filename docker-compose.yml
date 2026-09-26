@@ -35,6 +35,8 @@ services:
       NEXTAUTH_SECRET: cambia-esto-por-un-secreto-largo
       NEXT_PUBLIC_APP_URL: http://localhost:3000
       UPLOADS_DIR: /app/public/uploads
+      # Cada proyecto que comparta el volumen debe usar un nombre distinto.
+      UPLOADS_PROJECT: ${UPLOADS_PROJECT:-multi-pos}
       # Seed de producción (idempotente). SEED_DEMO=true siembra además datos demo.
       # El schema se sincroniza automáticamente al iniciar (prisma db push).
       SEED_DEMO: "false"

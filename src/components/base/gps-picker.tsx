@@ -209,7 +209,7 @@ export function GpsPicker({
       )}
 
       {!hasGoogleMaps && (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Usa Google Maps para mejores resultados de búsqueda
         </p>
       )}

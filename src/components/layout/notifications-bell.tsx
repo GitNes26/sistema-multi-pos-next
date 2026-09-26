@@ -38,7 +38,7 @@ const ICONS: Record<string, React.ReactNode> = {
 }
 
 // FASE 5.4 — Campana de notificaciones: badge animado + popover + SSE.
-export function NotificationsBell() {
+export function NotificationsBell({ className }: { className?: string } = {}) {
   useNotificationSse(true, "notifications-bell")
 
   const items = useNotificationStore((s) => s.items)
@@ -55,7 +55,7 @@ export function NotificationsBell() {
           variant="ghost"
           size="icon"
           aria-label={`Notificaciones${unread ? ` (${unread} sin leer)` : ""}`}
-          className="relative cursor-pointer hover:-translate-y-0.5 hover:shadow-md"
+          className={cn("relative", className)}
         >
           <AnimatePresence>
             {unread > 0 ? (
@@ -65,7 +65,7 @@ export function NotificationsBell() {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.6, opacity: 0 }}
               >
-                <BellRing className="size-4" />
+                <BellRing className="size-5" />
               </motion.span>
             ) : (
               <motion.span
@@ -74,7 +74,7 @@ export function NotificationsBell() {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.6, opacity: 0 }}
               >
-                <Bell className="size-4" />
+                <Bell className="size-5" />
               </motion.span>
             )}
           </AnimatePresence>
@@ -87,9 +87,9 @@ export function NotificationsBell() {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
                 transition={SPRING_BOUNCE}
-                className="absolute -right-0.5 -top-0.5"
+                className="pointer-events-none absolute -top-1.5 -right-2"
               >
-                <Badge className="size-4 min-w-4 rounded-full p-0 text-[0.6rem] tabular-nums">
+                <Badge className="h-4 min-w-4 rounded-full px-1 py-0 text-[0.6rem] leading-none font-bold tabular-nums ring-2 ring-background">
                   {unread > 9 ? "9+" : unread}
                 </Badge>
               </motion.span>

@@ -366,7 +366,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
         {hasVariants && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Variante</p>
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="scrollbar-none flex gap-2 overflow-x-auto pb-1">
               {p.variants.map((v, i) => {
                 const vOut = p.trackInventory && v.stock <= 0
                 return (
@@ -446,11 +446,11 @@ export function ProductDetailClient({ productId }: { productId: string }) {
                 Sin stock disponible
               </span>
             ) : selectedVariant.stock <= 8 ? (
-              <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-600">
+              <span className="rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning-ink">
                 Solo quedan {Math.floor(selectedVariant.stock)} unidades
               </span>
             ) : (
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600">
+              <span className="rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success-ink">
                 Disponible
               </span>
             )}
@@ -479,7 +479,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
             <Button
               className={cn(
                 "h-12 w-full rounded-2xl text-sm font-semibold shadow-md transition-all",
-                justAdded && "bg-emerald-500 hover:bg-emerald-500"
+                justAdded && "bg-success hover:bg-success"
               )}
               onClick={handleAdd}
             >

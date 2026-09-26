@@ -212,11 +212,11 @@ export function ReservationBooking() {
               waitlist.status === "available" && waitlist.availableTable ? (
                 <div className="space-y-2.5">
                   <div className="flex items-start gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-success/15 text-success-ink">
                       <Armchair className="size-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                      <p className="text-sm font-bold text-success-ink">
                         ¡Mesa #{waitlist.availableTable.number} disponible!
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -237,7 +237,7 @@ export function ReservationBooking() {
                 </div>
               ) : (
                 <div className="flex items-start gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-warning/15 text-warning-ink">
                     <Loader2 className="size-4 animate-spin" />
                   </div>
                   <div className="min-w-0 flex-1">

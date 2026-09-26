@@ -202,8 +202,8 @@ export function GuestReservationVerify() {
             <Badge
               variant="outline"
               className={cn(
-                "text-[10px]",
-                r.status === "confirmed" ? "text-sky-600" : r.status === "pending" ? "text-amber-600" : "text-muted-foreground"
+                "text-xs",
+                r.status === "confirmed" ? "text-info-ink" : r.status === "pending" ? "text-warning-ink" : "text-muted-foreground"
               )}
             >
               {r.status === "confirmed" ? "Confirmada" : r.status === "pending" ? "Pendiente" : r.status}

@@ -324,15 +324,15 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                           <AreaChart data={salesTrendData(sales)} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                             <defs>
                               <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.25} />
+                                <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                             <XAxis dataKey="date" fontSize={11} tickLine={false} axisLine={false} />
                             <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
                             <Tooltip formatter={(v) => money(Number(v ?? 0))} />
-                            <Area type="monotone" dataKey="total" name="Ventas" stroke="#6366f1" strokeWidth={2} fill="url(#salesFill)" />
+                            <Area type="monotone" dataKey="total" name="Ventas" stroke="var(--primary)" strokeWidth={2} fill="url(#salesFill)" />
                           </AreaChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -386,7 +386,7 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
                             <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
                             <Tooltip formatter={(v) => money(Number(v ?? 0))} />
-                            <Bar dataKey="totalSales" name="Ventas" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="totalSales" name="Ventas" fill="var(--primary)" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -519,7 +519,7 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
                             <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
                             <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
-                            <Bar dataKey="balance" name="Deuda" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="balance" name="Deuda" fill="var(--warning)" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -564,7 +564,7 @@ export function ReportsPage({ canView, canExport, icon }: ReportsPageProps) {
                             <XAxis dataKey="name" fontSize={11} tickLine={false} axisLine={false} />
                             <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => money(Number(v))} />
                             <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
-                            <Bar dataKey="totalSpent" name="Total" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="totalSpent" name="Total" fill="var(--primary)" radius={[4, 4, 0, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -737,7 +737,7 @@ const cashColumns = [
   { id: "sucursal", header: "Sucursal", cell: ({ row }: { row: { original: CashReportRow } }) => row.original.locationName },
   { id: "cajero", header: "Cajero", cell: ({ row }: { row: { original: CashReportRow } }) => row.original.employeeName ?? "—" },
   { id: "apertura", header: "Apertura", cell: ({ row }: { row: { original: CashReportRow } }) => (row.original.openedAt ? new Date(row.original.openedAt).toLocaleString("es-MX") : "—") },
-  { id: "estado", header: "Estado", cell: ({ row }: { row: { original: CashReportRow } }) => (row.original.status === "open" ? <Badge className="bg-emerald-500 text-white">Abierta</Badge> : <Badge variant="secondary">Cerrada</Badge>) },
+  { id: "estado", header: "Estado", cell: ({ row }: { row: { original: CashReportRow } }) => (row.original.status === "open" ? <Badge className="bg-success text-success-foreground">Abierta</Badge> : <Badge variant="secondary">Cerrada</Badge>) },
   { id: "ventas", header: "Ventas", cell: ({ row }: { row: { original: CashReportRow } }) => <span className="font-bold tabular-nums">{money(row.original.totalSales)}</span> },
   { id: "reembolsos", header: "Reembolsos", cell: ({ row }: { row: { original: CashReportRow } }) => <span className="tabular-nums text-destructive">{money(row.original.cashRefunds)}</span> },
   { id: "esperado", header: "Esperado", cell: ({ row }: { row: { original: CashReportRow } }) => <span className="tabular-nums">{money(row.original.expectedCash)}</span> },
@@ -748,7 +748,7 @@ const cashColumns = [
       const d = row.original.difference;
       if (d == null) return <span className="text-muted-foreground">—</span>;
       const positive = d >= 0;
-      return <span className={cn("tabular-nums font-medium", positive ? "text-emerald-600" : "text-destructive")}>{money(d)}</span>;
+      return <span className={cn("tabular-nums font-medium", positive ? "text-success-ink" : "text-destructive")}>{money(d)}</span>;
     },
   },
 ];
@@ -792,10 +792,10 @@ const creditColumns = [
     <span className="tabular-nums">{row.original.creditLimit != null ? money(row.original.creditLimit) : <span className="text-muted-foreground">Sin límite</span>}</span>
   )},
   { id: "deuda", header: "Deuda", cell: ({ row }: { row: { original: CreditReportRow } }) => (
-    <span className="font-bold tabular-nums text-red-600">{money(row.original.currentBalance)}</span>
+    <span className="font-bold tabular-nums text-destructive">{money(row.original.currentBalance)}</span>
   )},
   { id: "cobrado", header: "Cobrado", cell: ({ row }: { row: { original: CreditReportRow } }) => (
-    <span className="tabular-nums text-emerald-600">{money(row.original.totalPayments)}</span>
+    <span className="tabular-nums text-success-ink">{money(row.original.totalPayments)}</span>
   )},
   { id: "vencimiento", header: "Vence", cell: ({ row }: { row: { original: CreditReportRow } }) => {
     if (row.original.isOverdue) {

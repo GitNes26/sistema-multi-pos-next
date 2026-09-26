@@ -220,7 +220,7 @@ export function OrgSwitcher({
                   {o.currency ? (
                     <Badge
                       variant="secondary"
-                      className="shrink-0 px-1.5 py-0 text-[10px] font-semibold"
+                      className="shrink-0 px-1.5 py-0 text-xs font-semibold"
                     >
                       {o.currency}
                     </Badge>

@@ -85,12 +85,12 @@ const ORDER_STATUS_LABELS: Record<string, string> = {
 }
 
 const ORDER_STATUS_COLORS: Record<string, string> = {
-  pending: "bg-slate-100 text-slate-600",
-  confirmed: "bg-blue-100 text-blue-600",
-  preparing: "bg-amber-100 text-amber-600",
-  ready: "bg-emerald-100 text-emerald-600",
-  delivered: "bg-emerald-100 text-emerald-700",
-  cancelled: "bg-rose-100 text-rose-600",
+  pending: "bg-muted text-muted-foreground",
+  confirmed: "bg-info/10 text-info-ink",
+  preparing: "bg-warning/10 text-warning-ink",
+  ready: "bg-success/10 text-success-ink",
+  delivered: "bg-success/10 text-success-ink",
+  cancelled: "bg-destructive/10 text-destructive",
 }
 
 function formatDuration(start: string, end: string | null): string {
@@ -174,22 +174,22 @@ export function TableHistoryDialog({ open, tableId, tableNumber, onClose }: Prop
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <StatCard
               icon={DollarSign}
-              iconBg="bg-emerald-100"
-              iconColor="text-emerald-600"
+              iconBg="bg-success/10"
+              iconColor="text-success-ink"
               label="Ingresos totales"
               value={money(data.stats.totalRevenue)}
             />
             <StatCard
               icon={ShoppingBag}
-              iconBg="bg-blue-100"
-              iconColor="text-blue-600"
+              iconBg="bg-info/10"
+              iconColor="text-info-ink"
               label="Órdenes"
               value={String(data.stats.totalOrders)}
             />
             <StatCard
               icon={Clock}
-              iconBg="bg-amber-100"
-              iconColor="text-amber-600"
+              iconBg="bg-warning/10"
+              iconColor="text-warning-ink"
               label="Sesiones"
               value={String(data.stats.totalSessions)}
             />
@@ -220,11 +220,11 @@ export function TableHistoryDialog({ open, tableId, tableNumber, onClose }: Prop
                       <div
                         className={cn(
                           "w-2.5 h-2.5 rounded-full",
-                          s.endedAt ? "bg-slate-300" : "bg-emerald-500 animate-pulse"
+                          s.endedAt ? "bg-muted-foreground/30" : "bg-success animate-pulse"
                         )}
                       />
                       {s.endedAt && (
-                        <div className="w-px flex-1 bg-slate-200 mt-1" />
+                        <div className="w-px flex-1 bg-muted mt-1" />
                       )}
                     </div>
 
@@ -263,7 +263,7 @@ export function TableHistoryDialog({ open, tableId, tableNumber, onClose }: Prop
                             <Badge
                               variant="outline"
                               className={cn(
-                                "text-[10px] px-1.5 py-0",
+                                "text-xs px-1.5 py-0",
                                 ORDER_STATUS_COLORS[s.order.status] ?? ""
                               )}
                             >
@@ -308,7 +308,7 @@ export function TableHistoryDialog({ open, tableId, tableNumber, onClose }: Prop
                       <Badge
                         variant="outline"
                         className={cn(
-                          "text-[10px] px-1.5 py-0",
+                          "text-xs px-1.5 py-0",
                           ORDER_STATUS_COLORS[o.status] ?? ""
                         )}
                       >

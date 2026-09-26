@@ -25,10 +25,10 @@ import {
 const CANVAS_W = 880;
 const CANVAS_H = 560;
 const STATUS_STYLE: Record<string, string> = {
-  free: "border-emerald-400 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  occupied: "border-rose-400 bg-rose-500/15 text-rose-700 dark:text-rose-300",
-  reserved: "border-amber-400 bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  cleaning: "border-sky-400 bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  free: "border-success bg-success/15 text-success-ink",
+  occupied: "border-destructive bg-destructive/15 text-destructive",
+  reserved: "border-warning bg-warning/15 text-warning-ink",
+  cleaning: "border-info bg-info/15 text-info-ink",
 };
 
 const SHAPES: { value: string; label: string }[] = [
@@ -357,7 +357,7 @@ export function FloorPlanEditor({
           {tables.length} {tables.length === 1 ? "mesa" : "mesas"} · {nodes.length} elementos
         </Badge>
         {tables.some((t) => t.status === "reserved") && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+          <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning-ink">
             <Clock className="size-3" /> con reservación
           </span>
         )}

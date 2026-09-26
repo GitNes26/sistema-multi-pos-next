@@ -165,7 +165,7 @@ export function MapPinPicker({
 
       {/* Coordinates badge */}
       {lat != null && lon != null && (
-        <div className="absolute bottom-2 left-2 z-[1000] rounded-lg bg-background/90 px-2 py-1 text-[10px] font-mono shadow-md backdrop-blur-sm">
+        <div className="absolute bottom-2 left-2 z-[1000] rounded-lg bg-background/90 px-2 py-1 text-xs font-mono shadow-md backdrop-blur-sm">
           <MapPin className="mr-1 inline size-3" />
           {lat.toFixed(5)}, {lon.toFixed(5)}
         </div>
@@ -194,7 +194,7 @@ export function MapPinPicker({
       </MapContainer>
 
       {/* Instruction */}
-      <div className="absolute bottom-2 right-2 z-[1000] rounded-lg bg-background/90 px-2 py-1 text-[10px] shadow-md backdrop-blur-sm">
+      <div className="absolute bottom-2 right-2 z-[1000] rounded-lg bg-background/90 px-2 py-1 text-xs shadow-md backdrop-blur-sm">
         Toca para colocar un pin
       </div>
     </div>

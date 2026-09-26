@@ -397,7 +397,7 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
           </div>
 
           {unmatched.length > 0 && (
-            <div className="rounded-lg border border-amber-400/60 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-200">
+            <div className="rounded-lg border border-warning/60 bg-warning/10 px-3 py-2 text-xs text-warning-ink">
               <span className="font-medium">
                 {unmatched.length} archivo{unmatched.length !== 1 ? "s" : ""} sin coincidencia:
               </span>{" "}
@@ -479,17 +479,17 @@ export function BulkImagesDialog({ open, onOpenChange, onApplied }: BulkImagesDi
                       "group relative cursor-pointer rounded-xl border bg-card p-2 text-left transition",
                       "hover:border-primary/50 hover:shadow-sm",
                       dragOver === p.id && "border-primary bg-primary/5 ring-2 ring-primary/30",
-                      result === "ok" && "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
+                      result === "ok" && "border-success bg-success/10"
                     )}
                   >
                     {/* Estado */}
                     {result === "ok" && (
-                      <span className="absolute right-1.5 top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+                      <span className="absolute right-1.5 top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-success text-success-foreground">
                         <Check className="size-3.5" />
                       </span>
                     )}
                     {result === "error" && (
-                      <span className="absolute right-1.5 top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-destructive text-white">
+                      <span className="absolute right-1.5 top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
                         <X className="size-3.5" />
                       </span>
                     )}

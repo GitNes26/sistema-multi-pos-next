@@ -43,7 +43,7 @@ export function BusinessModeBadge({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted py-0.5 text-[11px] font-medium text-muted-foreground",
+        "inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted py-0.5 text-xs font-medium text-muted-foreground",
         showLabel ? "px-2" : "px-1.5",
         className
       )}

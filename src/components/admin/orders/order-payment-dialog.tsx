@@ -121,7 +121,7 @@ export function OrderPaymentDialog({ open, onOpenChange, order, onPaid }: OrderP
         <p className="text-sm text-muted-foreground">Total del pedido</p>
         <p className="text-3xl font-black tabular-nums">{money(order.total)}</p>
         {change > 0 && amount > 0 && (
-          <p className="mt-1 text-sm font-semibold text-emerald-600">Cambio: {money(change)}</p>
+          <p className="mt-1 text-sm font-semibold text-success-ink">Cambio: {money(change)}</p>
         )}
       </div>
 
@@ -133,7 +133,7 @@ export function OrderPaymentDialog({ open, onOpenChange, order, onPaid }: OrderP
             type="button"
             onClick={() => setMethod(m)}
             className={cn(
-              "flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-[10px] font-medium transition",
+              "flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-xs font-medium transition",
               method === m ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"
             )}
           >
@@ -148,14 +148,14 @@ export function OrderPaymentDialog({ open, onOpenChange, order, onPaid }: OrderP
         <button
           type="button"
           onClick={() => confirm("cash", order.total)}
-          className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 active:scale-[0.97]"
+          className="flex items-center justify-center gap-2 rounded-xl bg-success px-4 py-3 text-sm font-bold text-success-foreground transition hover:bg-success/90 active:scale-[0.97]"
         >
           <Banknote className="size-5" /> Efectivo exacto
         </button>
         <button
           type="button"
           onClick={() => confirm("card", order.total)}
-          className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 active:scale-[0.97]"
+          className="flex items-center justify-center gap-2 rounded-xl bg-info px-4 py-3 text-sm font-bold text-info-foreground transition hover:bg-info/90 active:scale-[0.97]"
         >
           <CreditCard className="size-5" /> Tarjeta exacta
         </button>

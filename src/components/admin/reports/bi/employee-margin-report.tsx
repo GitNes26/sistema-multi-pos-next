@@ -63,7 +63,7 @@ export function EmployeeMarginReport({ from, to }: Props) {
                     <td className="py-2 pr-4 font-medium">{r.employeeName}</td>
                     <td className="py-2 pr-4 text-right font-mono">{money(r.totalRevenue)}</td>
                     <td className="py-2 pr-4 text-right font-mono text-orange-600">{money(r.totalCost)}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-green-600">{money(r.margin)}</td>
+                    <td className="py-2 pr-4 text-right font-mono text-success-ink">{money(r.margin)}</td>
                     <td className="py-2 pr-4 text-right">
                       <Badge variant={r.marginPct >= 30 ? "default" : "secondary"}>
                         {r.marginPct.toFixed(1)}%

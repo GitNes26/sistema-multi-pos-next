@@ -91,17 +91,17 @@ export function HeroBackground() {
       <motion.div style={{ y: bgY }} className="absolute inset-0">
         {/* Orbes de gradiente */}
         <motion.div
-          className="absolute -top-32 -left-32 size-[28rem] rounded-full bg-emerald-500/20 blur-3xl"
+          className="absolute -top-32 -left-32 size-[28rem] rounded-full bg-primary/25 blur-3xl"
           animate={{ x: [0, 40, 0], y: [0, 30, 0], scale: [1, 1.1, 1] }}
           transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
-          className="absolute -right-32 top-10 size-[26rem] rounded-full bg-violet-500/20 blur-3xl"
+          className="absolute -right-32 top-10 size-[26rem] rounded-full bg-primary/12 blur-3xl"
           animate={{ x: [0, -30, 0], y: [0, 50, 0], scale: [1, 1.15, 1] }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
-          className="absolute bottom-[-8rem] left-1/3 size-[24rem] rounded-full bg-sky-500/20 blur-3xl"
+          className="absolute bottom-[-8rem] left-1/3 size-[24rem] rounded-full bg-primary/18 blur-3xl"
           animate={{ x: [0, 30, 0], y: [0, -30, 0], scale: [1, 1.08, 1] }}
           transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
         />

@@ -73,7 +73,7 @@ export function LoyaltyReport({ from, to }: Props) {
                 {rows.map((r) => (
                   <tr key={r.customerId} className="border-b last:border-0">
                     <td className="py-2 pr-4 font-medium">{r.customerName}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-amber-600">{r.totalPoints.toLocaleString()}</td>
+                    <td className="py-2 pr-4 text-right font-mono text-warning-ink">{r.totalPoints.toLocaleString()}</td>
                     <td className="py-2 pr-4 text-right font-mono">{money(r.totalSpent)}</td>
                     <td className="py-2 pr-4 text-right">{r.orderCount}</td>
                     <td className="py-2 text-right text-muted-foreground">{r.lastOrderDate ?? "-"}</td>

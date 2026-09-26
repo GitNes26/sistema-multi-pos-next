@@ -36,9 +36,9 @@ const KIND_ICONS: Record<string, typeof Bell> = {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  info: "bg-blue-500/10 text-blue-600",
-  success: "bg-emerald-500/10 text-emerald-600",
-  warning: "bg-amber-500/10 text-amber-600",
+  info: "bg-info/10 text-info-ink",
+  success: "bg-success/10 text-success-ink",
+  warning: "bg-warning/10 text-warning-ink",
   error: "bg-destructive/10 text-destructive",
 }
 
@@ -135,14 +135,14 @@ export function NotificationsClient() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="size-5 text-primary" />
-            <h1 className="text-lg font-bold">Notificaciones</h1>
+            <h1 className="font-heading text-xl font-semibold tracking-tight">Notificaciones</h1>
             {unreadList.length > 0 && (
-              <Badge className="h-5 px-1.5 text-[10px] font-bold">{unreadList.length}</Badge>
+              <Badge className="h-5 px-1.5 text-xs font-bold">{unreadList.length}</Badge>
             )}
           </div>
           {unreadList.length > 0 && (
-            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground" onClick={markAllAsRead}>
-              <CheckCheck className="size-3.5" /> Marcar todo leido
+            <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-primary" onClick={markAllAsRead}>
+              <CheckCheck className="size-4" /> Marcar leídas
             </Button>
           )}
         </div>
@@ -152,7 +152,7 @@ export function NotificationsClient() {
             <TabsTrigger value="unread" className="flex-1 gap-1.5">
               <BellRing className="size-4" /> Nuevas
               {unreadList.length > 0 && (
-                <span className="ml-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                <span className="ml-1 flex size-4 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                   {unreadList.length > 99 ? "99+" : unreadList.length}
                 </span>
               )}
@@ -164,7 +164,7 @@ export function NotificationsClient() {
 
           <TabsContent value="unread" className="mt-3">
             {unreadList.length === 0 ? (
-              <EmptyState icon={BellRing} title="Todo al dia!" description="No tienes notificaciones nuevas." />
+              <EmptyState icon={BellRing} title="¡Todo al día!" description="No tienes notificaciones nuevas." />
             ) : (
               <div className="space-y-2">
                 <AnimatePresence>
@@ -176,7 +176,7 @@ export function NotificationsClient() {
 
           <TabsContent value="history" className="mt-3">
             {readList.length === 0 ? (
-              <EmptyState icon={Inbox} title="Sin historial" description="Las notificaciones leidas apareceran aqui." />
+              <EmptyState icon={Inbox} title="Sin historial" description="Las notificaciones leídas aparecerán aquí." />
             ) : (
               <div className="space-y-2">
                 <AnimatePresence>
@@ -198,8 +198,8 @@ function NotificationItem({ n, idx, onClick, onDelete }: { n: PortalNotification
     <motion.div key={n.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * STAGGER.COMPACT }}>
       <SwipeableRow onDelete={() => onDelete(n.id)}>
         <button onClick={() => onClick(n)} className={cn(
-          "w-full rounded-2xl border-2 p-3.5 text-left transition-all active:scale-[0.98]",
-          isUnread ? "border-primary/30 bg-primary/5 shadow-md ring-1 ring-primary/10" : "border-transparent bg-card hover:bg-muted/30"
+          "w-full rounded-2xl border p-3.5 text-left transition-[transform,background-color] duration-150 active:scale-[0.98]",
+          isUnread ? "border-primary/25 bg-primary/6" : "bg-card hover:bg-muted/40"
         )}>
           <div className="flex items-start gap-3">
             <div className={cn(
@@ -210,16 +210,13 @@ function NotificationItem({ n, idx, onClick, onDelete }: { n: PortalNotification
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <p className={cn("truncate text-sm", isUnread ? "font-bold" : "font-medium")}>{n.title}</p>
+                <p className={cn("truncate text-sm", isUnread ? "font-semibold" : "font-medium")}>{n.title}</p>
                 {isUnread && (
-                  <span className="relative flex size-2.5 shrink-0">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-75" />
-                    <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
-                  </span>
+                  <span aria-label="Sin leer" className="size-2 shrink-0 rounded-full bg-primary" />
                 )}
               </div>
-              {n.body && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.body}</p>}
-              <p className="mt-1 text-[11px] text-muted-foreground/60">
+              {n.body && <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{n.body}</p>}
+              <p className="mt-1 text-xs text-muted-foreground">
                 {new Date(n.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
               </p>
             </div>

@@ -14,6 +14,8 @@ import {
   Users,
   Split,
   Armchair,
+  AlertTriangle,
+  X,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePosStore, selectCustomer } from "@/stores/pos-store"
@@ -196,14 +198,12 @@ export function TicketPanel({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <div>
-          <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
-            Ticket
-          </h2>
-          <p className="text-xs text-muted-foreground">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b px-4">
+        <div className="flex items-center gap-2">
+          <h2 className="font-heading text-base font-semibold tracking-tight">Ticket</h2>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground tabular">
             {items.length} {items.length === 1 ? "artículo" : "artículos"}
-          </p>
+          </span>
         </div>
         <Button
           variant="ghost"
@@ -224,28 +224,28 @@ export function TicketPanel({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="border-b border-amber-500/30 bg-amber-500/5 px-4 py-2.5"
+            className="border-b border-warning/30 bg-warning/5 px-4 py-2.5"
           >
             {nearPromos.map((p) => {
               const pct = Math.round((t.subtotal / p.minAmount) * 100)
               const remaining = Math.max(0, p.minAmount - t.subtotal)
               return (
                 <div key={p.id} className="flex items-center gap-2">
-                  <Target className="size-4 shrink-0 text-amber-500" />
+                  <Target className="size-4 shrink-0 text-warning-ink" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                    <p className="text-xs font-medium text-warning-ink">
                       ¡Casi! Te faltan{" "}
                       <span className="font-bold">{money(remaining)}</span> para
                       &ldquo;{p.name}&rdquo;
                     </p>
                     <div className="mt-1 flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-amber-200/50 dark:bg-amber-800/30">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-warning/10">
                         <div
-                          className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                          className="h-full rounded-full bg-warning transition-all duration-500"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="text-xs font-bold text-amber-600">
+                      <span className="text-xs font-bold text-warning-ink">
                         {pct}%
                       </span>
                     </div>
@@ -271,13 +271,13 @@ export function TicketPanel({
               exit={{ opacity: 0, scale: 0.95 }}
               className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground"
             >
-              <div className="flex size-16 items-center justify-center rounded-2xl bg-muted/50">
-                <Wallet className="size-8 text-muted-foreground/50" />
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-muted">
+                <Wallet className="size-6 text-muted-foreground" />
               </div>
-              <div>
-                <p className="text-sm font-medium">Selecciona productos</p>
-                <p className="text-xs text-muted-foreground">
-                  para comenzar un nuevo ticket
+              <div className="space-y-1">
+                <p className="font-medium text-foreground">Ticket vacío</p>
+                <p className="max-w-56 text-sm text-muted-foreground">
+                  Toca un producto o escanea su código de barras para empezar.
                 </p>
               </div>
             </motion.div>
@@ -326,7 +326,7 @@ export function TicketPanel({
                 {customer.fullName}
               </span>
               <CheckCircle2 className="size-4 shrink-0 text-accent-foreground" />
-              <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-600">
+              <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-bold text-warning-ink">
                 {money(pointsToMoney(customer.points, loyalty.pointValue))} ·{" "}
                 {Math.floor(customer.points)} pts
               </span>
@@ -340,9 +340,10 @@ export function TicketPanel({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="rounded-xl border border-red-500/40 bg-red-500/5 px-3 py-2">
-            <p className="text-xs font-semibold text-red-600 dark:text-red-400">
-              ⚠ Deuda pendiente: {money(customerDebt)}
+            className="rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
+              <AlertTriangle className="size-3.5" />
+              Deuda pendiente: <span className="tabular">{money(customerDebt)}</span>
             </p>
           </motion.div>
         )}
@@ -359,7 +360,7 @@ export function TicketPanel({
               {t.discounts.map((d, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400"
+                  className="flex items-center justify-between text-xs text-success-ink"
                 >
                   <span className="truncate">{d.label}</span>
                   <span className="font-medium">-{money(d.amount)}</span>
@@ -383,13 +384,13 @@ export function TicketPanel({
         </AnimatePresence>
 
         {/* Summary */}
-        <div className="space-y-1.5 rounded-xl bg-muted/30 px-3 py-2.5">
+        <div className="space-y-1.5 px-1">
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Subtotal</span>
             <span className="tabular-nums">{money(t.subtotal)}</span>
           </div>
           {t.discountTotal > 0 && (
-            <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
+            <div className="flex justify-between text-sm text-success-ink">
               <span>Descuentos</span>
               <span className="tabular-nums">-{money(t.discountTotal)}</span>
             </div>
@@ -398,12 +399,12 @@ export function TicketPanel({
             <span>Impuestos</span>
             <span className="tabular-nums">{money(t.tax)}</span>
           </div>
-          <div className="flex items-center justify-between border-t pt-2">
-            <span className="text-base font-bold">Total</span>
+          <div className="flex items-baseline justify-between border-t border-dashed pt-2.5">
+            <span className="text-base font-semibold">Total</span>
             <AnimatedNumber
               value={t.total}
               format={money}
-              className="text-xl font-black tabular-nums"
+              className="text-3xl font-bold tracking-tight tabular-nums"
             />
           </div>
         </div>
@@ -427,6 +428,7 @@ export function TicketPanel({
                   variant="ghost"
                   size="sm"
                   className="h-11 min-w-11 px-3 text-destructive"
+                  aria-label="Liberar mesa"
                   disabled={releasingTable}
                   onClick={() => {
                     const tableId = selectedTable.id
@@ -454,7 +456,7 @@ export function TicketPanel({
                     setTable(null)
                   }}
                 >
-                  ✕
+                  <X className="size-4" />
                 </Button>
               )}
             </div>
@@ -482,7 +484,7 @@ export function TicketPanel({
                       data-guide="pos-send-kitchen"
                       disabled={sendingKitchen}
                       onClick={sendToKitchen}
-                      className="h-11 w-full bg-amber-500 font-bold text-white shadow-md shadow-amber-500/25 hover:bg-amber-600"
+                      className="h-12 w-full bg-warning font-semibold text-warning-foreground hover:bg-warning/90 desk:h-11"
                     >
                       {sendingKitchen ? (
                         <Loader2 className="size-5 animate-spin" />
@@ -490,24 +492,24 @@ export function TicketPanel({
                         <ChefHat className="size-5" />
                       )}
                       Enviar a cocina
-                      <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs">
+                      <span className="rounded-full bg-black/10 px-2 py-0.5 text-xs tabular">
                         {unsentLines.length}
                       </span>
                     </Button>
                   ) : (
-                    <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <div className="flex items-center justify-center gap-2 rounded-xl border border-success/30 bg-success/5 px-3 py-2 text-xs font-semibold text-success-ink">
                       <CheckCircle2 className="size-4" />
                       Enviado a cocina
                     </div>
                   )}
                   {kitchenError && (
-                    <p className="text-center text-xs font-medium text-red-600 dark:text-red-400">
+                    <p className="text-center text-xs font-medium text-destructive">
                       {kitchenError}
                     </p>
                   )}
                   {lastSent && !kitchenError && (
-                    <p className="text-center text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      ✓ Enviado · Pedido #{lastSent.orderNumber}
+                    <p className="text-center text-xs font-semibold text-success-ink">
+                      Enviado · Pedido #{lastSent.orderNumber}
                     </p>
                   )}
                 </div>
@@ -521,7 +523,7 @@ export function TicketPanel({
             variant="outline"
             size="sm"
             onClick={onOpenCustomer}
-            className="h-10"
+            className="h-12 desk:h-10"
           >
             <UserRound className="size-4" />
             Cliente
@@ -531,7 +533,7 @@ export function TicketPanel({
             size="sm"
             onClick={onOpenDiscount}
             disabled={!items.length}
-            className="h-10"
+            className="h-12 desk:h-10"
           >
             <TicketPercent className="size-4" />
             Descuento
@@ -540,10 +542,10 @@ export function TicketPanel({
 
         {/* Split bill (food_service) */}
         {features.splitBill && items.length > 0 && t.payable > 0 && onSplitBill && (
-          <div className="flex items-center gap-2 rounded-xl border border-dashed border-violet-500/40 bg-violet-500/5 px-3 py-2">
-            <Split className="size-4 shrink-0 text-violet-600 dark:text-violet-400" />
-            <span className="text-xs font-medium text-violet-700 dark:text-violet-400">
-              Dividir cuenta
+          <div className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-2">
+            <Split className="size-4 shrink-0 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">
+              Dividir entre
             </span>
             <div className="ml-auto flex gap-1">
               {[2, 3, 4, 5, 6].map((n) => (
@@ -551,7 +553,8 @@ export function TicketPanel({
                   key={n}
                   variant="outline"
                   size="sm"
-                  className="size-11 p-0 text-sm"
+                  className="size-11 p-0 text-sm tabular"
+                  aria-label={`Dividir entre ${n}`}
                   onClick={() => onSplitBill(n)}
                 >
                   {n}
@@ -568,8 +571,8 @@ export function TicketPanel({
           disabled={!items.length || t.payable <= 0}
           onClick={onCheckout}
           className={cn(
-            "relative h-16 w-full touch-manipulation text-base font-bold",
-            t.payable > 0 && "shadow-lg shadow-primary/25"
+            "relative h-16 w-full touch-manipulation rounded-2xl px-5 text-base font-semibold desk:h-14 desk:rounded-xl",
+            t.payable > 0 && "shadow-e2"
           )}
         >
           <AnimatePresence mode="wait">
@@ -589,13 +592,13 @@ export function TicketPanel({
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="flex items-center gap-2"
+                className="flex w-full items-center justify-between gap-3"
               >
-                Cobrar · {items.length} {items.length === 1 ? "artículo" : "artículos"} ·{" "}
+                <span>Cobrar</span>
                 <AnimatedNumber
                   value={t.payable}
                   format={money}
-                  className="tabular-nums"
+                  className="text-xl font-bold tracking-tight tabular-nums"
                 />
               </motion.span>
             )}

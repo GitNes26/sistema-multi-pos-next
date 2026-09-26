@@ -18,6 +18,8 @@
         ],
         "environment": {
           "NODE_ENV": "production",
+          "UPLOADS_DIR": "/app/public/uploads",
+          "UPLOADS_PROJECT": "${UPLOADS_PROJECT:-multi-pos}",
           "SEED_DEMO": "${SEED_DEMO:-true}"
         }
       }

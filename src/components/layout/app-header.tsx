@@ -40,7 +40,7 @@ export function AppHeader({ sections, user, logoUrl }: AppHeaderProps) {
   }, [sections, pathname]);
 
   return (
-    <header className="sticky top-0 z-30 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <header className="sticky top-0 z-30 border-b bg-background/92 supports-backdrop-filter:bg-background/75 supports-backdrop-filter:backdrop-blur-lg">
       <div className="flex h-14 items-center gap-2 px-3 pt-[env(safe-area-inset-top)] sm:px-4">
         <Button
           type="button"

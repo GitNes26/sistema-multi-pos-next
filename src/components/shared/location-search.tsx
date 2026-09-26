@@ -192,7 +192,7 @@ export function LocationSearch({
             disabled={disabled}
             aria-invalid={Boolean(validationError) || undefined}
             aria-describedby={validationError && id ? `${id}-error` : undefined}
-            className={cn("md:pl-9 md:pr-9 pl-9 pr-9", validationError && "border-destructive focus-visible:ring-destructive/20")}
+            className={cn("md:pl-9 desk:pl-9 md:pr-9 desk:pr-9 pl-9 pr-9", validationError && "border-destructive focus-visible:ring-destructive/20")}
           />
           {value && !showSuggestions && (
             <button
@@ -248,7 +248,7 @@ export function LocationSearch({
                 </button>
               ))}
             </div>
-            <div className="border-t px-3 py-1.5 text-[10px] text-muted-foreground">
+            <div className="border-t px-3 py-1.5 text-xs text-muted-foreground">
               {hasGoogleMaps ? "Búsqueda de Google Maps" : "Powered by OpenStreetMap"}
             </div>
           </div>

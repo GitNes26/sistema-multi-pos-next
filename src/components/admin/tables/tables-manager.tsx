@@ -94,10 +94,10 @@ interface LocationData {
 /* ------------------------------------------------------------------ */
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ComponentType<{ className?: string }> }> = {
-  free: { label: "Libre", color: "text-emerald-600", bg: "bg-emerald-100 border-emerald-300", icon: Check },
-  occupied: { label: "Ocupada", color: "text-rose-600", bg: "bg-rose-100 border-rose-300", icon: Users },
-  reserved: { label: "Reservada", color: "text-amber-600", bg: "bg-amber-100 border-amber-300", icon: Clock },
-  cleaning: { label: "Limpieza", color: "text-sky-600", bg: "bg-sky-100 border-sky-300", icon: Loader2 },
+  free: { label: "Libre", color: "text-success-ink", bg: "bg-success/10 border-success/30", icon: Check },
+  occupied: { label: "Ocupada", color: "text-destructive", bg: "bg-destructive/10 border-destructive/30", icon: Users },
+  reserved: { label: "Reservada", color: "text-warning-ink", bg: "bg-warning/10 border-warning/30", icon: Clock },
+  cleaning: { label: "Limpieza", color: "text-info-ink", bg: "bg-info/10 border-info/30", icon: Loader2 },
 };
 
 const SHAPE_OPTIONS = [
@@ -473,8 +473,8 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <Armchair className="w-5 h-5 text-slate-600" />
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                <Armchair className="w-5 h-5 text-muted-foreground" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.total}</p>
@@ -486,11 +486,11 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                <Check className="w-5 h-5 text-emerald-600" />
+              <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+                <Check className="w-5 h-5 text-success-ink" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-emerald-600">{stats.free}</p>
+                <p className="text-2xl font-bold text-success-ink">{stats.free}</p>
                 <p className="text-xs text-muted-foreground">Libres</p>
               </div>
             </div>
@@ -499,11 +499,11 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
-                <Users className="w-5 h-5 text-rose-600" />
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                <Users className="w-5 h-5 text-destructive" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-rose-600">{stats.occupied}</p>
+                <p className="text-2xl font-bold text-destructive">{stats.occupied}</p>
                 <p className="text-xs text-muted-foreground">Ocupadas</p>
               </div>
             </div>
@@ -512,11 +512,11 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-amber-600" />
+              <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-warning-ink" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-amber-600">{stats.reserved}</p>
+                <p className="text-2xl font-bold text-warning-ink">{stats.reserved}</p>
                 <p className="text-xs text-muted-foreground">Reservadas</p>
               </div>
             </div>
@@ -539,16 +539,16 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
       {waitlistEntries.length > 0 && (
         <div className="rounded-xl border bg-card">
           <div className="flex items-center gap-2 border-b px-4 py-2.5">
-            <Clock className="size-4 text-amber-600" />
+            <Clock className="size-4 text-warning-ink" />
             <p className="text-sm font-semibold">Lista de espera</p>
-            <Badge variant="outline" className="ml-auto text-[10px]">
+            <Badge variant="outline" className="ml-auto text-xs">
               {waitlistEntries.length} {waitlistEntries.length === 1 ? "cliente" : "clientes"}
             </Badge>
           </div>
           <div className="divide-y">
             {waitlistEntries.map((e) => (
               <div key={e.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-warning/10 text-warning-ink">
                   <Clock className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -562,8 +562,8 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
                     {e.availableTable?.room?.name ? ` · ${e.availableTable.room.name}` : ""}
                   </p>
                 </div>
-                {!e.customer && <Badge variant="outline" className="text-[10px]">Invitado</Badge>}
-                <Badge variant="outline" className={cn("text-[10px]", e.status === "available" ? "text-emerald-600" : "text-amber-600")}>
+                {!e.customer && <Badge variant="outline" className="text-xs">Invitado</Badge>}
+                <Badge variant="outline" className={cn("text-xs", e.status === "available" ? "text-success-ink" : "text-warning-ink")}>
                   {e.status === "available" ? "Mesa lista" : "Esperando"}
                 </Badge>
                 <div className="flex gap-1.5">
@@ -586,7 +586,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
           <div className="flex items-center gap-2 border-b px-4 py-2.5">
             <CalendarCheck2 className="size-4 text-primary" />
             <p className="text-sm font-semibold">Reservaciones de mesa</p>
-            <Badge variant="outline" className="ml-auto text-[10px]">
+            <Badge variant="outline" className="ml-auto text-xs">
               {reservations.filter((r) => r.status === "pending" || r.status === "confirmed").length} activas
             </Badge>
           </div>
@@ -611,7 +611,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
                       {r.notes ? ` · ${r.notes}` : ""}
                     </p>
                   </div>
-                  <Badge variant="outline" className={cn("text-[10px]", r.status === "pending" ? "text-amber-600" : "text-sky-600")}>
+                  <Badge variant="outline" className={cn("text-xs", r.status === "pending" ? "text-warning-ink" : "text-info-ink")}>
                     {r.status === "pending" ? "Pendiente" : "Confirmada"}
                   </Badge>
                   <div className="flex gap-1.5">
@@ -779,7 +779,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
                     type="button"
                     title="Renombrar sala"
                     onClick={() => openRoomEdit(r)}
-                    className="flex size-4 items-center justify-center rounded-full border bg-background text-[9px] text-muted-foreground hover:text-foreground"
+                    className="flex size-4 items-center justify-center rounded-full border bg-background text-xs text-muted-foreground hover:text-foreground"
                   >
                     ✎
                   </button>
@@ -787,7 +787,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
                     type="button"
                     title="Eliminar sala"
                     onClick={() => handleDeleteRoom(r)}
-                    className="flex size-4 items-center justify-center rounded-full border bg-background text-[9px] text-rose-500 hover:bg-rose-50"
+                    className="flex size-4 items-center justify-center rounded-full border bg-background text-xs text-destructive hover:bg-destructive/10"
                   >
                     ✕
                   </button>
@@ -862,9 +862,9 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(t); }}
                       title="Eliminar mesa"
-                      className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center hover:bg-rose-100"
+                      className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center hover:bg-destructive/10"
                     >
-                      <Trash2 className="w-3 h-3 text-rose-500" />
+                      <Trash2 className="w-3 h-3 text-destructive" />
                     </button>
                   )}
                 </div>
@@ -876,7 +876,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
 
                 {/* Name */}
                 {t.name && (
-                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
+                  <p className="text-xs font-medium text-foreground truncate">
                     {t.name}
                   </p>
                 )}
@@ -890,23 +890,23 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
                 {/* Location */}
                 {t.location && (
                   <div className="flex items-center justify-center gap-1 mt-1">
-                    <MapPin className="w-3 h-3 text-slate-400" />
-                    <span className="text-xs text-slate-400 truncate">{t.location.name}</span>
+                    <MapPin className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground truncate">{t.location.name}</span>
                   </div>
                 )}
 
                 {/* Sala */}
                 {t.room && (
                   <div className="flex items-center justify-center gap-1 mt-0.5">
-                    <DoorOpen className="w-3 h-3 text-slate-400" />
-                    <span className="text-xs text-slate-400 truncate">{t.room.name}</span>
+                    <DoorOpen className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground truncate">{t.room.name}</span>
                   </div>
                 )}
 
                 {/* Status badge */}
                 <Badge
                   variant="outline"
-                  className={cn("mt-2 text-[10px]", cfg.color)}
+                  className={cn("mt-2 text-xs", cfg.color)}
                 >
                   {cfg.label}
                 </Badge>
@@ -932,7 +932,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
             value={formNumber}
             onChange={(e) => setFormNumber(e.target.value)}
             required
-            leftIcon={<Armchair className="w-4 h-4 text-slate-400" />}
+            leftIcon={<Armchair className="w-4 h-4 text-muted-foreground" />}
           />
           <InputGroupField
             label="Nombre (opcional)"
@@ -945,7 +945,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
             type="number"
             value={formCapacity}
             onChange={(e) => setFormCapacity(e.target.value)}
-            leftIcon={<Users className="w-4 h-4 text-slate-400" />}
+            leftIcon={<Users className="w-4 h-4 text-muted-foreground" />}
           />
           <FormCombobox label="Sucursal" icon={<MapPin className="size-4" />} value={formLocation} onChange={setFormLocation} onClear={() => setFormLocation("")} options={locations.map((location) => ({ value: location.id, label: location.name }))} placeholder="Sin sucursal" helper="La mesa sólo estará disponible en la sucursal seleccionada." />
           <FormCombobox label="Sala" icon={<DoorOpen className="size-4" />} value={formRoom} onChange={setFormRoom} onClear={() => setFormRoom("")} options={rooms.map((room) => ({ value: room.id, label: room.name }))} placeholder="Sin sala" helper="Agruparla en una sala permite colocarla dentro de su plano visual." />
@@ -974,7 +974,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
             placeholder="Ej: Salón principal, Terraza, Bar…"
             value={formRoomName}
             onChange={(e) => setFormRoomName(e.target.value)}
-            leftIcon={<DoorOpen className="w-4 h-4 text-slate-400" />}
+            leftIcon={<DoorOpen className="w-4 h-4 text-muted-foreground" />}
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setRoomDialogOpen(false)}>
@@ -993,7 +993,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
       >
         {qrDialogTable && (
           <div className="flex flex-col items-center gap-4 p-4">
-            <div className="w-48 h-48 bg-white rounded-xl border-2 border-slate-200 flex items-center justify-center">
+            <div className="w-48 h-48 bg-white rounded-xl border-2 border-border flex items-center justify-center">
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${typeof window !== "undefined" ? window.location.origin : ""}/portal/menu?table=${qrDialogTable.id}&token=${qrDialogTable.qrToken}`}
                 alt={`QR Mesa ${qrDialogTable.number}`}

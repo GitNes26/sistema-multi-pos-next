@@ -18,23 +18,26 @@ interface ProductCardProps {
   onSelect: (product: PosProduct) => void;
 }
 
+// Existencia: discreta cuando sobra, llamativa solo cuando exige atención.
+// Un chip saturado en cada tarjeta convierte la rejilla en ruido.
 function StockBadge({ stock }: { stock: number }) {
   if (stock <= 0) {
     return (
-      <span className="rounded-full bg-destructive/90 px-1.5 py-0.5 text-xs font-bold text-white">
-        Sin stock
+      <span className="rounded-full bg-destructive/12 px-2 py-0.5 text-xs font-semibold text-destructive">
+        Agotado
       </span>
     );
   }
   if (stock <= 8) {
     return (
-      <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-xs font-bold text-white">
+      <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-foreground tabular">
+        <span aria-hidden className="size-1.5 rounded-full bg-warning" />
         {stock} u
       </span>
     );
   }
   return (
-    <span className="rounded-full bg-emerald-600/90 px-1.5 py-0.5 text-xs font-bold text-white">
+    <span className="text-xs font-medium text-muted-foreground tabular">
       {stock} u
     </span>
   );
@@ -56,10 +59,10 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
     <motion.div
       whileTap={{ scale: 0.96 }}
       className={cn(
-        "group relative flex min-h-40 w-full touch-manipulation flex-col gap-2 rounded-2xl border bg-card p-3 text-left shadow-sm transition",
-        "hover:border-primary/50 hover:shadow-md",
-        (!product.isAvailable || (product.trackInventory && product.stock <= 0)) && "opacity-60",
-        added && "border-primary bg-primary/5"
+        "group relative flex min-h-44 w-full touch-manipulation flex-col gap-2.5 rounded-2xl border bg-card p-2 text-left transition-[border-color,box-shadow,background-color] duration-200",
+        "desk:hover:border-foreground/20 desk:hover:shadow-e2",
+        (!product.isAvailable || (product.trackInventory && product.stock <= 0)) && "opacity-55 saturate-50",
+        added && "border-primary ring-1 ring-primary"
       )}
     >
       <button
@@ -72,12 +75,13 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
       <AnimatePresence>
         {added && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.5 }}
+            initial={{ opacity: 0, scale: 0.6 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.5 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-primary/10"
           >
-            <div className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+            <div className="flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-e2">
               <Check className="size-5" />
             </div>
           </motion.div>
@@ -85,13 +89,13 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
       </AnimatePresence>
 
       {product.bulk && (
-        <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-violet-600 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
-          <Scale className="size-3" /> A granel
+        <span className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1 rounded-md bg-foreground/85 px-1.5 py-0.5 text-xs font-semibold text-background">
+          <Scale className="size-3" /> Granel
         </span>
       )}
       {hot && (
-        <span className="absolute right-11 top-2 z-10 rounded-md bg-primary px-1.5 py-0.5 text-xs font-bold uppercase text-primary-foreground">
-          Vigente
+        <span className="absolute right-14 top-3.5 z-10 rounded-md bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
+          Promo
         </span>
       )}
       <button
@@ -100,13 +104,15 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
           event.stopPropagation();
           setInfoOpen(true);
         }}
-        className="absolute right-1.5 top-1.5 z-30 flex size-11 touch-manipulation items-center justify-center rounded-xl border border-border/60 bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute right-2 top-2 z-30 flex size-11 touch-manipulation items-center justify-center rounded-xl text-muted-foreground transition hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={`Ver información de ${product.name}`}
         title="Ver información del producto"
       >
-        <Info className="size-4" />
+        <span className="flex size-8 items-center justify-center rounded-lg bg-background/85 shadow-e1 supports-backdrop-filter:backdrop-blur-sm">
+          <Info className="size-4" />
+        </span>
       </button>
-      <div className="relative flex h-20 items-center justify-center rounded-xl bg-muted/40">
+      <div className="relative flex h-24 items-center justify-center overflow-hidden rounded-xl bg-surface-sunken">
         {product.imageUrl ? (
           <ThumbImage
             src={product.imageUrl}
@@ -127,17 +133,15 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
           </span>
         )}
         {product.variantCount > 1 && (
-          <span className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1.5 py-0.5 text-xs font-bold text-white">
+          <span className="absolute bottom-1.5 right-1.5 rounded-md bg-background/90 px-1.5 py-0.5 text-xs font-semibold text-foreground shadow-e1">
             {product.variantCount} variantes
           </span>
         )}
       </div>
-      <div className="flex flex-1 flex-col justify-between gap-1">
-        <div className="flex items-start justify-between gap-1">
-          <p className="line-clamp-2 text-sm font-semibold leading-tight">{product.name}</p>
-        </div>
+      <div className="flex flex-1 flex-col justify-between gap-1.5 px-1 pb-1">
+        <p className="line-clamp-2 text-sm font-medium leading-snug">{product.name}</p>
         <div className="flex items-end justify-between gap-1">
-          <p className="text-base font-bold tabular-nums">
+          <p className="text-lg leading-none font-bold tracking-tight tabular">
             {money(product.price)}
             {product.bulk && (
               <span className="ml-0.5 text-xs font-medium text-muted-foreground">
@@ -148,9 +152,7 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
           {product.trackInventory ? (
             <StockBadge stock={Math.floor(product.stock)} />
           ) : (
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-              —
-            </span>
+            <span className="sr-only">Sin control de existencia</span>
           )}
         </div>
       </div>

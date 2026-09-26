@@ -354,7 +354,7 @@ export function ReturnsTab({ canView, canManage }: Props) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8 text-emerald-600"
+                        className="size-8 text-success-ink"
                         disabled={actionBusy === row.id}
                         onClick={() => handleApprove(row.id)}
                       >
@@ -497,7 +497,7 @@ function ReturnDetailContent({
           <div key={item.id} className="flex items-center justify-between rounded-lg border p-3 text-sm">
             <div>
               <p className="font-medium">{item.productName}</p>
-              {item.variantName && <p className="text-xs text-muted-foreground">{item.variantName}</p>}
+              {item.variantName && item.variantName !== "Default" && <p className="text-xs text-muted-foreground">{item.variantName}</p>}
               {item.reason && <p className="text-xs text-muted-foreground italic">Motivo: {item.reason}</p>}
               <p className="text-xs text-muted-foreground">
                 Cant: {qty(item.quantity)} × {money(Number(item.unitPrice))}
@@ -527,10 +527,10 @@ function ReturnDetailContent({
 
       {/* Info de resolución */}
       {detail.status === "completed" && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-800 dark:bg-emerald-950">
-          <p className="font-medium text-emerald-700 dark:text-emerald-400">Devolución procesada</p>
+        <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm">
+          <p className="font-medium text-success-ink">Devolución procesada</p>
           {detail.returnType === "refund" && (
-            <div className="mt-2 space-y-1 text-emerald-700 dark:text-emerald-400">
+            <div className="mt-2 space-y-1 text-success-ink">
               {detail.refundPayments.map((payment) => (
                 <p key={payment.id} className="flex flex-wrap justify-between gap-2">
                   <span>{REFUND_METHOD_LABELS[payment.method] ?? payment.method}</span>
@@ -542,13 +542,13 @@ function ReturnDetailContent({
             </div>
           )}
           {detail.returnType === "coupon" && detail.couponCode && (
-            <p className="mt-1 text-emerald-700 dark:text-emerald-400">Cupón: <code className="font-bold">{detail.couponCode}</code> por {money(Number(detail.couponAmount ?? 0))}{detail.couponExpiresAt ? ` · Vence: ${new Date(detail.couponExpiresAt).toLocaleDateString("es-MX")}` : ""}</p>
+            <p className="mt-1 text-success-ink">Cupón: <code className="font-bold">{detail.couponCode}</code> por {money(Number(detail.couponAmount ?? 0))}{detail.couponExpiresAt ? ` · Vence: ${new Date(detail.couponExpiresAt).toLocaleDateString("es-MX")}` : ""}</p>
           )}
           {detail.returnType === "points" && detail.pointsAwarded && Number(detail.pointsAwarded) > 0 && (
-            <p className="mt-1 text-emerald-700 dark:text-emerald-400">Se bonificaron <span className="font-bold">{qty(detail.pointsAwarded)}</span> puntos al cliente.</p>
+            <p className="mt-1 text-success-ink">Se bonificaron <span className="font-bold">{qty(detail.pointsAwarded)}</span> puntos al cliente.</p>
           )}
           {detail.returnType === "exchange" && (
-            <p className="mt-1 text-emerald-700 dark:text-emerald-400">Producto devuelto al stock. Crea una nueva venta con el producto de reemplazo.</p>
+            <p className="mt-1 text-success-ink">Producto devuelto al stock. Crea una nueva venta con el producto de reemplazo.</p>
           )}
         </div>
       )}

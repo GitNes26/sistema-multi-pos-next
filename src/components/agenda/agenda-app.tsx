@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -124,9 +126,9 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
   }, [data?.appointments]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
+    <div className="flex min-h-dvh flex-col bg-background">
       {/* Encabezado */}
-      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-card/85 px-3 backdrop-blur lg:px-4">
+      <header className="safe-area-top sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b bg-sidebar px-3 lg:px-4">
         <Button
           variant="ghost"
           size="icon"
@@ -142,19 +144,21 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
         >
           <ArrowLeft className="size-5" />
         </Button>
-        <span className="flex size-9 items-center justify-center rounded-xl bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">
+        <span className="flex size-10 items-center justify-center rounded-xl bg-primary/12 text-primary">
           <CalendarDays className="size-5" />
         </span>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <p className="truncate text-sm font-bold leading-tight">Agenda de citas</p>
+            <p className="truncate font-heading text-base font-semibold leading-tight tracking-tight">Agenda de citas</p>
             {orgMode ? (
               <BusinessModeBadge mode={orgMode} className="hidden shrink-0 sm:inline-flex" />
             ) : null}
           </div>
-          <p className="truncate text-[11px] leading-tight text-muted-foreground">{orgName}</p>
+          <p className="truncate text-xs leading-tight text-muted-foreground">{orgName}</p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          <NotificationsBell />
+          <ThemeToggle />
           {canManage && (
             <Button size="sm" data-guide="agenda-new" onClick={() => { setCreateSlot({ employeeId: null, time: "10:00" }); setCreateOpen(true); }}>
               <Plus className="size-4" /> <span className="hidden sm:inline">Nueva cita</span>
@@ -178,13 +182,13 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
 
           {tab === "agenda" && (
             <div className="flex items-center gap-1.5">
-              <Button variant="outline" size="sm" onClick={() => shift(-1)} aria-label="Día anterior">
+              <Button variant="outline" size="icon" onClick={() => shift(-1)} aria-label="Día anterior">
                 <ChevronLeft className="size-4" />
               </Button>
-              <Button variant="ghost" size="sm" className="capitalize" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setDay(d); }}>
-                {fmtDay(day)}
+              <Button variant="ghost" className="min-w-40 font-semibold" onClick={() => { const d = new Date(); d.setHours(0, 0, 0, 0); setDay(d); }}>
+                <span className="inline-block first-letter:uppercase">{fmtDay(day)}</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => shift(1)} aria-label="Día siguiente">
+              <Button variant="outline" size="icon" onClick={() => shift(1)} aria-label="Día siguiente">
                 <ChevronRight className="size-4" />
               </Button>
             </div>
@@ -205,7 +209,7 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
                 {STATUS_META[c.status as keyof typeof STATUS_META].label}: {c.count}
               </span>
             ))}
-            {data?.staff.length === 0 && (
+            {data?.staff.length === 0 && !canManage && (
               <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
                 Sin personal con servicios asignados
               </span>
@@ -222,7 +226,7 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
             <div className="flex h-64 items-center justify-center text-muted-foreground">
               <Loader2 className="size-6 animate-spin" />
             </div>
-          ) : (
+          ) : canManage && data?.staff.length === 0 ? null : (
             <div data-guide="agenda-calendar">
             <DayGrid
               day={day}
@@ -235,14 +239,16 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
           )}
 
           {canManage && data?.staff.length === 0 && !loading && (
-            <div className="mt-4 flex flex-col items-center gap-2 rounded-2xl border border-dashed p-8 text-center">
-              <Scissors className="size-8 text-muted-foreground" />
-              <p className="font-semibold">Aún no hay personal con servicios</p>
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed bg-card px-6 py-12 text-center">
+              <span className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <Scissors className="size-6" />
+              </span>
+              <p className="text-lg font-semibold">Aún no hay personal con servicios</p>
               <p className="max-w-sm text-sm text-muted-foreground">
                 Asigna qué servicios presta cada miembro de tu equipo (y cuánto dura cada uno) en la
                 pestaña «Personal y servicios». Sin asignaciones no se pueden agendar citas.
               </p>
-              <Button size="sm" onClick={() => setTab("staff")}>
+              <Button className="mt-1" onClick={() => setTab("staff")}>
                 <Wrench className="size-4" /> Asignar servicios
               </Button>
             </div>
@@ -322,9 +328,9 @@ function DayGrid({ day, data, canManage, onSlotClick, onBlockClick }: DayGridPro
         <div className="grid border-b" style={{ gridTemplateColumns: `56px repeat(${staff.length}, minmax(220px, 1fr))` }}>
           <div className="sticky left-0 z-10 bg-card px-2 py-2 text-xs font-semibold text-muted-foreground" />
           {staff.map((s) => (
-            <div key={s.id} className="border-l bg-muted/30 px-3 py-2">
-              <p className="truncate text-sm font-bold">{s.fullName}</p>
-              <p className="truncate text-[11px] text-muted-foreground">{s.position ?? "Personal"}</p>
+            <div key={s.id} className="border-l bg-surface-sunken px-3 py-2.5">
+              <p className="truncate text-sm font-semibold">{s.fullName}</p>
+              <p className="truncate text-xs text-muted-foreground">{s.position ?? "Personal"}</p>
             </div>
           ))}
         </div>
@@ -339,7 +345,7 @@ function DayGrid({ day, data, canManage, onSlotClick, onBlockClick }: DayGridPro
               return (
                 <div
                   key={i}
-                  className="absolute right-1 text-[10px] font-medium text-muted-foreground"
+                  className="absolute right-1 text-xs font-medium text-muted-foreground"
                   style={{ top: i * ROW_HEIGHT - 6 }}
                 >
                   {String(h).padStart(2, "0")}:00
@@ -382,7 +388,7 @@ function DayGrid({ day, data, canManage, onSlotClick, onBlockClick }: DayGridPro
                     onClick={() => onSlotClick(s.id, slotStart)}
                     className={cn(
                       "absolute inset-x-0 z-0 rounded-sm",
-                      canManage && "transition hover:bg-primary/5",
+                      canManage && "transition-colors outline-none hover:bg-primary/8 focus-visible:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-primary/12",
                       i % 2 === 0 ? "bg-transparent" : "bg-muted/10"
                     )}
                     style={{ top: rowStart, height: ROW_HEIGHT }}
@@ -404,22 +410,22 @@ function DayGrid({ day, data, canManage, onSlotClick, onBlockClick }: DayGridPro
                       type="button"
                       onClick={() => onBlockClick(a)}
                       className={cn(
-                        "absolute inset-x-1 z-20 overflow-hidden rounded-lg border px-2 py-1 text-left shadow-sm transition hover:shadow",
+                        "press absolute inset-x-1 z-20 overflow-hidden rounded-lg border px-2.5 py-1.5 text-left shadow-e1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                         meta.block,
                         a.status === "cancelled" && "opacity-60"
                       )}
                       style={{ top, height }}
                       title={`${a.customer?.fullName ?? "Sin cliente"} · ${a.service.name}`}
                     >
-                      <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide opacity-80">
+                      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground tabular">
                         <span className={cn("size-1.5 shrink-0 rounded-full", meta.dot)} />
                         {fmtTime(a.startsAt)} · {meta.label}
                       </p>
-                      <p className="truncate text-xs font-bold leading-tight">
+                      <p className="truncate text-sm font-semibold leading-tight">
                         {a.customer?.fullName ?? "Sin cliente"}
                       </p>
                       {height > ROW_HEIGHT + 8 && (
-                        <p className="truncate text-[11px] leading-tight opacity-85">{a.service.name}</p>
+                        <p className="truncate text-xs leading-tight text-muted-foreground">{a.service.name}</p>
                       )}
                     </button>
                   );
@@ -456,7 +462,7 @@ function StaffAssignment({ staff, services, canManage, onChanged }: StaffAssignm
       )}
       {staff.map((s) => (
         <div key={s.id} className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card p-3.5">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/12 text-sm font-bold text-primary">
             {s.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
           </span>
           <div className="min-w-0 flex-1">
@@ -466,7 +472,7 @@ function StaffAssignment({ staff, services, canManage, onChanged }: StaffAssignm
               {s.services.map((sv) => (
                 <span
                   key={sv.variantId}
-                  className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                  className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
                 >
                   {sv.name} · {sv.durationMin} min
                   {!sv.isActive && " · inactivo"}
@@ -618,9 +624,9 @@ function AssignmentDialog({
                       [sv.variantId]: { on: prev[sv.variantId]?.on ?? false, durationMin: Number(e.target.value) || 30 },
                     }))
                   }
-                  className="h-8 text-center text-xs"
+                  className="h-10 text-center text-sm tabular desk:h-8"
                 />
-                <span className="text-[10px] text-muted-foreground">min</span>
+                <span className="text-xs text-muted-foreground">min</span>
               </div>
             </div>
           );

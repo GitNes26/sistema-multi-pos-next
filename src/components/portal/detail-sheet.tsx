@@ -37,9 +37,9 @@ const PUB_TYPE_LABELS: Record<string, string> = {
 }
 
 const PUB_TYPE_COLORS: Record<string, string> = {
-  product_new: "bg-emerald-500 text-white",
-  promotion: "bg-amber-500 text-white",
-  notice: "bg-sky-500 text-white",
+  product_new: "bg-success text-success-foreground",
+  promotion: "bg-warning text-warning-foreground",
+  notice: "bg-info text-info-foreground",
 }
 
 const BENEFIT_LABELS: Record<string, string> = {
@@ -74,7 +74,7 @@ function PromosDetail({ item }: { item: DetailPromotion }) {
 
       <div>
         <h3 className="text-lg font-bold">{item.name}</h3>
-        <Badge className="mt-1 bg-amber-500 text-white">
+        <Badge className="mt-1 bg-warning text-warning-foreground">
           {BENEFIT_LABELS[item.benefit] ?? item.benefit}
         </Badge>
       </div>
@@ -94,7 +94,7 @@ function PromosDetail({ item }: { item: DetailPromotion }) {
       <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
         {item.benefit === "percent_off" && item.value > 0 && (
           <div className="flex items-center gap-2 text-sm">
-            <Sparkles className="size-4 text-amber-500" />
+            <Sparkles className="size-4 text-warning-ink" />
             <span>
               <strong>{item.value}%</strong> de descuento
             </span>
@@ -102,7 +102,7 @@ function PromosDetail({ item }: { item: DetailPromotion }) {
         )}
         {item.benefit === "amount_off" && item.value > 0 && (
           <div className="flex items-center gap-2 text-sm">
-            <Sparkles className="size-4 text-amber-500" />
+            <Sparkles className="size-4 text-warning-ink" />
             <span>
               <strong>{money(item.value)}</strong> de descuento
             </span>
@@ -110,7 +110,7 @@ function PromosDetail({ item }: { item: DetailPromotion }) {
         )}
         {item.benefit === "fixed_price" && item.value > 0 && (
           <div className="flex items-center gap-2 text-sm">
-            <Sparkles className="size-4 text-amber-500" />
+            <Sparkles className="size-4 text-warning-ink" />
             <span>
               Precio fijo de <strong>{money(item.value)}</strong>
             </span>

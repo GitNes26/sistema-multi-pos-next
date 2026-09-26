@@ -81,15 +81,15 @@ export function OmnichannelReport({ from, to, locationId }: Props) {
                   <span className="tabular-nums">{money(r.total)} <span className="text-muted-foreground">({r.pctWeb}% web)</span></span>
                 </div>
                 <div className="flex h-5 overflow-hidden rounded-full bg-muted">
-                  <div className="bg-emerald-500 transition-all" style={{ width: `${(r.posSales / maxTotal) * 100}%` }} />
-                  <div className="bg-blue-500 transition-all" style={{ width: `${(r.portalSales / maxTotal) * 100}%` }} />
+                  <div className="bg-success transition-all" style={{ width: `${(r.posSales / maxTotal) * 100}%` }} />
+                  <div className="bg-info transition-all" style={{ width: `${(r.portalSales / maxTotal) * 100}%` }} />
                 </div>
               </div>
             ))}
           </div>
           <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500" /> POS</span>
-            <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-blue-500" /> Portal</span>
+            <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-success" /> POS</span>
+            <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-info" /> Portal</span>
           </div>
         </CardContent>
       </Card>

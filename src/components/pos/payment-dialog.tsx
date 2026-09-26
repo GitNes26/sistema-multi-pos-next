@@ -56,26 +56,28 @@ const METHOD_ICONS: Partial<Record<$Enums.PaymentMethod, React.ReactNode>> = {
   other: <MoreHorizontal className="size-5" />,
 }
 
+// Cada método conserva su matiz para reconocerlo de un vistazo en caja;
+// seleccionado = sólido con su foreground, sin halos ni degradados.
 const METHOD_COLORS: Record<string, { unselected: string; selected: string }> = {
   cash: {
-    unselected: "border-emerald-500/50 text-emerald-600 hover:bg-emerald-500/10 hover:border-emerald-500/70",
-    selected: "border-emerald-500 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.35)]",
+    unselected: "border-success/40 text-success-ink hover:bg-success/10",
+    selected: "border-success bg-success text-success-foreground shadow-e1",
   },
   card: {
-    unselected: "border-blue-500/50 text-blue-600 hover:bg-blue-500/10 hover:border-blue-500/70",
-    selected: "border-blue-500 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-[0_0_20px_rgba(59,130,246,0.35)]",
+    unselected: "border-info/40 text-info-ink hover:bg-info/10",
+    selected: "border-info bg-info text-info-foreground shadow-e1",
   },
   wallet: {
-    unselected: "border-violet-500/50 text-violet-600 hover:bg-violet-500/10 hover:border-violet-500/70",
-    selected: "border-violet-600 bg-violet-600 text-white shadow-sm",
+    unselected: "border-violet-500/40 text-violet-700 hover:bg-violet-500/10 dark:text-violet-300",
+    selected: "border-violet-600 bg-violet-600 text-white shadow-e1",
   },
   credit: {
-    unselected: "border-amber-500/50 text-amber-600 hover:bg-amber-500/10 hover:border-amber-500/70",
-    selected: "border-amber-500 bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-[0_0_20px_rgba(245,158,11,0.35)]",
+    unselected: "border-warning/50 text-warning-ink hover:bg-warning/10",
+    selected: "border-warning bg-warning text-warning-foreground shadow-e1",
   },
   other: {
-    unselected: "border-muted-foreground/30 text-muted-foreground hover:bg-muted/50 hover:border-muted-foreground/50",
-    selected: "border-muted-foreground bg-gradient-to-br from-muted-foreground to-foreground text-white shadow-[0_0_20px_rgba(113,113,122,0.3)]",
+    unselected: "border-border text-muted-foreground hover:bg-muted",
+    selected: "border-foreground bg-foreground text-background shadow-e1",
   },
 }
 
@@ -314,8 +316,8 @@ export function PaymentDialog({
 
   // Tip selector block
   const tipBlock = features.tips && (
-    <div className="space-y-2 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 p-3">
-      <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+    <div className="space-y-2 rounded-xl border border-dashed border-success/40 bg-success/5 p-3">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-success-ink">
         💰 Propina (opcional)
       </p>
       <div className="grid grid-cols-5 gap-1.5">
@@ -325,8 +327,8 @@ export function PaymentDialog({
           className={cn(
             "rounded-lg border px-2 py-2 text-xs font-semibold transition",
             tipMode === "none"
-              ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-              : "border-muted-foreground/20 text-muted-foreground hover:border-emerald-500/50"
+              ? "border-success bg-success/10 text-success-ink"
+              : "border-muted-foreground/20 text-muted-foreground hover:border-success/50"
           )}
         >
           Sin propina
@@ -342,8 +344,8 @@ export function PaymentDialog({
             className={cn(
               "rounded-lg border px-2 py-2 text-xs font-semibold transition",
               tipMode === "percent" && tipPercent === pct
-                ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                : "border-muted-foreground/20 text-muted-foreground hover:border-emerald-500/50"
+                ? "border-success bg-success/10 text-success-ink"
+                : "border-muted-foreground/20 text-muted-foreground hover:border-success/50"
             )}
           >
             {pct}%
@@ -370,7 +372,7 @@ export function PaymentDialog({
         )}
       </div>
       {tipAmount > 0 && (
-        <p className="text-xs text-emerald-700 dark:text-emerald-400">
+        <p className="text-xs text-success-ink">
           Propina: {money(tipAmount)} · Total con propina: <span className="font-bold">{money(totalWithTip)}</span>
         </p>
       )}
@@ -389,7 +391,7 @@ export function PaymentDialog({
             key={d}
             type="button"
             onClick={() => addPayment("cash", d)}
-            className="rounded-xl border bg-background py-3.5 text-sm font-bold tabular-nums transition hover:bg-muted active:scale-[0.97]"
+            className="press rounded-xl border bg-card py-4 text-base font-semibold tabular-nums hover:bg-muted"
           >
             ${d}
           </button>
@@ -433,7 +435,7 @@ export function PaymentDialog({
       footer={
         <Button
           size="lg"
-          className="h-14 w-full text-base font-bold"
+          className="h-14 w-full rounded-2xl text-base font-semibold shadow-e2 desk:h-12 desk:rounded-xl"
           disabled={loading || Boolean(pointOrder) || paid - totalWithTip < -0.01}
           onClick={complete}
         >
@@ -444,14 +446,14 @@ export function PaymentDialog({
     >
       {/* Split bill info */}
       {splitParts && splitParts > 1 && (
-        <div className="rounded-xl border border-dashed border-violet-500/40 bg-violet-500/5 p-3">
+        <div className="rounded-xl border border-dashed p-3">
           <div className="flex items-center gap-2">
-            <Split className="size-4 shrink-0 text-violet-600 dark:text-violet-400" />
-            <span className="text-xs font-semibold text-violet-700 dark:text-violet-400">
+            <Split className="size-4 shrink-0 text-muted-foreground" />
+            <span className="text-xs font-semibold">
               Cuenta dividida en {splitParts} partes
             </span>
           </div>
-          <p className="mt-1.5 text-xs text-violet-600 dark:text-violet-400">
+          <p className="mt-1.5 text-xs text-muted-foreground tabular">
             Cada persona paga: <span className="font-bold">{money(totalWithTip / splitParts)}</span>
             {' · '}Total a cobrar: <span className="font-bold">{money(totalWithTip)}</span>
           </p>
@@ -461,7 +463,7 @@ export function PaymentDialog({
         {/* ── Columna izquierda: acción de pago ───────────────────── */}
         <div className="space-y-3 md:col-span-2">
           {/* Total + progress */}
-          <div className="rounded-2xl border bg-muted/30 p-4">
+          <div className="rounded-2xl border bg-surface-sunken p-4">
             <div className="flex items-end justify-between">
               <span className="text-sm text-muted-foreground">
                 Total a cobrar{tipAmount > 0 ? " + propina" : ""}
@@ -469,11 +471,11 @@ export function PaymentDialog({
               <AnimatedNumber
                 value={totalWithTip}
                 format={money}
-                className="text-3xl font-black tabular-nums"
+                className="text-4xl font-bold tracking-tight tabular-nums"
               />
             </div>
             {tipAmount > 0 && (
-              <p className="mt-1 text-right text-xs text-emerald-600 dark:text-emerald-400">
+              <p className="mt-1 text-right text-xs text-success-ink">
                 Subtotal: {money(t.payable)} + Propina: {money(tipAmount)}
               </p>
             )}
@@ -490,7 +492,7 @@ export function PaymentDialog({
                   Falta {money(remaining)}
                 </span>
               ) : (
-                <span className="font-semibold text-emerald-600 tabular-nums">
+                <span className="font-semibold text-success-ink tabular-nums">
                   Cambio {money(change)}
                 </span>
               )}
@@ -503,8 +505,8 @@ export function PaymentDialog({
               type="button"
               onClick={() => setTab("quick")}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
-                tab === "quick" ? "bg-card shadow-sm" : "text-muted-foreground"
+                "flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+                tab === "quick" ? "bg-card shadow-e1" : "text-muted-foreground"
               )}
             >
               <Zap className="size-4" /> Pago rápido
@@ -513,8 +515,8 @@ export function PaymentDialog({
               type="button"
               onClick={() => setTab("custom")}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
-                tab === "custom" ? "bg-card shadow-sm" : "text-muted-foreground"
+                "flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+                tab === "custom" ? "bg-card shadow-e1" : "text-muted-foreground"
               )}
             >
               <Wallet className="size-4" /> Pago personalizado
@@ -539,7 +541,7 @@ export function PaymentDialog({
                       type="button"
                       onClick={() => addRemaining("cash")}
                       className={cn(
-                        "flex items-center justify-center gap-2 rounded-xl border px-4 py-3.5 text-sm font-bold transition active:scale-[0.97]",
+                        "press flex min-h-16 items-center justify-center gap-2 rounded-2xl border px-4 py-3.5 text-base font-semibold",
                         METHOD_COLORS.cash.selected
                       )}
                     >
@@ -551,7 +553,7 @@ export function PaymentDialog({
                       onClick={() => pointAvailable ? void startPointPayment() : addRemaining("card")}
                       disabled={pointBusy || Boolean(pointOrder)}
                       className={cn(
-                        "flex items-center justify-center gap-2 rounded-xl border px-4 py-3.5 text-sm font-bold transition active:scale-[0.97]",
+                        "press flex min-h-16 items-center justify-center gap-2 rounded-2xl border px-4 py-3.5 text-base font-semibold",
                         METHOD_COLORS.card.selected
                       )}
                     >
@@ -581,7 +583,7 @@ export function PaymentDialog({
                       type="button"
                       onClick={() => setMethod(m)}
                       className={cn(
-                        "flex flex-col items-center gap-1 rounded-xl border px-2 py-2 text-xs font-medium transition",
+                        "press flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-xs font-semibold",
                         method === m
                           ? METHOD_COLORS[m].selected
                           : METHOD_COLORS[m].unselected
@@ -625,9 +627,9 @@ export function PaymentDialog({
           </AnimatePresence>
 
           {pointOrder && (
-            <div role="status" className="rounded-xl border border-sky-500/40 bg-sky-500/5 p-3">
+            <div role="status" className="rounded-xl border border-info/40 bg-info/5 p-3">
               <div className="flex items-start gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sky-600"><RadioTower className="size-5 animate-pulse" /></span>
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-info/15 text-info-ink"><RadioTower className="size-5 animate-pulse" /></span>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">Completa el pago en la terminal Point</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{pointStatus || "La terminal está recibiendo el cobro…"} · {money(pointOrder.amount)}</p>
@@ -642,8 +644,8 @@ export function PaymentDialog({
 
           {/* Info de crédito */}
           {method === "credit" && creditInfo && (
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+            <div className="rounded-xl border border-warning/40 bg-warning/5 p-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-warning-ink">
                 <Landmark className="size-4" /> Crédito del cliente
               </p>
               <div className="mt-1.5 grid grid-cols-2 gap-2 text-xs">
@@ -666,8 +668,8 @@ export function PaymentDialog({
 
           {/* Puntos del cliente */}
           {t.customer && t.customer.points > 0 && (
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+            <div className="rounded-xl border border-warning/40 bg-warning/5 p-3">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-warning-ink">
                 <PiggyBank className="size-4" /> Puntos del cliente ·{" "}
                 {money(pointsToMoney(t.customer.points, loyalty.pointValue))}{" "}
                 disponibles
@@ -702,7 +704,7 @@ export function PaymentDialog({
                 </Button>
               </div>
               {t.pointsRedeemed > 0 && (
-                <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <p className="mt-1.5 text-xs text-warning-ink">
                   Canjeando {t.pointsRedeemed} pts = -
                   {money(t.pointsRedeemedValue)}
                   <button
@@ -729,7 +731,7 @@ export function PaymentDialog({
 
         {/* ── Columna derecha: pagos realizados (siempre visible) ── */}
         <div className="md:sticky md:top-0 md:self-start">
-          <div className="flex h-full flex-col rounded-2xl border bg-muted/30">
+          <div className="flex h-full flex-col rounded-2xl border bg-surface-sunken">
             <div className="flex items-center gap-2 border-b px-4 py-3">
               <ListChecks className="size-4 text-muted-foreground" />
               <span className="text-sm font-semibold">Pagos realizados</span>
@@ -798,7 +800,7 @@ export function PaymentDialog({
               ) : (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Cambio</span>
-                  <span className="font-semibold text-emerald-600 tabular-nums">
+                  <span className="font-semibold text-success-ink tabular-nums">
                     {money(change)}
                   </span>
                 </div>

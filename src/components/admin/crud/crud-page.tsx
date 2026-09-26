@@ -391,7 +391,7 @@ export function CrudPage({
               }
               className={
                 t === "custom"
-                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                  ? "bg-warning/15 text-warning-ink"
                   : undefined
               }
             >
@@ -664,7 +664,7 @@ export function CrudPage({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 gap-1.5 text-emerald-600 hover:text-emerald-700"
+                  className="h-7 gap-1.5 text-success-ink hover:text-success-ink"
                   disabled={restoringId === String(row.original.id)}
                   onClick={() => handleRestore(row.original)}
                   title={
@@ -909,7 +909,7 @@ export function CrudPage({
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder={searchPlaceholder}
-                    className="h-8 pl-9 md:pl-9 pr-8 md:pr-8"
+                    className="h-8 pl-9 md:pl-9 desk:pl-9 pr-8 md:pr-8 desk:pr-8"
                     data-guide="crud-search"
                   />
                   {(isDebouncing || loading) && (
@@ -1099,7 +1099,7 @@ export function CrudPage({
           </>
         }
       >
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700">
+        <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning-ink">
           Descarga la plantilla cada vez que vayas a importar: los catálogos
           (categorías, unidades, etc.) pueden tener valores nuevos que no están
           en una plantilla descargada anteriormente.
@@ -1147,7 +1147,7 @@ export function CrudPage({
                       {r.line}
                     </td>
                     <td className="min-w-52 px-2 py-1">
-                      {r.errors.length ? <span className="text-xs text-destructive">{r.errors.join(" · ")}</span> : <span className="text-xs text-emerald-700">Lista</span>}
+                      {r.errors.length ? <span className="text-xs text-destructive">{r.errors.join(" · ")}</span> : <span className="text-xs text-success-ink">Lista</span>}
                     </td>
                     {r.cells.map((c, i) => (
                       <td key={i} className="max-w-40 truncate px-2 py-1">
@@ -1245,7 +1245,7 @@ function CustomerActivityDialog({
                       <span
                         className={
                           l.points >= 0
-                            ? "text-emerald-600"
+                            ? "text-success-ink"
                             : "text-destructive"
                         }
                       >

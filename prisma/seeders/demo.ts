@@ -4942,8 +4942,208 @@ async function seedVerticalOrgDemo(
  * dentro de seedDemo protege también contra invocaciones directas del módulo.
  */
 export function isDemoSeedingEnabled(): boolean {
-  if (process.env.NODE_ENV === "production") return false
+  console.log("process.env.NODE_ENV === 'production'", process.env.NODE_ENV === "production","valor:",process.env.NODE_ENV )
+  console.log("process.env.SEED_DEMO === 'true'", process.env.SEED_DEMO === "true","valor:",process.env.SEED_DEMO )
+  // if (process.env.NODE_ENV === "production") return false
   return process.env.SEED_DEMO === "true"
+}
+
+const DEMO_LEGAL_VERSION = "2026-09-25"
+
+/**
+ * Completa los módulos incorporados después del seed original y deja las
+ * cuentas demo listas para recorrer cualquier pantalla sin activación,
+ * bloqueo de plan o restricciones de rol.
+ */
+async function finalizeDemoAccess(
+  organizationIds: string[],
+  demoEmails: string[],
+  ownerUserId: string
+) {
+  const now = new Date()
+
+  await prisma.user.updateMany({
+    where: { email: { in: demoEmails } },
+    data: {
+      isActive: true,
+      activationRequired: false,
+      emailVerified: now,
+      legalAcceptedAt: now,
+      legalVersion: DEMO_LEGAL_VERSION,
+      authVersion: 0,
+    },
+  })
+  await prisma.organization.updateMany({
+    where: { id: { in: organizationIds } },
+    data: { isBlocked: false, blockedReason: null },
+  })
+  await prisma.membership.updateMany({
+    where: { organizationId: { in: organizationIds } },
+    data: { role: "owner", roleId: "system-owner" },
+  })
+  await prisma.appSettings.updateMany({
+    where: { organizationId: { in: organizationIds } },
+    data: { surfaceTone: "subtle" },
+  })
+
+  for (const organizationId of organizationIds) {
+    await prisma.creditPolicy.upsert({
+      where: { organizationId },
+      update: {
+        creditEnabled: true,
+        defaultLimit: 5000,
+        maxDaysToPay: 30,
+        requireApproval: false,
+        allowPartialPayments: true,
+        interestRate: 0,
+        notifyBeforeDays: 3,
+        creditEarnsPoints: true,
+      },
+      create: {
+        organizationId,
+        creditEnabled: true,
+        defaultLimit: 5000,
+        maxDaysToPay: 30,
+        requireApproval: false,
+        allowPartialPayments: true,
+        interestRate: 0,
+        notifyBeforeDays: 3,
+        creditEarnsPoints: true,
+      },
+    })
+
+    const customers = await prisma.customer.findMany({
+      where: { organizationId },
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
+    })
+    for (let index = 0; index < customers.length; index++) {
+      await prisma.customerCredit.upsert({
+        where: { customerId: customers[index].id },
+        update: {
+          organizationId,
+          creditLimit: index === 0 ? 8000 : null,
+          useDefaultLimit: index !== 0,
+          currentBalance: 0,
+          status: "active",
+        },
+        create: {
+          customerId: customers[index].id,
+          organizationId,
+          creditLimit: index === 0 ? 8000 : null,
+          useDefaultLimit: index !== 0,
+          currentBalance: 0,
+          status: "active",
+        },
+      })
+    }
+
+    const [product, location] = await Promise.all([
+      prisma.product.findFirst({
+        where: { organizationId, isActive: true },
+        include: { variants: { where: { isActive: true }, take: 1, orderBy: { createdAt: "asc" } } },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.location.findFirst({ where: { organizationId, isActive: true }, orderBy: { createdAt: "asc" } }),
+    ])
+    if (product && location) {
+      const variant = product.variants[0] ?? null
+      const unitCost = Number(variant?.cost ?? 25) || 25
+      const quantity = 12
+      const subtotal = Math.round(unitCost * quantity * 100) / 100
+      const tax = Math.round(subtotal * 0.16 * 100) / 100
+      const supplier = await prisma.supplier.create({
+        data: {
+          organizationId,
+          code: "PROV-DEMO-01",
+          businessName: "Distribuidora Demo",
+          tradeName: "Proveedor Demo",
+          contactName: "Mariana Compras",
+          email: "compras@proveedor.demo",
+          phone: "5550001122",
+          paymentTerms: "Crédito a 30 días",
+          leadTimeDays: 3,
+          notes: "Proveedor precargado para recorrer cotización, orden y recepción.",
+          isActive: true,
+        },
+      })
+      await prisma.supplierProduct.create({
+        data: {
+          organizationId,
+          supplierId: supplier.id,
+          productId: product.id,
+          variantId: variant?.id ?? null,
+          supplierSku: `DEMO-${product.id.slice(-6).toUpperCase()}`,
+          unitCost,
+          minimumOrder: 1,
+          leadTimeDays: 3,
+          isPreferred: true,
+          isActive: true,
+        },
+      })
+      const quote = await prisma.purchaseQuote.create({
+        data: {
+          organizationId,
+          supplierId: supplier.id,
+          folio: "COT-DEMO-001",
+          status: "quoted",
+          validUntil: new Date("2099-12-31T23:59:59.000Z"),
+          notes: "Cotización lista para convertir o modificar durante la demostración.",
+          createdBy: ownerUserId,
+          items: {
+            create: [{
+              productId: product.id,
+              variantId: variant?.id ?? null,
+              description: [product.name, variant?.name].filter(Boolean).join(" · "),
+              quantity,
+              unitCost,
+              taxRate: 0.16,
+            }],
+          },
+        },
+      })
+      await prisma.purchaseOrder.create({
+        data: {
+          organizationId,
+          supplierId: supplier.id,
+          folio: "OC-DEMO-001",
+          status: "approved",
+          locationType: "location",
+          locationId: location.id,
+          expectedAt: new Date(Date.now() + 3 * 86400000),
+          subtotal,
+          tax,
+          total: subtotal + tax,
+          notes: "Orden aprobada y preparada para probar envío y recepción.",
+          createdBy: ownerUserId,
+          approvedBy: ownerUserId,
+          approvedAt: now,
+          items: {
+            create: [{
+              productId: product.id,
+              variantId: variant?.id ?? null,
+              description: [product.name, variant?.name].filter(Boolean).join(" · "),
+              quantity,
+              unitCost,
+              taxRate: 0.16,
+            }],
+          },
+        },
+      })
+      await prisma.notification.create({
+        data: {
+          organizationId,
+          userId: ownerUserId,
+          kind: "purchase_order",
+          title: "Orden de compra demo aprobada",
+          body: `La orden OC-DEMO-001 de ${supplier.businessName} está lista para envío y recepción.`,
+          severity: "info",
+          link: "/admin/purchasing",
+        },
+      })
+      void quote
+    }
+  }
 }
 
 export async function seedDemo() {
@@ -6064,11 +6264,33 @@ export async function seedDemo() {
   const hibrido = await seedHybridDemo(ownerUser.id, passwordHash)
 
   const demoPlan = await prisma.subscriptionPlan.findUnique({ where: { name: "Multi-sucursal" } })
+  const demoOrganizationIds = [org.id, restaurant.org.id, estetica.org.id, fiestas.org.id, hibrido.org.id]
   if (demoPlan) {
-    for (const organizationId of [org.id, restaurant.org.id, estetica.org.id, fiestas.org.id, hibrido.org.id]) {
-      await prisma.organizationSubscription.upsert({ where: { organizationId }, update: { planId: demoPlan.id, status: "active", periodEndsAt: new Date("2099-12-31T23:59:59.000Z") }, create: { organizationId, planId: demoPlan.id, status: "active", periodEndsAt: new Date("2099-12-31T23:59:59.000Z") } })
+    for (const organizationId of demoOrganizationIds) {
+      await prisma.organizationSubscription.upsert({
+        where: { organizationId },
+        update: {
+          planId: demoPlan.id,
+          status: "active",
+          periodEndsAt: new Date("2099-12-31T23:59:59.000Z"),
+          extraLocations: 999,
+          extraEmployeePacks: 999,
+          autoBlockOnPastDue: false,
+        },
+        create: {
+          organizationId,
+          planId: demoPlan.id,
+          status: "active",
+          periodEndsAt: new Date("2099-12-31T23:59:59.000Z"),
+          extraLocations: 999,
+          extraEmployeePacks: 999,
+          autoBlockOnPastDue: false,
+        },
+      })
     }
   }
+
+  await finalizeDemoAccess(demoOrganizationIds, demoEmails, ownerUser.id)
 
   return {
     org,

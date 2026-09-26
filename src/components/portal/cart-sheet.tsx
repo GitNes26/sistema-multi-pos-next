@@ -20,15 +20,15 @@ function CartLine({ item }: { item: PortalCartItem }) {
   }
 
   return (
-    <article className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-3 rounded-2xl border bg-card p-3 shadow-sm">
-      <div className="size-14 overflow-hidden rounded-xl bg-muted">
+    <article className="grid grid-cols-[4rem_minmax(0,1fr)] gap-3 rounded-2xl border bg-card p-3">
+      <div className="size-16 overflow-hidden rounded-xl bg-surface-sunken">
         {item.imageUrl ? <ThumbImage src={item.imageUrl} alt="" className="size-full object-cover" /> : <div className="flex size-full items-center justify-center"><Package className="size-6 text-muted-foreground" /></div>}
       </div>
       <div className="min-w-0">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-2 text-sm font-semibold leading-snug">{item.name}</h3>
-            {(item.variantName || item.kind === "bulk") && <p className="mt-0.5 text-xs text-muted-foreground">{item.variantName || `A granel · ${item.unitAbbrev}`}</p>}
+            {((item.variantName && item.variantName !== "Default") || item.kind === "bulk") && <p className="mt-0.5 text-xs text-muted-foreground">{item.variantName && item.variantName !== "Default" ? item.variantName : `A granel · ${item.unitAbbrev}`}</p>}
             {item.comment && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.comment}</p>}
           </div>
           <button type="button" onClick={() => removeItem(item.key)} aria-label={`Quitar ${item.name}`} className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-2 focus-visible:outline-primary"><Trash2 className="size-4" /></button>
@@ -38,7 +38,7 @@ function CartLine({ item }: { item: PortalCartItem }) {
             <p className="text-sm font-bold tabular-nums">{money(item.unitPrice * item.qty)}</p>
             <p className="text-xs text-muted-foreground">{money(item.unitPrice)}{item.kind === "bulk" ? `/${item.unitAbbrev}` : " c/u"}</p>
           </div>
-          <div className="flex items-center rounded-xl border bg-background" aria-label={`Cantidad de ${item.name}`}>
+          <div className="flex items-center rounded-xl bg-muted p-0.5" aria-label={`Cantidad de ${item.name}`}>
             <button type="button" onClick={() => change(-step)} disabled={item.qty <= step} aria-label={`Reducir ${item.name}`} className="flex size-11 items-center justify-center rounded-l-xl disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-primary"><Minus className="size-4" /></button>
             <span className="min-w-12 text-center text-sm font-semibold tabular-nums">{round3(item.qty)}</span>
             <button type="button" onClick={() => change(step)} disabled={item.trackInventory && item.qty >= item.stock} aria-label={`Aumentar ${item.name}`} className="flex size-11 items-center justify-center rounded-r-xl disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-primary"><Plus className="size-4" /></button>
@@ -73,10 +73,10 @@ export function CartSheet() {
         <div className="space-y-1.5 text-sm">
           <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span className="tabular-nums">{money(subtotal)}</span></div>
           {tax > 0 && <div className="flex justify-between text-muted-foreground"><span>Impuestos</span><span className="tabular-nums">{money(tax)}</span></div>}
-          <div className="flex justify-between border-t pt-2 text-base font-semibold"><span>Total estimado</span><span className="tabular-nums">{money(total)}</span></div>
+          <div className="flex items-baseline justify-between border-t border-dashed pt-2.5 font-semibold"><span>Total estimado</span><span className="text-2xl font-bold tracking-tight tabular-nums">{money(total)}</span></div>
         </div>
         <p className="text-xs text-muted-foreground">El envío y las promociones se calculan al finalizar la compra.</p>
-        <Button className="h-12 w-full rounded-xl" onClick={() => { setCartOpen(false); router.push("/portal/checkout") }}>Continuar al pago <ArrowRight className="size-4" /></Button>
+        <Button className="h-14 w-full rounded-2xl text-base font-semibold shadow-e2" onClick={() => { setCartOpen(false); router.push("/portal/checkout") }}>Continuar al pago <ArrowRight className="size-4" /></Button>
       </div> : undefined}
     >
       {count === 0 ? <div className="flex flex-col items-center gap-3 py-12 text-center">

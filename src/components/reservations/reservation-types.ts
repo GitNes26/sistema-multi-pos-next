@@ -43,27 +43,27 @@ export const STATUS_META: Record<
 > = {
   pending: {
     label: "Pendiente",
-    dot: "bg-amber-500",
-    chip: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
-    row: "border-amber-300 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10",
+    dot: "bg-warning",
+    chip: "bg-warning/15 text-warning-ink",
+    row: "border-warning/40 bg-warning/8",
   },
   confirmed: {
     label: "Confirmada",
-    dot: "bg-sky-500",
-    chip: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400",
-    row: "border-sky-300 bg-sky-50 dark:border-sky-500/30 dark:bg-sky-500/10",
+    dot: "bg-info",
+    chip: "bg-info/15 text-info-ink",
+    row: "border-info/40 bg-info/8",
   },
   completed: {
     label: "Cobrada",
-    dot: "bg-emerald-500",
-    chip: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
-    row: "border-emerald-300 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10",
+    dot: "bg-success",
+    chip: "bg-success/15 text-success-ink",
+    row: "border-success/40 bg-success/8",
   },
   cancelled: {
     label: "Cancelada",
-    dot: "bg-slate-400",
-    chip: "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400",
-    row: "border-slate-300 bg-slate-100 opacity-70 dark:border-slate-700 dark:bg-slate-900",
+    dot: "bg-muted-foreground",
+    chip: "bg-muted text-muted-foreground",
+    row: "border-border bg-muted opacity-70",
   },
 };
 

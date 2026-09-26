@@ -4,6 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Escritorio real = pantalla ancha + puntero preciso. Las tablets y pantallas
+   táctiles (aunque sean ≥768px) conservan objetivos de 44px. */
+@custom-variant desk (@media (min-width: 48rem) and (pointer: fine));
+@custom-variant touch (@media (pointer: coarse));
+
 @utility scrollbar-none {
   scrollbar-width: none;
   &::-webkit-scrollbar {
@@ -46,6 +51,31 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-destructive-foreground: var(--destructive-foreground);
+  /* "ink": el mismo matiz ajustado para texto legible sobre el lienzo */
+  --color-success-ink: var(--success-ink);
+  --color-warning-ink: var(--warning-ink);
+  --color-info-ink: var(--info-ink);
+
+  /* Elevación: sombras con desplazamiento y blur suave, teñidas del lienzo */
+  --shadow-e1: 0 1px 2px -1px var(--shadow-color), 0 1px 3px 0 color-mix(in oklab, var(--shadow-color) 60%, transparent);
+  --shadow-e2: 0 4px 12px -4px var(--shadow-color), 0 2px 4px -2px color-mix(in oklab, var(--shadow-color) 70%, transparent);
+  --shadow-e3: 0 16px 40px -12px var(--shadow-color), 0 6px 14px -6px color-mix(in oklab, var(--shadow-color) 80%, transparent);
+
+  /* Motion: salida exponencial; nada de rebotes */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --animate-press-pop: press-pop 0.24s var(--ease-out-quart);
+  --animate-rise-in: rise-in 0.32s var(--ease-out-expo) both;
+  --animate-fade-in: fade-in 0.2s var(--ease-out-quart) both;
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -57,9 +87,9 @@
 
 :root {
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.17 0.012 210);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.17 0.012 210);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
@@ -69,8 +99,20 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.56 0.14 152);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.72 0.16 70);
+  --warning-foreground: oklch(0.22 0.05 70);
+  --info: oklch(0.56 0.13 240);
+  --info-foreground: oklch(0.99 0 0);
+  --success-ink: oklch(0.48 0.12 152);
+  --warning-ink: oklch(0.5 0.12 60);
+  --info-ink: oklch(0.48 0.13 245);
+  --surface-sunken: oklch(0.968 0.006 210);
+  --shadow-color: oklch(0.3 0.02 250 / 0.14);
+  --border: oklch(0.912 0.008 210);
+  --input: oklch(0.9 0.009 210);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -86,8 +128,8 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.984 0.003 210);
+  --foreground: oklch(0.17 0.012 210);
 
   /* Sistema de apariencia (FASE 3): generadas desde app_settings */
   --primary-hue: 210;
@@ -100,9 +142,21 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --background: oklch(0.155 0.006 210);
+  --foreground: oklch(0.975 0.004 210);
+  --surface-sunken: oklch(0.13 0.006 210);
+  --shadow-color: oklch(0 0 0 / 0.5);
+  --success: oklch(0.72 0.15 152);
+  --success-foreground: oklch(0.18 0.04 152);
+  --warning: oklch(0.8 0.15 75);
+  --warning-foreground: oklch(0.2 0.05 70);
+  --info: oklch(0.72 0.12 240);
+  --info-foreground: oklch(0.18 0.04 240);
+  --success-ink: oklch(0.8 0.14 152);
+  --warning-ink: oklch(0.84 0.13 80);
+  --info-ink: oklch(0.8 0.1 240);
+  --destructive-foreground: oklch(0.99 0 0);
+  --card: oklch(0.198 0.008 210);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
@@ -139,6 +193,43 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Sin rebote/"pull" del lienzo: las apps se sienten nativas */
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 26%, transparent);
+    color: inherit;
+  }
+  input,
+  textarea,
+  [contenteditable] {
+    caret-color: var(--primary);
+  }
+  /* Elimina el retardo de doble tap y el zoom accidental en controles */
+  button,
+  [role="button"],
+  a,
+  input,
+  select,
+  label,
+  summary {
+    touch-action: manipulation;
+  }
+  :focus-visible {
+    outline-offset: 2px;
+  }
+  a {
+    text-underline-offset: 0.2em;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
   }
   html {
     /* Escala de tipografía configurable (FASE 3.3) */
@@ -200,7 +291,7 @@
   color: var(--popover-foreground);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-e3);
   padding: 1.25rem;
 }
 .swal2-title-custom {
@@ -261,7 +352,7 @@
   background: var(--popover) !important;
   color: var(--popover-foreground) !important;
   border: 1px solid var(--border) !important;
-  box-shadow: var(--shadow-lg) !important;
+  box-shadow: var(--shadow-e2) !important;
   border-radius: var(--radius-md) !important;
 }
 .swal2-toast .swal2-title {
@@ -293,6 +384,48 @@
 @keyframes swal2-popup-custom-out {
   from { opacity: 1; transform: none; }
   to { opacity: 0; transform: translateY(4px) scale(0.985); }
+}
+
+/* Recharts: tooltips, ejes y leyendas con los tokens del tema */
+.recharts-default-tooltip {
+  background: var(--popover) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-e2);
+  color: var(--popover-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.recharts-tooltip-label {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.recharts-cartesian-axis-tick-value {
+  fill: var(--muted-foreground);
+}
+.recharts-legend-item-text {
+  color: var(--foreground) !important;
+}
+.recharts-cartesian-grid line {
+  stroke: var(--border);
+}
+
+/* Banner nativo en teléfono: ancho completo, respeta el notch y cae desde arriba */
+@media (max-width: 639px) {
+  .swal2-container.swal2-top {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+  }
+  .swal2-container.swal2-top .swal2-toast {
+    width: calc(100vw - 16px) !important;
+    border-radius: var(--radius-2xl) !important;
+    box-shadow: var(--shadow-e3) !important;
+  }
+  .swal2-container.swal2-top .swal2-popup-custom-show {
+    animation: toast-drop 0.34s var(--ease-out-expo);
+  }
+}
+@keyframes toast-drop {
+  from { opacity: 0; transform: translateY(-110%); }
+  to { opacity: 1; transform: none; }
 }
 
 /* 6.12 – Impresión del ticket térmico 80mm: solo se imprime #receipt-print */
@@ -359,10 +492,66 @@
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Hover belongs to precise pointers; touch keeps immediate press feedback. */
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .ui-button-motion:hover:not(:disabled) {
-    transform: scale(1.05);
+/* Botones: sin "crecer" en hover (ruido en UI de trabajo). El feedback vive
+   en el press: hundimiento corto y preciso, más marcado en pantallas táctiles. */
+.ui-button-motion {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out-quart);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ui-button-motion:active:not(:disabled) {
+    transform: scale(0.97);
+    transition-duration: 60ms;
+  }
+  @media (pointer: coarse) {
+    .ui-button-motion:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+  }
+}
+
+/* Cifras: precios, cantidades y totales alinean columnas */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Superficie táctil genérica (tarjetas de producto, mesas, citas): feedback
+   inmediato al tocar sin depender de hover. */
+.press {
+  transition: transform 160ms var(--ease-out-quart), box-shadow 200ms var(--ease-out-quart), background-color 160ms;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .press:active {
+    transform: scale(0.97);
+    transition-duration: 60ms;
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .press:hover {
+    box-shadow: var(--shadow-e2);
+  }
+}
+
+@keyframes press-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press,
+  .ui-button-motion {
+    transition-duration: 0.01ms;
   }
 }
 

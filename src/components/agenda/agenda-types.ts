@@ -49,33 +49,33 @@ export const STATUS_META: Record<
 > = {
   pending: {
     label: "Pendiente",
-    dot: "bg-amber-500",
-    chip: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
-    block: "border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-400 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-100",
+    dot: "bg-warning",
+    chip: "bg-warning/15 text-warning-ink",
+    block: "border-warning/45 bg-warning/12 text-foreground hover:border-warning",
   },
   confirmed: {
     label: "Confirmada",
-    dot: "bg-sky-500",
-    chip: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400",
-    block: "border-sky-300 bg-sky-50 text-sky-900 hover:border-sky-400 dark:border-sky-500/40 dark:bg-sky-500/15 dark:text-sky-100",
+    dot: "bg-info",
+    chip: "bg-info/15 text-info-ink",
+    block: "border-info/45 bg-info/12 text-foreground hover:border-info",
   },
   completed: {
     label: "Cobrada",
-    dot: "bg-emerald-500",
-    chip: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
-    block: "border-emerald-300 bg-emerald-50 text-emerald-900 hover:border-emerald-400 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100",
+    dot: "bg-success",
+    chip: "bg-success/15 text-success-ink",
+    block: "border-success/45 bg-success/12 text-foreground hover:border-success",
   },
   cancelled: {
     label: "Cancelada",
-    dot: "bg-slate-400",
-    chip: "bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400",
-    block: "border-slate-300 bg-slate-100 text-slate-500 line-through hover:border-slate-400 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400",
+    dot: "bg-muted-foreground",
+    chip: "bg-muted text-muted-foreground",
+    block: "border-border bg-muted text-muted-foreground line-through hover:border-foreground/25",
   },
   no_show: {
     label: "No asistió",
-    dot: "bg-rose-500",
-    chip: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400",
-    block: "border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-400 dark:border-rose-500/40 dark:bg-rose-500/15 dark:text-rose-100",
+    dot: "bg-destructive",
+    chip: "bg-destructive/15 text-destructive",
+    block: "border-destructive/45 bg-destructive/12 text-foreground hover:border-destructive",
   },
 };
 
@@ -83,7 +83,7 @@ export const STATUS_META: Record<
 export const DAY_START_HOUR = 9;
 export const DAY_END_HOUR = 19;
 export const SLOT_MIN = 30;
-export const ROW_HEIGHT = 44;
+export const ROW_HEIGHT = 48;
 
 export function minutesOfDay(d: Date): number {
   return d.getHours() * 60 + d.getMinutes();

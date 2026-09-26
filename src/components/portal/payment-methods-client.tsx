@@ -85,33 +85,32 @@ function CardView({ m, onSetDefault, onRemove }: {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, x: -50 }}
       whileTap={{ scale: 0.98 }}
-      className="relative overflow-hidden rounded-2xl p-4 text-white shadow-lg"
+      className="relative aspect-[1.586/1] overflow-hidden rounded-2xl p-5 text-white shadow-e2"
       style={{ backgroundColor: color }}
     >
-      <div className="absolute -right-6 -top-6 size-24 rounded-full bg-white/10" />
-      <div className="absolute -bottom-4 -left-4 size-16 rounded-full bg-white/5" />
+      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(120%_80%_at_100%_0%,rgb(255_255_255/0.18),transparent_60%)]" />
 
-      <div className="relative">
+      <div className="relative flex h-full flex-col justify-between">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             {m.alias && (
               <p className="text-sm font-bold tracking-wide opacity-95">{m.alias}</p>
             )}
-            <p className="mt-2 text-lg font-bold tracking-wider">
+            <p className="mt-2 font-mono text-lg font-semibold tracking-[0.12em] tabular">
               •••• •••• •••• {m.last4}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
             {brandLogo && brandLogo.svg}
             {m.isDefault && (
-              <Badge className="bg-white/20 text-white text-[10px] border-0">Predeterminada</Badge>
+              <Badge className="bg-white/20 text-white text-xs border-0">Predeterminada</Badge>
             )}
           </div>
         </div>
 
-        <div className="mt-4 flex items-end justify-between">
+        <div className="flex items-end justify-between">
           <div>
-            <p className="text-[10px] uppercase opacity-60">Expira</p>
+            <p className="text-xs opacity-70">Expira</p>
             <p className="text-sm font-semibold">
               {String(m.expMonth).padStart(2, "0")}/{m.expYear}
             </p>
@@ -120,7 +119,7 @@ function CardView({ m, onSetDefault, onRemove }: {
             <button
               onClick={onSetDefault}
               className={cn(
-                "rounded-lg p-1.5 transition-colors",
+                "flex size-10 items-center justify-center rounded-xl transition-colors",
                 m.isDefault ? "bg-white/20" : "bg-white/10 hover:bg-white/20"
               )}
               aria-label="Predeterminada"
@@ -129,8 +128,8 @@ function CardView({ m, onSetDefault, onRemove }: {
             </button>
             <button
               onClick={onRemove}
-              className="rounded-lg bg-white/10 p-1.5 hover:bg-white/20 transition-colors"
-              aria-label="Eliminar"
+              className="flex size-10 items-center justify-center rounded-xl bg-white/10 transition-colors hover:bg-white/20"
+              aria-label="Eliminar tarjeta"
             >
               <Trash2 className="size-4" />
             </button>
@@ -226,13 +225,13 @@ export function PaymentMethodsClient() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"
+          className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3"
         >
-          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning-ink" />
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-amber-700">Por vencer</p>
+            <p className="text-sm font-semibold text-warning-ink">Por vencer</p>
             {expiring.map((c) => (
-              <p key={c.id} className="text-xs text-amber-700/80">
+              <p key={c.id} className="text-xs text-warning-ink/80">
                 {c.alias ? `${c.alias} — ` : ""}•••• {c.last4} ({c.expMonth}/{c.expYear})
               </p>
             ))}

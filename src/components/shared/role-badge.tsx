@@ -32,25 +32,25 @@ type RoleVisual = {
 const ROLE_VISUALS: Record<string, RoleVisual> = {
   // Roles de sistema por modo de negocio (Role.name) — claves en español,
   // porque es el nombre legible que llega desde la BD.
-  Propietario: { icon: Crown, accent: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
-  Gerente: { icon: BriefcaseBusiness, accent: "bg-sky-500/15 text-sky-700 dark:text-sky-400" },
+  Propietario: { icon: Crown, accent: "bg-warning/15 text-warning-ink" },
+  Gerente: { icon: BriefcaseBusiness, accent: "bg-info/15 text-info-ink" },
   Cajero: { icon: Calculator, accent: "bg-teal-500/15 text-teal-700 dark:text-teal-400" },
   Mesero: { icon: UtensilsCrossed, accent: "bg-orange-500/15 text-orange-700 dark:text-orange-400" },
-  "Cocina (KDS)": { icon: ChefHat, accent: "bg-rose-500/15 text-rose-700 dark:text-rose-400" },
-  Cocina: { icon: ChefHat, accent: "bg-rose-500/15 text-rose-700 dark:text-rose-400" },
-  Repartidor: { icon: Bike, accent: "bg-blue-500/15 text-blue-700 dark:text-blue-400" },
+  "Cocina (KDS)": { icon: ChefHat, accent: "bg-destructive/15 text-destructive" },
+  Cocina: { icon: ChefHat, accent: "bg-destructive/15 text-destructive" },
+  Repartidor: { icon: Bike, accent: "bg-info/15 text-info-ink" },
   "Agente de atención": { icon: Headset, accent: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
   "Agente de renta": { icon: Headset, accent: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
   Admin: { icon: Shield, accent: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-400" },
-  "Super admin": { icon: ShieldCheck, accent: "bg-slate-500/15 text-slate-700 dark:text-slate-300" },
+  "Super admin": { icon: ShieldCheck, accent: "bg-muted-foreground/15 text-foreground" },
 };
 
 // Fallback por rol efectivo (cuando no hay Role.name resuelto).
 const COARSE_VISUALS: Record<string, RoleVisual> = {
-  owner: { icon: Crown, accent: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
-  manager: { icon: BriefcaseBusiness, accent: "bg-sky-500/15 text-sky-700 dark:text-sky-400" },
+  owner: { icon: Crown, accent: "bg-warning/15 text-warning-ink" },
+  manager: { icon: BriefcaseBusiness, accent: "bg-info/15 text-info-ink" },
   cashier: { icon: Calculator, accent: "bg-teal-500/15 text-teal-700 dark:text-teal-400" },
-  superadmin: { icon: ShieldCheck, accent: "bg-slate-500/15 text-slate-700 dark:text-slate-300" },
+  superadmin: { icon: ShieldCheck, accent: "bg-muted-foreground/15 text-foreground" },
   admin: { icon: Shield, accent: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-400" },
   customer: { icon: UserRound, accent: "bg-muted text-muted-foreground" },
 };
@@ -87,7 +87,7 @@ export function RoleBadge({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full bg-muted py-0.5 pl-1 pr-2 text-[11px] font-medium text-muted-foreground",
+        "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full bg-muted py-0.5 pl-1 pr-2 text-xs font-medium text-muted-foreground",
         className
       )}
       title={label}

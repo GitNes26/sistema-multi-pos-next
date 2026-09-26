@@ -53,7 +53,7 @@ export function PromosRoiReport({ from, to }: Props) {
         <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{money(totalDiscount)}</div>
+              <div className="text-2xl font-bold text-destructive">{money(totalDiscount)}</div>
               <div className="text-xs text-muted-foreground">Descuento total</div>
             </div>
           </CardContent>
@@ -61,7 +61,7 @@ export function PromosRoiReport({ from, to }: Props) {
         <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{money(totalRevenue)}</div>
+              <div className="text-2xl font-bold text-success-ink">{money(totalRevenue)}</div>
               <div className="text-xs text-muted-foreground">Ingresos generados</div>
             </div>
           </CardContent>
@@ -90,8 +90,8 @@ export function PromosRoiReport({ from, to }: Props) {
                 {rows.map((r) => (
                   <tr key={r.promotionId} className="border-b last:border-0">
                     <td className="py-2 pr-4 font-medium">{r.promotionName}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-red-600">{money(r.discountGiven)}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-green-600">{money(r.revenueGenerated)}</td>
+                    <td className="py-2 pr-4 text-right font-mono text-destructive">{money(r.discountGiven)}</td>
+                    <td className="py-2 pr-4 text-right font-mono text-success-ink">{money(r.revenueGenerated)}</td>
                     <td className="py-2 pr-4 text-right">{r.ordersCount}</td>
                     <td className="py-2 text-right">
                       <Badge variant={r.roi >= 100 ? "default" : "secondary"}>

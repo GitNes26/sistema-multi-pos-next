@@ -41,13 +41,13 @@ export function FillRateReport({ from: _from, to: _to }: { from: string; to: str
               <div key={r.locationName} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">{r.locationName}</span>
-                  <span className={r.fillRate < 80 ? "text-red-600 font-bold" : "text-muted-foreground"}>
+                  <span className={r.fillRate < 80 ? "text-destructive font-bold" : "text-muted-foreground"}>
                     {r.fillRate.toFixed(1)}%
                   </span>
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-muted">
                   <div
-                    className={`h-full rounded-full ${r.fillRate >= 90 ? "bg-green-500" : r.fillRate >= 70 ? "bg-amber-500" : "bg-red-500"}`}
+                    className={`h-full rounded-full ${r.fillRate >= 90 ? "bg-success" : r.fillRate >= 70 ? "bg-warning" : "bg-destructive"}`}
                     style={{ width: `${r.fillRate}%` }}
                   />
                 </div>

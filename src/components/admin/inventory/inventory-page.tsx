@@ -64,16 +64,16 @@ const MOVEMENT_TYPES: { value: string; label: string }[] = [
 
 function statusBadge(status: InventoryRow["status"]) {
   if (status === "empty") return <Badge variant="destructive">Sin stock</Badge>;
-  if (status === "low") return <Badge className="bg-amber-500 text-white">Stock bajo</Badge>;
+  if (status === "low") return <Badge className="bg-warning text-warning-foreground">Stock bajo</Badge>;
   return <Badge variant="secondary">OK</Badge>;
 }
 
 function movementTypeBadge(type: string) {
   const map: Record<string, { label: string; className: string }> = {
-    purchase: { label: "Compra", className: "bg-emerald-500 text-white" },
-    adjustment: { label: "Ajuste", className: "bg-sky-500 text-white" },
-    sale: { label: "Venta", className: "bg-destructive text-white" },
-    return: { label: "Devolución", className: "bg-emerald-500 text-white" },
+    purchase: { label: "Compra", className: "bg-success text-success-foreground" },
+    adjustment: { label: "Ajuste", className: "bg-info text-info-foreground" },
+    sale: { label: "Venta", className: "bg-destructive text-destructive-foreground" },
+    return: { label: "Devolución", className: "bg-success text-success-foreground" },
     transfer_in: { label: "Transferencia +", className: "bg-indigo-500 text-white" },
     transfer_out: { label: "Transferencia −", className: "bg-orange-500 text-white" },
   };
@@ -83,8 +83,8 @@ function movementTypeBadge(type: string) {
 
 function revisionStatusBadge(status: RevisionStatus) {
   if (status === "draft") return <Badge variant="secondary">Borrador</Badge>;
-  if (status === "in_progress") return <Badge className="bg-sky-500 text-white">En conteo</Badge>;
-  if (status === "completed") return <Badge className="bg-emerald-500 text-white">Completada</Badge>;
+  if (status === "in_progress") return <Badge className="bg-info text-info-foreground">En conteo</Badge>;
+  if (status === "completed") return <Badge className="bg-success text-success-foreground">Completada</Badge>;
   return <Badge variant="destructive">Cancelada</Badge>;
 }
 
@@ -274,7 +274,7 @@ const revisionColumns: ColumnDef<InventoryRevision, unknown>[] = [
     cell: ({ row }) => (
       <span className="text-right tabular-nums">
         {row.original.differenceCount > 0 ? (
-          <span className="font-medium text-amber-600">{row.original.differenceCount}</span>
+          <span className="font-medium text-warning-ink">{row.original.differenceCount}</span>
         ) : (
           row.original.differenceCount
         )}
@@ -399,7 +399,7 @@ function MovementDialog({
                   type="button"
                   onClick={negate}
                   title="Cambiar signo (±) para ajustar en negativo"
-                  className="h-7 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 text-xs font-semibold text-amber-600 transition hover:bg-amber-500/20"
+                  className="h-7 rounded-md border border-warning/40 bg-warning/10 px-2.5 text-xs font-semibold text-warning-ink transition hover:bg-warning/20"
                 >
                   ± signo
                 </button>
@@ -1058,7 +1058,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                           {r.status !== "ok" && (
                             <Badge
                               variant="outline"
-                              className={`mt-1 text-xs ${r.status === "empty" ? "border-red-500 text-red-600" : "border-amber-500 text-amber-600"}`}
+                              className={`mt-1 text-xs ${r.status === "empty" ? "border-destructive text-destructive" : "border-warning text-warning-ink"}`}
                             >
                               {r.status === "empty" ? "Sin stock" : `Mín. ${r.minThreshold}`}
                             </Badge>
@@ -1248,7 +1248,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                       <div className="flex items-center gap-2">
                         {revisionStatusBadge(r.status)}
                         {r.differenceCount > 0 ? (
-                          <Badge className="bg-amber-500 text-white">{r.differenceCount} diffs</Badge>
+                          <Badge className="bg-warning text-warning-foreground">{r.differenceCount} diffs</Badge>
                         ) : (
                           <Badge variant="secondary">{r.differenceCount}</Badge>
                         )}
@@ -1306,7 +1306,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
       )}
       <BulkInventoryDialog open={bulkOpen} onOpenChange={setBulkOpen} rows={rows} onDone={() => void load()} />
       <DialogComponent open={importPreview !== null} onOpenChange={(next) => { if (!next) { setImportPreview(null); setPendingImport(null); } }} title="Revisar importación de inventario" description={importPreview ? `${importPreview.imported} filas válidas · ${importPreview.errors.length} con errores` : ""} footer={<><Button variant="outline" onClick={() => { setImportPreview(null); setPendingImport(null); }}>Cancelar</Button><Button onClick={() => void confirmInventoryImport()} disabled={importing || !importPreview?.imported || Boolean(importPreview?.errors.length)}>{importing && <Loader2 className="size-4 animate-spin" />}Confirmar importación</Button></>}>
-        {importPreview?.errors.length ? <div role="alert" className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><p className="font-medium">Corrige el archivo antes de importarlo:</p>{importPreview.errors.slice(0, 20).map((error) => <p key={`${error.row}-${error.message}`}>Fila {error.row}: {error.message}</p>)}</div> : <div className="rounded-xl border border-emerald-600/30 bg-emerald-500/5 p-3 text-sm text-emerald-700">El archivo está listo. Las cantidades reemplazarán la existencia actual de la ubicación seleccionada.</div>}
+        {importPreview?.errors.length ? <div role="alert" className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><p className="font-medium">Corrige el archivo antes de importarlo:</p>{importPreview.errors.slice(0, 20).map((error) => <p key={`${error.row}-${error.message}`}>Fila {error.row}: {error.message}</p>)}</div> : <div className="rounded-xl border border-success/30 bg-success/5 p-3 text-sm text-success-ink">El archivo está listo. Las cantidades reemplazarán la existencia actual de la ubicación seleccionada.</div>}
       </DialogComponent>
     </>
   );
@@ -1537,7 +1537,7 @@ function RevisionDialog({
       description={
         <>
           {new Date(revision.startedAt ?? revision.createdAt).toLocaleString()} · {counted}/{items.length} contados
-          {withDiff > 0 && <span className="text-amber-600"> · {withDiff} con diferencia</span>}
+          {withDiff > 0 && <span className="text-warning-ink"> · {withDiff} con diferencia</span>}
         </>
       }
       className="sm:max-w-4xl"
@@ -1573,7 +1573,7 @@ function RevisionDialog({
                 autoFocus
               />
             </div>
-            <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+            <p className="flex items-center gap-1.5 text-xs text-success-ink">
               <ClipboardCheck className="size-3.5 shrink-0" />
               El conteo se guarda automáticamente al escanear o escribir; no requiere presionar ningún botón.
             </p>
@@ -1662,7 +1662,7 @@ function RevisionDialog({
                       ) : diff === 0 ? (
                         <span className="text-muted-foreground">0</span>
                       ) : diff > 0 ? (
-                        <span className="font-medium text-emerald-600">+{fmtStock(diff, item.unit)}</span>
+                        <span className="font-medium text-success-ink">+{fmtStock(diff, item.unit)}</span>
                       ) : (
                         <span className="font-medium text-destructive">{fmtStock(diff, item.unit)}</span>
                       )}

@@ -22,39 +22,31 @@ import { ThumbImage } from "@/components/base/thumb-image"
 
 function PlaceholderImage() {
   return (
-    <div className="flex aspect-square w-full items-center justify-center bg-muted/50 text-muted-foreground">
-      <Package className="size-8 text-muted-foreground/50" />
+    <div className="flex aspect-square w-full items-center justify-center bg-surface-sunken text-muted-foreground">
+      <Package className="size-8 opacity-60" />
     </div>
   )
 }
 
+// Para el cliente, la existencia exacta es ruido: solo se avisa cuando
+// importa (se agotó o quedan pocas piezas).
 function StockBadge({ stock, track }: { stock: number; track: boolean }) {
-  if (!track) {
-    return (
-      <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-        —
-      </span>
-    )
-  }
+  if (!track) return null
   if (stock <= 0) {
     return (
-      <span className="rounded-md bg-destructive/90 px-1.5 py-0.5 text-xs font-bold text-white">
-        Sin stock
+      <span className="rounded-full bg-destructive/12 px-2 py-0.5 text-xs font-semibold text-destructive">
+        Agotado
       </span>
     )
   }
   if (stock <= 8) {
     return (
-      <span className="rounded-md bg-amber-500 px-1.5 py-0.5 text-xs font-bold text-white">
-        {Math.floor(stock)} u
+      <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning-ink tabular">
+        Quedan {Math.floor(stock)}
       </span>
     )
   }
-  return (
-    <span className="rounded-md bg-emerald-600/90 px-1.5 py-0.5 text-xs font-bold text-white">
-      {Math.floor(stock)} u
-    </span>
-  )
+  return null
 }
 
 export function ProductCard({
@@ -171,7 +163,7 @@ export function ProductCard({
   return (
     <>
       <motion.div
-        className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm"
+        className="group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-card"
         whileTap={{ scale: 0.97 }}
         transition={SPRING_DEFAULT}
       >
@@ -191,8 +183,8 @@ export function ProductCard({
 
           {/* Badge a granel */}
           {isBulk && (
-            <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-md bg-violet-600 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
-              <Scale className="size-3" /> A granel
+            <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-foreground/85 px-2 py-0.5 text-xs font-semibold text-background">
+              <Scale className="size-3" /> Granel
             </span>
           )}
 
@@ -202,7 +194,7 @@ export function ProductCard({
               type="button"
               disabled={favBusy}
               onClick={handleFavorite}
-              className="absolute right-2 top-2 z-10 flex size-11 touch-manipulation items-center justify-center rounded-xl bg-background/85 backdrop-blur-sm active:scale-95"
+              className="absolute right-1.5 top-1.5 z-10 flex size-11 touch-manipulation items-center justify-center rounded-full bg-background/90 shadow-e1 transition-transform active:scale-90 supports-backdrop-filter:backdrop-blur-sm"
               whileTap={{ scale: 0.75 }}
               aria-label="Favorito"
             >
@@ -229,14 +221,14 @@ export function ProductCard({
 
           {/* Variantes badge */}
           {hasVariants && (
-            <span className="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-xs font-bold text-white">
+            <span className="absolute bottom-1.5 right-1.5 z-10 flex items-center gap-1 rounded-full bg-background/90 px-2 py-0.5 text-xs font-semibold text-foreground shadow-e1">
               <Layers className="size-3" /> {product.variants.length} variantes
             </span>
           )}
         </div>
 
         <div className="flex flex-1 flex-col gap-1 p-3">
-          <p className="line-clamp-2 text-sm font-semibold leading-tight">
+          <p className="line-clamp-2 text-sm font-medium leading-snug">
             {product.name}
           </p>
           {product.description && (
@@ -246,7 +238,7 @@ export function ProductCard({
           )}
 
           <div className="flex items-end justify-between gap-1">
-            <p className="text-sm font-bold text-primary tabular-nums">
+            <p className="text-base font-bold tracking-tight text-foreground tabular-nums">
               {priceLabel}
               {unitLabel && (
                 <span className="ml-0.5 text-xs font-normal text-muted-foreground">
@@ -281,8 +273,8 @@ export function ProductCard({
               <Button
                 size="sm"
                 className={cn(
-                  "h-11 w-full touch-manipulation rounded-xl text-sm font-semibold shadow-sm transition-all",
-                  justAdded && "bg-emerald-500 hover:bg-emerald-500"
+                  "h-11 w-full touch-manipulation rounded-xl text-sm font-semibold transition-colors",
+                  justAdded && "bg-success text-success-foreground hover:bg-success"
                 )}
                 onClick={handleAdd}
               >
@@ -307,7 +299,7 @@ export function ProductCard({
                     </motion.div>
                   )}
                 </AnimatePresence>
-                {justAdded ? "¡Agregado!" : hasVariants ? "Elegir" : "Agregar"}
+                {justAdded ? "Agregado" : hasVariants ? "Elegir" : "Agregar"}
               </Button>
             )}
           </div>

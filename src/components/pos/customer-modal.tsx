@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Loader2, Mail, Phone, Search, Trash2, UserPlus, UserRound } from "lucide-react";
 import * as yup from "yup";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { InputGroupField } from "@/components/base/input-group-field";
+import { parseCustomerQr } from "@/lib/customer-qr";
 import { usePosStore } from "@/stores/pos-store";
 import { money } from "@/lib/pos/money";
 import { pointsToMoney } from "@/lib/pos/pricing";
@@ -38,10 +39,23 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return customers;
+    const qrId = parseCustomerQr(q);
+    if (qrId) return customers.filter((c) => c.id === qrId);
     return customers.filter((c) => c.fullName.toLowerCase().includes(needle) || (c.phone ?? "").includes(needle) || (c.customerCode ?? "").toLowerCase().includes(needle));
   }, [customers, q]);
 
-  const close = () => { setCreating(false); setDraft(blank); setErrors({}); onClose(); };
+  const close = () => { setCreating(false); setDraft(blank); setErrors({}); setQ(""); onClose(); };
+
+  // Lectura del QR del cliente dentro del buscador: se asigna sin más pasos.
+  useEffect(() => {
+    const qrId = parseCustomerQr(q);
+    if (!qrId) return;
+    const match = customers.find((c) => c.id === qrId);
+    if (!match) return;
+    setCustomer(match.id);
+    close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, customers]);
   const createCustomer = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrors({});
@@ -90,12 +104,12 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
         {errors.form && <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{errors.form}</p>}
       </form> : <>
         <Button type="button" className="w-full justify-start" variant="outline" onClick={() => setCreating(true)}><UserPlus className="size-4" /> Registrar cliente nuevo</Button>
-        <div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input autoFocus type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre, teléfono o nº de cliente" className="pl-9 md:pl-9" /></div>
+        <div className="relative"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input autoFocus type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre, teléfono o nº de cliente" className="pl-9 md:pl-9 desk:pl-9" /></div>
         <div className="space-y-1.5">{filtered.length === 0 ? <p className="py-6 text-center text-sm text-muted-foreground">Sin clientes que coincidan.</p> : filtered.map((c) =>
           <button key={c.id} type="button" onClick={() => { setCustomer(c.id); close(); }} className="flex w-full items-center gap-3 rounded-xl border bg-card px-3 py-2 text-left transition hover:border-primary/50">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">{c.fullName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}</span>
             <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{c.fullName}</span><span className="block truncate text-xs text-muted-foreground">{c.phone ?? c.email ?? c.customerCode ?? "—"}</span></span>
-            <span className="flex shrink-0 flex-col items-end"><span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">{money(pointsToMoney(c.points, loyalty.pointValue))}</span><span className="mt-0.5 text-xs text-muted-foreground">{Math.floor(c.points)} pts</span></span>
+            <span className="flex shrink-0 flex-col items-end"><span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning-ink">{money(pointsToMoney(c.points, loyalty.pointValue))}</span><span className="mt-0.5 text-xs text-muted-foreground">{Math.floor(c.points)} pts</span></span>
           </button>)}</div>
       </>}
     </DialogComponent>

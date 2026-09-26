@@ -1081,7 +1081,7 @@ export function ProductsForm({
                     <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <input
                         type="checkbox"
-                        className="size-3.5 accent-emerald-600"
+                        className="size-3.5 accent-success"
                         checked={opt.required !== false}
                         onChange={(e) =>
                           updateOption(i, { required: e.target.checked })

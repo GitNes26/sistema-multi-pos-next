@@ -227,10 +227,10 @@ export function ListDetailClient({ listId }: { listId: string }) {
           <div className="space-y-2">
             {items.map((i) => (
                 <SwipeableRow key={itemKey(i)} onDelete={() => removeItem(itemKey(i))}>
-                <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3.5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3.5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{i.productName}</p>
-                    {i.variantName && <p className="text-xs text-muted-foreground">{i.variantName}</p>}
+                    {i.variantName && i.variantName !== "Default" && <p className="text-xs text-muted-foreground">{i.variantName}</p>}
                     <p className="text-xs text-muted-foreground">{money(i.price)}{i.unitAbbrev ? `/${i.unitAbbrev}` : " c/u"} · {money(i.price * i.quantity)} estimado</p>
                   </div>
                   <div className="flex items-center justify-between gap-1.5 sm:justify-end">
@@ -253,7 +253,7 @@ export function ListDetailClient({ listId }: { listId: string }) {
         </motion.div>
 
         {items.length > 0 && (
-          <motion.div variants={STAGGER_FADE_UP.item} className="rounded-2xl border bg-card p-4 shadow-sm">
+          <motion.div variants={STAGGER_FADE_UP.item} className="rounded-2xl border bg-card p-4">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Total estimado</span>
               <span className="font-semibold">{money(total)}</span>
@@ -276,7 +276,7 @@ export function ListDetailClient({ listId }: { listId: string }) {
         >
             <div className="sticky top-0 z-10 bg-background pb-2"><div className="relative">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input type="search" className="pl-9 md:pl-9" aria-label="Buscar productos para la lista" placeholder="Buscar productos…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input type="search" className="pl-9 md:pl-9 desk:pl-9" aria-label="Buscar productos para la lista" placeholder="Buscar productos…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div></div>
             <div className="space-y-2">
               {searchResults.map((p) => (

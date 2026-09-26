@@ -10,13 +10,6 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { InputGroupField } from "@/components/base/input-group-field"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 
 const schema = yup.object({
   password: yup
@@ -50,8 +43,8 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
 
   if (!token) {
     return (
-      <Card className="max-w-sm w-full">
-        <CardContent className="p-6">
+      <section className="w-full max-w-sm animate-rise-in">
+        <div className="space-y-4">
           <Alert variant="destructive">
             <AlertDescription>
               Enlace inválido.{" "}
@@ -64,8 +57,8 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
               .
             </AlertDescription>
           </Alert>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     )
   }
 
@@ -90,14 +83,14 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
   }
 
   return (
-    <Card className="max-w-sm w-full">
-      <CardHeader>
-        <CardTitle className="text-center text-lg">Nueva contraseña</CardTitle>
-        <CardDescription>
+    <section className="w-full max-w-sm animate-rise-in">
+      <header className="mb-6 space-y-1">
+        <h2 className="font-heading text-xl font-semibold tracking-tight">Nueva contraseña</h2>
+        <p className="text-sm text-muted-foreground">
           Elige una nueva contraseña para tu cuenta.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </p>
+      </header>
+      <div className="space-y-4">
         {status.kind === "ok" && (
           <Alert>
             <CheckCircle2 className="size-4" />
@@ -165,7 +158,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
             Guardar contraseña
           </Button>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }

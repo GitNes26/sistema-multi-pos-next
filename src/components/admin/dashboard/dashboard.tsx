@@ -35,9 +35,9 @@ import {
 // FASE 10.1/10.4 — Dashboard con métricas reales y gráficas (Recharts).
 
 const PAYMENT_COLORS: Record<string, string> = {
-  cash: "#10b981",
-  card: "#6366f1",
-  wallet: "#f59e0b",
+  cash: "var(--success)",
+  card: "var(--info)",
+  wallet: "var(--warning)",
   points: "#8b5cf6",
   other: "#64748b",
 };
@@ -70,7 +70,7 @@ function MetricCard({
         </span>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="font-heading text-2xl font-semibold tracking-tight tabular">{value}</div>
         <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
       </CardContent>
     </Card>
@@ -147,26 +147,22 @@ export function AdminDashboard() {
       </div>
       {/* Onboarding prompt */}
       {data.orgName === "Mi Empresa" && (
-        <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30">
-          <CardContent className="flex items-center justify-between py-4">
+        <Card className="border-primary/25 bg-accent/50">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                <Package className="w-5 h-5 text-white" />
+              <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <Package className="size-5" />
               </div>
               <div>
-                <p className="font-medium text-emerald-800 dark:text-emerald-200">
-                  ¡Configura tu negocio!
-                </p>
-                <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                <p className="font-semibold">Configura tu negocio</p>
+                <p className="text-sm text-muted-foreground">
                   Elige el tipo de negocio y completa los datos de tu empresa.
                 </p>
               </div>
             </div>
-            <a href="/onboarding">
-              <Button size="sm" className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white">
-                Configurar
-              </Button>
-            </a>
+            <Button asChild>
+              <a href="/onboarding">Configurar</a>
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -220,7 +216,7 @@ export function AdminDashboard() {
                 <XAxis dataKey="label" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))} />
                 <Tooltip formatter={(v: unknown) => money(Number(v ?? 0))} />
-                <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="total" fill="var(--primary)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

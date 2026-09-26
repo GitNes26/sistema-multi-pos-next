@@ -102,13 +102,13 @@ export function Splash({
             >
               {orgName ? (
                 <>
-                  <span className="max-w-sm truncate bg-gradient-to-r from-emerald-300 via-teal-300 to-sky-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent">
+                  <span className="max-w-sm truncate font-heading text-2xl font-semibold tracking-tight text-white">
                     {orgName}
                   </span>
                   <span className="mt-1.5 block text-xs text-slate-400">Multi-POS</span>
                 </>
               ) : (
-                <span className="bg-gradient-to-r from-emerald-300 via-teal-300 to-sky-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent">
+                <span className="font-heading text-2xl font-semibold tracking-tight text-white">
                   Multi-POS
                 </span>
               )}
@@ -126,7 +126,7 @@ export function Splash({
               {[0, 1, 2].map((i) => (
                 <motion.span
                   key={i}
-                  className="size-1.5 rounded-full bg-emerald-400/50"
+                  className="size-1.5 rounded-full bg-success/50"
                   animate={
                     prefersReduced
                       ? undefined

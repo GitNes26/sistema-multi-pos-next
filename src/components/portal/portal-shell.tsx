@@ -22,6 +22,7 @@ import { PortalHeader } from "@/components/portal/portal-header";
 import { CartSheet } from "@/components/portal/cart-sheet";
 import { BulkModal } from "@/components/portal/bulk-modal";
 import { NavDrawer } from "@/components/portal/nav-drawer";
+import { motion } from "framer-motion";
 import { TapScale } from "@/components/shared/tap-scale";
 import { haptic } from "@/lib/haptics";
 
@@ -118,9 +119,12 @@ export function PortalShell({
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col">
       <PortalHeader storeName={storeName} logoUrl={logoUrl} user={user} />
 
-      <main className="flex-1 pb-20">{children}</main>
+      <main className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md border-t bg-background/95 backdrop-blur safe-area-bottom">
+      <nav
+        aria-label="Navegación principal"
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md border-t bg-background/92 safe-area-bottom supports-backdrop-filter:bg-background/80 supports-backdrop-filter:backdrop-blur-xl"
+      >
         <div className={cn("grid", GRID_COLS[barItems.length + (hasMore ? 1 : 0)] ?? "grid-cols-5")}>
           {barItems.map((item) => {
             const Icon = item.icon;
@@ -129,12 +133,23 @@ export function PortalShell({
               <TapScale key={item.id}>
                 <Link
                   href={item.href}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex min-h-14 flex-col items-center justify-center gap-1 px-1 py-2 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-2 focus-visible:outline-primary",
-                    active && "text-primary"
+                    "flex min-h-16 flex-col items-center justify-center gap-1 px-1 pt-2 pb-1.5 text-xs font-medium text-muted-foreground transition-colors outline-none focus-visible:text-foreground",
+                    active && "font-semibold text-foreground"
                   )}
                 >
-                  <Icon className="size-5" strokeWidth={active ? 2.5 : 2} />
+                  {/* Indicador activo tipo píldora que viaja entre pestañas */}
+                  <span className="relative flex h-8 w-14 items-center justify-center">
+                    {active && (
+                      <motion.span
+                        layoutId="portal-tab-pill"
+                        className="absolute inset-0 rounded-full bg-primary/14"
+                        transition={{ type: "spring", stiffness: 520, damping: 40 }}
+                      />
+                    )}
+                    <Icon className={cn("relative size-5", active && "text-primary")} strokeWidth={active ? 2.4 : 1.9} />
+                  </span>
                   <span className="leading-none">{item.label}</span>
                 </Link>
               </TapScale>
@@ -150,12 +165,21 @@ export function PortalShell({
                   usePortalStore.getState().setNavOpen(true);
                 }}
                 className={cn(
-                  "flex min-h-14 w-full flex-col items-center justify-center gap-1 px-1 py-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary",
-                  !currentInBar && "text-primary"
+                  "flex min-h-16 w-full flex-col items-center justify-center gap-1 px-1 pt-2 pb-1.5 text-xs font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:text-foreground",
+                  !currentInBar && "font-semibold text-foreground"
                 )}
                 aria-label="Abrir menú de navegación"
               >
-                <Menu className="size-5" strokeWidth={2} />
+                <span className="relative flex h-8 w-14 items-center justify-center">
+                  {!currentInBar && (
+                    <motion.span
+                      layoutId="portal-tab-pill"
+                      className="absolute inset-0 rounded-full bg-primary/14"
+                      transition={{ type: "spring", stiffness: 520, damping: 40 }}
+                    />
+                  )}
+                  <Menu className={cn("relative size-5", !currentInBar && "text-primary")} strokeWidth={1.9} />
+                </span>
                 <span className="leading-none">Menú</span>
               </button>
             </TapScale>

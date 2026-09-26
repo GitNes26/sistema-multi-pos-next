@@ -28,9 +28,9 @@ interface KitchenOrder {
 }
 
 const STATUS_META: Record<string, { label: string; badge: string }> = {
-  pending: { label: "Pendiente", badge: "bg-slate-500/15 text-slate-600 dark:text-slate-300" },
-  confirmed: { label: "Enviada", badge: "bg-sky-500/15 text-sky-600 dark:text-sky-400" },
-  preparing: { label: "En preparación", badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  pending: { label: "Pendiente", badge: "bg-muted-foreground/15 text-muted-foreground" },
+  confirmed: { label: "Enviada", badge: "bg-info/15 text-info-ink" },
+  preparing: { label: "En preparación", badge: "bg-warning/15 text-warning-ink" },
 }
 
 const ITEM_STATUS_LABELS: Record<string, string> = {
@@ -121,19 +121,19 @@ export function KitchenStatus({
   }
 
   return (
-    <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 px-3 py-2.5">
+    <div className="rounded-xl border border-warning/40 bg-warning/5 px-3 py-2.5">
       <div className="flex items-center gap-2">
         {loading && !order ? (
-          <Loader2 className="size-4 shrink-0 animate-spin text-amber-600" />
+          <Loader2 className="size-4 shrink-0 animate-spin text-warning-ink" />
         ) : (
-          <Flame className={cn("size-4 shrink-0 text-amber-600", order?.status === "preparing" && "animate-pulse")} />
+          <Flame className={cn("size-4 shrink-0 text-warning-ink", order?.status === "preparing" && "animate-pulse")} />
         )}
-        <span className="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+        <span className="text-xs font-bold uppercase tracking-wide text-warning-ink">
           Cocina
         </span>
         {order ? (
           <>
-            <span className="ml-auto text-xs font-semibold text-amber-700 dark:text-amber-400 tabular-nums">
+            <span className="ml-auto text-xs font-semibold text-warning-ink tabular-nums">
               #{order.orderNumber} · {elapsed(order.createdAt, tick)}
             </span>
             <Button
@@ -156,7 +156,7 @@ export function KitchenStatus({
       </div>
 
       {order && (
-        <div className="mt-2 space-y-1.5 border-t border-amber-500/20 pt-2">
+        <div className="mt-2 space-y-1.5 border-t border-warning/20 pt-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <span
               className={cn(
@@ -175,13 +175,13 @@ export function KitchenStatus({
               <li key={i.id} className="flex items-center justify-between gap-2 text-xs">
                 <span className="min-w-0 truncate text-foreground">
                   {i.quantity} × {i.productName}
-                  {i.variantName && i.productName !== i.variantName ? ` (${i.variantName})` : ""}
+                  {i.variantName && i.variantName !== "Default" && i.productName !== i.variantName ? ` (${i.variantName})` : ""}
                 </span>
                 <span
                   className={cn(
                     "shrink-0 text-[0.65rem] font-medium",
                     i.itemStatus === "ready" || i.itemStatus === "served"
-                      ? "text-emerald-600 dark:text-emerald-400"
+                      ? "text-success-ink"
                       : "text-muted-foreground"
                   )}
                 >

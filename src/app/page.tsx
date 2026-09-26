@@ -7,6 +7,7 @@ import {
   Boxes,
   Gift,
   MessageCircle,
+  Scale,
   ScanBarcode,
   Smartphone,
   Store,
@@ -23,11 +24,10 @@ import {
   Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { HeroBackground } from "@/components/landing/hero-background"
-import { HeroParallax } from "@/components/landing/parallax"
+import { Logo } from "@/components/layout/logo"
 import { Reveal } from "@/components/landing/reveal"
-import { ScrollCue } from "@/components/landing/scroll-cue"
-import { AnimatedStats } from "@/components/landing/animated-stats"
+import { ProductShot } from "@/components/landing/product-shot"
+import { cn } from "@/lib/utils"
 import packageJson from "../../package.json"
 import { prisma } from "@/lib/db"
 import { planWhatsappUrl, whatsappUrl } from "@/lib/whatsapp"
@@ -45,67 +45,36 @@ export const metadata: Metadata = {
 
 const WHATSAPP_URL = whatsappUrl()
 
-const FEATURES = [
+const DIFFERENTIATORS = [
   {
-    icon: ScanBarcode,
-    color: "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400 dark:bg-emerald-500/15",
-    title: "Punto de venta",
-    text: "Escáner, venta a granel, pagos divididos y cierre de caja con aprobación de supervisor.",
+    icon: Scale,
+    title: "Venta a granel, sin trucos",
+    text: "Vende por kilo, pieza, litro o monto con el precio calculado al instante en caja. No es un complemento: es un tipo de producto completo, del POS al inventario.",
+    points: ["Kilos, piezas, litros o por monto", "Precio en tiempo real en la caja", "Existencias exactas por fracción"],
   },
   {
     icon: Store,
-    color: "text-sky-600 bg-sky-500/10 dark:text-sky-400 dark:bg-sky-500/15",
-    title: "Multi-sucursal",
-    text: "Sucursales y CEDIS con inventario centralizado y transferencias entre ubicaciones.",
-  },
-  {
-    icon: Boxes,
-    color: "text-violet-600 bg-violet-500/10 dark:text-violet-400 dark:bg-violet-500/15",
-    title: "Inventario inteligente",
-    text: "Productos con variantes, revisiones periódicas y alertas automáticas de stock bajo.",
-  },
-  {
-    icon: Truck,
-    color: "text-amber-600 bg-amber-500/10 dark:text-amber-400 dark:bg-amber-500/15",
-    title: "Pedidos en línea",
-    text: "Para recoger o a domicilio, con rastreo GPS en vivo y confirmación segura con QR o PIN.",
+    title: "Todas tus sucursales, un solo inventario",
+    text: "Cada sucursal y CEDIS lleva su propio inventario, con transferencias entre ubicaciones y revisiones físicas. Tú lo ves todo consolidado.",
+    points: ["Sucursales y CEDIS", "Transferencias entre ubicaciones", "Revisiones periódicas de inventario"],
   },
   {
     icon: Smartphone,
-    color: "text-rose-600 bg-rose-500/10 dark:text-rose-400 dark:bg-rose-500/15",
-    title: "Portal de clientes",
-    text: "Tienda, carrito, listas de compras, favoritos y seguimiento de pedidos en tiempo real.",
+    title: "Tus clientes compran desde su teléfono",
+    text: "Un portal conectado al mismo catálogo y reglas del POS: pedidos para recoger o a domicilio, rastreo en vivo, favoritos, listas y puntos de lealtad.",
+    points: ["Pedidos con rastreo GPS en vivo", "Entrega segura con QR o PIN", "Puntos de lealtad y promociones"],
   },
-  {
-    icon: Gift,
-    color: "text-fuchsia-600 bg-fuchsia-500/10 dark:text-fuchsia-400 dark:bg-fuchsia-500/15",
-    title: "Lealtad y promociones",
-    text: "Programa de puntos y publicaciones programadas para fidelizar a tus clientes.",
-  },
-  {
-    icon: BarChart3,
-    color: "text-teal-600 bg-teal-500/10 dark:text-teal-400 dark:bg-teal-500/15",
-    title: "Reportes y análisis",
-    text: "Exporta ventas, inventario y reportes en PDF o Excel con un solo clic.",
-  },
-  {
-    icon: Bell,
-    color: "text-indigo-600 bg-indigo-500/10 dark:text-indigo-400 dark:bg-indigo-500/15",
-    title: "Notificaciones en vivo",
-    text: "Entérate al instante de ventas, nuevos pedidos y stock bajo, en tiempo real.",
-  },
-  {
-    icon: ClipboardCheck,
-    color: "text-cyan-600 bg-cyan-500/10 dark:text-cyan-400 dark:bg-cyan-500/15",
-    title: "Proveedores y compras",
-    text: "Vincula productos, solicita cotizaciones, aprueba órdenes y registra recepciones en inventario.",
-  },
-  {
-    icon: CreditCard,
-    color: "text-orange-600 bg-orange-500/10 dark:text-orange-400 dark:bg-orange-500/15",
-    title: "Crédito para clientes",
-    text: "Configura límites por cliente, registra ventas a crédito y consulta saldos y abonos.",
-  },
+]
+
+const FEATURES = [
+  { icon: ScanBarcode, title: "Punto de venta", text: "Escáner, venta a granel, pagos divididos y cierre de caja con aprobación de supervisor." },
+  { icon: Boxes, title: "Inventario inteligente", text: "Productos con variantes, revisiones periódicas y alertas automáticas de stock bajo." },
+  { icon: Truck, title: "Pedidos en línea", text: "Para recoger o a domicilio, con rastreo GPS en vivo y confirmación segura con QR o PIN." },
+  { icon: Gift, title: "Lealtad y promociones", text: "Programa de puntos y publicaciones programadas para fidelizar a tus clientes." },
+  { icon: BarChart3, title: "Reportes y análisis", text: "Exporta ventas, inventario y reportes en PDF o Excel con un solo clic." },
+  { icon: Bell, title: "Notificaciones en vivo", text: "Entérate al instante de ventas, nuevos pedidos y stock bajo, en tiempo real." },
+  { icon: ClipboardCheck, title: "Proveedores y compras", text: "Vincula productos, solicita cotizaciones, aprueba órdenes y registra recepciones en inventario." },
+  { icon: CreditCard, title: "Crédito para clientes", text: "Configura límites por cliente, registra ventas a crédito y consulta saldos y abonos." },
 ]
 
 const CAPABILITIES = [
@@ -121,60 +90,12 @@ const CAPABILITIES = [
   { icon: CreditCard, label: "Crédito y abonos" },
 ]
 
-function Logo() {
+function Brand() {
   return (
-    <div className="flex items-center gap-2.5 font-semibold">
-      <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M3 9.5 12 4l9 5.5-9 5.5-9-5.5Z" fill="currentColor" opacity="0.9" />
-          <path d="M6 12v4.5l6 3.5 6-3.5V12" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-        </svg>
-      </span>
-      <span className="text-lg tracking-tight">
-        Multi<span className="text-emerald-500">-POS</span>
-      </span>
-    </div>
-  )
-}
-
-/** CTA section con parallax y fondo animado */
-function CtaSection({ whatsappUrl }: { whatsappUrl: string }) {
-  return (
-    <section className="relative overflow-hidden bg-slate-950 text-slate-50">
-      <HeroBackground />
-      <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-4 py-20 text-center sm:px-6">
-        <Reveal>
-          <h2 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl">
-            Empieza a vender mejor hoy
-          </h2>
-        </Reveal>
-        <Reveal delay={0.1}>
-          <p className="mx-auto max-w-xl text-slate-300">
-            Únete a negocios que ya operan sus ventas, pedidos y clientes en
-            una sola plataforma.
-          </p>
-        </Reveal>
-        <Reveal delay={0.18}>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 hover:opacity-90">
-              <Link href="/portal/auth/login">
-                Crear mi pedido <ArrowRight />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-white/20 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white dark:bg-white/5"
-            >
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <MessageCircle /> Escríbenos por WhatsApp
-              </a>
-            </Button>
-          </div>
-        </Reveal>
-      </div>
-    </section>
+    <span className="flex items-center gap-2.5 font-semibold">
+      <Logo size={20} className="rounded-lg" />
+      <span className="text-lg tracking-tight whitespace-nowrap">Multi-POS</span>
+    </span>
   )
 }
 
@@ -182,186 +103,266 @@ export default async function LandingPage() {
   const plans = await prisma.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-lg">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <Logo />
-          <nav className="flex items-center gap-2">
+      {/* ── Encabezado ───────────────────────────────────────── */}
+      <header className="safe-area-top sticky top-0 z-40 border-b bg-background/92 supports-backdrop-filter:bg-background/75 supports-backdrop-filter:backdrop-blur-lg">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link href="/" aria-label="Multi-POS, inicio">
+            <Brand />
+          </Link>
+          <nav className="flex items-center gap-1 sm:gap-2" aria-label="Principal">
+            {plans.length > 0 && (
+              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+                <a href="#planes">Planes</a>
+              </Button>
+            )}
             <Button asChild variant="ghost" size="sm">
-              <Link href="/auth/login">Acceso panel</Link>
+              <Link href="/auth/login">
+                <span className="sm:hidden">Panel</span>
+                <span className="hidden sm:inline">Acceso panel</span>
+              </Link>
             </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/portal/auth/login">Portal de clientes</Link>
+            <Button asChild size="sm">
+              <Link href="/portal/auth/login">
+                <span className="sm:hidden">Portal</span>
+                <span className="hidden sm:inline">Portal de clientes</span>
+              </Link>
             </Button>
           </nav>
         </div>
       </header>
 
-      {/* ── Hero ──────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-slate-950 text-slate-50">
-        <HeroBackground />
-        <HeroParallax className="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-4 py-20 text-center sm:px-6 sm:py-28">
-          <div className="space-y-6">
+      {/* ── Hero: el producto en uso ─────────────────────────── */}
+      <section className="relative overflow-hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-70"
+          style={{
+            backgroundImage:
+              "linear-gradient(color-mix(in oklab, var(--primary) 9%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklab, var(--primary) 9%, transparent) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            maskImage: "radial-gradient(ellipse 70% 60% at 70% 40%, black, transparent 75%)",
+            WebkitMaskImage: "radial-gradient(ellipse 70% 60% at 70% 40%, black, transparent 75%)",
+          }}
+        />
+        <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-4 pt-14 pb-24 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-10 lg:pt-20 lg:pb-28">
+          <div className="max-w-xl">
             <Reveal>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs font-medium text-emerald-300">
-                <span className="size-1.5 rounded-full bg-emerald-400" />
-                Punto de venta · Panel administrativo · Portal de clientes
-              </span>
-            </Reveal>
-
-            <Reveal delay={0.08}>
-              <h1 className="mx-auto max-w-3xl text-balance text-4xl font-bold tracking-tight sm:text-6xl">
-                Tu negocio,{" "}
-                <span className="text-emerald-300">
-                  un solo sistema.
-                </span>
+              <h1 className="font-heading text-5xl leading-[1.02] font-semibold tracking-[-0.03em] text-balance sm:text-6xl lg:text-7xl">
+                Tu negocio, un solo sistema.
               </h1>
             </Reveal>
-
-            <Reveal delay={0.16}>
-              <p className="mx-auto max-w-2xl text-pretty text-base text-slate-300 sm:text-lg">
+            <Reveal delay={0.08}>
+              <p className="mt-6 text-lg text-pretty text-muted-foreground sm:text-xl">
                 Vende, gestiona inventario y compras, recibe pedidos en línea y
                 atiende a tus clientes desde un solo lugar. Adaptado a retail,
                 restaurantes, servicios, rentas y negocios híbridos.
               </p>
             </Reveal>
-
-            <Reveal delay={0.24}>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 hover:opacity-90">
+            <Reveal delay={0.16}>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Button asChild size="lg" className="h-12 rounded-xl px-5 text-base shadow-e2 desk:h-11">
                   <Link href="/portal/auth/login">
                     Empieza ahora <ArrowRight />
                   </Link>
                 </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="border-white/20 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white dark:bg-white/5"
-                >
+                <Button asChild size="lg" variant="outline" className="h-12 rounded-xl px-5 text-base desk:h-11">
                   <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-                    <MessageCircle /> ¿Te interesa? Escríbenos
+                    <MessageCircle /> Escríbenos por WhatsApp
                   </a>
                 </Button>
               </div>
             </Reveal>
-
-            <Reveal delay={0.32}>
-              <AnimatedStats />
+            <Reveal delay={0.22}>
+              <p className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                {["Punto de venta", "Panel administrativo", "Portal de clientes"].map((label) => (
+                  <span key={label} className="inline-flex items-center gap-1.5">
+                    <Check className="size-4 text-primary" /> {label}
+                  </span>
+                ))}
+              </p>
             </Reveal>
           </div>
-        </HeroParallax>
 
-        {/* Scroll-down cue */}
-        <ScrollCue />
-
-        {/* Degradado de transición al fondo claro */}
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-b from-transparent to-background" />
-      </section>
-
-      {plans.length > 0 && <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6" id="planes">
-        <div className="mx-auto max-w-2xl text-center"><h2 className="text-3xl font-bold tracking-tight">Un plan para cada etapa</h2><p className="mt-3 text-muted-foreground">Todos incluyen Punto de venta, Panel administrativo y Portal de clientes. La capacidad cambia según tu operación.</p></div>
-        <div className="mt-10 grid gap-4 lg:grid-cols-3">{plans.map((plan)=><div key={plan.id} className="rounded-2xl border bg-card p-6"><h3 className="text-xl font-semibold">{plan.name}</h3><p className="mt-1 min-h-10 text-sm text-muted-foreground">{plan.description}</p><p className="mt-5 text-3xl font-semibold">${Number(plan.monthlyPrice).toLocaleString("es-MX")}<span className="text-sm font-normal text-muted-foreground">/mes</span></p><div className="mt-4 space-y-2 text-sm"><p><Building2 className="mr-2 inline size-4"/>{plan.includedLocations} sucursal(es) incluida(s)</p><p><Users className="mr-2 inline size-4"/>{plan.includedEmployees} empleados incluidos</p><p className="text-muted-foreground">Sucursal extra: ${Number(plan.extraLocationPrice).toLocaleString("es-MX")}/mes</p><p className="text-muted-foreground">{plan.extraEmployeePackSize} empleados extra: ${Number(plan.extraEmployeePackPrice).toLocaleString("es-MX")}/mes</p></div><ul className="mt-4 space-y-2 text-sm">{(plan.features as string[]).map(feature=><li key={feature} className="flex gap-2"><Check className="size-4 text-emerald-600"/>{feature}</li>)}</ul><Button asChild className="mt-6 w-full"><a href={planWhatsappUrl(plan)} target="_blank" rel="noopener noreferrer">Solicitar este plan</a></Button></div>)}</div>
-      </section>}
-
-      {/* ── Features ──────────────────────────────────────────── */}
-      <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6">
-        <Reveal className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Todo lo que tu negocio necesita
-          </h2>
-          <p className="mt-3 text-muted-foreground">
-            Una plataforma completa que une tus ventas, tu inventario y tus
-            clientes en un solo lugar.
-          </p>
-        </Reveal>
-
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURES.map((f, i) => (
-            <Reveal key={f.title} delay={(i % 4) * 0.06}>
-              <div className="group h-full rounded-2xl border bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/5">
-                <span className={`flex size-11 items-center justify-center rounded-xl ${f.color}`}>
-                  <f.icon className="size-5" />
-                </span>
-                <h3 className="mt-4 font-semibold">{f.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  {f.text}
-                </p>
-              </div>
-            </Reveal>
-          ))}
+          <Reveal delay={0.12} className="sm:pl-12 lg:pl-8">
+            <ProductShot />
+          </Reveal>
         </div>
       </section>
 
-      {/* ── Capacidades "todo en uno" ─────────────────────────── */}
-      <section className="border-y bg-muted/40">
-        <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
-          <Reveal className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Mucho más que una caja registradora
+      {/* ── Diferenciadores: filas alternadas ────────────────── */}
+      <section className="border-t bg-surface-sunken">
+        <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+          <Reveal className="max-w-2xl">
+            <h2 className="font-heading text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+              Tres cosas que rara vez vienen juntas
             </h2>
-            <p className="mt-3 text-muted-foreground">
-              Cada detalle pensado para que operes más rápido y vendas más.
+            <p className="mt-3 text-lg text-muted-foreground">
+              La mayoría de los sistemas resuelve una. Multi-POS une las tres
+              con el mismo catálogo y las mismas reglas de negocio.
             </p>
           </Reveal>
 
-          <Reveal delay={0.1}>
-            <div className="mt-8 flex flex-wrap justify-center gap-2.5">
-              {CAPABILITIES.map((c) => (
-                <span
-                  key={c.label}
-                  className="inline-flex items-center gap-1.5 rounded-full border bg-card px-4 py-2 text-sm font-medium transition-colors hover:border-emerald-500/40"
-                >
-                  <c.icon className="size-4 text-emerald-500" />
-                  {c.label}
-                </span>
-              ))}
-            </div>
-          </Reveal>
+          <div className="mt-14 space-y-14 lg:space-y-20">
+            {DIFFERENTIATORS.map((d, i) => (
+              <Reveal key={d.title}>
+                <div className={cn("grid items-center gap-8 lg:grid-cols-2 lg:gap-16", i % 2 === 1 && "lg:[&>*:first-child]:order-2")}>
+                  <div>
+                    <span className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-e1">
+                      <d.icon className="size-6" />
+                    </span>
+                    <h3 className="mt-5 font-heading text-2xl font-semibold tracking-tight">{d.title}</h3>
+                    <p className="mt-3 max-w-lg text-pretty text-muted-foreground">{d.text}</p>
+                  </div>
+                  <ul className="divide-y rounded-2xl border bg-card">
+                    {d.points.map((p) => (
+                      <li key={p} className="flex items-center gap-3 px-5 py-4 font-medium">
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
+                          <Check className="size-3.5" strokeWidth={3} />
+                        </span>
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
 
-          <Reveal delay={0.16}>
-            <div className="mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-2">
-              {[
-                "Split payments y cierre de caja",
-                "Transferencias entre sucursales",
-                "Variantes y venta a granel",
-                "Pedidos con seguimiento en vivo",
-                "Programa de puntos de lealtad",
-                "Reportes exportables en PDF/Excel",
-                "Cotizaciones, órdenes y recepción de compras",
-                "Crédito y abonos por cliente",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-2.5 text-sm">
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                    <Check className="size-3" />
-                  </span>
-                  {item}
+      {/* ── Funciones: lista densa, no rejilla de tarjetas ───── */}
+      <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:gap-16">
+          <Reveal>
+            <h2 className="font-heading text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+              Todo lo que tu negocio necesita
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Una plataforma completa que une tus ventas, tu inventario y tus
+              clientes en un solo lugar.
+            </p>
+          </Reveal>
+          <dl className="grid gap-x-10 gap-y-8 sm:grid-cols-2">
+            {FEATURES.map((f, i) => (
+              <Reveal key={f.title} delay={(i % 2) * 0.05}>
+                <div className="flex gap-4">
+                  <f.icon className="mt-0.5 size-5 shrink-0 text-primary" />
+                  <div>
+                    <dt className="font-semibold">{f.title}</dt>
+                    <dd className="mt-1 text-sm leading-relaxed text-muted-foreground">{f.text}</dd>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </dl>
+        </div>
+
+        <Reveal delay={0.1}>
+          <ul className="mt-16 flex flex-wrap gap-2.5" aria-label="Capacidades incluidas">
+            {CAPABILITIES.map((c) => (
+              <li
+                key={c.label}
+                className="inline-flex items-center gap-1.5 rounded-full border bg-card px-4 py-2 text-sm font-medium"
+              >
+                <c.icon className="size-4 text-primary" />
+                {c.label}
+              </li>
+            ))}
+          </ul>
+        </Reveal>
+      </section>
+
+      {/* ── Planes ───────────────────────────────────────────── */}
+      {plans.length > 0 && (
+        <section id="planes" className="scroll-mt-20 border-t bg-surface-sunken">
+          <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+            <Reveal className="max-w-2xl">
+              <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Un plan para cada etapa</h2>
+              <p className="mt-3 text-muted-foreground">
+                Todos incluyen Punto de venta, Panel administrativo y Portal de
+                clientes. La capacidad cambia según tu operación.
+              </p>
+            </Reveal>
+            <div className="mt-12 grid gap-4 lg:grid-cols-3">
+              {plans.map((plan) => (
+                <div key={plan.id} className="flex flex-col rounded-3xl border bg-card p-7">
+                  <h3 className="font-heading text-xl font-semibold tracking-tight">{plan.name}</h3>
+                  <p className="mt-1.5 min-h-10 text-sm text-muted-foreground">{plan.description}</p>
+                  <p className="mt-6 flex items-baseline gap-1">
+                    <span className="font-heading text-4xl font-semibold tracking-tight tabular">
+                      ${Number(plan.monthlyPrice).toLocaleString("es-MX")}
+                    </span>
+                    <span className="text-sm text-muted-foreground">/mes</span>
+                  </p>
+                  <div className="mt-6 space-y-2.5 border-t pt-6 text-sm">
+                    <p className="flex items-center gap-2"><Building2 className="size-4 text-muted-foreground" />{plan.includedLocations} sucursal(es) incluida(s)</p>
+                    <p className="flex items-center gap-2"><Users className="size-4 text-muted-foreground" />{plan.includedEmployees} empleados incluidos</p>
+                    <p className="text-muted-foreground tabular">Sucursal extra: ${Number(plan.extraLocationPrice).toLocaleString("es-MX")}/mes</p>
+                    <p className="text-muted-foreground tabular">{plan.extraEmployeePackSize} empleados extra: ${Number(plan.extraEmployeePackPrice).toLocaleString("es-MX")}/mes</p>
+                  </div>
+                  <ul className="mt-5 flex-1 space-y-2 text-sm">
+                    {(plan.features as string[]).map((feature) => (
+                      <li key={feature} className="flex gap-2">
+                        <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button asChild className="mt-7 h-12 w-full rounded-xl desk:h-10">
+                    <a href={planWhatsappUrl(plan)} target="_blank" rel="noopener noreferrer">Solicitar este plan</a>
+                  </Button>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Llamado final ────────────────────────────────────── */}
+      <section className="bg-foreground text-background">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-8 px-4 py-20 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:py-24">
+          <Reveal className="max-w-2xl">
+            <h2 className="font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+              Empieza a vender mejor hoy
+            </h2>
+            <p className="mt-4 text-lg text-background/70">
+              Opera tus ventas, pedidos y clientes en una sola plataforma.
+            </p>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <div className="flex flex-wrap gap-3">
+              <Button asChild size="lg" className="h-12 rounded-xl px-5 text-base desk:h-11">
+                <Link href="/portal/auth/login">
+                  Crear mi pedido <ArrowRight />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="h-12 rounded-xl border-background/25 bg-transparent px-5 text-base text-background hover:bg-background/10 hover:text-background desk:h-11 dark:bg-transparent"
+              >
+                <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle /> Escríbenos por WhatsApp
+                </a>
+              </Button>
             </div>
           </Reveal>
         </div>
       </section>
 
-      {/* ── CTA final ─────────────────────────────────────────── */}
-      <CtaSection whatsappUrl={WHATSAPP_URL} />
-
-      {/* ── Footer ────────────────────────────────────────────── */}
-      <footer className="border-t bg-background">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-3 px-4 py-8 text-center sm:px-6 sm:flex-row sm:justify-between sm:text-left">
-          <Logo />
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <Link href="/auth/login" className="hover:text-foreground hover:underline">
-              Acceso panel POS
-            </Link>
-            <Link href="/portal/auth/login" className="hover:text-foreground hover:underline">
-              Portal de clientes
-            </Link>
-            <Link href="/legal/terminos" className="hover:text-foreground hover:underline">Términos</Link>
-            <Link href="/legal/privacidad" className="hover:text-foreground hover:underline">Privacidad</Link>
-            <Link href="/legal/comercio" className="hover:text-foreground hover:underline">Condiciones de compra</Link>
-            <span>© {new Date().getFullYear()} Multi-POS v{packageJson.version}</span>
-          </div>
+      {/* ── Pie ──────────────────────────────────────────────── */}
+      <footer className="safe-area-bottom border-t bg-background">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-5 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
+          <Brand />
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground" aria-label="Pie de página">
+            <Link href="/auth/login" className="hover:text-foreground">Acceso panel POS</Link>
+            <Link href="/portal/auth/login" className="hover:text-foreground">Portal de clientes</Link>
+            <Link href="/legal/terminos" className="hover:text-foreground">Términos</Link>
+            <Link href="/legal/privacidad" className="hover:text-foreground">Privacidad</Link>
+            <Link href="/legal/comercio" className="hover:text-foreground">Condiciones de compra</Link>
+            <span className="tabular">© {new Date().getFullYear()} Multi-POS v{packageJson.version}</span>
+          </nav>
         </div>
       </footer>
     </div>

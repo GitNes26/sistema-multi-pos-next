@@ -164,19 +164,23 @@ export function LoginForm({
   return (
     <div className="w-full max-w-sm">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* Form card */}
-        <motion.div
-          className="rounded-2xl border border-border/50 bg-card/80 p-5 shadow-lg shadow-black/5 backdrop-blur-sm"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-        >
+        <div className="mb-6">
+          <h2 className="font-heading text-xl font-semibold tracking-tight">
+            {isPortal ? "Entra a tu cuenta" : "Iniciar sesión"}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isPortal
+              ? "Usa tu correo o número de cliente."
+              : "Usa tu correo o número de nómina."}
+          </p>
+        </div>
+        <div>
           {(error ?? nextAuthError) && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="destructive" className="mb-4 animate-rise-in" role="alert">
               <AlertDescription className="text-sm">
                 {error ?? "No se pudo iniciar sesión. Revisa tus credenciales."}
               </AlertDescription>
@@ -209,7 +213,7 @@ export function LoginForm({
                           <span className="truncate font-medium">{o.name}</span>
                           <span className="text-xs text-muted-foreground">{o.currency}</span>
                           {o.isLast && (
-                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                            <span className="text-xs text-success">
                               · última vez
                             </span>
                           )}
@@ -228,7 +232,7 @@ export function LoginForm({
               placeholder={
                 isPortal ? "correo o nº de cliente" : "correo o nº de nómina"
               }
-              className="h-12 text-base rounded-xl"
+              className="h-12 text-base rounded-xl desk:h-11 desk:rounded-xl"
               error={errors.identifier?.message}
               {...register("identifier", {
                 onChange: (e) => onIdentifierChange(e.target.value),
@@ -254,7 +258,7 @@ export function LoginForm({
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   className={cn(
-                    "h-12 pl-11 md:pl-11 pr-11 md:pr-11 text-base rounded-xl",
+                    "h-12 pl-11 md:pl-11 desk:pl-11 pr-12 md:pr-12 desk:pr-12 text-base rounded-xl desk:h-11 desk:rounded-xl",
                     errors.password && "border-destructive"
                   )}
                   aria-invalid={!!errors.password}
@@ -263,8 +267,9 @@ export function LoginForm({
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? "Ocultar" : "Mostrar"}
+                  className="absolute right-1 top-1/2 inline-flex size-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 outline-none"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  aria-pressed={showPassword}
                 >
                   {showPassword ? (
                     <EyeOff className="size-4" />
@@ -282,11 +287,13 @@ export function LoginForm({
 
             <Button
               type="submit"
-              className="h-12 w-full rounded-xl text-base font-semibold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+              className="h-12 w-full rounded-xl text-base font-semibold desk:h-11 desk:rounded-xl desk:text-sm"
               disabled={loading}
             >
               {loading ? (
-                <Loader2 className="animate-spin" />
+                <>
+                  <Loader2 className="animate-spin" /> Entrando…
+                </>
               ) : (
                 <>
                   Entrar <ArrowRight className="size-4 ml-1" />
@@ -294,7 +301,7 @@ export function LoginForm({
               )}
             </Button>
           </form>
-        </motion.div>
+        </div>
 
         {/* Demo access */}
         {process.env.NODE_ENV === "development" && (

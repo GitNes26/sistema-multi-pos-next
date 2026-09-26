@@ -121,7 +121,7 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
     <DialogComponent
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      icon={session ? <Unlock className="size-5 text-emerald-600" /> : <LockKeyhole className="size-5 text-primary" />}
+      icon={session ? <Unlock className="size-5 text-success-ink" /> : <LockKeyhole className="size-5 text-primary" />}
       title={session ? "Caja abierta" : "Abrir caja"}
       description={`Sucursal ${usePosStore.getState().location.name} · ${stats?.todayCount ?? 0} ventas hoy · ${money(stats?.todaySales ?? 0)}`}
       className="sm:max-w-md"

@@ -8,7 +8,6 @@ import { Loader2, Mail, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InputGroupField } from "@/components/base/input-group-field";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const schema = yup.object({
   email: yup.string().email("Correo inválido").required("Correo requerido"),
@@ -49,14 +48,14 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <Card className="max-w-sm w-full">
-      <CardHeader>
-        <CardTitle className="text-center text-lg">Recuperar acceso</CardTitle>
-        <CardDescription>
+    <section className="w-full max-w-sm animate-rise-in">
+      <header className="mb-6 space-y-1">
+        <h2 className="font-heading text-xl font-semibold tracking-tight">Recuperar acceso</h2>
+        <p className="text-sm text-muted-foreground">
           Ingresa tu correo para restablecer la contraseña o reenviar la activación si todavía no confirmaste tu cuenta.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </p>
+      </header>
+      <div className="space-y-4">
         {status.kind === "ok" && (
           <Alert>
             <AlertDescription className="space-y-2">
@@ -96,12 +95,12 @@ export function ForgotPasswordForm() {
             {...register("email")}
           />
 
-          <Button type="submit" className="w-full" disabled={status.kind === "loading"}>
+          <Button type="submit" size="lg" className="w-full" disabled={status.kind === "loading"}>
             {status.kind === "loading" ? <Loader2 className="animate-spin" /> : <Send />}
             Enviar enlace de acceso
           </Button>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

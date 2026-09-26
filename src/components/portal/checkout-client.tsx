@@ -471,7 +471,7 @@ export function CheckoutClient() {
       ) : (
         <>
           {/* Entrega */}
-          <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-sm">
+          <section className="space-y-3 rounded-2xl border bg-card p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <MapPin className="size-4 text-primary" /> ¿Cómo lo quieres recibir?
             </h2>
@@ -552,7 +552,7 @@ export function CheckoutClient() {
                             locationId === l.id
                               ? "border-primary bg-primary/5 shadow-sm"
                               : isNearest
-                                ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-950/30"
+                                ? "border-success/30 bg-success/10"
                                 : "border-transparent bg-muted/50"
                           )}
                         >
@@ -561,7 +561,7 @@ export function CheckoutClient() {
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium">{l.name}</span>
                               {isNearest && (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400">
+                                <span className="inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-xs font-semibold text-success-ink">
                                   <Navigation className="size-2.5" />
                                   Más cercana
                                 </span>
@@ -689,7 +689,7 @@ export function CheckoutClient() {
           </section>
 
           {/* Pago */}
-          <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-sm">
+          <section className="space-y-3 rounded-2xl border bg-card p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               <CreditCard className="size-4 text-primary" /> Método de pago
             </h2>
@@ -763,9 +763,9 @@ export function CheckoutClient() {
 
           {/* Puntos */}
           {loyalty && loyalty.loyaltyEnabled && loyalty.points > 0 && (
-            <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-sm">
+            <section className="space-y-3 rounded-2xl border bg-card p-4">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <Sparkles className="size-4 text-amber-500" /> Tus puntos
+                <Sparkles className="size-4 text-warning-ink" /> Tus puntos
               </h2>
               <div className="flex items-center gap-2">
                 <InputGroupField
@@ -782,14 +782,14 @@ export function CheckoutClient() {
               <p className="text-xs text-muted-foreground">
                 Tienes {Math.floor(loyalty.points)} pts = {money(loyalty.points * loyalty.pointValue)}.
                 {pointsToRedeem > 0 && (
-                  <span className="text-amber-600"> Canjeando {pointsToRedeem} pts = -{money(pointsValue)}</span>
+                  <span className="text-warning-ink"> Canjeando {pointsToRedeem} pts = -{money(pointsValue)}</span>
                 )}
               </p>
             </section>
           )}
 
           {/* Propina */}
-          <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-sm">
+          <section className="space-y-3 rounded-2xl border bg-card p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold">
               💰 Propina (opcional)
             </h2>
@@ -800,8 +800,8 @@ export function CheckoutClient() {
                 className={cn(
                   "min-h-11 rounded-xl border px-2 py-2.5 text-xs font-semibold transition",
                   tipMode === "none"
-                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                    : "border-muted-foreground/20 text-muted-foreground hover:border-emerald-500/50"
+                    ? "border-success bg-success/10 text-success-ink"
+                    : "border-muted-foreground/20 text-muted-foreground hover:border-success/50"
                 )}
               >
                 Sin propina
@@ -817,8 +817,8 @@ export function CheckoutClient() {
                   className={cn(
                     "min-h-11 rounded-xl border px-2 py-2.5 text-xs font-semibold transition",
                     tipMode === "percent" && tipPercent === pct
-                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                      : "border-muted-foreground/20 text-muted-foreground hover:border-emerald-500/50"
+                      ? "border-success bg-success/10 text-success-ink"
+                      : "border-muted-foreground/20 text-muted-foreground hover:border-success/50"
                   )}
                 >
                   {pct}%
@@ -846,14 +846,14 @@ export function CheckoutClient() {
               )}
             </div>
             {tipAmount > 0 && (
-              <p className="text-xs text-emerald-700 dark:text-emerald-400">
+              <p className="text-xs text-success-ink">
                 Propina: {money(tipAmount)}
               </p>
             )}
           </section>
 
           {/* Resumen */}
-          <section className="rounded-2xl border bg-card p-4 shadow-sm">
+          <section className="rounded-2xl border bg-card p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <ShoppingBag className="size-4 text-primary" /> Resumen
             </h2>
@@ -881,7 +881,7 @@ export function CheckoutClient() {
                 <span>{money(tax)}</span>
               </div>
               {promoPreview.discount > 0 && (
-                <div className="flex justify-between text-emerald-600">
+                <div className="flex justify-between text-success-ink">
                   <span className="flex items-center gap-1">
                     <Sparkles className="size-3.5" /> {promoPreview.label || "Promoción"}
                   </span>
@@ -898,7 +898,7 @@ export function CheckoutClient() {
                 </div>
               )}
               {pointsToRedeem > 0 && (
-                <div className="flex justify-between text-amber-600">
+                <div className="flex justify-between text-warning-ink">
                   <span className="flex items-center gap-1">
                     <Sparkles className="size-3.5" /> Puntos ({pointsToRedeem} pts)
                   </span>
@@ -906,19 +906,19 @@ export function CheckoutClient() {
                 </div>
               )}
               {tipAmount > 0 && (
-                <div className="flex justify-between text-emerald-600">
+                <div className="flex justify-between text-success-ink">
                   <span>💰 Propina</span>
                   <span>+{money(tipAmount)}</span>
                 </div>
               )}
               {scheduleInfo && (
-                <div className={cn("flex items-center gap-1.5 text-xs", scheduleInfo.open ? "text-emerald-600" : "text-amber-600")}>
+                <div className={cn("flex items-center gap-1.5 text-xs", scheduleInfo.open ? "text-success-ink" : "text-warning-ink")}>
                   <Clock className="size-3" />
                   {scheduleInfo.message}
                 </div>
               )}
               {minAmountError && (
-                <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                <div className="flex items-center gap-1.5 text-xs text-warning-ink">
                   <AlertTriangle className="size-3" />
                   {minAmountError}
                 </div>

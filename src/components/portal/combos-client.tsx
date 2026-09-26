@@ -130,13 +130,13 @@ export function CombosClient() {
               <TapScale>
                 <div
                   className={cn(
-                    "relative overflow-hidden rounded-2xl border-2 border-dashed bg-card shadow-sm transition",
-                    "hover:border-emerald-500/70 hover:shadow-md",
-                    isAdded && "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
+                    "relative overflow-hidden rounded-2xl border-2 border-dashed bg-card transition",
+                    "hover:border-primary/70 desk:hover:shadow-e2",
+                    isAdded && "border-primary bg-primary/10"
                   )}
                 >
                   {/* Combo badge */}
-                  <div className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
+                  <div className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground shadow-sm">
                     <Puzzle className="size-3" />
                     COMBO
                   </div>
@@ -154,8 +154,8 @@ export function CombosClient() {
                       className="h-40 w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-40 w-full items-center justify-center bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/20">
-                      <Puzzle className="size-12 text-emerald-400" />
+                    <div className="flex h-40 w-full items-center justify-center bg-surface-sunken">
+                      <Puzzle className="size-12 text-primary" />
                     </div>
                   )}
 
@@ -174,7 +174,7 @@ export function CombosClient() {
                     <div className="mt-3 space-y-1.5">
                       {combo.items.map((ci) => (
                         <div key={ci.id} className="flex items-center gap-2 text-xs">
-                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                             {ci.quantity}
                           </span>
                           <span className="text-foreground">
@@ -191,7 +191,7 @@ export function CombosClient() {
                     <div className="mt-4 flex items-end justify-between">
                       <div>
                         <div className="flex items-baseline gap-2">
-                          <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                          <span className="text-xl font-extrabold text-primary">
                             {money(combo.comboPrice)}
                           </span>
                           {combo.originalPrice > combo.comboPrice && (
@@ -201,7 +201,7 @@ export function CombosClient() {
                           )}
                         </div>
                         {combo.savings > 0 && (
-                          <div className="flex items-center gap-1 text-xs font-semibold text-emerald-500">
+                          <div className="flex items-center gap-1 text-xs font-semibold text-success-ink">
                             <Tag className="size-3" />
                             Ahorra {money(combo.savings)}
                           </div>
@@ -213,8 +213,8 @@ export function CombosClient() {
                         className={cn(
                           "rounded-full px-4 transition",
                           isAdded
-                            ? "bg-emerald-500 text-white"
-                            : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-primary hover:bg-primary/90 text-primary-foreground"
                         )}
                         onClick={() => handleAddCombo(combo)}
                         disabled={isAdded}

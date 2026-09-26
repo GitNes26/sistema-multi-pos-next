@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Minus, Package, Pencil, Plus, Trash2 } from "lucide-react";
+import { Minus, Package, Pencil, Plus, Trash2, Check, StickyNote, Scale } from "lucide-react";
 import type { PosLineItem } from "@/types/pos";
 import { money } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
@@ -43,10 +43,10 @@ export const TicketItemRow = memo(function TicketItemRow({
   }, [flashNonce]);
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative overflow-hidden rounded-xl">
       {/* Fondo de eliminación al deslizar (6.14) */}
-      <div className="absolute inset-0 flex items-center justify-end bg-destructive/90 px-4">
-        <Trash2 className="size-5 text-white" />
+      <div className="absolute inset-0 flex items-center justify-end gap-2 rounded-xl bg-destructive px-5 text-sm font-semibold text-destructive-foreground">
+        <Trash2 className="size-5" /> Quitar
       </div>
       <motion.div
         ref={itemRef}
@@ -79,13 +79,14 @@ export const TicketItemRow = memo(function TicketItemRow({
               {(item.sentQty ?? 0) > 0 && (
                 <span
                   className={cn(
-                    "shrink-0 rounded-full px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide",
+                    "shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold tabular",
                     (item.sentQty ?? 0) >= item.qty
-                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                      ? "bg-success/10 text-success-ink"
+                      : "bg-warning/10 text-warning-ink"
                   )}
                 >
-                  {(item.sentQty ?? 0) >= item.qty ? "✓ Cocina" : `✓ ${item.sentQty}/${item.qty}`}
+                  <Check className="mr-0.5 inline size-3 align-[-1px]" strokeWidth={3} />
+                  {(item.sentQty ?? 0) >= item.qty ? "Cocina" : `${item.sentQty}/${item.qty}`}
                 </span>
               )}
             </div>
@@ -102,45 +103,48 @@ export const TicketItemRow = memo(function TicketItemRow({
             )}
             {/* Item notes */}
             {item.notes && (
-              <p className="mt-0.5 text-xs italic text-amber-600 dark:text-amber-400">
-                📝 {item.notes}
+              <p className="mt-1 flex items-start gap-1 text-xs text-warning-ink">
+                <StickyNote className="mt-px size-3 shrink-0" />
+                <span className="line-clamp-2">{item.notes}</span>
               </p>
             )}
             {item.bulkQuantityDisplay ? (
-              <p className="mt-0.5 text-xs leading-tight text-violet-600">
-                {item.bulkQuantityDisplay}
+              <p className="mt-0.5 flex items-center gap-1 text-xs leading-tight text-muted-foreground tabular">
+                <Scale className="size-3" /> {item.bulkQuantityDisplay}
               </p>
             ) : (
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs text-muted-foreground tabular">
                 {money(item.unitPrice)} c/u
               </p>
             )}
           </div>
-          <p className="text-sm font-bold tabular-nums">{money(total)}</p>
+          <p className="text-base font-bold tracking-tight tabular-nums">{money(total)}</p>
         </div>
 
         <div className="mt-2 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => onDecrement(item.key)}
-              disabled={item.qty <= 1}
-                className="flex size-11 touch-manipulation items-center justify-center rounded-xl border transition hover:bg-muted active:scale-95 disabled:opacity-40"
-              aria-label="Disminuir"
-            >
-              <Minus className="size-4" />
-            </button>
-            <span className="min-w-9 text-center text-sm font-semibold tabular-nums">
-              {item.qty} {item.unitAbbrev}
-            </span>
-            <button
-              type="button"
-              onClick={() => onIncrement(item.key)}
-              className="flex size-11 touch-manipulation items-center justify-center rounded-xl border transition hover:bg-muted active:scale-95"
-              aria-label="Aumentar"
-            >
-              <Plus className="size-4" />
-            </button>
+            <div className="flex items-center rounded-xl bg-muted p-0.5">
+              <button
+                type="button"
+                onClick={() => onDecrement(item.key)}
+                disabled={item.qty <= 1}
+                className="flex size-11 touch-manipulation items-center justify-center rounded-[10px] transition hover:bg-background active:scale-95 disabled:opacity-35"
+                aria-label={`Disminuir ${item.name}`}
+              >
+                <Minus className="size-4" />
+              </button>
+              <span className="min-w-10 text-center text-sm font-semibold tabular-nums" aria-live="polite">
+                {item.qty} {item.unitAbbrev}
+              </span>
+              <button
+                type="button"
+                onClick={() => onIncrement(item.key)}
+                className="flex size-11 touch-manipulation items-center justify-center rounded-[10px] transition hover:bg-background active:scale-95"
+                aria-label={`Aumentar ${item.name}`}
+              >
+                <Plus className="size-4" />
+              </button>
+            </div>
             {item.kind === "bulk" && onEdit && (
               <button
                 type="button"
@@ -158,7 +162,7 @@ export const TicketItemRow = memo(function TicketItemRow({
             className={cn(
               "flex size-11 touch-manipulation items-center justify-center rounded-xl text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive active:scale-95"
             )}
-            aria-label="Eliminar"
+            aria-label={`Quitar ${item.name}`}
           >
             <Trash2 className="size-4" />
           </button>

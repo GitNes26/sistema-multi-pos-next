@@ -724,13 +724,24 @@ export async function seedProduction() {
   const passwordHash = await bcrypt.hash(SUPERADMIN_PASSWORD, 10)
   await prisma.user.upsert({
     where: { email: SUPERADMIN_EMAIL },
-    update: { isActive: true, isSuperadmin: true },
+    update: {
+      isActive: true,
+      isSuperadmin: true,
+      activationRequired: false,
+      emailVerified: new Date(),
+      legalAcceptedAt: new Date(),
+      legalVersion: "2026-09-25",
+    },
     create: {
       email: SUPERADMIN_EMAIL,
       passwordHash,
       fullName: SUPERADMIN_NAME,
       isActive: true,
       isSuperadmin: true,
+      activationRequired: false,
+      emailVerified: new Date(),
+      legalAcceptedAt: new Date(),
+      legalVersion: "2026-09-25",
     },
   })
 
@@ -843,6 +854,7 @@ export async function seedProduction() {
       extraEmployeePackSize: 5,
       extraEmployeePackPrice: 149,
       sortOrder: 10,
+      features: ["Punto de venta", "Panel administrativo", "Portal de clientes", "Inventario", "Compras a proveedores", "Reportes PDF y Excel"],
     },
     {
       name: "Crecimiento",
@@ -854,6 +866,7 @@ export async function seedProduction() {
       extraEmployeePackSize: 10,
       extraEmployeePackPrice: 199,
       sortOrder: 20,
+      features: ["Todo Esencial", "Crédito y lealtad", "Agenda, reservaciones y KDS según el giro", "Entregas y pagos en línea", "Reportes BI", "Sucursales adicionales"],
     },
     {
       name: "Multi-sucursal",
@@ -865,22 +878,14 @@ export async function seedProduction() {
       extraEmployeePackSize: 25,
       extraEmployeePackPrice: 299,
       sortOrder: 30,
+      features: ["Todo Crecimiento", "Operación multi-sucursal", "CEDIS y transferencias", "Roles y permisos avanzados", "Compras y recepciones", "Soporte para equipos amplios"],
     },
   ]
   for (const plan of plans)
     await prisma.subscriptionPlan.upsert({
       where: { name: plan.name },
       update: plan,
-      create: {
-        ...plan,
-        features: [
-          "Punto de venta",
-          "Panel administrativo",
-          "Portal de clientes",
-          "Inventario y compras",
-          "Reportes PDF y Excel",
-        ],
-      },
+      create: plan,
     })
 }
 

@@ -133,12 +133,12 @@ export function GuestReservation({
         <div
           className={
             waitlisted.availableTable
-              ? "rounded-2xl border border-emerald-300/60 bg-emerald-50 p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10"
-              : "rounded-2xl border border-amber-300/60 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10"
+              ? "rounded-2xl border border-success/30 bg-success/10 p-4"
+              : "rounded-2xl border border-warning/30 bg-warning/10 p-4"
           }
         >
           <div className="flex items-center gap-2">
-            <Clock className="size-4 text-amber-600" />
+            <Clock className="size-4 text-warning-ink" />
             <p className="text-sm font-bold">
               {waitlisted.availableTable
                 ? `¡Mesa lista! Mesa #${waitlisted.availableTable.number}${

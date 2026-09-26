@@ -115,7 +115,7 @@ export function NavCustomizer({ canReserve }: { canReserve: boolean }) {
                 >
                   <div
                     className={cn(
-                      "flex items-center gap-2.5 rounded-xl border bg-card p-3 shadow-sm",
+                      "flex items-center gap-2.5 rounded-xl border bg-card p-3",
                       isHidden && "opacity-50"
                     )}
                   >
@@ -132,7 +132,7 @@ export function NavCustomizer({ canReserve }: { canReserve: boolean }) {
                       {item.label}
                     </span>
                     {isHidden ? (
-                      <span className="text-[10px] font-medium text-muted-foreground">
+                      <span className="text-xs font-medium text-muted-foreground">
                         Oculto
                       </span>
                     ) : (

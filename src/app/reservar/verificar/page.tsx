@@ -10,10 +10,10 @@ export const metadata: Metadata = { title: "Mi reservación" };
 
 export default function VerificarReservacionPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-24 dark:from-slate-950 dark:to-slate-900">
-      <header className="sticky top-0 z-40 border-b bg-white/80 backdrop-blur-md dark:bg-slate-900/80">
+    <main className="min-h-screen bg-background pb-24">
+      <header className="sticky top-0 z-40 border-b bg-background/85 supports-backdrop-filter:backdrop-blur">
         <div className="mx-auto max-w-3xl px-4 py-3">
-          <h1 className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-2xl font-bold text-transparent">
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
             Mi reservación
           </h1>
           <p className="text-sm text-muted-foreground">

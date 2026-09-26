@@ -64,7 +64,7 @@ export function PageHeader({
             </span>
           )}
           <div>
-            <h1 className="flex items-center gap-1.5 text-lg font-bold leading-tight">
+            <h1 className="flex items-center gap-1.5 font-heading text-xl font-semibold leading-tight tracking-tight">
               {title}
               {description && <InfoTooltip text={description} className="align-middle" />}
             </h1>

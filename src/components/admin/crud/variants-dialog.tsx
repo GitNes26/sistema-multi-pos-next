@@ -121,7 +121,7 @@ function VariantImageCell({
           type="button"
           title="Quitar imagen"
           onClick={() => void remove()}
-          className="absolute -right-1.5 -top-1.5 grid size-4 place-items-center rounded-full bg-destructive text-white shadow-sm"
+          className="absolute -right-1.5 -top-1.5 grid size-4 place-items-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
         >
           <X className="size-3" />
         </button>

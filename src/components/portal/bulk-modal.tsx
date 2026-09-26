@@ -264,7 +264,7 @@ export function BulkModal() {
             </div>
           )}
 
-          <div className="rounded-2xl border bg-card p-4 shadow-sm text-sm">
+          <div className="rounded-2xl border bg-card p-4 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>Precio</span>
               <span>

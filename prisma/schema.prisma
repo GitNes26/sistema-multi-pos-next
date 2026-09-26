@@ -613,6 +613,7 @@ model AppSettings {
   density        String   @default("comfortable")
   borderRadius   Decimal  @default(0.75) @db.Decimal(3, 2)
   sidebarStyle   String   @default("full")
+  surfaceTone    String   @default("subtle")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

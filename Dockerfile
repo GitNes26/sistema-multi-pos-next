@@ -41,6 +41,7 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
     UPLOADS_DIR=/app/public/uploads \
+    UPLOADS_PROJECT=multi-pos \
     SEED_DEMO=false
 
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
@@ -55,9 +56,10 @@ COPY --from=build /app/next.config.ts ./next.config.ts
 COPY --from=build /app/package.json ./package.json
 
 EXPOSE 3000
-RUN mkdir -p /app/public/uploads
+RUN mkdir -p /app/public/uploads/multi-pos
 
 CMD ["sh", "-c", "\
+  mkdir -p \"$UPLOADS_DIR/$UPLOADS_PROJECT\" && \
   if [ \"$DB_RESET\" = \"true\" ]; then \
     echo '⚠️  DB_RESET=true — Reseteando base de datos...'; \
     npx prisma db push --force-reset --skip-generate && \

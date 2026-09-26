@@ -7,6 +7,8 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { KitchenDisplay } from "@/components/kds/kitchen-display";
 import { DeliveriesBoard } from "@/components/kds/deliveries-board";
 import { LiveBadge } from "@/components/shared/live-badge";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { BusinessModeBadge } from "@/components/shared/business-mode-badge";
 import { Button } from "@/components/ui/button";
 import { AppearanceSync } from "@/components/appearance/appearance-sync";
@@ -22,13 +24,14 @@ export default function KDSPage() {
   return (
     <>
       <AppearanceSync tenant={null} />
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4" data-guide="kds-screen">
+      <div className="min-h-dvh bg-background p-3 sm:p-4" data-guide="kds-screen">
       <div className="mb-4 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon"
             className="shrink-0"
+            aria-label="Volver"
             onClick={() => {
               if (window.history.length > 1) {
                 router.back();
@@ -51,7 +54,11 @@ export default function KDSPage() {
             />
           ) : null}
         </div>
-        <LiveBadge />
+        <div className="flex items-center gap-1">
+          <LiveBadge />
+          <NotificationsBell />
+          <ThemeToggle />
+        </div>
       </div>
       {canManageDeliveries && (
         <div className="mb-6">

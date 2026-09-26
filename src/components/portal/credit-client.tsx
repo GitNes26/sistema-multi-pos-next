@@ -115,9 +115,9 @@ export function CreditClient() {
         animate="show"
       >
         {/* Credit Summary Card */}
-        <motion.div variants={STAGGER_FADE_UP.item} className="rounded-2xl border bg-gradient-to-br from-amber-500/10 to-orange-500/10 p-5">
+        <motion.div variants={STAGGER_FADE_UP.item} className="rounded-2xl border border-warning/30 bg-warning/10 p-5">
         <div className="flex items-center gap-2 mb-3">
-          <Landmark className="size-5 text-amber-600" />
+          <Landmark className="size-5 text-warning-ink" />
           <h2 className="text-lg font-bold">Mi Crédito</h2>
         </div>
 
@@ -127,7 +127,7 @@ export function CreditClient() {
             <AnimatedNumber
               value={credit?.currentBalance ?? 0}
               format={money}
-              className={cn("text-2xl font-black tabular-nums", hasDebt ? "text-red-600" : "text-emerald-600")}
+              className={cn("text-2xl font-black tabular-nums", hasDebt ? "text-destructive" : "text-success-ink")}
             />
           </div>
           <div>
@@ -139,7 +139,7 @@ export function CreditClient() {
         </div>
 
         {credit?.status === "suspended" && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-600">
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
             <AlertTriangle className="size-4" />
             Tu cuenta de crédito está suspendida. Contacta soporte.
           </div>
@@ -165,8 +165,8 @@ export function CreditClient() {
               <h3 className="text-sm font-semibold flex items-center gap-1.5">
                 <CreditCard className="size-4" /> Realizar abono
               </h3>
-              {activePaymentPending && <p role="status" className="text-xs text-amber-700">Hay un abono en proceso. El saldo cambiará cuando se confirme el pago. Si no recibes confirmación, podrás intentar de nuevo en 30 minutos.</p>}
-              {paymentStatus === "paid_review" && <p role="status" className="text-xs text-amber-700">Recibimos un pago que requiere conciliación con tu saldo. El comercio lo revisará.</p>}
+              {activePaymentPending && <p role="status" className="text-xs text-warning-ink">Hay un abono en proceso. El saldo cambiará cuando se confirme el pago. Si no recibes confirmación, podrás intentar de nuevo en 30 minutos.</p>}
+              {paymentStatus === "paid_review" && <p role="status" className="text-xs text-warning-ink">Recibimos un pago que requiere conciliación con tu saldo. El comercio lo revisará.</p>}
               {paymentError && <p role="alert" className="text-xs text-destructive">{paymentError}</p>}
               <div className="flex items-center gap-2">
                 <InputGroupField
@@ -218,8 +218,8 @@ export function CreditClient() {
           )}
 
           {!hasDebt && credit && (
-            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-4 text-center">
-              <p className="text-sm font-semibold text-emerald-600">✅ No tienes deuda pendiente</p>
+            <div className="rounded-xl border border-success/40 bg-success/5 p-4 text-center">
+              <p className="text-sm font-semibold text-success-ink">✅ No tienes deuda pendiente</p>
             </div>
           )}
 
@@ -244,7 +244,7 @@ export function CreditClient() {
                 >
                   <div className={cn(
                     "flex size-9 shrink-0 items-center justify-center rounded-full",
-                    tx.type === "charge" ? "bg-red-500/10 text-red-600" : "bg-emerald-500/10 text-emerald-600"
+                    tx.type === "charge" ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success-ink"
                   )}>
                     {tx.type === "charge" ? (
                       <ArrowDownCircle className="size-5" />
@@ -266,11 +266,11 @@ export function CreditClient() {
                   <div className="text-right shrink-0">
                     <p className={cn(
                       "text-sm font-bold tabular-nums",
-                      tx.type === "charge" ? "text-red-600" : "text-emerald-600"
+                      tx.type === "charge" ? "text-destructive" : "text-success-ink"
                     )}>
                       {tx.type === "charge" ? "+" : "-"}{money(tx.amount)}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       Saldo: {money(tx.balanceAfter)}
                     </p>
                   </div>

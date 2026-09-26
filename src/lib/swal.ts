@@ -33,6 +33,11 @@ const baseOptions = (danger = false): SweetAlertOptions => ({
   hideClass: { popup: "swal2-popup-custom-hide" },
 })
 
+/** Teléfono: los avisos bajan desde arriba como banner nativo, lejos de la
+ *  barra de pestañas inferior y del pulgar. */
+const isNarrow = () =>
+  typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches
+
 export function swalToast(
   title: string,
   icon: SwalIcon = "success",
@@ -41,7 +46,7 @@ export function swalToast(
   return Swal.fire({
     ...baseOptions(),
     toast: true,
-    position: "bottom-end",
+    position: isNarrow() ? "top" : "bottom-end",
     icon,
     title,
     timer,
@@ -59,7 +64,7 @@ export function swalNotificationToast(n: {
   return Swal.fire({
     ...baseOptions(),
     toast: true,
-    position: "top-end",
+    position: isNarrow() ? "top" : "top-end",
     timer: 5000,
     timerProgressBar: true,
     showConfirmButton: false,

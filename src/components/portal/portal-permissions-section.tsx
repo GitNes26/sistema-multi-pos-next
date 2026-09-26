@@ -28,22 +28,22 @@ const PERM_CONFIG: Record<
     label: "Ubicación",
     description: "Delivery y sucursales cercanas",
     icon: MapPin,
-    color: "text-emerald-500 bg-emerald-500/10",
+    color: "text-success-ink bg-success/10",
     sliderType: "geolocation",
   },
   notifications: {
     label: "Notificaciones",
     description: "Alertas de pedidos y promociones",
     icon: Bell,
-    color: "text-amber-500 bg-amber-500/10",
+    color: "text-warning-ink bg-warning/10",
     sliderType: "notifications",
   },
 }
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof CheckCircle2; color: string }> = {
-  granted: { label: "Concedido", icon: CheckCircle2, color: "text-emerald-600 bg-emerald-500/10" },
+  granted: { label: "Concedido", icon: CheckCircle2, color: "text-success-ink bg-success/10" },
   denied: { label: "Denegado", icon: XCircle, color: "text-destructive bg-destructive/10" },
-  prompt: { label: "Pendiente", icon: RefreshCw, color: "text-amber-600 bg-amber-500/10" },
+  prompt: { label: "Pendiente", icon: RefreshCw, color: "text-warning-ink bg-warning/10" },
   unsupported: { label: "No disponible", icon: XCircle, color: "text-muted-foreground bg-muted" },
 }
 
@@ -66,7 +66,7 @@ export function PortalPermissionsSection() {
           return (
             <div
               key={type}
-              className="flex items-center gap-3 rounded-xl border border-border/50 bg-card p-3.5 shadow-sm"
+              className="flex items-center gap-3 rounded-xl border border-border/50 bg-card p-3.5"
             >
               <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", cfg.color)}>
                 <Icon className="size-5" />

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useThemeStore } from "@/stores/theme-store"
+import { setDeviceTheme, useThemeStore } from "@/stores/theme-store"
 import {
   mergeAppearance,
   THEMES,
@@ -9,6 +9,8 @@ import {
   CARD_SIZES,
   FONT_FAMILIES,
   SIDEBAR_STYLES,
+  SURFACE_TONES,
+  type SurfaceTone,
   type ThemeMode,
   type Density,
   type CardSize,
@@ -31,6 +33,7 @@ import {
   Loader2,
   Monitor,
   Moon,
+  Layers,
   Palette,
   Save,
   Sun,
@@ -70,6 +73,75 @@ const SIDEBAR_LABELS: Record<SidebarStyle, string> = {
   full: "Completa",
   compact: "Compacta",
   icon: "Iconos",
+}
+
+const SURFACE_LABELS: Record<SurfaceTone, { label: string; helper: string }> = {
+  neutral: { label: "Neutro", helper: "Blanco y negro puros" },
+  subtle: { label: "Sutil", helper: "Un matiz casi imperceptible" },
+  tinted: { label: "Marcado", helper: "El color de la marca se siente" },
+}
+
+// Rampas mínimas para la muestra (lienzo, tarjeta, borde) — mismas cifras
+// que appearance-apply, reducidas a lo que la miniatura necesita.
+const SURFACE_PREVIEW: Record<SurfaceTone, { light: [number, number][]; dark: [number, number][] }> = {
+  neutral: { light: [[1, 0], [1, 0], [0.922, 0]], dark: [[0.145, 0], [0.205, 0], [0.3, 0]] },
+  subtle: { light: [[0.984, 0.003], [1, 0], [0.912, 0.008]], dark: [[0.155, 0.006], [0.198, 0.008], [0.295, 0.01]] },
+  tinted: { light: [[0.972, 0.011], [0.995, 0.003], [0.895, 0.02]], dark: [[0.168, 0.018], [0.212, 0.022], [0.31, 0.026]] },
+}
+
+function SurfaceTonePicker({
+  value,
+  hue,
+  onChange,
+}: {
+  value: SurfaceTone
+  hue: number
+  onChange: (v: SurfaceTone) => void
+}) {
+  const h = hue === 360 ? 250 : hue
+  const chromaOn = hue !== 360
+  const col = ([l, c]: [number, number]) => `oklch(${l} ${chromaOn ? c : 0} ${h})`
+  return (
+    <div role="radiogroup" aria-label="Tono de fondo" className="grid grid-cols-3 gap-2">
+      {SURFACE_TONES.map((tone) => {
+        const active = tone === value
+        const p = SURFACE_PREVIEW[tone]
+        return (
+          <button
+            key={tone}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(tone)}
+            className={cn(
+              "press group flex flex-col gap-2 rounded-xl border p-2 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              active ? "border-primary ring-1 ring-primary" : "border-border hover:border-foreground/25"
+            )}
+          >
+            <span className="grid h-16 grid-cols-2 overflow-hidden rounded-lg border" style={{ borderColor: col(p.light[2]) }}>
+              {[p.light, p.dark].map((ramp, i) => (
+                <span key={i} className="relative block" style={{ background: col(ramp[0]) }}>
+                  <span
+                    className="absolute inset-x-2 top-2 bottom-2 rounded-md border"
+                    style={{ background: col(ramp[1]), borderColor: col(ramp[2]) }}
+                  />
+                </span>
+              ))}
+            </span>
+            <span className="px-0.5">
+              <span className="flex items-center gap-1 text-sm font-medium">
+                {SURFACE_LABELS[tone].label}
+                {active && <Check className="size-3.5 text-primary" />}
+              </span>
+              <span className="block text-xs leading-snug text-muted-foreground">
+                {SURFACE_LABELS[tone].helper}
+              </span>
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
 }
 
 const COLOR_PRESETS = [
@@ -130,7 +202,7 @@ function Segmented<T extends string>({
             type="button"
             onClick={() => onChange(opt)}
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors",
+              "inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors desk:h-8 [&_svg]:size-4",
               active
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -185,12 +257,15 @@ export function AppearanceSettingsForm() {
       borderRadius: data!.settings!.borderRadius,
       cardSize: data!.settings!.cardSize as never,
       sidebarStyle: data!.settings!.sidebarStyle as never,
+      surfaceTone: data!.settings!.surfaceTone as never,
     })
     // Sync theme mode from API response
     if (data?.settings?.theme && (THEMES as readonly string[]).includes(data.settings.theme)) {
       setTheme(data.settings.theme as ThemeMode)
     }
     resetOverrides()
+    // Guardar para la empresa: este dispositivo vuelve a seguir el tema de la empresa.
+    setDeviceTheme(null)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -243,6 +318,25 @@ export function AppearanceSettingsForm() {
             options={THEMES}
             labels={THEME_LABELS}
             onChange={setTheme}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Layers className="size-4" /> Tono de fondo
+          </CardTitle>
+          <CardDescription>
+            Cuánto se tiñen el fondo, las tarjetas y los bordes con tu color
+            primario. Sutil reduce la fatiga visual en jornadas largas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SurfaceTonePicker
+            value={appearance.surfaceTone}
+            hue={appearance.primaryHue}
+            onChange={(v) => applyLocal({ surfaceTone: v })}
           />
         </CardContent>
       </Card>

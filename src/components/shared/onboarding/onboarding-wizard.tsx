@@ -9,16 +9,14 @@ import {
   Check,
   Coins,
   Layers,
-  PartyPopper,
-  Rocket,
-  Sparkles,
+  Loader2,
   Store,
   UtensilsCrossed,
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Logo } from "@/components/layout/logo";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -123,270 +121,192 @@ export function OnboardingWizard({
   }, [selectedMode, orgId, router, updateSession]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      {/* Background decoration */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 size-80 rounded-full bg-gradient-to-br from-emerald-200/30 to-teal-200/30 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 size-80 rounded-full bg-gradient-to-br from-slate-200/30 to-teal-200/20 blur-3xl" />
-      </div>
-
-      <div className="relative flex min-h-screen flex-col">
-        {/* Header with progress */}
-        <header className="border-b border-slate-200/50 bg-white/50 px-6 py-4 backdrop-blur-sm dark:border-slate-800/50 dark:bg-slate-900/50">
-          <div className="mx-auto max-w-3xl">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
-                  <Rocket className="size-4 text-white" />
-                </div>
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  Configuración Inicial
+    <div className="flex min-h-dvh flex-col bg-background">
+      {/* Encabezado con progreso */}
+      <header className="safe-area-top sticky top-0 z-10 border-b bg-background/90 supports-backdrop-filter:bg-background/75 supports-backdrop-filter:backdrop-blur">
+        <div className="mx-auto w-full max-w-3xl px-5 py-4 sm:px-8">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <Logo size={18} className="rounded-lg" />
+              <span className="font-semibold tracking-tight">Configuración inicial</span>
+            </div>
+            <span className="text-xs font-medium text-muted-foreground tabular">
+              Paso {step + 1} de {STEPS.length}
+            </span>
+          </div>
+          <ol className="grid grid-cols-3 gap-2" aria-label="Progreso">
+            {STEPS.map((s, i) => (
+              <li key={s.id} aria-current={i === step ? "step" : undefined} className="space-y-1.5">
+                <span className="relative block h-1.5 overflow-hidden rounded-full bg-muted">
+                  <span
+                    className={cn(
+                      "absolute inset-0 origin-left rounded-full bg-primary transition-transform duration-500 ease-(--ease-out-expo)",
+                      i <= step ? "scale-x-100" : "scale-x-0"
+                    )}
+                  />
                 </span>
-              </div>
-              <Badge variant="outline" className="text-xs">
-                Paso {step + 1} de {STEPS.length}
-              </Badge>
-            </div>
-
-            {/* Progress bar */}
-            <div className="flex gap-2">
-              {STEPS.map((s, i) => (
-                <div
-                  key={s.id}
-                  className={cn(
-                    "h-1.5 flex-1 rounded-full transition-all duration-500",
-                    i <= step
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-500"
-                      : "bg-slate-200 dark:bg-slate-700"
-                  )}
-                />
-              ))}
-            </div>
-
-            {/* Step labels */}
-            <div className="mt-2 flex justify-between">
-              {STEPS.map((s, i) => (
                 <span
-                  key={s.id}
                   className={cn(
-                    "text-xs transition-colors",
-                    i <= step
-                      ? "font-medium text-emerald-600 dark:text-emerald-400"
-                      : "text-slate-400 dark:text-slate-500"
+                    "block text-xs transition-colors",
+                    i === step ? "font-semibold text-foreground" : i < step ? "text-foreground/70" : "text-muted-foreground"
                   )}
                 >
                   {s.label}
                 </span>
-              ))}
-            </div>
-          </div>
-        </header>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </header>
 
-        {/* Content */}
-        <main className="flex flex-1 items-center justify-center px-6 py-12">
-          <div className="w-full max-w-3xl">
-            {/* Step 0: Welcome */}
-            {step === 0 && (
-              <div className="space-y-8 text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="mx-auto flex size-24 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-2xl shadow-emerald-500/25">
-                  <Rocket className="size-12 text-white" />
-                </div>
-                <div className="space-y-3">
-                  <h1 className="text-4xl font-bold text-slate-900 dark:text-white md:text-5xl">
-                    ¡Bienvenido a{" "}
-                    <span className="text-emerald-600 dark:text-emerald-400">
-                      Multi-POS
-                    </span>
-                    !
-                  </h1>
-                  <p className="mx-auto max-w-md text-lg text-slate-600 dark:text-slate-400">
-                    Tu organización ya está creada. Solo falta elegir el tipo de
-                    negocio para activar las herramientas correctas.
-                  </p>
-                </div>
-
-                {/* Org context (creada por el superAdmin: nombre + moneda) */}
-                <div className="mx-auto flex max-w-lg flex-wrap items-center justify-center gap-3">
-                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                    <Building2 className="size-4 text-emerald-500" />
-                    <span className="text-sm font-medium">
-                      {orgName || "Tu empresa"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                    <Coins className="size-4 text-amber-500" />
-                    <span className="text-sm font-medium">{orgCurrency}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-400">
-                  Nombre y moneda los definió tu administrador — puedes
-                  ajustarlos después en Ajustes.
+      {/* Contenido */}
+      <main className="flex flex-1 px-5 py-10 sm:px-8 sm:py-14">
+        <div key={step} className="mx-auto w-full max-w-3xl animate-rise-in">
+          {/* Paso 0: bienvenida */}
+          {step === 0 && (
+            <div className="max-w-xl space-y-8">
+              <div className="space-y-4">
+                <h1 className="font-heading text-4xl leading-[1.1] font-semibold tracking-tight sm:text-5xl">
+                  Bienvenido a Multi-POS
+                </h1>
+                <p className="text-lg text-muted-foreground">
+                  Tu organización ya está creada. Solo falta elegir el tipo de
+                  negocio para activar las herramientas correctas.
                 </p>
-
-                <div className="flex flex-col items-center gap-3 text-sm text-slate-500">
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-1.5">
-                      <div className="size-2 rounded-full bg-emerald-500" />
-                      <span>POS</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="size-2 rounded-full bg-blue-500" />
-                      <span>Admin</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="size-2 rounded-full bg-violet-500" />
-                      <span>Portal</span>
-                    </div>
-                  </div>
-                </div>
               </div>
-            )}
 
-            {/* Step 1: Business Type */}
-            {step === 1 && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="space-y-2 text-center">
-                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white">
-                    ¿Qué tipo de negocio operas?
-                  </h2>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    Esto define qué páginas, permisos y herramientas se activan
-                    para tu organización. Puedes cambiarlo después.
-                  </p>
+              <dl className="divide-y rounded-xl border bg-card">
+                <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                  <dt className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <Building2 className="size-4" /> Empresa
+                  </dt>
+                  <dd className="truncate text-sm font-semibold">{orgName || "Tu empresa"}</dd>
                 </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {BUSINESS_MODE_LIST.map((mode, i) => (
-                    <ModeCard
-                      key={mode.id}
-                      mode={mode}
-                      index={i}
-                      selected={selectedMode === mode.id}
-                      onSelect={() => setSelectedMode(mode.id)}
-                    />
-                  ))}
+                <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                  <dt className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <Coins className="size-4" /> Moneda
+                  </dt>
+                  <dd className="text-sm font-semibold tabular">{orgCurrency}</dd>
                 </div>
-              </div>
-            )}
-
-            {/* Step 2: Done */}
-            {step === 2 && (
-              <div className="space-y-8 text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="mx-auto flex size-28 items-center justify-center rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-2xl shadow-emerald-500/25">
-                  <PartyPopper className="size-14 text-white" />
-                </div>
-                <div className="space-y-3">
-                  <h2 className="text-4xl font-bold text-slate-900 dark:text-white">
-                    ¡Todo listo!
-                  </h2>
-                  <p className="mx-auto max-w-md text-lg text-slate-600 dark:text-slate-400">
-                    <strong className="text-emerald-600">{orgName || "Tu empresa"}</strong>{" "}
-                    quedó configurado como{" "}
-                    <strong className="text-emerald-600">
-                      {selectedModeData?.label}
-                    </strong>
-                    .
-                  </p>
-                </div>
-
-                {/* Summary cards */}
-                <div className="mx-auto flex max-w-lg flex-wrap justify-center gap-4">
-                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                    <Building2 className="size-4 text-emerald-500" />
-                    <span className="text-sm font-medium">
-                      {orgName || "Tu empresa"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                    <Coins className="size-4 text-amber-500" />
-                    <span className="text-sm font-medium">{orgCurrency}</span>
-                  </div>
-                </div>
-
-                {/* Qué sigue: las guías del panel llevan a cada apartado */}
-                {selectedModeData && (
-                  <div className="mx-auto max-w-lg rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left dark:border-emerald-800 dark:bg-emerald-950/30">
-                    <p className="mb-2 text-sm font-semibold text-emerald-800 dark:text-emerald-200">
-                      Lo que se activa para ti
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedModeData.features.map((f) => (
-                        <span
-                          key={f}
-                          className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:ring-emerald-800"
-                        >
-                          {f}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="mt-3 text-xs text-emerald-700/80 dark:text-emerald-300/70">
-                      En el panel verás una guía paso a paso que te lleva a cada
-                      apartado (productos, envíos, mesas…) para llenar los
-                      formularios reales.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </main>
-
-        {/* Error banner */}
-        {error && (
-          <div className="mx-auto max-w-3xl px-6 pb-2">
-            <div
-              role="alert"
-              className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
-            >
-              {error}
+              </dl>
+              <p className="text-sm text-muted-foreground">
+                Nombre y moneda los definió tu administrador; puedes ajustarlos
+                después en Ajustes.
+              </p>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Footer navigation */}
-        <footer className="border-t border-slate-200/50 bg-white/50 px-6 py-4 backdrop-blur-sm dark:border-slate-800/50 dark:bg-slate-900/50">
-          <div className="mx-auto flex max-w-3xl items-center justify-between">
-            <Button
-              variant="ghost"
-              onClick={handleBack}
-              className="min-h-11 gap-2"
-              aria-label={step === 0 ? "Volver al panel" : "Volver al paso anterior"}
-            >
-              <ArrowLeft className="size-4" />
-              {step === 0 ? "Volver al panel" : "Atrás"}
+          {/* Paso 1: tipo de negocio */}
+          {step === 1 && (
+            <div className="space-y-8">
+              <div className="max-w-xl space-y-2">
+                <h2 className="font-heading text-3xl font-semibold tracking-tight">
+                  ¿Qué tipo de negocio operas?
+                </h2>
+                <p className="text-muted-foreground">
+                  Define qué páginas, permisos y herramientas se activan. Puedes
+                  cambiarlo después.
+                </p>
+              </div>
+
+              <div role="radiogroup" aria-label="Tipo de negocio" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {BUSINESS_MODE_LIST.map((mode) => (
+                  <ModeCard
+                    key={mode.id}
+                    mode={mode}
+                    selected={selectedMode === mode.id}
+                    onSelect={() => setSelectedMode(mode.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Paso 2: listo */}
+          {step === 2 && (
+            <div className="max-w-xl space-y-8">
+              <span className="flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-e2">
+                <Check className="size-7" strokeWidth={2.5} />
+              </span>
+              <div className="space-y-3">
+                <h2 className="font-heading text-4xl font-semibold tracking-tight">Todo listo</h2>
+                <p className="text-lg text-muted-foreground">
+                  <strong className="font-semibold text-foreground">{orgName || "Tu empresa"}</strong>{" "}
+                  quedará configurada como{" "}
+                  <strong className="font-semibold text-foreground">{selectedModeData?.label}</strong>.
+                </p>
+              </div>
+
+              {selectedModeData && (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold">Lo que se activa para ti</p>
+                  <ul className="flex flex-wrap gap-2">
+                    {selectedModeData.features.map((f) => (
+                      <li
+                        key={f}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground"
+                      >
+                        <Check className="size-3.5" /> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-sm text-muted-foreground">
+                    En el panel verás una guía paso a paso que te lleva a cada
+                    apartado (productos, envíos, mesas…) para llenar los
+                    formularios reales.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
+
+      {error && (
+        <div className="mx-auto w-full max-w-3xl px-5 pb-3 sm:px-8">
+          <div
+            role="alert"
+            className="animate-rise-in rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
+            {error}
+          </div>
+        </div>
+      )}
+
+      {/* Navegación inferior fija: alcanzable con el pulgar */}
+      <footer className="safe-area-bottom sticky bottom-0 border-t bg-background/90 supports-backdrop-filter:bg-background/75 supports-backdrop-filter:backdrop-blur">
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-5 py-3 sm:px-8">
+          <Button
+            variant="ghost"
+            onClick={handleBack}
+            aria-label={step === 0 ? "Volver al panel" : "Volver al paso anterior"}
+          >
+            <ArrowLeft className="size-4" />
+            {step === 0 ? "Volver al panel" : "Atrás"}
+          </Button>
+
+          {step < STEPS.length - 1 ? (
+            <Button size="lg" onClick={handleNext} disabled={!canNext()} className="min-w-36">
+              Continuar
+              <ArrowRight className="size-4" />
             </Button>
-
-            {step < STEPS.length - 1 ? (
-              <Button
-                onClick={handleNext}
-                disabled={!canNext()}
-                className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-600 hover:to-teal-700"
-              >
-                Continuar
-                <ArrowRight className="size-4" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleFinish}
-                disabled={loading}
-                className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25 hover:from-emerald-600 hover:to-teal-700"
-              >
-                {loading ? (
-                  <>
-                    <div className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Configurando...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="size-4" />
-                    ¡Ir al panel!
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </footer>
-      </div>
+          ) : (
+            <Button size="lg" onClick={handleFinish} disabled={loading} className="min-w-36">
+              {loading ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Configurando…
+                </>
+              ) : (
+                <>
+                  Ir al panel
+                  <ArrowRight className="size-4" />
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </footer>
     </div>
   );
 }
@@ -397,12 +317,10 @@ export function OnboardingWizard({
 
 function ModeCard({
   mode,
-  index,
   selected,
   onSelect,
 }: {
   mode: BusinessModeInfo;
-  index: number;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -410,57 +328,55 @@ function ModeCard({
   return (
     <button
       type="button"
+      role="radio"
+      aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "group relative rounded-2xl border-2 p-5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg",
+        "press group relative flex flex-col rounded-2xl border bg-card p-5 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
         selected
-          ? "border-emerald-500 bg-emerald-50/50 shadow-lg shadow-emerald-500/10 dark:bg-emerald-950/30"
-          : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:border-slate-600"
+          ? "border-primary ring-1 ring-primary"
+          : "border-border hover:border-foreground/20"
       )}
-      style={{ animationDelay: `${index * 80}ms` }}
     >
-      {selected && (
-        <div className="absolute top-3 right-3 flex size-6 items-center justify-center rounded-full bg-emerald-500 shadow-md">
-          <Check className="size-3.5 text-white" />
-        </div>
-      )}
-
-      <div
+      <span
+        aria-hidden
         className={cn(
-          "mb-3 flex size-12 items-center justify-center rounded-xl transition-colors",
-          selected
-            ? cn("bg-gradient-to-br text-white shadow-md", mode.gradient)
-            : "bg-slate-100 text-slate-500 group-hover:text-slate-700 dark:bg-slate-700 dark:text-slate-400 dark:group-hover:text-slate-300"
+          "absolute top-4 right-4 flex size-5 items-center justify-center rounded-full border transition-colors",
+          selected ? "border-primary bg-primary text-primary-foreground" : "border-border"
         )}
       >
-        <Icon className="size-6" />
-      </div>
+        {selected && <Check className="size-3" strokeWidth={3} />}
+      </span>
 
-      <h3 className="mb-1 font-semibold text-slate-900 dark:text-white">
-        {mode.label}
-      </h3>
-      <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
-        {mode.description}
-      </p>
+      <span
+        className={cn(
+          "mb-4 flex size-11 items-center justify-center rounded-xl transition-colors",
+          selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:text-foreground"
+        )}
+      >
+        <Icon className="size-5" />
+      </span>
 
-      <div className="flex flex-wrap gap-1.5">
+      <span className="mb-1 font-semibold">{mode.label}</span>
+      <span className="mb-4 text-sm text-muted-foreground">{mode.description}</span>
+
+      <span className="mt-auto flex flex-wrap gap-1.5">
         {mode.features.map((f) => (
           <span
             key={f}
             className={cn(
               "rounded-full px-2 py-0.5 text-xs",
-              selected
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
-                : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+              selected ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
             )}
           >
             {f}
           </span>
         ))}
-      </div>
+      </span>
     </button>
   );
 }
+
 
 const MODE_ICON_MAP: Record<BusinessMode, LucideIcon> = {
   retail: Store,

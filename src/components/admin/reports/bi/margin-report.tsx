@@ -60,7 +60,7 @@ export function MarginReport({ from, to }: Props) {
         <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{money(totalMargin)}</div>
+              <div className="text-2xl font-bold text-success-ink">{money(totalMargin)}</div>
               <div className="text-xs text-muted-foreground">
                 Margen ({totalRevenue > 0 ? ((totalMargin / totalRevenue) * 100).toFixed(1) : 0}%)
               </div>
@@ -83,13 +83,13 @@ export function MarginReport({ from, to }: Props) {
                 <div className="flex-1">
                   <div className="h-4 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-green-500"
+                      className="h-full rounded-full bg-success"
                       style={{ width: `${Math.min(100, r.marginPct)}%` }}
                     />
                   </div>
                 </div>
                 <span className="w-16 text-right text-sm font-mono">{r.marginPct.toFixed(1)}%</span>
-                <span className="w-24 text-right text-sm font-mono text-green-600">{money(r.margin)}</span>
+                <span className="w-24 text-right text-sm font-mono text-success-ink">{money(r.margin)}</span>
               </div>
             ))}
             {rows.length === 0 && (

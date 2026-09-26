@@ -10,7 +10,6 @@ import { CheckCircle2, KeyRound, Loader2, Lock, MailCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { InputGroupField } from "@/components/base/input-group-field"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const schema = yup.object({
   oldPassword: yup.string().required("Contraseña actual requerida"),
@@ -70,13 +69,13 @@ export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?
   }
 
   return (
-    <Card className="max-w-sm w-full">
-      <CardHeader>
-        <CardTitle className="text-center text-lg">
+    <section className="w-full max-w-sm animate-rise-in">
+      <header className="mb-6 space-y-1">
+        <h2 className="font-heading text-xl font-semibold tracking-tight">
           Cambiar contraseña
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        </h2>
+      </header>
+      <div className="space-y-4">
         {status.kind === "ok" && (
           <Alert>
             <CheckCircle2 className="size-4" />
@@ -174,7 +173,7 @@ export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?
             {returnHref === "/portal/profile" ? "Volver a mi perfil" : "Volver al inicio de sesión"}
           </Link>
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 }

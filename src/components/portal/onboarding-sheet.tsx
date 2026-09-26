@@ -24,36 +24,32 @@ const SLIDES = [
     title: "Explora la tienda",
     description:
       "Encuentra todos los productos que te gustan, organizados por categorías. Favoritos, listas de compra y todo en un solo lugar.",
-    color: "from-emerald-500 to-teal-600",
-    bg: "bg-emerald-500/10",
-    iconColor: "text-emerald-500",
+    bg: "bg-primary/10",
+    iconColor: "text-primary",
   },
   {
     icon: Star,
     title: "Acumula puntos",
     description:
       "Cada compra te acerca a recompensas. Canjea tus puntos por descuentos, productos gratis o beneficios exclusivos.",
-    color: "from-amber-500 to-orange-600",
-    bg: "bg-amber-500/10",
-    iconColor: "text-amber-500",
+    bg: "bg-primary/10",
+    iconColor: "text-primary",
   },
   {
     icon: ClipboardList,
     title: "Seguimiento en tiempo real",
     description:
       "Consulta el estado de tus pedidos al instante. Desde la preparación hasta la entrega, todo visible para ti.",
-    color: "from-blue-500 to-indigo-600",
-    bg: "bg-blue-500/10",
-    iconColor: "text-blue-500",
+    bg: "bg-primary/10",
+    iconColor: "text-primary",
   },
   {
     icon: Truck,
     title: "Recibe en casa",
     description:
       "Elige entre recoger en tienda o recibir en tu dirección. Paga con tu método favorito y ¡listo!",
-    color: "from-violet-500 to-purple-600",
-    bg: "bg-violet-500/10",
-    iconColor: "text-violet-500",
+    bg: "bg-primary/10",
+    iconColor: "text-primary",
   },
 ]
 

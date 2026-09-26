@@ -65,7 +65,7 @@ export function LowStockReport({ from: _from, to: _to }: { from: string; to: str
                   </tr>
                 ))}
                 {rows.length === 0 && (
-                  <tr><td colSpan={5} className="py-4 text-center text-green-600">✓ Todo en_stock</td></tr>
+                  <tr><td colSpan={5} className="py-4 text-center text-success-ink">✓ Todo en_stock</td></tr>
                 )}
               </tbody>
             </table>

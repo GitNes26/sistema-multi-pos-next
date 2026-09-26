@@ -206,7 +206,7 @@ export function PermissionSlider({
 
         <div className="space-y-2 text-sm">
           {status === "granted" && (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+            <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-success-ink">
               <CheckCircle2 className="size-4 shrink-0" />
               Permiso concedido
             </div>

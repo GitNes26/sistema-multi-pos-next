@@ -15,10 +15,10 @@ interface Row {
 const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
 
 const segmentColor = (seg: string) => {
-  if (seg.toLowerCase().includes("vip")) return "bg-amber-100 text-amber-800"
-  if (seg.toLowerCase().includes("risk")) return "bg-red-100 text-red-800"
-  if (seg.toLowerCase().includes("dormant")) return "bg-gray-100 text-gray-800"
-  return "bg-blue-100 text-blue-800"
+  if (seg.toLowerCase().includes("vip")) return "bg-warning/10 text-warning-ink"
+  if (seg.toLowerCase().includes("risk")) return "bg-destructive/10 text-destructive"
+  if (seg.toLowerCase().includes("dormant")) return "bg-muted text-foreground"
+  return "bg-info/10 text-info-ink"
 }
 
 export function SegmentationReport({ from: _from, to: _to }: { from: string; to: string }) {

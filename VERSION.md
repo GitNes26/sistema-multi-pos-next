@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.21.0.0] — 2026-09-26
+- **Tipo:** `feat` (Minor)
+- feat: se mejoro diseño con Clau y se agrego qr de usuario y otras mejoras
+
 ### [0.20.3.6] — 2026-09-25
 - **Tipo:** `ui` (Revision)
 - ui: se mejoro el ticekt, se la leyenda que se envia por whats, las politicas y los correos y los wizard

@@ -147,7 +147,7 @@ export function PlanNodeElement({
       onClick={onClick}
       onPointerDown={onPointerDown}
       className={cn(
-        "absolute flex touch-none select-none flex-col items-center justify-center border-2 border-dashed border-slate-400/80 bg-slate-200/80 text-slate-700 shadow-sm backdrop-blur-[1px] transition-[box-shadow] dark:border-slate-500/70 dark:bg-slate-700/60 dark:text-slate-200",
+        "absolute flex touch-none select-none flex-col items-center justify-center border-2 border-dashed border-border bg-muted text-foreground shadow-sm backdrop-blur-[1px] transition-[box-shadow]",
         meta.shape,
         selected && "z-10 ring-2 ring-primary",
         className

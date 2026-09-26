@@ -37,10 +37,10 @@ export function HeatmapReport({ from, to, locationId }: Props) {
   const getIntensity = (sales: number) => {
     const ratio = sales / maxSales
     if (ratio === 0) return "bg-muted"
-    if (ratio < 0.25) return "bg-emerald-100 dark:bg-emerald-900/30"
-    if (ratio < 0.5) return "bg-emerald-200 dark:bg-emerald-800/40"
-    if (ratio < 0.75) return "bg-emerald-400 dark:bg-emerald-600/50"
-    return "bg-emerald-600 dark:bg-emerald-500/60"
+    if (ratio < 0.25) return "bg-success/15"
+    if (ratio < 0.5) return "bg-success/35"
+    if (ratio < 0.75) return "bg-success/65"
+    return "bg-success"
   }
 
   if (loading) return <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
@@ -85,10 +85,10 @@ export function HeatmapReport({ from, to, locationId }: Props) {
       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
         <span>Menos</span>
         <span className="size-3 rounded bg-muted" />
-        <span className="size-3 rounded bg-emerald-100 dark:bg-emerald-900/30" />
-        <span className="size-3 rounded bg-emerald-200 dark:bg-emerald-800/40" />
-        <span className="size-3 rounded bg-emerald-400 dark:bg-emerald-600/50" />
-        <span className="size-3 rounded bg-emerald-600 dark:bg-emerald-500/60" />
+        <span className="size-3 rounded bg-success/15" />
+        <span className="size-3 rounded bg-success/35" />
+        <span className="size-3 rounded bg-success/65" />
+        <span className="size-3 rounded bg-success" />
         <span>Más</span>
       </div>
     </div>

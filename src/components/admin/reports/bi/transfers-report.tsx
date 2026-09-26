@@ -18,10 +18,10 @@ interface Row {
 }
 
 const statusColor = (s: string) => {
-  if (s === "completed") return "bg-green-100 text-green-800"
-  if (s === "in_transit") return "bg-blue-100 text-blue-800"
-  if (s === "cancelled") return "bg-red-100 text-red-800"
-  return "bg-gray-100 text-gray-800"
+  if (s === "completed") return "bg-success/10 text-success-ink"
+  if (s === "in_transit") return "bg-info/10 text-info-ink"
+  if (s === "cancelled") return "bg-destructive/10 text-destructive"
+  return "bg-muted text-foreground"
 }
 
 export function TransfersReport({ from, to }: Props) {

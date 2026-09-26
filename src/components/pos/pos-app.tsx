@@ -431,7 +431,7 @@ export function PosApp({
       <DialogComponent
         open={!!lastSale}
         onOpenChange={(o) => !o && setLastSale(null)}
-        icon={<CheckCircle2 className="size-5 text-emerald-600" />}
+        icon={<CheckCircle2 className="size-5 text-success-ink" />}
         title="Venta completada"
         description="Revisa el ticket e imprime o continúa con un nuevo ticket."
         className="sm:max-w-sm"

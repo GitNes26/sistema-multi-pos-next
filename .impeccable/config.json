@@ -1,0 +1,44 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font-size",
+        "value": "0.5rem",
+        "createdAt": "2026-09-25T18:08:21.967Z",
+        "reason": "Claude: miniatura decorativa aria-hidden del POS/portal en src/components/landing/product-shot.tsx (escala de maqueta, no texto de lectura)"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "0.55rem",
+        "createdAt": "2026-09-25T18:08:22.080Z",
+        "reason": "Claude: miniatura decorativa aria-hidden del POS/portal en src/components/landing/product-shot.tsx (escala de maqueta, no texto de lectura)"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "0.6rem",
+        "createdAt": "2026-09-25T18:08:22.198Z",
+        "reason": "Claude: miniatura decorativa aria-hidden del POS/portal en src/components/landing/product-shot.tsx (escala de maqueta, no texto de lectura)"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "0.65rem",
+        "createdAt": "2026-09-25T18:08:22.322Z",
+        "reason": "Claude: miniatura decorativa aria-hidden del POS/portal en src/components/landing/product-shot.tsx (escala de maqueta, no texto de lectura)"
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "0.7rem",
+        "createdAt": "2026-09-25T18:08:22.454Z",
+        "reason": "Claude: miniatura decorativa aria-hidden del POS/portal en src/components/landing/product-shot.tsx (escala de maqueta, no texto de lectura)"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#000000",
+        "createdAt": "2026-09-26T01:59:07.514Z",
+        "reason": "Claude: QR de cliente en src/components/portal/customer-qr.tsx debe ser negro puro sobre blanco para máxima legibilidad del lector"
+      }
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useThemeStore } from "@/stores/theme-store";
+import { getDeviceTheme, useThemeStore } from "@/stores/theme-store";
 import type { AppSettingsParams } from "@/lib/db/app-settings";
 import type { ThemeMode } from "@/lib/appearance";
 
@@ -34,10 +34,15 @@ export function AppearanceSync({ tenant }: { tenant: AppSettingsParams | null })
       borderRadius: settings.borderRadius,
       cardSize: settings.cardSize as never,
       sidebarStyle: settings.sidebarStyle as never,
+      surfaceTone: settings.surfaceTone as never,
     });
 
-    // Sync theme mode from DB if valid
-    if (settings.theme && (THEMES as readonly string[]).includes(settings.theme)) {
+    // El tema elegido en este dispositivo (toggle del encabezado) manda; si no
+    // hay, se sigue el tema de la empresa.
+    const deviceTheme = getDeviceTheme();
+    if (deviceTheme) {
+      setTheme(deviceTheme);
+    } else if (settings.theme && (THEMES as readonly string[]).includes(settings.theme)) {
       setTheme(settings.theme as ThemeMode);
     }
   }, [setTenant, setTheme]);
@@ -45,6 +50,12 @@ export function AppearanceSync({ tenant }: { tenant: AppSettingsParams | null })
   useEffect(() => {
     applyTenant(tenant);
   }, [applyTenant, tenant]);
+
+  // Sin tenant (p. ej. antes de cargar) también se respeta el tema del dispositivo.
+  useEffect(() => {
+    const deviceTheme = getDeviceTheme();
+    if (deviceTheme) setTheme(deviceTheme);
+  }, [setTheme]);
 
   useEffect(() => {
     let controller: AbortController | null = null;

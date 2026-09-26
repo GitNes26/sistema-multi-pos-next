@@ -17,7 +17,6 @@ import {
   CreditCard,
   Building2,
   ExternalLink,
-  Sparkles,
   ChevronRight,
   X,
   Store,
@@ -222,28 +221,21 @@ export function WizardLauncher({
   return (
     <>
       <Card className="relative overflow-hidden border-primary/25">
-        {/* Decoración de fondo */}
-        <div className="pointer-events-none absolute -top-28 -right-20 size-72 rounded-full bg-primary/15 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -left-16 size-64 rounded-full bg-violet-500/10 blur-3xl" />
         {/* Cerrar guía (persiste por organización en localStorage) */}
         <button
           type="button"
           onClick={dismiss}
           title="Ocultar esta guía"
           aria-label="Ocultar guía de bienvenida"
-          className="absolute top-3 right-3 z-20 rounded-full p-1.5 text-muted-foreground/70 transition hover:bg-background/70 hover:text-foreground"
+          className="absolute top-2 right-2 z-20 flex size-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
         >
           <X className="size-4" />
         </button>
         <CardContent className="relative z-10 overflow-hidden py-6">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary/15 to-violet-500/15 px-3 py-1 text-xs font-black tracking-wide text-primary uppercase ring-1 ring-primary/20">
-                <Sparkles className="size-3" />
-                {hero.eyebrow}
-              </span>
-              <h2 className="mt-2 flex items-center gap-2 text-2xl font-black tracking-tight">
-                {hero.title} <span aria-hidden>{hero.emoji}</span>
+              <h2 className="pr-10 font-heading text-2xl font-semibold tracking-tight text-balance">
+                {hero.title}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {hero.description}
@@ -252,7 +244,7 @@ export function WizardLauncher({
             {catalogReady && (
               <a
                 href="/pos"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:from-emerald-600 hover:to-teal-700"
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-e1 transition hover:bg-primary/88"
               >
                 <Package className="size-4" /> Abrir mi POS
               </a>
@@ -260,30 +252,27 @@ export function WizardLauncher({
           </div>
 
           {/* ── Tipo de negocio: descripción de lo que incluye este modo ── */}
-          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border bg-gradient-to-r from-primary/5 to-transparent p-4">
+          <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border bg-surface-sunken p-4">
             <div className="flex items-center gap-3">
               <span
                 className={cn(
-                  "flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-md",
-                  info.gradient
+                  "flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"
                 )}
               >
                 <ModeIcon className="size-5" />
               </span>
               <div>
-                <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                  Tu tipo de negocio
-                </p>
-                <p className="text-sm font-black">{info.label}</p>
+                <p className="text-xs font-medium text-muted-foreground">Tu tipo de negocio</p>
+                <p className="font-semibold">{info.label}</p>
               </div>
             </div>
-            <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground">
+            <p className="min-w-0 basis-full text-sm leading-relaxed text-muted-foreground sm:basis-64 sm:flex-1">
               {info.description}
             </p>
             <button
               type="button"
               onClick={() => router.push("/onboarding")}
-              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border bg-card px-3 text-sm font-medium text-foreground transition hover:border-primary/50 hover:text-primary"
             >
               <RefreshCcw className="size-3.5" />
               Cambiar tipo de negocio
@@ -295,7 +284,7 @@ export function WizardLauncher({
             {info.features.map((f) => (
               <span
                 key={f}
-                className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border/60"
+                className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
               >
                 {f}
               </span>
@@ -312,10 +301,10 @@ export function WizardLauncher({
                   onClick={() => go(a.kind)}
                   className="group relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border bg-background/70 p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10 active:scale-[0.99]"
                 >
-                  <span className="absolute top-2.5 right-3 flex size-6 items-center justify-center rounded-full bg-primary/10 text-xs font-black text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                  <span className="absolute top-2.5 right-3 flex size-6 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary tabular transition group-hover:bg-primary group-hover:text-primary-foreground">
                     {i + 1}
                   </span>
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-violet-500/15 text-primary ring-1 ring-primary/20">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-primary/12 text-primary">
                     <Icon className="size-5" />
                   </span>
                   <span className="pr-5">

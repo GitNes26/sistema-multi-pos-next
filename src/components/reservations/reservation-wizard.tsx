@@ -258,11 +258,11 @@ export function ReservationWizard({
 
   if (done) {
     return (
-      <div className="rounded-2xl border border-emerald-300/60 bg-emerald-50 p-6 text-center dark:border-emerald-500/30 dark:bg-emerald-500/10">
-        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-emerald-500 text-white">
+      <div className="rounded-2xl border border-success/30 bg-success/10 p-6 text-center">
+        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-success text-success-foreground">
           <CalendarCheck2 className="size-6" />
         </div>
-        <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
+        <p className="text-lg font-bold text-success-ink">
           {doneMessage ?? (policy?.requireConfirmation ? "Solicitud enviada" : "¡Reservación confirmada!")}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -555,8 +555,8 @@ export function ReservationWizard({
                           t.free
                             ? tableId === t.id
                               ? "z-10 border-primary bg-primary/20 text-primary ring-2 ring-primary"
-                              : "border-emerald-400 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                            : "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500"
+                              : "border-success bg-success/15 text-success-ink"
+                            : "cursor-not-allowed border-border bg-muted text-muted-foreground"
                         )}
                         label={t.free ? `${t.capacity} pers.` : "No disponible"}
                         selected={tableId === t.id}
@@ -581,7 +581,7 @@ export function ReservationWizard({
             label="Nombre del comensal"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            leftIcon={<Users className="size-4 text-slate-400" />}
+            leftIcon={<Users className="size-4 text-muted-foreground" />}
             error={name.trim().length > 0 && name.trim().length < 2 ? "Escribe al menos 2 caracteres" : undefined}
           />
           <InputGroupField
@@ -613,7 +613,7 @@ export function ReservationWizard({
               {selectedTable ? ` · Mesa ${selectedTable.number}` : " · mesa por asignar"}
             </p>
             {policy?.requireConfirmation && (
-              <p className="mt-1 text-xs text-amber-600">
+              <p className="mt-1 text-xs text-warning-ink">
                 El anfitrión confirmará la solicitud (política del local).
               </p>
             )}
@@ -674,7 +674,7 @@ function DayGrid({
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold uppercase text-muted-foreground">
+      <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-muted-foreground">
         {["D", "L", "M", "M", "J", "V", "S"].map((d, i) => (
           <span key={i}>{d}</span>
         ))}

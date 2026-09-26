@@ -113,7 +113,7 @@ export function AppSidebar({
               defaultOpen={openedByDefault}
               className="group/collapsible"
             >
-              <CollapsibleTrigger className="flex h-7 w-full items-center justify-between rounded-md px-2 text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/50 transition-colors hover:text-sidebar-foreground">
+              <CollapsibleTrigger className="flex h-9 w-full items-center justify-between rounded-md px-2 text-xs font-semibold text-sidebar-foreground/55 desk:h-7 transition-colors hover:text-sidebar-foreground">
                 <span>{section.title}</span>
                 {expanded && (
                   <ChevronDown className="size-3.5 transition-transform group-data-[state=open]/collapsible:rotate-180" />
@@ -141,7 +141,7 @@ export function AppSidebar({
             onSwitched={onOrgSwitched}
           />
         ) : null}
-        <p className={cn("text-[0.65rem] text-sidebar-foreground/40", !expanded && "hidden")}>
+        <p className={cn("text-xs text-sidebar-foreground/50", !expanded && "hidden")}>
           Sistema Multi-POS v{packageJson.version}
         </p>
       </div>

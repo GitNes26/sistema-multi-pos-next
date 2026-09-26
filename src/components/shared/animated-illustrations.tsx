@@ -50,7 +50,7 @@ export function CartEmptyIllustration() {
         cx="68"
         cy="68"
         r="6"
-        className="text-amber-500/20"
+        className="text-warning-ink/20"
         stroke="currentColor"
         strokeWidth="1.5"
         initial={{ scale: 0, opacity: 0 }}
@@ -63,8 +63,8 @@ export function CartEmptyIllustration() {
         transition={{ delay: 0.9 }}
       >
         <motion.circle cx="35" cy="35" r="2" className="text-primary/30" fill="currentColor" animate={{ y: [-2, 2, -2] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} />
-        <motion.circle cx="85" cy="40" r="1.5" className="text-amber-500/30" fill="currentColor" animate={{ y: [2, -2, 2] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }} />
-        <motion.circle cx="55" cy="30" r="1" className="text-emerald-500/30" fill="currentColor" animate={{ y: [-1, 3, -1] }} transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }} />
+        <motion.circle cx="85" cy="40" r="1.5" className="text-warning-ink/30" fill="currentColor" animate={{ y: [2, -2, 2] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }} />
+        <motion.circle cx="55" cy="30" r="1" className="text-success-ink/30" fill="currentColor" animate={{ y: [-1, 3, -1] }} transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }} />
       </motion.g>
     </motion.svg>
   )
@@ -182,13 +182,13 @@ export function FavoritesEmptyIllustration() {
         />
         <motion.path
           d="M82 40 L84 36 L86 40 L90 39 L86 40 L87 44 L86 40 L82 41 Z"
-          className="text-amber-400/25"
+          className="text-warning-ink/25"
           fill="currentColor"
           animate={{ scale: [1, 0.7, 1], rotate: [0, -10, 0] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
         />
         <motion.circle cx="45" cy="25" r="1.5" className="text-primary/20" fill="currentColor" animate={{ y: [-2, 2, -2] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} />
-        <motion.circle cx="78" cy="30" r="1" className="text-rose-400/25" fill="currentColor" animate={{ y: [2, -3, 2] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }} />
+        <motion.circle cx="78" cy="30" r="1" className="text-destructive/25" fill="currentColor" animate={{ y: [2, -3, 2] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }} />
       </motion.g>
     </motion.svg>
   )
@@ -253,8 +253,8 @@ export function ListsEmptyIllustration() {
       {/* Sparkles */}
       <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}>
         <motion.circle cx="28" cy="38" r="1.5" className="text-primary/20" fill="currentColor" animate={{ y: [-2, 2, -2] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} />
-        <motion.circle cx="95" cy="35" r="1" className="text-amber-500/25" fill="currentColor" animate={{ y: [2, -2, 2] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} />
-        <motion.circle cx="22" cy="75" r="1" className="text-emerald-500/25" fill="currentColor" animate={{ y: [-1, 3, -1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.7 }} />
+        <motion.circle cx="95" cy="35" r="1" className="text-warning-ink/25" fill="currentColor" animate={{ y: [2, -2, 2] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.4 }} />
+        <motion.circle cx="22" cy="75" r="1" className="text-success-ink/25" fill="currentColor" animate={{ y: [-1, 3, -1] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.7 }} />
       </motion.g>
     </motion.svg>
   )

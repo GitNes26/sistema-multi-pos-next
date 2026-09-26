@@ -28,3 +28,26 @@ export const useThemeStore = create<ThemeState>()((set) => ({
       resetAppearanceOverrides: () => set({ overrides: {} }),
       setTenant: (tenant) => set({ tenant }),
 }));
+
+// Preferencia de tema del dispositivo (toggle del encabezado). Tiene prioridad
+// sobre el tema de la empresa en este equipo/teléfono; "Guardar para la
+// empresa" en Apariencia la limpia para volver a seguir a la empresa.
+const DEVICE_THEME_KEY = "multi-pos-device-theme";
+
+export function getDeviceTheme(): ThemeMode | null {
+  try {
+    const value = localStorage.getItem(DEVICE_THEME_KEY);
+    return value === "light" || value === "dark" || value === "system" || value === "pos" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setDeviceTheme(theme: ThemeMode | null): void {
+  try {
+    if (theme) localStorage.setItem(DEVICE_THEME_KEY, theme);
+    else localStorage.removeItem(DEVICE_THEME_KEY);
+  } catch {
+    // almacenamiento no disponible (modo privado): el tema vive solo en la sesión
+  }
+}

@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { Monitor, Moon, Sun } from "lucide-react"
-import { useThemeStore } from "@/stores/theme-store"
+import { setDeviceTheme, useThemeStore } from "@/stores/theme-store"
 import { resolveTheme } from "@/lib/appearance-apply"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,6 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 type ThemeCycle = "light" | "dark" | "system"
 
@@ -23,25 +25,24 @@ const CYCLE_ICONS: Record<ThemeCycle, typeof Sun> = {
 }
 
 const CYCLE_LABELS: Record<ThemeCycle, string> = {
-  light: "Tema claro",
-  dark: "Tema oscuro",
-  system: "Tema del sistema",
+  light: "Tema claro. Cambiar a oscuro",
+  dark: "Tema oscuro. Cambiar a automático",
+  system: "Tema automático. Cambiar a claro",
 }
 
 const CYCLE_TOOLTIPS: Record<ThemeCycle, string> = {
-  light: "Claro · clic para oscuro",
-  dark: "Oscuro · clic para sistema",
-  system: "Sistema · clic para claro",
+  light: "Claro · toca para oscuro",
+  dark: "Oscuro · toca para automático",
+  system: "Automático · toca para claro",
 }
 
-// Toggle de tema claro/oscuro/sistema para el header.
-
-export function ThemeToggle() {
+// Toggle de tema claro → oscuro → automático. La elección se guarda en este
+// dispositivo y tiene prioridad sobre el tema de la empresa.
+export function ThemeToggle({ className }: { className?: string }) {
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
-  const [resolved, setResolved] = React.useState<"light" | "dark" | "pos">(
-    "light"
-  )
+  const reduce = useReducedMotion()
+  const [resolved, setResolved] = React.useState<"light" | "dark" | "pos">("light")
 
   React.useEffect(() => {
     setResolved(resolveTheme(theme))
@@ -50,9 +51,10 @@ export function ThemeToggle() {
   const current: ThemeCycle =
     theme === "system" ? "system" : resolved === "dark" || resolved === "pos" ? "dark" : "light"
 
-  const next = (): ThemeCycle => {
-    const idx = CYCLE.indexOf(current)
-    return CYCLE[(idx + 1) % CYCLE.length]
+  const cycle = () => {
+    const next = CYCLE[(CYCLE.indexOf(current) + 1) % CYCLE.length]
+    setDeviceTheme(next)
+    setTheme(next)
   }
 
   const Icon = CYCLE_ICONS[current]
@@ -65,10 +67,21 @@ export function ThemeToggle() {
             variant="ghost"
             size="icon"
             aria-label={CYCLE_LABELS[current]}
-            onClick={() => setTheme(next())}
-            className="cursor-pointer hover:-translate-y-0.5 hover:shadow-md active:rotate-3600 active:scale-50 transition-transform"
+            onClick={cycle}
+            className={cn("relative overflow-hidden", className)}
           >
-            <Icon className="size-5" />
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={current}
+                className="flex items-center justify-center"
+                initial={reduce ? { opacity: 0 } : { opacity: 0, rotate: -90, scale: 0.6 }}
+                animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, rotate: 90, scale: 0.6 }}
+                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <Icon className="size-5" />
+              </motion.span>
+            </AnimatePresence>
           </Button>
         </TooltipTrigger>
         <TooltipContent>{CYCLE_TOOLTIPS[current]}</TooltipContent>

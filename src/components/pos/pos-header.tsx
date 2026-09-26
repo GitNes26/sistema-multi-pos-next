@@ -13,6 +13,8 @@ import { Logo } from "@/components/layout/logo";
 import { BusinessModeBadge } from "@/components/shared/business-mode-badge";
 import { RoleBadge } from "@/components/shared/role-badge";
 import { TooltipButton } from "@/components/shared/tooltip-button";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { NotificationsBell } from "@/components/layout/notifications-bell";
 import type { BusinessMode } from "@/lib/auth/options";
 import packageJson from "../../../package.json";
 
@@ -58,7 +60,7 @@ export function PosHeader({
   const router = useRouter();
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-card/80 px-2 backdrop-blur sm:gap-3 sm:px-3 lg:px-4 [&_button]:min-h-11 [&_button]:min-w-11">
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-sidebar px-2 sm:gap-3 sm:px-3 lg:px-4 [&_button]:min-h-11 [&_button]:min-w-11">
       <TooltipButton
         label="Volver al panel"
         variant="ghost"
@@ -95,7 +97,7 @@ export function PosHeader({
         role={sessionUser?.role}
         className="hidden sm:inline-flex"
       />
-      <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground lg:inline">v{packageJson.version}</span>
+      <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground 2xl:inline">v{packageJson.version}</span>
 
       <div className="scrollbar-none ml-auto flex min-w-0 items-center gap-1.5 overflow-x-auto">
         {canOperateCash && (
@@ -103,25 +105,29 @@ export function PosHeader({
           type="button"
           onClick={onOpenCash}
           className={cn(
-            "flex h-11 touch-manipulation items-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition hover:bg-muted active:scale-[0.98]",
+            "press flex h-11 shrink-0 touch-manipulation items-center gap-2 rounded-xl border px-3 text-sm font-medium whitespace-nowrap",
             session && session.status === "open"
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              ? "border-success/30 bg-success/10 text-foreground"
               : "border-destructive/40 bg-destructive/10 text-destructive"
           )}
           title="Abrir / cerrar caja"
         >
           {session && session.status === "open" ? (
             <>
-              <Unlock className="size-3.5" />
+              <span aria-hidden className="relative flex size-2">
+                <span className="absolute inset-0 animate-ping rounded-full bg-success opacity-50 motion-reduce:hidden" />
+                <span className="relative size-2 rounded-full bg-success" />
+              </span>
+              <Unlock className="size-3.5 text-success" />
               <span className="hidden md:inline">
-                {session.registerName} · fondo {money(session.openingCash)}
+                {session.registerName} · <span className="tabular">fondo {money(session.openingCash)}</span>
               </span>
               <span className="md:hidden">Caja abierta</span>
             </>
           ) : (
             <>
               <LockKeyhole className="size-3.5" />
-              <span className="hidden md:inline">Caja cerrada — abrir</span>
+              <span className="hidden md:inline">Abrir caja</span>
               <span className="md:hidden">Caja</span>
             </>
           )}
@@ -156,6 +162,9 @@ export function PosHeader({
             <span className="hidden md:inline">Guía</span>
           </Button>
         )}
+
+        <NotificationsBell />
+        <ThemeToggle />
 
         <TooltipButton label="Catálogos y pedidos" side="bottom" variant="ghost" size="icon" onClick={onOpenCatalogs} aria-label="Catálogos y pedidos">
           <ClipboardList className="size-4" />

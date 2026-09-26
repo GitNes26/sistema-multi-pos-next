@@ -27,8 +27,6 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card } from "@/components/ui/card"
 import { TapScale } from "@/components/shared/tap-scale"
-import { PermissionSlider } from "@/components/shared/permission-slider"
-import { usePortalPermissions, type PortalPermissionType } from "@/hooks/use-portal-permissions"
 import { STAGGER_FADE_UP } from "@/lib/animation-tokens"
 import { DetailSheet, type DetailItem } from "@/components/portal/detail-sheet"
 import { PortalComboCard } from "@/components/portal/combo-card"
@@ -44,9 +42,9 @@ const PUB_TYPE_LABELS: Record<string, string> = {
 }
 
 const PUB_TYPE_COLORS: Record<string, string> = {
-  product_new: "bg-emerald-500 text-white",
-  promotion: "bg-amber-500 text-white",
-  notice: "bg-sky-500 text-white",
+  product_new: "bg-success text-success-foreground",
+  promotion: "bg-warning text-warning-foreground",
+  notice: "bg-info text-info-foreground",
 }
 
 const { container, item } = STAGGER_FADE_UP;
@@ -60,41 +58,34 @@ function HeroParallaxCard({ points }: { points: number }) {
   return (
     <motion.div variants={item}>
       <Link href="/portal/loyalty" className="block">
-        <div ref={ref} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/80 p-5 text-primary-foreground shadow-lg shadow-primary/20">
-          {/* Parallax decorative circles */}
-          <motion.div
-            className="absolute -right-8 -top-8 size-32 rounded-full bg-white/10"
-            style={{ y: useTransform(y, (v) => v * 0.6) }}
-          />
-          <motion.div
-            className="absolute -bottom-6 -left-6 size-24 rounded-full bg-white/5"
-            style={{ y: useTransform(y, (v) => v * 1.2) }}
-          />
-          <motion.div
-            className="absolute right-12 bottom-2 size-16 rounded-full bg-white/5"
-            style={{ y: useTransform(y, (v) => v * 0.8) }}
-          />
-          <div className="relative flex items-center justify-between">
+        {/* Tarjeta de lealtad tipo "wallet": el saldo de puntos es el protagonista */}
+        <div ref={ref} className="press relative overflow-hidden rounded-3xl bg-primary p-5 text-primary-foreground shadow-e2">
+          <motion.svg
+            aria-hidden
+            viewBox="0 0 200 200"
+            className="absolute -top-16 -right-16 size-56 opacity-20"
+            style={{ y: useTransform(y, (v) => v * 0.5) }}
+          >
+            {[96, 76, 56, 36].map((r) => (
+              <circle key={r} cx="100" cy="100" r={r} fill="none" stroke="currentColor" strokeWidth="1.5" />
+            ))}
+          </motion.svg>
+          <div className="relative flex items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-medium opacity-80">
-                Puntos acumulados
-              </p>
+              <p className="text-sm font-medium opacity-85">Tus puntos</p>
               <motion.p
-                className="mt-1 text-3xl font-extrabold tracking-tight"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200 }}
+                className="mt-1 font-heading text-4xl leading-none font-bold tracking-tight tabular"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               >
                 {qty(points)}
-                <small className="text-xs">pts</small>
+                <small className="ml-1 text-sm font-semibold opacity-80">pts</small>
               </motion.p>
             </div>
-            <motion.div
-              className="flex size-10 items-center justify-center rounded-xl bg-white/15"
-              style={{ y: useTransform(y, (v) => v * 0.3) }}
-            >
-              <Sparkles className="size-5" />
-            </motion.div>
+            <span className="flex items-center gap-1 rounded-full bg-primary-foreground/15 px-3 py-1.5 text-sm font-semibold">
+              Canjear <ArrowRight className="size-3.5" />
+            </span>
           </div>
         </div>
       </Link>
@@ -125,9 +116,6 @@ function PromoParallaxImage({ src, alt }: { src: string; alt: string }) {
 export function HomeClient() {
   const [data, setData] = useState<PortalHomeData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const { needsPermissions, pendingTypes, markTypeRequested } = usePortalPermissions()
-  const [permQueue, setPermQueue] = useState<PortalPermissionType[]>([])
-  const [activePerm, setActivePerm] = useState<PortalPermissionType | null>(null)
   const [detailItem, setDetailItem] = useState<DetailItem | null>(null)
 
   useEffect(() => {
@@ -143,23 +131,8 @@ export function HomeClient() {
     }
   }, [])
 
-  // Post-login: show permission sliders on first visit (solo pendientes)
-  useEffect(() => {
-    if (!needsPermissions || permQueue.length > 0 || activePerm) return
-    setPermQueue([...pendingTypes])
-  }, [needsPermissions, pendingTypes, permQueue.length, activePerm])
-
-  useEffect(() => {
-    if (permQueue.length > 0 && !activePerm) {
-      setActivePerm(permQueue[0])
-    }
-  }, [permQueue, activePerm])
-
-  const handlePermDone = (type: PortalPermissionType) => {
-    markTypeRequested(type)
-    setActivePerm(null)
-    setPermQueue((prev) => prev.slice(1))
-  }
+  // Los permisos ya no se piden en cadena al entrar: cada uno se solicita en
+  // su contexto (ubicación al pagar, notificaciones al seguir un pedido).
 
   if (error) {
     return (
@@ -189,7 +162,7 @@ export function HomeClient() {
   return (
     <PullToRefresh onRefresh={refreshData}>
     <motion.div
-      className="space-y-5 p-4"
+      className="space-y-7 p-4 pb-6"
       variants={container}
       initial="hidden"
       animate="show"
@@ -201,13 +174,13 @@ export function HomeClient() {
       {(data.businessMode === "food_service" || data.businessMode === "hybrid") && <motion.section variants={item}>
         <Link
           href="/portal/reservations"
-          className="flex items-center gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/10 via-transparent to-amber-500/10 p-3.5 shadow-sm transition active:scale-[0.99]"
+          className="press flex min-h-16 items-center gap-3 rounded-2xl border border-primary/20 bg-accent/60 p-3.5"
         >
           <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <CalendarCheck2 className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold">Reservar mesa</p>
+            <p className="text-sm font-semibold">Reservar mesa</p>
             <p className="text-xs text-muted-foreground">
               Elige tu mesa desde el plano del local
             </p>
@@ -219,13 +192,13 @@ export function HomeClient() {
       {/* Pedidos activos */}
       {activeOrders.length > 0 && (
         <motion.section variants={item}>
-          <h2 className="mb-2 text-sm font-semibold">Pedidos activos</h2>
+          <h2 className="mb-2.5 font-heading text-lg font-semibold tracking-tight">Pedidos activos</h2>
           <div className="space-y-2">
             {activeOrders.map((o) => (
               <TapScale key={o.id}>
                 <Link
                   href={`/portal/orders/${o.id}`}
-                  className="flex items-center justify-between rounded-xl border border-border/60 bg-card p-3.5 shadow-sm"
+                  className="flex min-h-16 items-center justify-between rounded-2xl border bg-card p-3.5"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -261,11 +234,11 @@ export function HomeClient() {
       {/* Banners / Publicaciones promocionales */}
       {banners.length > 0 && (
         <motion.section variants={item}>
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+          <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 scrollbar-none">
             {banners.map((pub) => (
               <div
                 key={pub.id}
-                className="relative shrink-0 overflow-hidden rounded-2xl"
+                className="relative shrink-0 snap-start overflow-hidden rounded-2xl"
                 role="button"
                 tabIndex={0}
                 onClick={() => setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
@@ -281,14 +254,14 @@ export function HomeClient() {
       {/* Promociones */}
       {data.promotions.length > 0 && (
         <motion.section variants={item}>
-          <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+          <h2 className="mb-2.5 flex items-center gap-1.5 font-heading text-lg font-semibold tracking-tight">
             <Sparkles className="size-4 text-primary" /> Promociones
           </h2>
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+          <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 scrollbar-none">
             {data.promotions.map((p) => (
               <Card
                 key={p.id}
-                className="w-56 shrink-0 overflow-hidden rounded-2xl border-border/50"
+                className="w-60 shrink-0 snap-start overflow-hidden rounded-2xl"
                 role="button"
                 tabIndex={0}
                 onClick={() => setDetailItem({ kind: "promotion", id: p.id, name: p.name, description: p.description, descriptionFinal: p.descriptionFinal, imageUrl: p.imageUrl, benefit: p.benefit, value: p.value, startsAt: p.startsAt, endsAt: p.endsAt })}
@@ -334,17 +307,17 @@ export function HomeClient() {
       {data.combos && data.combos.length > 0 && (
         <motion.section variants={item}>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-              <Puzzle className="size-4 text-emerald-500" /> Combos especiales
+            <h2 className="flex items-center gap-1.5 font-heading text-lg font-semibold tracking-tight">
+              <Puzzle className="size-4 text-primary" /> Combos especiales
             </h2>
             <Link
               href="/portal/store"
-              className="flex items-center gap-0.5 text-xs text-primary font-medium"
+              className="-mr-2 flex min-h-11 items-center gap-0.5 px-2 text-sm font-medium text-primary"
             >
               Ver tienda <ArrowRight className="size-3" />
             </Link>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+          <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 scrollbar-none">
             {data.combos.map((c) => (
               <PortalComboCard key={c.id} combo={c} />
             ))}
@@ -356,10 +329,10 @@ export function HomeClient() {
       {data.newProducts.length > 0 && (
         <motion.section variants={item}>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold">Productos nuevos</h2>
+            <h2 className="font-heading text-lg font-semibold tracking-tight">Productos nuevos</h2>
             <Link
               href="/portal/store"
-              className="flex items-center gap-0.5 text-xs text-primary font-medium"
+              className="-mr-2 flex min-h-11 items-center gap-0.5 px-2 text-sm font-medium text-primary"
             >
               Ver tienda <ArrowRight className="size-3" />
             </Link>
@@ -371,7 +344,7 @@ export function HomeClient() {
                   href="/portal/store"
                   className="flex flex-col items-center gap-1 text-center"
                 >
-                  <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border bg-muted">
+                  <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-2xl bg-surface-sunken">
                     {p.imageUrl ? (
                       <MaskRevealImage
                         src={p.imageUrl}
@@ -397,14 +370,14 @@ export function HomeClient() {
       {/* Publicaciones */}
       {data.publications.length > 0 && (
         <motion.section variants={item}>
-          <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+          <h2 className="mb-2.5 flex items-center gap-1.5 font-heading text-lg font-semibold tracking-tight">
             <Megaphone className="size-4 text-primary" /> Avisos
           </h2>
           <div className="space-y-2">
             {data.publications.map((pub) => (
               <div
                 key={pub.id}
-                className="flex items-start gap-3 rounded-xl border border-border/60 bg-card p-3.5 shadow-sm"
+                className="press flex items-start gap-3 rounded-2xl border bg-card p-3.5"
                 role="button"
                 tabIndex={0}
                 onClick={() => setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
@@ -446,17 +419,6 @@ export function HomeClient() {
         onOpenChange={(o) => !o && setDetailItem(null)}
         item={detailItem}
       />
-
-      {/* Post-login permission sliders */}
-      {activePerm && (
-        <PermissionSlider
-          type={activePerm}
-          open={!!activePerm}
-          onOpenChange={(open) => { if (!open) handlePermDone(activePerm) }}
-          onGranted={() => handlePermDone(activePerm)}
-          onDenied={() => handlePermDone(activePerm)}
-        />
-      )}
     </motion.div>
     </PullToRefresh>
   )

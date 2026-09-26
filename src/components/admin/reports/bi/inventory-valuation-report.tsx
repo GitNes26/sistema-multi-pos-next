@@ -68,7 +68,7 @@ export function InventoryValuationReport({ from, to, locationId }: Props) {
               </div>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${(r.valueAtCost / maxCost) * 100}%` }} />
+              <div className="h-full rounded-full bg-success transition-all" style={{ width: `${(r.valueAtCost / maxCost) * 100}%` }} />
             </div>
           </div>
         ))}

@@ -9,7 +9,7 @@ export function StaleBanner({ show }: { show: boolean }) {
   return (
     <div
       role="alert"
-      className="flex items-center gap-2 rounded-lg border border-amber-400/60 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-300"
+      className="flex items-center gap-2 rounded-lg border border-warning/60 bg-warning/10 px-3 py-2 text-sm text-warning-ink"
     >
       <WifiOff className="size-4 shrink-0" />
       <span>

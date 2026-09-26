@@ -353,11 +353,11 @@ export function CatalogsModal({
                   </span>
                 </span>
                 <span className="ml-auto flex flex-col items-end gap-0.5">
-                  <span className="flex items-center gap-1 text-xs font-semibold text-amber-600">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-warning-ink">
                     <Star className="size-3.5" />{" "}
                     {money(pointsToMoney(c.points, loyalty.pointValue))}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {Math.floor(c.points)} pts
                   </span>
                 </span>
@@ -414,17 +414,17 @@ export function CatalogsModal({
                   key={p.id}
                   className={cn(
                     "rounded-xl border bg-card px-3 py-2.5",
-                    prog.pct >= 100 && "border-emerald-500/40 bg-emerald-500/5",
-                    nearReady && "border-amber-500/40 bg-amber-500/5"
+                    prog.pct >= 100 && "border-success/40 bg-success/5",
+                    nearReady && "border-warning/40 bg-warning/5"
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
                       {prog.pct >= 100 && (
-                        <Sparkles className="size-3.5 shrink-0 text-emerald-500" />
+                        <Sparkles className="size-3.5 shrink-0 text-success-ink" />
                       )}
                       {nearReady && (
-                        <Target className="size-3.5 shrink-0 text-amber-500" />
+                        <Target className="size-3.5 shrink-0 text-warning-ink" />
                       )}
                       <p className="truncate text-sm font-medium">{p.name}</p>
                     </div>
@@ -443,12 +443,12 @@ export function CatalogsModal({
                     </p>
                   )}
                   {p.description && p.description !== p.descriptionFinal && (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {p.description}
                     </p>
                   )}
                   {promotionScheduleLabel(p) && (
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {promotionScheduleLabel(p)}
                     </p>
                   )}
@@ -456,7 +456,7 @@ export function CatalogsModal({
                   {/* Progress bar */}
                   {p.minAmount > 0 && t.subtotal > 0 && (
                     <div className="mt-2">
-                      <div className="flex items-center justify-between text-[10px] mb-1">
+                      <div className="flex items-center justify-between text-xs mb-1">
                         <span className="text-muted-foreground">
                           {money(prog.current)} de {money(prog.needed)}
                         </span>
@@ -464,9 +464,9 @@ export function CatalogsModal({
                           className={cn(
                             "font-semibold",
                             prog.pct >= 100
-                              ? "text-emerald-600"
+                              ? "text-success-ink"
                               : prog.pct >= 50
-                                ? "text-amber-600"
+                                ? "text-warning-ink"
                                 : "text-muted-foreground"
                           )}
                         >
@@ -478,9 +478,9 @@ export function CatalogsModal({
                           className={cn(
                             "h-full rounded-full transition-all duration-500",
                             prog.pct >= 100
-                              ? "bg-emerald-500"
+                              ? "bg-success"
                               : prog.pct >= 50
-                                ? "bg-amber-500"
+                                ? "bg-warning"
                                 : "bg-primary"
                           )}
                           style={{ width: `${prog.pct}%` }}
@@ -489,9 +489,9 @@ export function CatalogsModal({
                       {prog.label && (
                         <p
                           className={cn(
-                            "mt-0.5 text-[10px]",
+                            "mt-0.5 text-xs",
                             prog.pct >= 100
-                              ? "text-emerald-600 font-medium"
+                              ? "text-success-ink font-medium"
                               : "text-muted-foreground"
                           )}
                         >

@@ -82,7 +82,7 @@ export function StoreClient() {
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
-          className="pl-9 md:pl-9"
+          className="pl-9 md:pl-9 desk:pl-9"
           placeholder="Buscar productos…"
           aria-label="Buscar productos"
           value={search}
@@ -96,7 +96,7 @@ export function StoreClient() {
       </div>
 
       <motion.div
-        className="flex gap-2 overflow-x-auto pb-1"
+        className="scrollbar-none -mx-4 flex snap-x gap-2 overflow-x-auto scroll-px-4 px-4 pb-1"
         initial="hidden"
         animate="show"
         variants={{

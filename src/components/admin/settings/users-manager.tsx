@@ -292,7 +292,7 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
                   {r.isSystem && <Badge variant="outline">Sistema</Badge>}
                   {r.organizationId === null && !r.isSystem && (
                     <TooltipButton label="Rol global" variant="ghost" size="icon-xs">
-                      <Globe className="size-3 text-blue-500" />
+                      <Globe className="size-3 text-info-ink" />
                     </TooltipButton>
                   )}
                   <span className="text-xs text-muted-foreground">{r.permissionCount}</span>
@@ -341,7 +341,7 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
                     size="icon-xs"
                     onClick={() => toggleScope(selected)}
                   >
-                    <Globe className={cn("size-3.5", selected.organizationId === null ? "text-blue-500" : "text-muted-foreground")} />
+                    <Globe className={cn("size-3.5", selected.organizationId === null ? "text-info-ink" : "text-muted-foreground")} />
                   </TooltipButton>
                 )}
                 {!selected.isSystem && (

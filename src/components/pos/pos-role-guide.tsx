@@ -48,18 +48,24 @@ export function PosRoleGuide({ open, onOpenChange }: {
   if (dismissed !== false || (!canTables && !canKds)) return null;
 
   return (
-    <div className="relative mx-3 mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/5 via-transparent to-violet-500/5 px-3 py-2">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm"><Sparkles className="size-4" /></span>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-bold">Mesa y cocina, guiadas en el POS real</p>
-        <p className="text-[11px] text-muted-foreground">Selecciona mesa, envía la comanda, sigue cocina y cobra.</p>
+    <div className="mx-3 mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-primary/20 bg-accent/40 py-2 pr-1 pl-3">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Sparkles className="size-4" /></span>
+      <div className="min-w-0 flex-1 basis-48">
+        <p className="text-sm font-semibold">Mesa y cocina, guiadas en el POS real</p>
+        <p className="text-xs text-muted-foreground">
+          Selecciona mesa, envía la comanda{canKds ? ", sigue cocina" : ""} y cobra.
+        </p>
       </div>
-      {canTables && <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={start}><Armchair className="size-3.5" /> Mesas</Button>}
-      {canKds && <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={start}><ChefHat className="size-3.5" /> Cocina (KDS)</Button>}
-      <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={start}>
-        <Armchair className="size-3.5" /><ChefHat className="size-3.5" /> Iniciar recorrido
-      </Button>
-      <button type="button" onClick={dismiss} aria-label="Ocultar guía del POS" className="absolute -right-2 -top-2 rounded-full border bg-background p-1 text-muted-foreground shadow-sm"><X className="size-3" /></button>
+      <div className="flex items-center gap-1 max-sm:w-full max-sm:pl-11">
+        <Button size="sm" variant="outline" className="gap-1.5 bg-card max-sm:flex-1" onClick={start}>
+          {canTables && <Armchair className="size-3.5" />}
+          {canKds && <ChefHat className="size-3.5" />}
+          Iniciar recorrido
+        </Button>
+        <Button size="icon-sm" variant="ghost" onClick={dismiss} aria-label="Ocultar guía del POS" className="text-muted-foreground">
+          <X className="size-4" />
+        </Button>
+      </div>
     </div>
   );
 }

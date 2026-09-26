@@ -70,7 +70,7 @@ export function OrdersClient() {
             >
               <Link
                 href={`/portal/orders/${o.id}`}
-                className="flex items-center justify-between rounded-2xl border bg-card p-4 shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+                className="flex items-center justify-between rounded-2xl border bg-card p-4 transition-all hover:shadow-md active:scale-[0.98]"
               >
                 <div>
                   <p className="text-sm font-bold">Pedido #{o.orderNumber}</p>

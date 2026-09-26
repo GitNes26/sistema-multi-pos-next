@@ -355,7 +355,7 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
                     onClick={() => !done && toggleFound(item)}
                   >
                     {item.found ? (
-                      <CheckCircle2 className="size-5 shrink-0 text-emerald-500" />
+                      <CheckCircle2 className="size-5 shrink-0 text-success-ink" />
                     ) : (
                       <CircleDot className="size-5 shrink-0 text-muted-foreground/50" />
                     )}
@@ -368,7 +368,7 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
                       >
                         {item.bulkQuantityDisplay ??
                           `${item.quantity} × ${item.productName}`}
-                        {item.variantName &&
+                        {item.variantName && item.variantName !== "Default" &&
                         item.productName !== item.variantName
                           ? ` (${item.variantName})`
                           : ""}

@@ -6,19 +6,21 @@ import {
   AlertTriangle,
   Armchair,
   Bell,
+  BellRing,
   CalendarCheck2,
   Check,
   ChefHat,
   Clock,
+  Flame,
   Loader2,
   MapPin,
+  StickyNote,
   Volume2,
   VolumeX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RoleBadge } from "@/components/shared/role-badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useSseStore } from "@/stores/sse-store";
 import { playSound } from "@/lib/sounds";
 import { useStaleData } from "@/hooks/use-stale-data";
@@ -85,7 +87,7 @@ function formatElapsed(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function getOrderUrgency(seconds: number): string {
+function getOrderUrgency(seconds: number): "critical" | "warning" | "normal" {
   if (seconds > 600) return "critical"; // >10 min
   if (seconds > 300) return "warning";  // >5 min
   return "normal";
@@ -99,10 +101,12 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
   const [updating, setUpdating] = useState<string | null>(null);
 
   const urgency = getOrderUrgency(order.elapsedSeconds);
-  const urgencyBorder = {
-    critical: "border-red-500 shadow-red-500/20 animate-pulse",
-    warning: "border-amber-400 shadow-amber-400/20",
-    normal: "border-slate-200 dark:border-slate-700",
+  const readyCount = order.items.filter((i) => i.itemStatus === "ready" || i.itemStatus === "served").length;
+  const progress = order.items.length ? readyCount / order.items.length : 0;
+  const URGENCY = {
+    critical: { card: "border-destructive ring-2 ring-destructive/25", head: "bg-destructive/12", chip: "bg-destructive text-destructive-foreground", label: "Atrasada" },
+    warning: { card: "border-warning", head: "bg-warning/15", chip: "bg-warning text-warning-foreground", label: "Atención" },
+    normal: { card: "border-border", head: "bg-surface-sunken", chip: "bg-card text-foreground ring-1 ring-border", label: "A tiempo" },
   }[urgency];
 
   const handleItemStatus = async (itemId: string, newStatus: string) => {
@@ -130,163 +134,162 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
   };
 
   return (
-    <Card className={cn("overflow-hidden border-2 bg-card shadow-sm transition-all duration-300", urgencyBorder)}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-bold">#{order.orderNumber}</span>
-            {order.table && (
-              <Badge variant="outline" className="text-xs">
-                <MapPin className="w-3 h-3 mr-1" />
+    <article
+      aria-label={`Orden ${order.orderNumber}`}
+      className={cn("flex flex-col overflow-hidden rounded-2xl border-2 bg-card shadow-e1 transition-[border-color,box-shadow] duration-300", URGENCY.card)}
+    >
+      {/* Encabezado: número y mesa legibles a distancia; tiempo con estado en texto */}
+      <header className={cn("space-y-2 px-4 pt-3.5 pb-3", URGENCY.head)}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-heading text-3xl leading-none font-bold tracking-tight tabular">#{order.orderNumber}</p>
+            {order.table ? (
+              <p className="mt-1.5 flex items-center gap-1.5 truncate text-base font-semibold">
+                <Armchair className="size-4 shrink-0" />
                 Mesa {order.table.number}
-                {order.table.name && ` · ${order.table.name}`}
-                {order.table.room?.name && (
-                  <span className="text-muted-foreground"> · {order.table.room.name}</span>
-                )}
-              </Badge>
-            )}
+                {order.table.name && <span className="font-normal text-muted-foreground">· {order.table.name}</span>}
+              </p>
+            ) : order.location ? (
+              <p className="mt-1.5 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+                <MapPin className="size-3.5 shrink-0" /> {order.location.name}
+              </p>
+            ) : null}
           </div>
-          <div className="flex items-center gap-2">
-            <div className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-mono font-bold",
-              urgency === "critical" ? "bg-red-100 text-red-700" :
-              urgency === "warning" ? "bg-amber-100 text-amber-700" :
-              "bg-slate-100 text-slate-600"
-            )}>
-              <Clock className="w-3 h-3" />
+          <div className={cn("flex shrink-0 flex-col items-end rounded-xl px-2.5 py-1.5", URGENCY.chip)}>
+            <span className="flex items-center gap-1 font-mono text-xl leading-none font-bold tabular">
+              {urgency === "critical" ? <AlertTriangle className="size-4" /> : <Clock className="size-4" />}
               {formatElapsed(order.elapsedSeconds)}
-            </div>
-            {urgency === "critical" && (
-              <AlertTriangle className="w-5 h-5 text-red-500 animate-pulse" />
-            )}
+            </span>
+            <span className="mt-0.5 text-xs font-semibold opacity-90">{URGENCY.label}</span>
           </div>
         </div>
-        {order.location && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <MapPin className="w-3 h-3" />
-            {order.location.name}
-          </p>
+        {order.table?.room?.name && (
+          <p className="text-xs text-muted-foreground">{order.table.room.name}</p>
         )}
-      </CardHeader>
+        <div className="flex items-center gap-2" aria-label={`${readyCount} de ${order.items.length} artículos listos`}>
+          <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10">
+            <span
+              className="absolute inset-y-0 left-0 rounded-full bg-success transition-[width] duration-500 ease-(--ease-out-expo)"
+              style={{ width: `${progress * 100}%` }}
+            />
+          </span>
+          <span className="text-xs font-semibold text-muted-foreground tabular">
+            {readyCount}/{order.items.length}
+          </span>
+        </div>
+      </header>
 
-      <CardContent className="space-y-3">
-        {/* Items */}
-        <div className="space-y-2">
-          {order.items.map((item) => {
-            const isReady = item.itemStatus === "ready" || item.itemStatus === "served";
-            const isPreparing = item.itemStatus === "preparing";
-            return (
-              <div
-                key={item.id}
-                className={cn(
-                  "flex flex-col gap-3 rounded-xl border p-3 transition-all sm:flex-row sm:items-center sm:justify-between",
-                  isReady ? "bg-emerald-50 border-emerald-200" :
-                  isPreparing ? "bg-amber-50 border-amber-200" :
-                  "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                )}
-              >
-                <div className="flex min-w-0 items-start gap-2">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-sm font-black text-background">
-                    {Number(item.quantity)}x
-                  </span>
-                  <div>
-                    <p className={cn("text-sm font-medium", isReady && "line-through opacity-60")}>
-                      {item.productName}
-                      {item.variantName && <span className="text-muted-foreground"> · {item.variantName}</span>}
+      <div className="flex flex-1 flex-col gap-2 p-3">
+        {order.items.map((item) => {
+          const isReady = item.itemStatus === "ready" || item.itemStatus === "served";
+          const isPreparing = item.itemStatus === "preparing";
+          return (
+            <div
+              key={item.id}
+              className={cn(
+                "flex flex-col gap-3 rounded-xl border p-3 transition-colors duration-300",
+                isReady ? "border-success/30 bg-success/8" : isPreparing ? "border-warning/40 bg-warning/8" : "bg-card"
+              )}
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <span
+                  className={cn(
+                    "flex h-10 min-w-10 shrink-0 items-center justify-center rounded-lg px-1.5 text-lg font-bold tabular",
+                    isReady ? "bg-success text-success-foreground" : "bg-foreground text-background"
+                  )}
+                >
+                  {Number(item.quantity)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className={cn("text-base leading-snug font-semibold", isReady && "text-muted-foreground line-through decoration-2")}>
+                    {item.productName}
+                    {item.variantName && item.variantName !== "Default" && <span className="font-normal text-muted-foreground"> · {item.variantName}</span>}
+                  </p>
+                  {item.selectedOptions && Array.isArray(item.selectedOptions) && item.selectedOptions.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {item.selectedOptions.map((opt: { optionName: string; values: { value: string }[] }, idx: number) => (
+                        <span key={idx} className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-foreground/80">
+                          <span className="text-muted-foreground">{opt.optionName}:</span> {opt.values?.map((v: { value: string }) => v.value).join(", ")}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {item.comment && (
+                    <p className="mt-1.5 flex items-start gap-1.5 rounded-lg bg-warning/15 px-2 py-1.5 text-sm font-medium text-foreground">
+                      <StickyNote className="mt-0.5 size-3.5 shrink-0 text-warning-ink" />
+                      {item.comment}
                     </p>
-                    {/* Selected options */}
-                    {item.selectedOptions && Array.isArray(item.selectedOptions) && item.selectedOptions.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-0.5">
-                        {item.selectedOptions?.map((opt: { optionName: string; values: { value: string }[] }, idx: number) => (
-                          <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
-                            {opt.optionName}: {opt.values?.map((v: { value: string }) => v.value).join(", ")}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {/* Comment */}
-                    {item.comment && (
-                      <p className="text-[10px] text-amber-600 italic mt-0.5">
-                        📝 {item.comment}
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
+                {isReady && (
+                  <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-success-ink">
+                    <Check className="size-4" strokeWidth={3} /> Listo
+                  </span>
+                )}
+              </div>
 
-                {/* Item status buttons */}
-                <div className="flex w-full gap-2 sm:w-auto">
+              {!isReady && (
+                <div className="flex gap-2">
                   {item.itemStatus === "pending" && (
                     <Button
-                      size="sm"
                       variant="outline"
-                      className="h-11 flex-1 px-4 text-sm sm:flex-none"
+                      className="h-12 flex-1 text-sm desk:h-10"
                       onClick={() => handleItemStatus(item.id, "preparing")}
                       disabled={updating === item.id}
                     >
-                      <Loader2 className="w-3 h-3 mr-1" />
+                      <Flame className="size-4" />
                       Cocinar
                     </Button>
                   )}
-                  {(item.itemStatus === "pending" || item.itemStatus === "preparing") && (
-                    <Button
-                      size="sm"
-                      className="h-11 flex-1 bg-emerald-600 px-4 text-sm hover:bg-emerald-700 sm:flex-none"
-                      onClick={() => handleItemStatus(item.id, "ready")}
-                      disabled={updating === item.id}
-                    >
-                      <Check className="w-3 h-3 mr-1" />
-                      Listo
-                    </Button>
-                  )}
-                  {isReady && (
-                    <Badge className="bg-emerald-500 text-white text-[10px]">
-                      <Check className="w-3 h-3 mr-0.5" /> Listo
-                    </Badge>
-                  )}
+                  <Button
+                    className="h-12 flex-1 bg-success text-sm text-success-foreground hover:bg-success/90 desk:h-10"
+                    onClick={() => handleItemStatus(item.id, "ready")}
+                    disabled={updating === item.id}
+                  >
+                    {updating === item.id ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+                    Listo
+                  </Button>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-        {/* Order actions */}
-        <div className="flex gap-2 pt-2 border-t">
-          {order.status === "pending" && (
-            <Button
-              size="sm"
-              className="h-12 flex-1 text-base font-bold"
-              onClick={() => handleOrderAction("start")}
-              disabled={updating === "order"}
-            >
-              <ChefHat className="w-4 h-4 mr-1" />
-              Iniciar preparación
-            </Button>
-          )}
-          {order.status === "preparing" && (
-            <Button
-              size="sm"
-              className="h-12 flex-1 bg-emerald-600 text-base font-bold hover:bg-emerald-700"
-              onClick={() => handleOrderAction("ready")}
-              disabled={updating === "order"}
-            >
-              <Check className="w-4 h-4 mr-1" />
-              Marcar todo listo
-            </Button>
-          )}
-          {order.status === "ready" && (
-            <Button
-              size="sm"
-              className="h-12 flex-1 bg-blue-600 text-base font-bold hover:bg-blue-700"
-              onClick={() => handleOrderAction("complete")}
-              disabled={updating === "order"}
-            >
-              <Check className="w-4 h-4 mr-1" />
-              Entregado
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      {/* Acción principal de la orden */}
+      <footer className="border-t p-3">
+        {order.status === "pending" && (
+          <Button
+            className="h-14 w-full rounded-xl text-base font-semibold desk:h-12"
+            onClick={() => handleOrderAction("start")}
+            disabled={updating === "order"}
+          >
+            <ChefHat className="size-5" />
+            Iniciar preparación
+          </Button>
+        )}
+        {order.status === "preparing" && (
+          <Button
+            className="h-14 w-full rounded-xl bg-success text-base font-semibold text-success-foreground hover:bg-success/90 desk:h-12"
+            onClick={() => handleOrderAction("ready")}
+            disabled={updating === "order"}
+          >
+            <Check className="size-5" />
+            Marcar todo listo
+          </Button>
+        )}
+        {order.status === "ready" && (
+          <Button
+            className="h-14 w-full rounded-xl bg-info text-base font-semibold text-info-foreground hover:bg-info/90 desk:h-12"
+            onClick={() => handleOrderAction("complete")}
+            disabled={updating === "order"}
+          >
+            <BellRing className="size-5" />
+            Entregado
+          </Button>
+        )}
+      </footer>
+    </article>
   );
 }
 
@@ -523,7 +526,7 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
   }
 
   return (
-    <div className="min-h-[70vh] space-y-5 rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-950/50 sm:p-5">
+    <div className="min-h-[70vh] space-y-5 rounded-2xl bg-surface-sunken p-3 sm:p-5">
       {/* Header bar */}
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
@@ -533,11 +536,11 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
           </h2>
           {stats && (
             <div className="flex gap-3 text-sm">
-              <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300">
+              <Badge variant="outline" className="bg-warning/10 text-warning-ink border-warning/30">
                 <Clock className="w-3 h-3 mr-1" />
                 {stats.pending + stats.confirmed + stats.preparing} órdenes
               </Badge>
-              <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-300">
+              <Badge variant="outline" className="bg-success/10 text-success-ink border-success/30">
                 <Check className="w-3 h-3 mr-1" />
                 {stats.readyItems}/{stats.totalItems} artículos listos
               </Badge>
@@ -547,7 +550,7 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           {/* Operador de la sesión: demo walkers saben qué rol está activo. */}
           {session?.user?.name || session?.user?.roleName ? (
-            <div className="hidden items-center gap-1.5 rounded-md bg-slate-100 py-0.5 pl-2 pr-1 text-slate-600 dark:bg-slate-800 dark:text-slate-300 md:flex">
+            <div className="hidden items-center gap-1.5 rounded-md bg-card py-0.5 pl-2 pr-1 text-muted-foreground ring-1 ring-border md:flex">
               <span className="max-w-32 truncate text-xs font-medium">
                 {session.user.name}
               </span>
@@ -576,8 +579,8 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
 
       {stats && (
         <div className="grid grid-cols-3 gap-2" aria-label="Resumen de cocina">
-          {[["Por iniciar", stats.pending + stats.confirmed, "text-amber-700 bg-amber-100"], ["Preparando", stats.preparing, "text-blue-700 bg-blue-100"], ["Artículos listos", stats.readyItems, "text-emerald-700 bg-emerald-100"]].map(([label, value, tone]) => (
-            <div key={String(label)} className={cn("rounded-xl p-3 text-center", tone)}><strong className="block text-2xl tabular-nums">{value}</strong><span className="text-xs font-semibold">{label}</span></div>
+          {[["Por iniciar", stats.pending + stats.confirmed, "text-warning-ink bg-warning/10"], ["Preparando", stats.preparing, "text-info-ink bg-info/10"], ["Artículos listos", stats.readyItems, "text-success-ink bg-success/10"]].map(([label, value, tone]) => (
+            <div key={String(label)} className={cn("flex items-baseline justify-center gap-2 rounded-xl px-3 py-2.5", tone)}><strong className="text-3xl leading-none font-bold tabular-nums">{value}</strong><span className="text-sm font-semibold">{label}</span></div>
           ))}
         </div>
       )}
@@ -586,7 +589,7 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
       {arrivalAlert && (
         <div
           role="status"
-          className="flex items-center gap-2 rounded-xl border border-violet-400 bg-violet-100 px-3.5 py-2.5 text-sm font-semibold text-violet-900 shadow-sm animate-pulse dark:border-violet-500/60 dark:bg-violet-500/20 dark:text-violet-100"
+          className="flex animate-rise-in items-center gap-2 rounded-xl border border-violet-400 bg-violet-100 px-3.5 py-3 text-base font-semibold text-violet-900 shadow-e2 dark:border-violet-500/60 dark:bg-violet-500/20 dark:text-violet-100"
         >
           <Bell className="size-4 shrink-0" />
           Nueva reservación confirmada: Mesa {arrivalAlert.tableNumber}
@@ -608,7 +611,7 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
               <Badge
                 key={r.id}
                 variant="outline"
-                className="gap-1 border-violet-300/70 bg-white/70 px-2 py-1 text-xs text-violet-800 dark:border-violet-500/40 dark:bg-slate-900/60 dark:text-violet-200"
+                className="gap-1.5 border-violet-300/70 bg-card px-2.5 py-1.5 text-sm text-violet-800 dark:border-violet-500/40 dark:text-violet-200"
               >
                 <Armchair className="size-3" />
                 Mesa {r.table?.number ?? "?"}
@@ -630,15 +633,17 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
 
       {/* Orders grid */}
       {orders.length === 0 ? (
-        <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed bg-card/70 px-6 text-center text-muted-foreground">
-          <ChefHat className="w-12 h-12 mb-4 opacity-30" />
-          <p className="text-lg font-medium">Sin órdenes pendientes</p>
+        <div className="flex h-72 flex-col items-center justify-center rounded-2xl border border-dashed bg-card px-6 text-center text-muted-foreground">
+          <span className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-muted">
+            <ChefHat className="size-8" />
+          </span>
+          <p className="text-xl font-semibold text-foreground">Cocina al día</p>
           <p className="text-sm">Las nuevas órdenes aparecerán aquí automáticamente.</p>
           <p className="mt-1 max-w-md text-xs">Cuando llegue una orden, inicia su preparación desde la tarjeta, marca cada artículo listo y finalmente avisa que el pedido está completo.</p>
           <Button variant="outline" size="sm" className="mt-4" onClick={load}>Comprobar ahora</Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] items-start gap-4">
           {orders.map((order) => (
             <OrderCard key={order.id} order={order} onUpdate={load} />
           ))}

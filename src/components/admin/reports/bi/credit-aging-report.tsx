@@ -18,10 +18,10 @@ interface Row {
 const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
 
 const bucketColor = (bucket: string) => {
-  if (bucket === "Current") return "bg-green-100 text-green-800"
-  if (bucket.includes("30")) return "bg-yellow-100 text-yellow-800"
+  if (bucket === "Current") return "bg-success/10 text-success-ink"
+  if (bucket.includes("30")) return "bg-warning/10 text-warning-ink"
   if (bucket.includes("60")) return "bg-orange-100 text-orange-800"
-  return "bg-red-100 text-red-800"
+  return "bg-destructive/10 text-destructive"
 }
 
 export function CreditAgingReport({ from: _from, to: _to }: { from: string; to: string }) {
@@ -48,7 +48,7 @@ export function CreditAgingReport({ from: _from, to: _to }: { from: string; to: 
         <Card>
           <CardContent className="pt-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{money(totalDebt)}</div>
+              <div className="text-2xl font-bold text-destructive">{money(totalDebt)}</div>
               <div className="text-xs text-muted-foreground">Cartera total</div>
             </div>
           </CardContent>
@@ -93,7 +93,7 @@ export function CreditAgingReport({ from: _from, to: _to }: { from: string; to: 
                 {rows.map((r) => (
                   <tr key={r.customerId} className="border-b last:border-0">
                     <td className="py-2 pr-4 font-medium">{r.customerName}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-red-600">{money(r.balance)}</td>
+                    <td className="py-2 pr-4 text-right font-mono text-destructive">{money(r.balance)}</td>
                     <td className="py-2 pr-4 text-right font-mono text-muted-foreground">{r.creditLimit != null ? money(r.creditLimit) : "-"}</td>
                     <td className="py-2 pr-4 text-right">{r.daysOverdue}</td>
                     <td className="py-2 text-right">

@@ -139,8 +139,8 @@ function OptionPill({
         "hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-none",
         sizeClasses[size],
         isSelected
-          ? "border-emerald-600 bg-emerald-600 text-white shadow-lg shadow-emerald-600/25"
-          : "border-stone-200 bg-white text-stone-700 hover:border-emerald-300 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
+          ? "border-primary bg-primary text-primary-foreground shadow-e1"
+          : "border-border bg-card text-foreground hover:border-primary/40"
       )}
     >
       {/* Check indicator */}
@@ -148,8 +148,8 @@ function OptionPill({
         className={cn(
           "flex size-4 items-center justify-center rounded-full transition-all duration-200",
           isSelected
-            ? "bg-white/25 text-white"
-            : "bg-stone-100 text-transparent dark:bg-stone-700"
+            ? "bg-primary-foreground/25 text-primary-foreground"
+            : "bg-muted text-transparent"
         )}
       >
         <Check className="size-2.5" />
@@ -165,8 +165,8 @@ function OptionPill({
           className={cn(
             "rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums",
             isSelected
-              ? "bg-white/20 text-white"
-              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+              ? "bg-primary-foreground/20 text-primary-foreground"
+              : "bg-primary/10 text-primary"
           )}
         >
           +{money(value.extraPrice)}
@@ -175,7 +175,7 @@ function OptionPill({
 
       {/* Active ring pulse */}
       {isSelected && !disabled && (
-        <span className="absolute inset-0 rounded-full animate-[ringPulse_2s_ease-in-out_infinite] border-2 border-emerald-400/50" />
+        <span className="absolute inset-0 rounded-full animate-[ringPulse_2s_ease-in-out_infinite] border-2 border-primary/50" />
       )}
     </button>
   )
@@ -210,7 +210,7 @@ function OptionSection({
       {/* Section header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
             {option.name}
           </h3>
           {option.required && (
@@ -222,7 +222,7 @@ function OptionSection({
         <span
           className={cn(
             "text-xs font-medium tabular-nums transition-colors",
-            isValid ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
+            isValid ? "text-success-ink" : "text-destructive"
           )}
         >
           {activeCount}/{maxLabel}
@@ -252,15 +252,15 @@ function OptionSection({
           ))}
       </div>
       {option.values.length > 0 && option.values.every((value) => !value.isActive) && (
-        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+        <p className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs text-warning-ink">
           Este insumo forma parte de la configuración, pero ninguna presentación tiene existencias. No puede seleccionarse por ahora.
         </p>
       )}
 
       {/* Validation message */}
       {!isValid && showValidation && (
-        <p className="flex items-center gap-1 text-xs text-red-500">
-          <span className="size-1 rounded-full bg-red-500" />
+        <p className="flex items-center gap-1 text-xs text-destructive">
+          <span className="size-1 rounded-full bg-destructive" />
           Selecciona al menos {option.minSelect} {option.name.toLowerCase()}
         </p>
       )}
@@ -290,7 +290,7 @@ function NotesInput({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+      <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
         Notas / Modificaciones
       </h3>
 
@@ -314,8 +314,8 @@ function NotesInput({
               className={cn(
                 "rounded-full border px-2.5 py-1 text-xs transition-all duration-200 hover:shadow-sm active:scale-95",
                 isActive
-                  ? "border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                  : "border-stone-200 bg-stone-50 text-stone-600 hover:border-stone-300 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-400"
+                  ? "border-warning bg-warning/10 text-warning-ink"
+                  : "border-border bg-muted text-muted-foreground hover:border-border"
               )}
             >
               {isActive && <Check className="mr-0.5 inline size-3" />}
@@ -331,14 +331,14 @@ function NotesInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Escribe notas adicionales..."
-          className="w-full rounded-2xl border-2 border-stone-200 bg-stone-50 px-4 py-3 text-sm placeholder:text-stone-400 focus:border-emerald-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-emerald-400/10 dark:border-stone-700 dark:bg-stone-800 dark:focus:border-emerald-500"
+          className="w-full rounded-2xl border-2 border-border bg-muted px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:outline-none focus:ring-4 focus:ring-success/10"
           rows={2}
         />
         {value && (
           <button
             type="button"
             onClick={() => onChange("")}
-            className="absolute right-3 top-3 rounded-full bg-stone-200 p-0.5 text-stone-500 transition-colors hover:bg-stone-300 dark:bg-stone-600 dark:hover:bg-stone-500"
+            className="absolute right-3 top-3 rounded-full bg-muted p-0.5 text-muted-foreground transition-colors hover:bg-muted-foreground/30"
           >
             <X className="size-3" />
           </button>
@@ -360,11 +360,11 @@ function QuantitySelector({
   onChange: (v: number) => void
 }) {
   return (
-    <div className="inline-flex items-center gap-1 rounded-full border-2 border-stone-200 bg-white p-1 dark:border-stone-700 dark:bg-stone-800">
+    <div className="inline-flex items-center gap-1 rounded-full border-2 border-border bg-card p-1">
       <button
         type="button"
         onClick={() => onChange(Math.max(1, value - 1))}
-        className="flex size-9 items-center justify-center rounded-full bg-stone-100 text-stone-600 transition-all hover:bg-stone-200 active:scale-90 dark:bg-stone-700 dark:text-stone-300"
+        className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground transition-all hover:bg-muted/80 active:scale-90"
       >
         <Minus className="size-4" />
       </button>
@@ -374,7 +374,7 @@ function QuantitySelector({
       <button
         type="button"
         onClick={() => onChange(value + 1)}
-        className="flex size-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition-all hover:bg-emerald-200 active:scale-90 dark:bg-emerald-900/30 dark:text-emerald-400"
+        className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-all hover:bg-primary/20 active:scale-90"
       >
         <Plus className="size-4" />
       </button>
@@ -583,7 +583,7 @@ export function ProductBuilder({
       {/* Panel */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-white shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] dark:bg-stone-950",
+          "fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-background shadow-e3 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
           "max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:h-[95dvh] max-md:max-h-[95dvh] max-md:rounded-t-3xl",
           "md:inset-y-0 md:right-0 md:bottom-0 md:left-auto md:w-[520px] md:rounded-l-3xl",
           open
@@ -594,12 +594,12 @@ export function ProductBuilder({
         aria-modal="true"
         aria-label={`Configurar ${activeProduct.name}`}
       >
-        <div className="mx-auto mt-2 h-1 w-12 shrink-0 rounded-full bg-stone-300 md:hidden dark:bg-stone-700" />
+        <div className="mx-auto mt-2 h-1 w-12 shrink-0 rounded-full bg-muted-foreground/30 md:hidden" />
         {/* Header */}
-        <div className="relative flex items-center gap-4 border-b border-stone-200 px-6 py-4 dark:border-stone-800">
+        <div className="relative flex items-center gap-4 border-b border-border px-6 py-4">
           {/* Product image thumbnail */}{" "}
           {activeProduct.imageUrl && (
-            <div className="relative size-14 shrink-0 overflow-hidden rounded-2xl border-2 border-stone-100 dark:border-stone-800">
+            <div className="relative size-14 shrink-0 overflow-hidden rounded-2xl border-2 border-border">
               <ThumbImage
                 src={activeProduct.imageUrl}
                 alt={activeProduct.name}
@@ -609,17 +609,17 @@ export function ProductBuilder({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-lg font-bold text-stone-900 dark:text-white">
+            <h2 className="truncate text-lg font-bold text-foreground dark:text-white">
               {activeProduct.name}
             </h2>
-            <p className="text-xs text-stone-500 dark:text-stone-400">
+            <p className="text-xs text-muted-foreground">
               Configura tu {activeProduct.name} al gusto
             </p>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-500 transition-colors hover:bg-stone-200 hover:text-stone-700 dark:bg-stone-800 dark:text-stone-400"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
           >
             <X className="size-5" />
           </button>
@@ -631,13 +631,13 @@ export function ProductBuilder({
             {/* Product hero image (if exists) */}
             {activeProduct.imageUrl && (
               <div className="flex justify-center">
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 p-6 dark:from-emerald-950/30 dark:to-teal-950/30">
+                <div className="relative overflow-hidden rounded-3xl bg-surface-sunken p-6">
                   <ThumbImage
                     src={activeProduct.imageUrl}
                     alt={activeProduct.name}
-                    className="h-36 w-36 rounded-2xl object-cover shadow-xl transition-transform duration-500 hover:scale-110"
+                    className="h-36 w-36 rounded-2xl object-cover shadow-e2"
                   />
-                  <div className="absolute -bottom-2 -right-2 rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white shadow-lg">
+                  <div className="absolute -bottom-2 -right-2 rounded-full bg-primary px-3 py-1 text-sm font-bold text-primary-foreground shadow-e2">
                     <AnimatedPrice value={finalPrice} />
                   </div>
                 </div>
@@ -647,12 +647,12 @@ export function ProductBuilder({
             {/* Base price (if no image) */}
             {!activeProduct.imageUrl && (
               <div className="text-center">
-                <p className="text-xs text-stone-500 dark:text-stone-400">
+                <p className="text-xs text-muted-foreground">
                   Precio base
                 </p>
                 <AnimatedPrice
                   value={basePrice}
-                  className="text-2xl font-bold text-stone-900 dark:text-white"
+                  className="text-2xl font-bold text-foreground dark:text-white"
                 />
               </div>
             )}
@@ -675,7 +675,7 @@ export function ProductBuilder({
                 de configuración y la variante no se eligió antes de abrirlo. */}
             {portalProduct && portalVariants.length > 1 && (
               <div>
-                <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Tamaño
                 </h4>
                 <div className="flex flex-wrap items-center gap-2">
@@ -694,8 +694,8 @@ export function ProductBuilder({
                         className={cn(
                           "inline-flex min-h-11 touch-manipulation items-center rounded-xl border px-4 py-2 text-sm font-medium transition-colors active:scale-[0.97]",
                           active
-                            ? "border-stone-900 bg-stone-900 text-white dark:border-white dark:bg-white dark:text-stone-900"
-                            : "border-stone-200 bg-white text-stone-700 hover:border-stone-400 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300",
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-card text-foreground hover:border-border",
                           unavailable && "cursor-not-allowed opacity-45"
                         )}
                       >
@@ -723,7 +723,7 @@ export function ProductBuilder({
             {/* Selected summary badges */}
             {buildSelectedOptions().length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Tu selección
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -732,7 +732,7 @@ export function ProductBuilder({
                       <Badge
                         key={v.id}
                         variant="secondary"
-                        className="gap-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                        className="gap-1 bg-primary/10 text-primary"
                       >
                         {v.value}
                         {v.extraPrice > 0 && (
@@ -750,36 +750,36 @@ export function ProductBuilder({
         </ScrollArea>
 
         {/* Footer — sticky bottom bar */}
-        <div className="border-t border-stone-200 bg-white/95 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-lg sm:px-6 dark:border-stone-800 dark:bg-stone-950/95">
+        <div className="border-t border-border bg-background/95 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-lg sm:px-6">
           {/* Price breakdown */}
           <div className="mb-3 space-y-1">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-stone-500">Precio base</span>
+              <span className="text-muted-foreground">Precio base</span>
               <span className="tabular-nums">{money(basePrice)}</span>
             </div>
             {totalExtraPrice > 0 && (
               <div className="flex items-center justify-between text-sm">
-                <span className="text-stone-500">Extras</span>
-                <span className="tabular-nums text-emerald-600">
+                <span className="text-muted-foreground">Extras</span>
+                <span className="tabular-nums text-foreground">
                   +{money(totalExtraPrice)}
                 </span>
               </div>
             )}
-            <div className="flex items-center justify-between border-t border-stone-100 pt-1 dark:border-stone-800">
-              <span className="text-xs text-stone-500">Por unidad</span>
+            <div className="flex items-center justify-between border-t border-border pt-1">
+              <span className="text-xs text-muted-foreground">Por unidad</span>
               <AnimatedPrice
                 value={finalPrice}
-                className="text-lg font-bold text-stone-900 dark:text-white"
+                className="text-lg font-bold text-foreground dark:text-white"
               />
             </div>
             {quantity > 1 && (
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-emerald-600">
+                <span className="text-xs font-semibold text-muted-foreground">
                   Total ({quantity}×)
                 </span>
                 <AnimatedPrice
                   value={finalPrice * quantity}
-                  className="text-xl font-bold text-emerald-600"
+                  className="text-2xl font-bold tracking-tight text-foreground"
                 />
               </div>
             )}
@@ -793,13 +793,13 @@ export function ProductBuilder({
               <Button
                 variant="outline"
                 onClick={handleClear}
-                className="shrink-0 rounded-full border-stone-200 text-stone-600 hover:bg-stone-50 dark:border-stone-700"
+                className="shrink-0 rounded-full border-border text-muted-foreground hover:bg-muted/80"
               >
                 Limpiar
               </Button>
               <Button
                 onClick={handleAdd}
-                className="flex-1 rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 transition-all hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-600/30 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
+                className="flex-1 rounded-full bg-primary text-primary-foreground shadow-e2 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
               >
                 <ShoppingCart className="mr-2 size-4" />
                 Agregar

@@ -39,10 +39,10 @@ export function LiveBadge({
         "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
         compact && "gap-1 px-1.5 py-0.5 text-[0.65rem]",
         live
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+          ? "bg-success/10 text-success-ink"
           : pending
-            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-            : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
+            ? "bg-warning/10 text-warning-ink"
+            : "bg-muted text-muted-foreground",
         className
       )}
     >

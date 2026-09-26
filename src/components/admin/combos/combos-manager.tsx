@@ -211,7 +211,7 @@ function ComboForm({
             <p className="text-xs text-muted-foreground">
               Precio sugerido (suma de productos): {money(suggestedPrice)}
               {comboPrice < suggestedPrice && (
-                <span className="ml-1 text-emerald-600">
+                <span className="ml-1 text-success-ink">
                   (ahorro de {money(suggestedPrice - comboPrice)})
                 </span>
               )}
@@ -488,7 +488,7 @@ export function CombosManager() {
                   className="size-10 shrink-0 rounded-lg object-cover"
                 />
               ) : (
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success-ink">
                   <Package className="size-5" />
                 </div>
               )}
@@ -541,7 +541,7 @@ export function CombosManager() {
             <div>
               <span className="font-bold tabular-nums">{money(combo.comboPrice)}</span>
               {discount > 0 && (
-                <span className="ml-1 text-xs text-emerald-600">
+                <span className="ml-1 text-xs text-success-ink">
                   (−{money(discount)})
                 </span>
               )}
@@ -577,7 +577,7 @@ export function CombosManager() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-success/10 text-success-ink">
               <Package className="size-5" />
             </div>
             <div>
@@ -588,7 +588,7 @@ export function CombosManager() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-info/10 text-info-ink">
               <ShoppingCart className="size-5" />
             </div>
             <div>
@@ -599,7 +599,7 @@ export function CombosManager() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-warning/10 text-warning-ink">
               <DollarSign className="size-5" />
             </div>
             <div>
@@ -656,7 +656,7 @@ export function CombosManager() {
                     className="size-12 rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="flex size-12 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                  <div className="flex size-12 items-center justify-center rounded-lg bg-success/10 text-success-ink">
                     <Package className="size-6" />
                   </div>
                 )}
@@ -804,8 +804,8 @@ export function CombosManager() {
               )
               const savings = original - detailCombo.comboPrice
               return savings > 0 ? (
-                <div className="rounded-xl bg-emerald-50 p-3 text-center dark:bg-emerald-950/30">
-                  <p className="text-sm text-emerald-700 dark:text-emerald-400">
+                <div className="rounded-xl bg-success/10 p-3 text-center">
+                  <p className="text-sm text-success-ink">
                     Ahorro de {money(savings)} respecto al precio individual
                   </p>
                 </div>

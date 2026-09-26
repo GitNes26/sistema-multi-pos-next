@@ -56,7 +56,7 @@ export default async function PortalShopLayout({
           businessMode={businessMode}
           user={{ name: session?.user?.name, image: session?.user?.image }}
         >
-          <RouteTransition>{children}</RouteTransition>
+          <RouteTransition variant="native">{children}</RouteTransition>
         </PortalShell>
       </>
     </SessionGuard>

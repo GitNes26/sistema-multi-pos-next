@@ -114,7 +114,7 @@ export function DeliveryTrackingMap({
       </MapContainer>
 
       {/* Leyenda */}
-      <div className="pointer-events-none absolute right-2 bottom-2 z-[1000] flex items-center gap-2 rounded-lg bg-background/90 px-2 py-1 text-[10px] shadow-md backdrop-blur-sm">
+      <div className="pointer-events-none absolute right-2 bottom-2 z-[1000] flex items-center gap-2 rounded-lg bg-background/90 px-2 py-1 text-xs shadow-md backdrop-blur-sm">
         <span className="flex items-center gap-1">
           <span className="size-2 rounded-full bg-[#8b5cf6]" /> Repartidor
         </span>

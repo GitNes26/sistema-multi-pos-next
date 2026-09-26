@@ -73,10 +73,10 @@ export function ReservationFloorPlan({
               "absolute flex touch-none flex-col items-center justify-center border-2 text-center transition",
               shapeClass(t.shape),
               disabled
-                ? "border-slate-300 bg-slate-100 text-slate-400"
+                ? "border-border bg-muted text-muted-foreground"
                 : selected
                   ? "z-10 border-primary bg-primary/15 text-primary ring-2 ring-primary"
-                  : "border-emerald-400 bg-emerald-500/15 text-emerald-700"
+                  : "border-success bg-success/15 text-success-ink"
             )}
             style={{ left: x, top: y, width: w, height: h, transform: `translate(-50%, -50%) rotate(${t.rotation ?? 0}deg)` }}
             title={`Mesa ${t.number} · ${t.capacity} pers.${disabled ? " · no disponible" : ""}`}

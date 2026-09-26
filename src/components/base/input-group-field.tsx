@@ -89,10 +89,10 @@ export const InputGroupField = React.forwardRef<
             hasError ? `${inputId}-error` : hint ? `${inputId}-describe` : undefined
           }
           className={cn(
-            (resolvedLeftIcon || leftAddon) && "pl-9 md:pl-9",
-            isPassword && "pr-10 md:pr-10",
-            rightAddon && !hasError && "pr-16 md:pr-16",
-            hasError && !isPassword && "pr-9 md:pr-9",
+            (resolvedLeftIcon || leftAddon) && "pl-9 md:pl-9 desk:pl-9",
+            isPassword && "pr-10 md:pr-10 desk:pr-10",
+            rightAddon && !hasError && "pr-16 md:pr-16 desk:pr-16",
+            hasError && !isPassword && "pr-9 md:pr-9 desk:pr-9",
             className
           )}
           type={isPassword && showPassword ? "text" : type}

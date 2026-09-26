@@ -626,7 +626,7 @@ function SaleDetailDialog({
             {sale.discounts.map((d, idx) => (
               <div key={idx} className="flex justify-between">
                 <span className="text-muted-foreground">{d.label}</span>
-                <span className="tabular-nums text-emerald-600">
+                <span className="tabular-nums text-success-ink">
                   -{money(d.amount)}
                 </span>
               </div>
@@ -634,7 +634,7 @@ function SaleDetailDialog({
             {sale.discount > 0 && sale.discounts.length === 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Descuento</span>
-                <span className="tabular-nums text-emerald-600">
+                <span className="tabular-nums text-success-ink">
                   -{money(sale.discount)}
                 </span>
               </div>
@@ -646,7 +646,7 @@ function SaleDetailDialog({
             {sale.pointsRedeemedValue > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Puntos canjeados</span>
-                <span className="tabular-nums text-emerald-600">
+                <span className="tabular-nums text-success-ink">
                   -{money(sale.pointsRedeemedValue)}
                 </span>
               </div>
@@ -703,7 +703,7 @@ function PrintReceipt({ sale }: { sale: SaleDetail }) {
   return (
     <div
       id="receipt-print"
-      className="mx-auto w-[80mm] bg-white px-3 py-4 font-mono text-[10px] leading-snug text-black"
+      className="mx-auto w-[80mm] bg-white px-3 py-4 font-mono text-xs leading-snug text-black"
     >
       <div className="text-center">
         <p className="text-sm font-bold uppercase leading-tight">
@@ -725,10 +725,10 @@ function PrintReceipt({ sale }: { sale: SaleDetail }) {
         <div key={i.id} className="mb-1">
           <p className="font-semibold leading-tight">{i.productName}</p>
           {i.bulkQuantityDisplay && (
-            <p className="text-[9px] text-black/70">{i.bulkQuantityDisplay}</p>
+            <p className="text-xs text-black/70">{i.bulkQuantityDisplay}</p>
           )}
           <div className="flex justify-between">
-            <span className="text-[9px]">
+            <span className="text-xs">
               {qty(i.quantity)} × {money(i.unitPrice)}
             </span>
             <span>{money(i.lineTotal ?? i.totalPrice ?? 0)}</span>

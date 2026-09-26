@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
-  ArrowLeft,
   XCircle,
   Package,
   MapPin,
@@ -37,6 +36,8 @@ import { DeliveryConfirmPanel } from "@/components/portal/delivery-confirm-panel
 import { DeliveryTrackingMap } from "@/components/portal/delivery-tracking-map-lazy"
 import { swalConfirm, swalError, swalToast } from "@/lib/swal"
 import { STAGGER_SLOW } from "@/lib/animation-tokens"
+import { PermissionSlider } from "@/components/shared/permission-slider"
+import { usePortalPermissions } from "@/hooks/use-portal-permissions"
 
 const FLOW: OrderStatusKey[] = [
   "pending",
@@ -83,6 +84,21 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
   useEffect(() => {
     load()
   }, [load])
+
+  // Notificaciones en contexto: se piden una sola vez, cuando el cliente ya
+  // sigue un pedido activo (ahí es donde avisar "tu pedido está listo" le sirve).
+  const { statuses, requestedTypes, markTypeRequested } = usePortalPermissions()
+  const [notifAskOpen, setNotifAskOpen] = useState(false)
+  const orderActive = !!order && order.status !== "delivered" && order.status !== "cancelled"
+  useEffect(() => {
+    if (!orderActive || statuses.notifications !== "prompt" || requestedTypes.has("notifications")) return
+    const timer = setTimeout(() => setNotifAskOpen(true), 1500)
+    return () => clearTimeout(timer)
+  }, [orderActive, statuses.notifications, requestedTypes])
+  const closeNotifAsk = () => {
+    markTypeRequested("notifications")
+    setNotifAskOpen(false)
+  }
 
   // SSE tracking — reload full order on status change to keep history in sync
   useEffect(() => {
@@ -227,16 +243,9 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
     >
       {/* Header */}
       <motion.div variants={fadeUp} className="flex items-center gap-3">
-        <button
-          type="button"
-          aria-label="Volver a mis pedidos"
-          onClick={() => router.back()}
-          className="flex size-11 items-center justify-center rounded-2xl bg-muted transition-colors hover:bg-muted/80 active:scale-95"
-        >
-          <ArrowLeft className="size-5" />
-        </button>
+        {/* El encabezado del portal ya ofrece "volver" en subpáginas */}
         <div className="flex-1">
-          <h1 className="text-lg font-bold">Pedido #{order.orderNumber}</h1>
+          <h1 className="font-heading text-xl font-semibold tracking-tight tabular">Pedido #{order.orderNumber}</h1>
           <p className="text-xs text-muted-foreground">
             {new Date(order.createdAt).toLocaleString("es-MX", {
               day: "numeric",
@@ -259,7 +268,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
       {/* Illustration + Progress */}
       <motion.div
         variants={fadeUp}
-        className="rounded-2xl border bg-card p-5 shadow-sm"
+        className="rounded-2xl border bg-card p-5"
       >
         {isCancelled ? (
           <motion.div
@@ -301,54 +310,59 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
                 "¡Pedido entregado! Esperamos que lo disfrutes"}
             </p>
 
-            {/* Progress stepper */}
-            <div className="overflow-x-auto pb-1">
-              <div className={cn("flex items-center", isDelivery ? "min-w-[34rem]" : "min-w-[24rem]")}>
-              {visibleFlow.map((s, i) => (
-                <div
-                  key={s}
-                  className={cn(
-                    "flex items-center",
-                    i < visibleFlow.length - 1 && "flex-1"
-                  )}
-                >
-                  <div className="flex flex-col items-center">
-                    <motion.div
-                      initial={false}
-                      animate={{
-                        scale: i === visibleCurrentIdx ? 1.15 : 1,
-                      }}
-                      className={cn(
-                        "flex size-9 items-center justify-center rounded-full border-2 text-xs font-bold transition-all duration-300",
-                        i <= visibleCurrentIdx
-                          ? "border-primary bg-primary text-primary-foreground shadow-md shadow-primary/25"
-                          : "border-muted-foreground/20 text-muted-foreground"
+            {/* Línea de tiempo vertical: legible en teléfono sin desplazar a los lados */}
+            <ol className="relative" aria-label="Progreso del pedido">
+              {visibleFlow.map((s, i) => {
+                const done = i < visibleCurrentIdx
+                const current = i === visibleCurrentIdx
+                const last = i === visibleFlow.length - 1
+                return (
+                  <li
+                    key={s}
+                    aria-current={current ? "step" : undefined}
+                    className="relative flex gap-3 pb-4 last:pb-0"
+                  >
+                    {!last && (
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "absolute top-8 bottom-0 left-[0.9375rem] w-0.5 -translate-x-1/2 rounded-full transition-colors duration-500",
+                          done ? "bg-primary" : "bg-border"
+                        )}
+                      />
+                    )}
+                    <span className="relative flex size-8 shrink-0 items-center justify-center">
+                      {current && (
+                        <span
+                          aria-hidden
+                          className="absolute inset-0 rounded-full bg-primary/30 motion-safe:animate-ping"
+                        />
                       )}
-                    >
-                      {i < visibleCurrentIdx ? (
-                        <CircleCheck className="size-4" />
-                      ) : (
-                        FLOW_ICONS[s]
-                      )}
-                    </motion.div>
-                    <span className="mt-1.5 text-center text-xs leading-tight text-muted-foreground">
-                      {ORDER_STATUS_LABELS[s]}
+                      <span
+                        className={cn(
+                          "relative flex size-8 items-center justify-center rounded-full border-2 transition-colors duration-300",
+                          done || current
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-muted-foreground"
+                        )}
+                      >
+                        {done ? <CircleCheck className="size-4" /> : FLOW_ICONS[s]}
+                      </span>
                     </span>
-                  </div>
-                  {i < visibleFlow.length - 1 && (
-                    <div
-                      className={cn(
-                        "mx-1 mb-5 h-0.5 flex-1 rounded-full transition-colors duration-500",
-                        i < visibleCurrentIdx
-                          ? "bg-primary"
-                          : "bg-muted-foreground/20"
-                      )}
-                    />
-                  )}
-                </div>
-              ))}
-              </div>
-            </div>
+                    <span className="flex min-h-8 items-center">
+                      <span
+                        className={cn(
+                          "text-sm",
+                          current ? "font-semibold text-foreground" : done ? "text-foreground/80" : "text-muted-foreground"
+                        )}
+                      >
+                        {ORDER_STATUS_LABELS[s]}
+                      </span>
+                    </span>
+                  </li>
+                )
+              })}
+            </ol>
           </>
         )}
       </motion.div>
@@ -382,7 +396,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
             initial="hidden"
             animate="show"
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden rounded-2xl border bg-card shadow-sm"
+            className="overflow-hidden rounded-2xl border bg-card"
           >
             <DeliveryTrackingMap
               driver={driverLoc}
@@ -393,15 +407,15 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
             {/* Overlay */}
             <div className="border-t p-3">
               <div className="flex items-center gap-2">
-                <Navigation className="size-4 text-violet-600" />
+                <Navigation className="size-4 text-primary" />
                 <span className="text-xs font-medium">
                   {driverLoc
                     ? "Repartidor en camino — ubicación en tiempo real"
                     : "Tu repartidor va en camino"}
                 </span>
                 {driverLoc && (
-                  <span className="ml-auto flex size-2 rounded-full bg-emerald-500">
-                    <span className="size-2 animate-ping rounded-full bg-emerald-400" />
+                  <span className="ml-auto flex size-2 rounded-full bg-success">
+                    <span className="size-2 animate-ping rounded-full bg-success" />
                   </span>
                 )}
               </div>
@@ -420,9 +434,9 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
       {/* Productos */}
       <motion.section
         variants={fadeUp}
-        className="rounded-2xl border bg-card p-4 shadow-sm"
+        className="rounded-2xl border bg-card p-4"
       >
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
           <Package className="size-4 text-primary" /> Productos
         </h2>
         <div className="space-y-2">
@@ -479,7 +493,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
               <span>Puntos ({order.pointsRedeemed})</span><span>-{money(order.pointsValue)}</span>
             </div>
           )}
-          <div className="flex justify-between border-t pt-1 text-base font-bold">
+          <div className="flex items-baseline justify-between border-t border-dashed pt-2 text-base font-bold tabular">
             <span>Total</span>
             <span>{money(order.total)}</span>
           </div>
@@ -489,9 +503,9 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
       {/* Entrega */}
       <motion.section
         variants={fadeUp}
-        className="rounded-2xl border bg-card p-4 shadow-sm"
+        className="rounded-2xl border bg-card p-4"
       >
-        <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+        <h2 className="mb-2 flex items-center gap-2 text-base font-semibold">
           <MapPin className="size-4 text-primary" /> Entrega
         </h2>
         <div className="space-y-1 text-sm text-muted-foreground">
@@ -521,9 +535,9 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
       {order.history.length > 0 && (
         <motion.section
           variants={fadeUp}
-          className="rounded-2xl border bg-card p-4 shadow-sm"
+          className="rounded-2xl border bg-card p-4"
         >
-          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+          <h2 className="mb-2 flex items-center gap-2 text-base font-semibold">
             <History className="size-4 text-primary" /> Historial
           </h2>
           <div className="space-y-1.5">
@@ -588,7 +602,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
             <h3 className="font-semibold">Productos</h3>
             {order.items.map((item) => (
               <div key={item.id} className="flex justify-between gap-3 rounded-xl bg-muted/50 p-3 text-sm">
-                <div><p className="font-medium">{item.quantity}× {item.productName}</p>{item.variantName && <p className="text-xs text-muted-foreground">{item.variantName}</p>}</div>
+                <div><p className="font-medium">{item.quantity}× {item.productName}</p>{item.variantName && item.variantName !== "Default" && <p className="text-xs text-muted-foreground">{item.variantName}</p>}</div>
                 <span className="font-semibold tabular-nums">{money(item.lineTotal)}</span>
               </div>
             ))}
@@ -608,6 +622,14 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
           </section>
         </div>
       </BottomSheet>
+
+      <PermissionSlider
+        type="notifications"
+        open={notifAskOpen}
+        onOpenChange={(open) => { if (!open) closeNotifAsk() }}
+        onGranted={closeNotifAsk}
+        onDenied={closeNotifAsk}
+      />
     </motion.div>
   )
 }

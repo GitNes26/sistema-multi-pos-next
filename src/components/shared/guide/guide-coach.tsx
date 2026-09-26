@@ -218,7 +218,7 @@ export function GuideCoach() {
       {/* Barra de progreso */}
       <div className="fixed inset-x-0 top-0 z-[9999] h-1 bg-foreground/10">
         <div
-          className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
+          className="h-full bg-primary transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -264,10 +264,10 @@ export function GuideCoach() {
           <X className="size-3.5" />
         </button>
         <div className="mb-1.5 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-black tracking-wide text-primary uppercase">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-black tracking-wide text-primary uppercase">
             <Sparkles className="size-3" /> Paso {stepIndex + 1} de {total}
           </span>
-          <span className="truncate text-[10px] text-muted-foreground">{guide.title}</span>
+          <span className="truncate text-xs text-muted-foreground">{guide.title}</span>
         </div>
         <h3 className="text-base font-black tracking-tight">{step.title}</h3>
         <div className="mt-1 text-sm leading-relaxed text-muted-foreground">{step.body}</div>
@@ -285,7 +285,7 @@ export function GuideCoach() {
               <ChevronRight className="size-4" />
             </Button>
           ) : (
-            <Button type="button" size="sm" onClick={close} className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+            <Button type="button" size="sm" onClick={close} className="gap-1 bg-success hover:bg-success/90">
               ¡Listo! <ChevronRight className="size-4" />
             </Button>
           )}

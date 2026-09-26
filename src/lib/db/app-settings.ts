@@ -13,6 +13,7 @@ export type AppSettingsParams = {
   borderRadius: number;
   cardSize: string;
   sidebarStyle: string;
+  surfaceTone: string;
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettingsParams = {
@@ -25,6 +26,7 @@ export const DEFAULT_APP_SETTINGS: AppSettingsParams = {
   borderRadius: 0.75,
   cardSize: "md",
   sidebarStyle: "full",
+  surfaceTone: "subtle",
 };
 
 export function serializeSettings(
@@ -39,6 +41,7 @@ export function serializeSettings(
     | "borderRadius"
     | "cardSize"
     | "sidebarStyle"
+    | "surfaceTone"
   >
 ): AppSettingsParams {
   return {
@@ -51,6 +54,7 @@ export function serializeSettings(
     borderRadius: Number(s.borderRadius),
     cardSize: s.cardSize,
     sidebarStyle: s.sidebarStyle,
+    surfaceTone: s.surfaceTone,
   };
 }
 

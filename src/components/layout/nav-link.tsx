@@ -48,9 +48,9 @@ export function NavLink({
       {item.badge && (
         <span
           className={cn(
-            "ml-auto rounded-full px-1.5 py-0.5 text-[0.65rem] font-medium leading-none",
+            "ml-auto rounded-full px-1.5 py-0.5 text-xs font-medium leading-none tabular",
             item.badgeVariant === "destructive"
-              ? "bg-destructive text-white"
+              ? "bg-destructive text-destructive-foreground"
               : item.badgeVariant === "secondary"
                 ? "bg-secondary text-secondary-foreground"
                 : item.badgeVariant === "outline"
@@ -65,8 +65,8 @@ export function NavLink({
   );
 
   const classNameMerged = cn(
-    "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-    active && "bg-sidebar-accent text-sidebar-accent-foreground",
+    "group relative flex h-10 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium text-sidebar-foreground/80 desk:h-8 desk:rounded-md transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+    active && "bg-sidebar-accent font-semibold text-sidebar-accent-foreground",
     className
   );
 

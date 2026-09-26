@@ -13,6 +13,8 @@ import {
   Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { BusinessModeBadge } from "@/components/shared/business-mode-badge";
@@ -107,8 +109,8 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
-      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-card/85 px-3 backdrop-blur lg:px-4">
+    <div className="flex min-h-dvh flex-col bg-background">
+      <header className="safe-area-top sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b bg-sidebar px-3 lg:px-4">
         <Button
           variant="ghost"
           size="icon"
@@ -124,19 +126,21 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
         >
           <ArrowLeft className="size-5" />
         </Button>
-        <span className="flex size-9 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300">
+        <span className="flex size-10 items-center justify-center rounded-xl bg-primary/12 text-primary">
           <CalendarRange className="size-5" />
         </span>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <p className="truncate text-sm font-bold leading-tight">Reservaciones</p>
+            <p className="truncate font-heading text-base font-semibold leading-tight tracking-tight">Reservaciones</p>
             {orgMode ? (
               <BusinessModeBadge mode={orgMode} className="hidden shrink-0 sm:inline-flex" />
             ) : null}
           </div>
-          <p className="truncate text-[11px] leading-tight text-muted-foreground">{orgName}</p>
+          <p className="truncate text-xs leading-tight text-muted-foreground">{orgName}</p>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
+          <NotificationsBell />
+          <ThemeToggle />
           {canManage && (
             <Button size="sm" data-guide="reservation-new" onClick={() => setCreateOpen(true)}>
               <Plus className="size-4" /> <span className="hidden sm:inline">Nueva reservación</span>
@@ -145,13 +149,13 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-6xl flex-1 gap-4 px-3 py-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:px-4">
+      <main className="mx-auto grid w-full max-w-6xl flex-1 content-start items-start gap-4 px-3 py-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:px-4">
         {/* Calendario de disponibilidad */}
         <section className="rounded-2xl border bg-card p-4" data-guide="reservation-availability">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="flex items-center gap-1.5 text-sm font-bold">
-                <CalendarX2 className="size-4 text-sky-600" /> Disponibilidad
+                <CalendarX2 className="size-4 text-info-ink" /> Disponibilidad
               </h2>
               <p className="text-xs text-muted-foreground">Unidades libres por día del artículo</p>
             </div>
@@ -170,16 +174,16 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
           </div>
 
           <div className="mb-2 flex items-center justify-between">
-            <Button variant="ghost" size="sm" onClick={() => shiftMonth(-1)} aria-label="Mes anterior">
+            <Button variant="ghost" size="sm" onClick={() => shiftMonth(-1)} aria-label="Mes anterior" className="size-11 desk:size-8">
               <ChevronLeft className="size-4" />
             </Button>
-            <p className="text-sm font-semibold capitalize">{monthTitle(monthCursor)}</p>
-            <Button variant="ghost" size="sm" onClick={() => shiftMonth(1)} aria-label="Mes siguiente">
+            <p className="text-sm font-semibold first-letter:uppercase">{monthTitle(monthCursor)}</p>
+            <Button variant="ghost" size="sm" onClick={() => shiftMonth(1)} aria-label="Mes siguiente" className="size-11 desk:size-8">
               <ChevronRight className="size-4" />
             </Button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-muted-foreground">
+          <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-muted-foreground">
             {WEEKDAYS.map((w, i) => (
               <span key={i} className="py-0.5">{w}</span>
             ))}
@@ -196,15 +200,15 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
             }}
           />
 
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-emerald-200 dark:bg-emerald-500/40" /> Disponible
+              <span className="size-2.5 rounded-full bg-success" /> Disponible
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-amber-200 dark:bg-amber-500/40" /> Parcial
+              <span className="size-2.5 rounded-full bg-warning" /> Parcial
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded bg-rose-200 dark:bg-rose-500/40" /> Agotado
+              <span className="size-2.5 rounded-full bg-destructive" /> Agotado
             </span>
           </div>
         </section>
@@ -213,13 +217,12 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
-              <Button variant="outline" size="sm" onClick={() => shiftDay(-1)} aria-label="Día anterior">
+              <Button variant="outline" size="icon" onClick={() => shiftDay(-1)} aria-label="Día anterior">
                 <ChevronLeft className="size-4" />
               </Button>
               <Button
                 variant="ghost"
-                size="sm"
-                className="capitalize"
+                className="min-w-40 font-semibold"
                 onClick={() => {
                   const d = new Date();
                   d.setHours(0, 0, 0, 0);
@@ -227,9 +230,9 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
                   setMonthCursor(new Date(d.getFullYear(), d.getMonth(), 1));
                 }}
               >
-                {fmtDay(selectedDay)}
+                <span className="inline-block first-letter:uppercase">{fmtDay(selectedDay)}</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => shiftDay(1)} aria-label="Día siguiente">
+              <Button variant="outline" size="icon" onClick={() => shiftDay(1)} aria-label="Día siguiente">
                 <ChevronRight className="size-4" />
               </Button>
             </div>
@@ -292,7 +295,7 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-2">
                           <span className="truncate text-sm font-bold">{r.customer?.fullName ?? "Sin cliente"}</span>
-                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold", meta.chip)}>
+                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold", meta.chip)}>
                             <span className={cn("size-1.5 rounded-full", meta.dot)} />
                             {meta.label}
                           </span>
@@ -303,7 +306,7 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
                       </span>
                       <span className="shrink-0 text-right">
                         <span className="block text-sm font-bold">{fmtMoney(r.total)}</span>
-                        <span className="block text-[10px] text-muted-foreground">
+                        <span className="block text-xs text-muted-foreground">
                           {new Date(r.startsAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                         </span>
                       </span>
@@ -385,25 +388,25 @@ function AvailabilityGrid({ monthCursor, selectedDay, unit, reservations, onPick
                   : ""
             }
             className={cn(
-              "flex h-12 flex-col items-center justify-center rounded-lg border text-xs transition",
+              "flex h-14 flex-col items-center justify-center rounded-xl border text-xs transition-colors desk:h-12",
               !inMonth && "pointer-events-none border-transparent",
               inMonth && !past && "cursor-pointer hover:border-primary/60 hover:bg-primary/5",
               inMonth && past && "cursor-default border-transparent bg-muted/30 text-muted-foreground/60",
               selected && "border-primary bg-primary/10 ring-1 ring-primary"
             )}
           >
-            <span className={cn("text-[11px] font-semibold", selected && "text-primary")}>{day.getDate()}</span>
+            <span className={cn("text-sm font-semibold tabular", selected && "text-primary")}>{day.getDate()}</span>
             {inMonth && unit && (
               <span
                 className={cn(
-                  "mt-0.5 rounded-full px-1.5 text-[10px] font-bold leading-4",
+                  "mt-0.5 rounded-full px-1.5 text-xs font-semibold leading-4 tabular",
                   past
                     ? "bg-muted text-muted-foreground/50"
                     : available === 0
-                      ? "bg-rose-200 text-rose-800 dark:bg-rose-500/40 dark:text-rose-100"
+                      ? "bg-destructive/20 text-destructive"
                       : available !== null && available < unit.totalUnits
-                        ? "bg-amber-200 text-amber-800 dark:bg-amber-500/40 dark:text-amber-100"
-                        : "bg-emerald-200 text-emerald-800 dark:bg-emerald-500/40 dark:text-emerald-100"
+                        ? "bg-warning/20 text-warning-ink"
+                        : "bg-success/20 text-success-ink"
                 )}
               >
                 {available}

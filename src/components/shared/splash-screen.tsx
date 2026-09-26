@@ -185,7 +185,7 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
               }}
               className="text-center"
             >
-              <h1 className="bg-gradient-to-r from-emerald-300 via-teal-300 to-sky-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent">
+              <h1 className="font-heading text-3xl font-semibold tracking-tight text-white">
                 Multi-POS
               </h1>
               <p className="mt-1.5 text-sm text-slate-400">
@@ -210,9 +210,9 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
                     key={i}
                     className={
                       done
-                        ? "size-1.5 rounded-full bg-emerald-400"
+                        ? "size-1.5 rounded-full bg-success"
                         : active
-                          ? "size-1.5 rounded-full bg-emerald-400/50"
+                          ? "size-1.5 rounded-full bg-success/50"
                           : "size-1.5 rounded-full bg-slate-700"
                     }
                     animate={

@@ -25,10 +25,10 @@ export function ScrollCue() {
         transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
         className="flex flex-col items-center gap-1.5"
       >
-        <span className="text-[10px] font-medium uppercase tracking-widest text-slate-400">
+        <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
           Desplázate
         </span>
-        <ChevronDown className="size-4 text-slate-400" />
+        <ChevronDown className="size-4 text-muted-foreground" />
       </motion.div>
     </motion.div>
   )

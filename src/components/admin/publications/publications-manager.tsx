@@ -32,9 +32,9 @@ import { cn } from "@/lib/utils";
 import { crudApi } from "@/lib/api";
 
 const TYPE_COLORS: Record<string, string> = {
-  product_new: "bg-emerald-500 text-white",
-  promotion: "bg-amber-500 text-white",
-  notice: "bg-sky-500 text-white",
+  product_new: "bg-success text-success-foreground",
+  promotion: "bg-warning text-warning-foreground",
+  notice: "bg-info text-info-foreground",
 };
 
 const EMPTY_FORM: PublicationInput & { id?: string } = {

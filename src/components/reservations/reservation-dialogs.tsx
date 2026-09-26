@@ -530,13 +530,13 @@ export function ReservationDetailDialog({ reservation, canManage, onOpenChange, 
             Cobrar y completar
           </Button>
           {result && (
-            <p className="flex items-center gap-1.5 rounded-lg bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+            <p className="flex items-center gap-1.5 rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success-ink">
               <Check className="size-4" /> Venta {result.saleNumber} por {fmtMoney(result.total)} registrada.
             </p>
           )}
         </div>
       ) : reservation.saleId ? (
-        <p className="rounded-lg bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+        <p className="rounded-lg bg-success/10 px-3 py-2 text-sm font-medium text-success-ink">
           Reservación cobrada: venta registrada con puntos para el cliente.
         </p>
       ) : null}

@@ -16,11 +16,11 @@ interface Row {
 const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
 
 const METHOD_COLORS: Record<string, string> = {
-  cash: "bg-green-500",
-  card: "bg-blue-500",
+  cash: "bg-success",
+  card: "bg-info",
   credit: "bg-orange-500",
   points: "bg-purple-500",
-  other: "bg-gray-400",
+  other: "bg-muted-foreground/30",
 }
 
 export function PaymentMixReport({ from, to }: Props) {
@@ -57,7 +57,7 @@ export function PaymentMixReport({ from, to }: Props) {
                 <div className="flex-1">
                   <div className="h-6 overflow-hidden rounded-full bg-muted">
                     <div
-                      className={`h-full rounded-full ${METHOD_COLORS[r.method] ?? "bg-gray-400"}`}
+                      className={`h-full rounded-full ${METHOD_COLORS[r.method] ?? "bg-muted-foreground/30"}`}
                       style={{ width: `${r.pct}%` }}
                     />
                   </div>

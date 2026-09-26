@@ -42,7 +42,7 @@ function StatCard({ stat, delay }: { stat: StatItem; delay: number }) {
           <span>0{stat.suffix ?? ""}</span>
         )}
       </p>
-      <p className="text-xs text-slate-400">{stat.label}</p>
+      <p className="text-xs text-muted-foreground">{stat.label}</p>
     </motion.div>
   )
 }

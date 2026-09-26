@@ -49,9 +49,9 @@ export function BottomSheet({
     >
       <DrawerPortal>
         <DrawerContent
-          overlayClassName="bg-black/60 backdrop-blur-md supports-backdrop-filter:backdrop-blur-md"
+          overlayClassName="bg-black/45 supports-backdrop-filter:backdrop-blur-[2px] dark:bg-black/60"
           className={cn(
-            "mx-auto flex flex-col rounded-t-3xl border-t border-border/30 bg-background shadow-[0_-8px_30px_rgba(0,0,0,0.18)]",
+            "mx-auto flex flex-col rounded-t-3xl border-t border-border/40 bg-background shadow-e3",
             className
           )}
           style={{ height, maxHeight, marginTop: 0 }}
@@ -61,7 +61,7 @@ export function BottomSheet({
             <DrawerHeader className="flex flex-row items-center gap-3 px-4 pb-2 pt-2">
               <div className="min-w-0 flex-1">
                 {title && (
-                  <DrawerTitle className="text-left text-base font-semibold">
+                  <DrawerTitle className="text-left font-heading text-lg font-semibold tracking-tight">
                     {title}
                   </DrawerTitle>
                 )}
@@ -75,7 +75,7 @@ export function BottomSheet({
                 <DrawerClose asChild>
                   <Button
                     variant="ghost"
-                    size="icon-sm"
+                    size="icon"
                     className="shrink-0 text-muted-foreground"
                     aria-label="Cerrar"
                   >
@@ -98,7 +98,7 @@ export function BottomSheet({
 
           {/* Footer */}
           {footer && (
-            <DrawerFooter className="shrink-0 flex-row justify-end gap-2 border-t px-4 py-3">
+            <DrawerFooter className="shrink-0 flex-row justify-end gap-2 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               {footer}
             </DrawerFooter>
           )}

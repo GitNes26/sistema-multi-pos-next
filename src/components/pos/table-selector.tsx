@@ -29,10 +29,10 @@ interface Props {
 }
 
 const statusColor = (s: string) => {
-  if (s === "free") return "bg-green-100 border-green-300 text-green-700 hover:bg-green-200"
-  if (s === "occupied") return "bg-red-100 border-red-300 text-red-700 cursor-not-allowed"
-  if (s === "reserved") return "bg-amber-100 border-amber-300 text-amber-700"
-  return "bg-gray-100 border-gray-300 text-gray-700"
+  if (s === "free") return "bg-success/10 border-success/30 text-success-ink hover:bg-success/20"
+  if (s === "occupied") return "bg-destructive/10 border-destructive/30 text-destructive cursor-not-allowed"
+  if (s === "reserved") return "bg-warning/10 border-warning/30 text-warning-ink"
+  return "bg-muted border-border text-foreground"
 }
 
 const statusLabel = (s: string) => {
@@ -172,7 +172,7 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg" data-guide="pos-table-dialog">
+      <DialogContent className="sm:max-w-2xl" data-guide="pos-table-dialog">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Armchair className="size-5" />
@@ -204,9 +204,9 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
         ) : (
           <div className="space-y-3">
             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-green-200 border border-green-400" /> Libre</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-red-200 border border-red-400" /> Ocupada</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-amber-200 border border-amber-400" /> Reservada</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-success/20 border border-success" /> Libre</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-destructive/20 border border-destructive" /> Ocupada</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded bg-warning/20 border border-warning" /> Reservada</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full border border-violet-400 ring-2 ring-violet-300/60" /> Llega hoy</span>
             </div>
 
@@ -225,10 +225,10 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
                 <div className="space-y-3">
                   {order.map((room) => (
                     <div key={room}>
-                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <p className="mb-2 text-sm font-semibold text-muted-foreground">
                         {room}
                       </p>
-                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                      <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5">
                         {groups.get(room)!.map((t) => (
                           <button
                             key={t.id}
@@ -252,15 +252,15 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
                               ? `Mesa ${t.number} · reservación confirmada ${new Date(t.upcomingReservation.startsAt).toLocaleString("es-MX", { hour: "2-digit", minute: "2-digit" })} · ${t.upcomingReservation.guests} pers.`
                               : undefined}
                             className={cn(
-                              "flex flex-col items-center gap-1 rounded-xl border-2 p-3 transition-all relative",
+                              "press relative flex min-h-28 flex-col items-center justify-center gap-1 rounded-2xl border-2 p-3 disabled:cursor-not-allowed",
                               statusColor(t.status),
                               glowingIds.has(t.id) && "animate-table-glow",
-                              t.upcomingReservation && "ring-2 ring-violet-400/70"
+                              t.upcomingReservation && "ring-2 ring-violet-500/60 ring-offset-2 ring-offset-popover"
                             )}
                           >
                             {t.upcomingReservation && (
-                              <span className="absolute -top-2 -right-2 flex items-center gap-1 rounded-full bg-violet-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">
-                                <Clock className="size-2.5" />
+                              <span className="absolute -top-2.5 -right-2 flex items-center gap-1 rounded-full bg-violet-600 px-2 py-0.5 text-xs font-semibold text-white shadow-e1 tabular">
+                                <Clock className="size-3" />
                                 {new Date(t.upcomingReservation.startsAt).toLocaleTimeString("es-MX", {
                                   hour: "2-digit",
                                   minute: "2-digit",
@@ -268,14 +268,14 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
                               </span>
                             )}
                             <Armchair className="size-5" />
-                            <span className="text-sm font-bold">{t.number}</span>
-                            {t.name && <span className="text-[10px] truncate w-full text-center">{t.name}</span>}
-                            {t.capacity && <span className="text-[10px]">{t.capacity} pers.</span>}
-                            <Badge variant="outline" className="text-[9px] px-1 py-0">
+                            <span className="text-xl leading-none font-bold tabular">{t.number}</span>
+                            {t.name && <span className="w-full truncate text-center text-xs">{t.name}</span>}
+                            {t.capacity && <span className="text-xs opacity-80 tabular">{t.capacity} pers.</span>}
+                            <Badge variant="outline" className="px-1.5 py-0 text-xs">
                               {statusLabel(t.status)}
                             </Badge>
                             {t.upcomingReservation && (
-                              <span className="text-[9px] font-semibold text-violet-600 dark:text-violet-400">
+                              <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">
                                 Llega · {t.upcomingReservation.guests} pers.
                               </span>
                             )}

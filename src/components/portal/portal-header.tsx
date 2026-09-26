@@ -11,7 +11,9 @@ import { Logo } from "@/components/layout/logo"
 import { playSound } from "@/lib/sounds"
 import { usePushSound } from "@/hooks/use-push-sound"
 import { OrgSwitcher } from "@/components/layout/org-switcher"
+import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { useSession } from "next-auth/react"
+import { cn } from "@/lib/utils"
 
 const PAGE_TITLES: Record<string, string> = {
   "/portal": "",
@@ -91,12 +93,27 @@ export function PortalHeader({
     }
   }, [])
 
+  // Barra "large title" nativa: sin borde arriba del todo; al desplazar,
+  // aparece la línea divisoria para separar el contenido que pasa por debajo.
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 4)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
   const showBack = isSubPage(pathname)
   const pageTitle = getPageTitle(pathname)
 
   return (
-    <header className="sticky top-0 z-40 safe-area-top">
-      <div className="flex items-center justify-between gap-2 border-b bg-background/80 px-4 py-2.5 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 bg-background/92 safe-area-top supports-backdrop-filter:bg-background/75 supports-backdrop-filter:backdrop-blur-xl">
+      <div
+        className={cn(
+          "flex min-h-14 items-center justify-between gap-2 border-b px-4 py-2 transition-colors duration-200",
+          scrolled ? "border-border" : "border-transparent"
+        )}
+      >
         {/* Left */}
         <div className="flex items-center gap-2 min-w-0">
           {showBack ? (
@@ -104,14 +121,14 @@ export function PortalHeader({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                className="shrink-0 -ml-1 size-9"
+                className="-ml-2 size-11 shrink-0"
                 onClick={() => router.back()}
                 aria-label="Volver"
               >
                 <ChevronLeft className="size-5" />
               </Button>
               {pageTitle && (
-                <h1 className="truncate text-base font-semibold">
+                <h1 className="truncate font-heading text-lg font-semibold tracking-tight">
                   {pageTitle}
                 </h1>
               )}
@@ -126,8 +143,8 @@ export function PortalHeader({
           )}
         </div>
 
-        {/* Right — Cart (conditional) → Notifications → Avatar */}
-        <div className="flex items-center gap-1">
+        {/* Derecha — Carrito → Notificaciones → Tema → Perfil */}
+        <div className="flex items-center gap-0.5">
           {session?.user && (
             <OrgSwitcher
               scope="portal"
@@ -146,7 +163,7 @@ export function PortalHeader({
                   onClick={() => setCartOpen(true)}
                 >
                   <ShoppingCart className="size-[18px]" />
-                  {itemCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  {itemCount > 0 && <span key={itemCount} className="absolute -right-0.5 -top-0.5 flex size-5 animate-press-pop items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground tabular ring-2 ring-background">
                     {itemCount > 99 ? "99+" : itemCount}
                   </span>}
                 </Button>
@@ -170,6 +187,8 @@ export function PortalHeader({
               )}
             </Link>
           </TapScale>
+
+          <ThemeToggle className="size-11 text-muted-foreground" />
 
           <TapScale>
             <Link

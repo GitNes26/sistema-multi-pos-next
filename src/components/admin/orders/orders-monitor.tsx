@@ -36,21 +36,21 @@ const MONITOR_STATUSES = [
 ] as const
 
 const STATUS_CARD_STYLE: Record<string, string> = {
-  pending: "border-amber-300 bg-amber-50/60 dark:bg-amber-950/20",
-  confirmed: "border-sky-300 bg-sky-50/60 dark:bg-sky-950/20",
+  pending: "border-warning/30 bg-warning/10",
+  confirmed: "border-info/30 bg-info/10",
   preparing: "border-orange-300 bg-orange-50/60 dark:bg-orange-950/20",
-  ready: "border-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/20",
+  ready: "border-success/30 bg-success/10",
   in_transit: "border-violet-300 bg-violet-50/60 dark:bg-violet-950/20",
-  delivered: "border-blue-300 bg-blue-50/60 dark:bg-blue-950/20",
+  delivered: "border-info/30 bg-info/10",
 }
 
 const STATUS_DOT: Record<string, string> = {
-  pending: "bg-amber-500",
-  confirmed: "bg-sky-500",
+  pending: "bg-warning",
+  confirmed: "bg-info",
   preparing: "bg-orange-500",
-  ready: "bg-emerald-500",
+  ready: "bg-success",
   in_transit: "bg-violet-500",
-  delivered: "bg-blue-600",
+  delivered: "bg-info",
 }
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
@@ -224,7 +224,7 @@ export function OrdersMonitor({
                               En domicilio
                             </Badge>
                           )}
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(o.createdAt), {
                               addSuffix: true,
                               locale: es,

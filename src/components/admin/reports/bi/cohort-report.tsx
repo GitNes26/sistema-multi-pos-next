@@ -30,10 +30,10 @@ export function CohortReport({ from, to }: Props) {
 
   const getHeatColor = (pct: number | null) => {
     if (pct === null) return "bg-muted text-muted-foreground"
-    if (pct >= 50) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-    if (pct >= 30) return "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400"
-    if (pct >= 15) return "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
-    return "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+    if (pct >= 50) return "bg-success/25 text-success-ink"
+    if (pct >= 30) return "bg-success/10 text-success-ink"
+    if (pct >= 15) return "bg-warning/10 text-warning-ink"
+    return "bg-destructive/10 text-destructive"
   }
 
   if (loading) return <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
@@ -62,7 +62,7 @@ export function CohortReport({ from, to }: Props) {
                 <td className="px-2 py-1.5 text-right tabular-nums">{row.initialCount}</td>
                 {row.retention.map((pct, i) => (
                   <td key={i} className="px-1 py-1.5">
-                    <div className={cn("flex h-7 items-center justify-center rounded text-[10px] font-bold tabular-nums", getHeatColor(pct))}>
+                    <div className={cn("flex h-7 items-center justify-center rounded text-xs font-bold tabular-nums", getHeatColor(pct))}>
                       {pct !== null ? `${pct}%` : "—"}
                     </div>
                   </td>

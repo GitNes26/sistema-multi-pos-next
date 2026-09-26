@@ -172,7 +172,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
         header: "Deuda",
         accessorKey: "currentBalance",
         cell: ({ row }) => (
-          <span className="tabular-nums font-bold text-red-600">
+          <span className="tabular-nums font-bold text-destructive">
             {money(row.original.currentBalance)}
           </span>
         ),
@@ -382,7 +382,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
         )}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Deuda</span>
-          <span className="font-bold tabular-nums text-red-600">
+          <span className="font-bold tabular-nums text-destructive">
             {money(row.currentBalance)}
           </span>
         </div>
@@ -403,8 +403,8 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10">
-              <DollarSign className="size-5 text-amber-600" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-warning/10">
+              <DollarSign className="size-5 text-warning-ink" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Cartera total</p>
@@ -418,8 +418,8 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10">
-              <Users className="size-5 text-blue-600" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-info/10">
+              <Users className="size-5 text-info-ink" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">
@@ -433,8 +433,8 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-red-500/10">
-              <AlertTriangle className="size-5 text-red-600" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10">
+              <AlertTriangle className="size-5 text-destructive" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Vencidos</p>
@@ -444,8 +444,8 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10">
-              <Landmark className="size-5 text-emerald-600" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-success/10">
+              <Landmark className="size-5 text-success-ink" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Promedio deuda</p>
@@ -505,12 +505,12 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
           <div className="space-y-4">
             {/* Balance summary */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-xl border bg-red-500/5 p-3 text-center">
+              <div className="rounded-xl border bg-destructive/5 p-3 text-center">
                 <p className="text-xs text-muted-foreground">Deuda actual</p>
                 <AnimatedNumber
                   value={selected.currentBalance}
                   format={money}
-                  className="text-xl font-black tabular-nums text-red-600"
+                  className="text-xl font-black tabular-nums text-destructive"
                 />
               </div>
               <div className="rounded-xl border bg-muted/30 p-3 text-center">
@@ -523,7 +523,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
               </div>
               <div className="rounded-xl border bg-muted/30 p-3 text-center">
                 <p className="text-xs text-muted-foreground">Disponible</p>
-                <p className="text-xl font-black tabular-nums text-emerald-600">
+                <p className="text-xl font-black tabular-nums text-success-ink">
                   {selected.creditLimit != null
                     ? money(
                         Math.max(
@@ -541,7 +541,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
               <Button
                 size="sm"
                 onClick={() => openAction("payment")}
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className="bg-success hover:bg-success/90"
               >
                 <ArrowUpCircle className="size-4" /> Registrar abono
               </Button>
@@ -615,10 +615,10 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
                           className={cn(
                             "flex size-8 shrink-0 items-center justify-center rounded-full",
                             tx.type === "charge"
-                              ? "bg-red-500/10 text-red-600"
+                              ? "bg-destructive/10 text-destructive"
                               : tx.type === "payment"
-                                ? "bg-emerald-500/10 text-emerald-600"
-                                : "bg-blue-500/10 text-blue-600"
+                                ? "bg-success/10 text-success-ink"
+                                : "bg-info/10 text-info-ink"
                           )}
                         >
                           {tx.type === "charge" ? (
@@ -657,8 +657,8 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
                             className={cn(
                               "font-bold tabular-nums",
                               tx.type === "charge"
-                                ? "text-red-600"
-                                : "text-emerald-600"
+                                ? "text-destructive"
+                                : "text-success-ink"
                             )}
                           >
                             {tx.type === "charge" ? "+" : "-"}
@@ -756,7 +756,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
                 </span>
               </p>
               {actionType === "payment" && (
-                <p className="text-emerald-600">
+                <p className="text-success-ink">
                   Nuevo saldo:{" "}
                   <span className="font-bold">
                     {money(
@@ -769,7 +769,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
                 </p>
               )}
               {actionType === "charge" && (
-                <p className="text-red-600">
+                <p className="text-destructive">
                   Nuevo saldo:{" "}
                   <span className="font-bold">
                     {money(

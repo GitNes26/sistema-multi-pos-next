@@ -200,7 +200,7 @@ export function DataTable<TData, TValue>({
         {visibleRows.map((row) => (
           <div
             key={row.id}
-            className="rounded-lg border bg-card p-3"
+            className="rounded-xl border bg-card p-3.5"
             onClick={() => onRowClick?.(row.original)}
           >
             {renderCard ? renderCard(row.original) : defaultCard(row)}
@@ -299,7 +299,7 @@ export function DataTable<TData, TValue>({
       )}
 
       <div className="hidden md:block">
-        <div className="rounded-lg border">
+        <div className="overflow-hidden rounded-xl border bg-card">
           <Table className={tableClassName}>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (

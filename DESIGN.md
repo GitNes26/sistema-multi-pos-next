@@ -143,6 +143,22 @@ The palette is a disciplined monochrome foundation: near-black primary, near-whi
 
 - **Alert Red** (oklch(0.577 0.245 27.325) / #c7442a): Reserved exclusively for error states, destructive confirmations, and danger-mode buttons. Never used for primary actions or decoration.
 
+### Surface Tone (Apariencia → "Tono de fondo")
+
+Neutral surfaces are generated at runtime by `appearance-apply.ts` from a lightness ramp (canvas → card → popover, plus `--surface-sunken`) and tinted toward the primary hue by the tenant's `surfaceTone`:
+
+- **Neutro:** chroma 0 — pure white / near-black (#fff / oklch 0.145), the legacy look.
+- **Sutil (default):** chroma 0.003–0.012. Canvas sits just below white (oklch 0.984) so white cards read as a layer without shadows; dark canvas oklch 0.155.
+- **Marcado:** chroma 0.011–0.034. The brand hue is felt in canvas, sidebar and borders.
+- **POS theme:** derives from the dark ramp with a deeper canvas and higher text contrast for long shifts.
+- Gray preset (hue 360) always resolves to chroma 0.
+
+Pure #000 is never used as a canvas: white text on true black halos on tablet LCDs.
+
+### Semantic States
+
+`--success`, `--warning`, `--info` (+ `-foreground`) exist in both themes and map to `bg-success`, `text-warning`, etc. Use them instead of raw `emerald-*/amber-*/red-*` for order status, stock, table and appointment states.
+
 ### Named Rules
 
 **The Monochrome Foundation Rule.** The default palette is achromatic. Color enters only through dynamic hue theming (per-organization primaryHue/accentHue) or the destructive red. Any new color must justify why the monochrome foundation is insufficient.
@@ -194,7 +210,11 @@ Multi-POS uses a **flat-by-default** approach with minimal shadow vocabulary. De
 
 ### Shadow Vocabulary
 
-- **Subtle Lift** (`box-shadow: 0 4px 24px rgba(0,0,0,0.12)`): Applied to popovers, dialogs, and the SweetAlert2 popup. The only elevation signal in the system.
+Three offset + soft-blur tokens tinted by `--shadow-color` (never zero-offset halos):
+
+- **`shadow-e1`**: primary buttons and pressed chips — barely there.
+- **`shadow-e2`**: popovers, menus, selects, toasts, hover lift on `.press` surfaces (fine pointers only).
+- **`shadow-e3`**: dialogs, sheets, SweetAlert2 modals.
 - **Ticket Flash** (keyframe animation): A 0.9s ease-out flash that highlights modified ticket lines with a primary-tinted background and ring glow, then fades to the card background.
 
 ### Named Rules
@@ -217,10 +237,33 @@ The form language is **softly rounded** with a configurable radius system:
 
 ## Components
 
+### Touch vs. Desk Sizing
+
+Compact control sizes are gated by the `desk:` variant = `(min-width: 48rem) and (pointer: fine)`, **not** by `md:`. Tablets and touch monitors (POS, KDS, Agenda, Reservaciones) keep 44–48px targets at any width; only mouse-driven desktops get the dense 32–36px controls. `touch:` targets coarse pointers explicitly. When a consumer overrides a component size or padding, write both `md:x desk:x`.
+
+### Motion
+
+- Tokens: `--ease-out-expo` (entrances, sheets, dialogs), `--ease-out-quart` (state changes). No bounce/elastic curves.
+- Durations: 150–250ms for state, 300ms for sheets, 60ms for press-in.
+- Press feedback lives on `:active` (`.ui-button-motion`, `.press`): scale 0.97, 0.95 on coarse pointers. No hover scaling.
+- Utilities: `animate-rise-in`, `animate-fade-in`, `animate-press-pop` (quantity/cart bumps), `.tabular` for prices and totals.
+
+### Native Mobile Patterns (portal)
+
+- `DialogContent` becomes a bottom sheet below `sm` (slides from bottom, grab handle, safe-area padding); dialogs need no per-screen work.
+- `RouteTransition variant="native"`: push/pop direction from route depth; same-depth tab switches fade.
+- Toasts drop from the top as full-width banners on phones (never over the tab bar).
+- Horizontal carousels bleed to the screen edge (`-mx-4 px-4`) with `snap-x`.
+- Status timelines are vertical on phones; never force horizontal scroll.
+
+### Semantic Ink
+
+`text-success-ink`, `text-warning-ink`, `text-info-ink` are the readable-text variants of the state hues; use `bg-{state}/10–15` + `text-{state}-ink` for chips, solid `bg-{state}` + `text-{state}-foreground` for filled buttons. Selection and brand emphasis use `primary`, never `success`.
+
 ### Buttons
 
-- **Shape:** `rounded-xl` (14px) on mobile, `rounded-lg` (10px) on desktop. Heights scale from h-6 (xs) to h-12 (lg).
-- **Primary:** Near-black background (#1a1a1a), white text. Hover darkens via `bg-primary/80`. Scale micro-interaction on hover (`scale-105`, 200ms ease-in-out).
+- **Shape:** `rounded-xl` (14px) on touch, `rounded-lg` (10px) on `desk:`. Heights scale from h-6 (xs) to h-12 (lg).
+- **Primary:** Primary-hue background, `shadow-e1`. Hover to `bg-primary/88`. Press scales down; no hover scale.
 - **Outline:** Transparent background with border, hover fills to muted. Used for secondary actions.
 - **Ghost:** No background or border, hover fills to muted. Used in toolbars and navigation.
 - **Destructive:** 10% opacity red background with red text. Hover increases to 20%. Never solid red — the transparency keeps it from dominating.
@@ -270,7 +313,8 @@ The form language is **softly rounded** with a configurable radius system:
 - **Do** respect the configurable radius system — use `var(--radius)` derivatives, not hardcoded px values.
 
 ### Don't:
-- **Don't** add drop shadows to cards or surfaces — use tonal layering and ring borders instead.
+- **Don't** add drop shadows to resting cards — use tonal layering and ring borders; `shadow-e2` is for hover lift and overlays only.
+- **Don't** gate touch-target sizes on `md:`; use `desk:` so tablets stay touch-sized.
 - **Don't** use color for decorative purposes — the monochrome palette is intentional.
 - **Don't** hardcode font sizes — always use the `fontScale`-aware rem system.
 - **Don't** place more than 5 items in the mobile bottom tab bar.
