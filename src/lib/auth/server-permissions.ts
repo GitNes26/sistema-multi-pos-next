@@ -55,11 +55,12 @@ export class PermissionDeniedError extends Error {
 
 /** Lanza si la sesión no tiene el permiso. Para server actions / route handlers. */
 export function assertPermission(
-  session: { user?: { role?: string; permissions?: string[] } } | null,
+  session: { user?: { role?: string; permissions?: string[]; planDenied?: string[] } } | null,
   permission: PermissionKey
 ): void {
   if (!session?.user) throw new PermissionDeniedError(permission);
-  const { role, permissions } = session.user;
+  const { role, permissions, planDenied } = session.user;
+  if (role !== "superadmin" && planDenied?.includes(permission)) throw new PermissionDeniedError(permission);
   if (isFullAccessRole(role)) return;
   if (!permissions?.includes(permission)) throw new PermissionDeniedError(permission);
 }

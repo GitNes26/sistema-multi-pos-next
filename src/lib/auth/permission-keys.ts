@@ -47,3 +47,37 @@ export const PERMISSIONS = [
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number]["key"];
+
+/** Nombre legible de cada módulo de permisos (editores de roles y planes). */
+export const PERMISSION_MODULE_LABELS: Record<string, string> = {
+  pos: "Punto de venta",
+  products: "Productos",
+  categories: "Categorías",
+  inventory: "Inventario",
+  purchasing: "Proveedores y compras",
+  customers: "Clientes",
+  employees: "Empleados y nómina",
+  promotions: "Promociones",
+  sales: "Ventas",
+  reports: "Reportes",
+  cash: "Caja",
+  locations: "Sucursales",
+  cedis: "CEDIS y traslados",
+  orders: "Pedidos",
+  kds: "Cocina (KDS)",
+  delivery: "Entregas a domicilio",
+  appointments: "Agenda de citas",
+  reservations: "Reservaciones",
+  settings: "Ajustes",
+  users: "Usuarios y roles",
+  publications: "Publicaciones",
+  supervisor: "Supervisor",
+  organizations: "Organizaciones",
+};
+
+/** Permisos agrupados por módulo, en el orden del catálogo. */
+export function permissionsByModule() {
+  const groups: Record<string, (typeof PERMISSIONS)[number][]> = {};
+  for (const p of PERMISSIONS) (groups[p.module] ??= []).push(p);
+  return groups;
+}

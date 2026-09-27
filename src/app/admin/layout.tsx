@@ -51,6 +51,7 @@ export default async function AdminLayout({
           logoUrl={logoUrl}
           businessMode={businessMode}
           permissions={session?.user?.permissions}
+          planDenied={session?.user?.planDenied}
           user={{
             name: session?.user?.name,
             email: session?.user?.email,

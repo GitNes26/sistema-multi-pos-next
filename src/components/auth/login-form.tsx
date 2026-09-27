@@ -50,7 +50,7 @@ interface OrgHintResponse {
 const validationSchema = yup.object({
   identifier: yup
     .string()
-    .required("Correo o código requerido")
+    .required("Escribe tu correo, teléfono o número")
     .min(3, "Demasiado corto"),
   password: yup
     .string()
@@ -174,8 +174,8 @@ export function LoginForm({
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {isPortal
-              ? "Usa tu correo o número de cliente."
-              : "Usa tu correo o número de nómina."}
+              ? "Entra con tu correo, tu teléfono (10 dígitos) o tu número de cliente."
+              : "Entra con tu correo, tu teléfono (10 dígitos) o tu número de nómina."}
           </p>
         </div>
         <div>
@@ -226,11 +226,11 @@ export function LoginForm({
             )}
             <InputGroupField
               id="identifier"
-              label="Correo o código"
+              label="Correo, teléfono o número"
               leftIcon={<User className="size-4" />}
               autoComplete="username"
               placeholder={
-                isPortal ? "correo o nº de cliente" : "correo o nº de nómina"
+                isPortal ? "correo, teléfono o nº de cliente" : "correo, teléfono o nº de nómina"
               }
               className="h-12 text-base rounded-xl desk:h-11 desk:rounded-xl"
               error={errors.identifier?.message}

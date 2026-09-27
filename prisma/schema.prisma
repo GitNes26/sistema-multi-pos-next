@@ -349,6 +349,8 @@ model SubscriptionPlan {
   extraEmployeePackSize  Int                        @default(1)
   extraEmployeePackPrice Decimal                    @default(0) @db.Decimal(12, 2)
   features               Json                       @default("[]")
+  /// Permisos incluidos en el plan (null = sin restricción). Limita lo que los roles de la empresa pueden usar.
+  permissions            Json?
   isActive               Boolean                    @default(true)
   sortOrder              Int                        @default(0)
   createdAt              DateTime                   @default(now())

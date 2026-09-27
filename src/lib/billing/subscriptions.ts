@@ -1,7 +1,19 @@
 import { prisma } from "@/lib/db"
 import { CrudError } from "@/lib/crud/types"
+import type { PermissionKey } from "@/lib/auth/permission-keys"
+import { planDeniedKeys } from "@/lib/billing/plan-permissions"
 
 export const DEFAULT_PLAN_FEATURES = ["Punto de venta", "Panel administrativo", "Portal de clientes", "Inventario", "Reportes"]
+
+/** Permisos que el plan contratado por la empresa no incluye. */
+export async function planDeniedPermissions(organizationId: string | null | undefined): Promise<PermissionKey[]> {
+  if (!organizationId) return []
+  const subscription = await prisma.organizationSubscription.findUnique({
+    where: { organizationId },
+    select: { plan: { select: { permissions: true } } },
+  })
+  return planDeniedKeys(subscription?.plan.permissions)
+}
 
 export async function subscriptionUsage(organizationId: string) {
   const [subscription, locations, employees] = await Promise.all([

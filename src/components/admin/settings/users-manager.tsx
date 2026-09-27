@@ -5,6 +5,7 @@ import * as yup from "yup";
 import {
   Copy,
   Globe,
+  Lock,
   Mail,
   Plus,
   ShieldCheck,
@@ -15,7 +16,9 @@ import {
 } from "lucide-react";
 import { settingsApi } from "@/lib/settings/client";
 import type { InvitationRow, OrgUserRow, RoleRow } from "@/lib/settings/server";
-import { PERMISSIONS } from "@/lib/auth/permission-keys";
+import { PERMISSIONS, PERMISSION_MODULE_LABELS } from "@/lib/auth/permission-keys";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -177,6 +180,9 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
   const [perms, setPerms] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [createRole, setCreateRole] = useState<{ copyRoleId?: string } | null>(null);
+  // Lo que el plan de la empresa no incluye no se puede usar aunque el rol lo tenga.
+  const { data: session } = useSession();
+  const planDenied = new Set<string>(session?.user?.planDenied ?? []);
 
   const loadRoles = useCallback(() => {
     settingsApi.roles().then((d) => setRoles(d.roles)).catch(() => undefined);
@@ -352,23 +358,44 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
               </div>
             </div>
 
+            {planDenied.size > 0 && (
+              <p className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
+                <Lock className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  Los permisos con candado no están incluidos en el plan de la empresa: nadie puede usarlos aunque el rol los tenga.{" "}
+                  <Link href="/admin/settings/my-plan" className="font-semibold underline">Ver mi plan</Link>
+                </span>
+              </p>
+            )}
             <div className="space-y-3">
               {Object.entries(MODULES_BY_GROUP).map(([module, modulePerms]) => {
-                const all = modulePerms.every((p) => perms.has(p.key));
+                const usable = modulePerms.filter((p) => !planDenied.has(p.key));
+                const all = usable.length > 0 && usable.every((p) => perms.has(p.key));
+                const moduleLocked = usable.length === 0;
                 return (
-                  <div key={module} className="rounded-lg border p-3">
+                  <div key={module} className={cn("rounded-lg border p-3", moduleLocked && "bg-muted/40")}>
                     <label htmlFor={`permission-module-${module}`} className="flex cursor-pointer items-center gap-2">
-                      <Checkbox id={`permission-module-${module}`} checked={all} disabled={selected.isSystem} onCheckedChange={() => toggleModule(modulePerms.map((p) => p.key))} />
-                      <span className="text-sm font-medium capitalize">{module}</span>
-                      <span className="ml-auto text-xs text-muted-foreground">Todos</span>
+                      <Checkbox id={`permission-module-${module}`} checked={all} disabled={selected.isSystem || moduleLocked} onCheckedChange={() => toggleModule(usable.map((p) => p.key))} />
+                      <span className="text-sm font-medium">{PERMISSION_MODULE_LABELS[module] ?? module}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {moduleLocked ? (
+                          <span className="inline-flex items-center gap-1"><Lock className="size-3" /> No incluido en el plan</span>
+                        ) : (
+                          "Todos"
+                        )}
+                      </span>
                     </label>
                     <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
-                      {modulePerms.map((p) => (
-                        <label htmlFor={`permission-${p.key}`} key={p.key} className="flex cursor-pointer items-center gap-2 text-sm">
-                          <Checkbox id={`permission-${p.key}`} checked={perms.has(p.key)} disabled={selected.isSystem} onCheckedChange={() => toggle(p.key)} />
-                          <span className="text-muted-foreground">{p.label}</span>
-                        </label>
-                      ))}
+                      {modulePerms.map((p) => {
+                        const locked = planDenied.has(p.key);
+                        return (
+                          <label htmlFor={`permission-${p.key}`} key={p.key} className={cn("flex items-center gap-2 text-sm", locked ? "cursor-not-allowed opacity-60" : "cursor-pointer")}>
+                            <Checkbox id={`permission-${p.key}`} checked={perms.has(p.key) && !locked} disabled={selected.isSystem || locked} onCheckedChange={() => toggle(p.key)} />
+                            <span className="text-muted-foreground">{p.label}</span>
+                            {locked && <Lock className="size-3 text-muted-foreground" aria-label="No incluido en el plan" />}
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 );

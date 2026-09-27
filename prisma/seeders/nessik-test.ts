@@ -178,6 +178,20 @@ export async function seedNessikTest() {
     },
   })
   await prisma.cashRegister.create({ data: { organizationId: org.id, locationId: location.id, name: "Caja 1", folioPrefix: "NT1" } })
+  // CEDIS con existencias para probar traslados hacia la Matriz.
+  const cedis = await prisma.cedi.create({
+    data: {
+      organizationId: org.id,
+      name: "CEDIS NESSIK",
+      code: "NT-CED",
+      latitude: 25.5605,
+      longitude: -103.3775,
+      address: "Blvd. Revolución 2500, Parque Industrial, Torreón, Coah.",
+      phone: "8710000003",
+      managerName: NESSIK_TEST.worker.name,
+      openingHours: "Lun-Sáb 07:00-17:00",
+    },
+  })
 
   const gerente = await prisma.employeePosition.create({ data: { organizationId: org.id, name: "Gerente" } })
   const cajero = await prisma.employeePosition.create({ data: { organizationId: org.id, name: "Cajero" } })
@@ -268,6 +282,18 @@ export async function seedNessikTest() {
           locationType: "location",
           quantity: item.bulk ? 40 : 50,
           minThreshold: item.bulk ? 5 : 10,
+          unitId: item.bulk ? unitId(item.bulk.unit) : unitId("pza"),
+        },
+      })
+      await prisma.inventory.create({
+        data: {
+          organizationId: org.id,
+          productId: product.id,
+          variantId,
+          locationId: cedis.id,
+          locationType: "cedis",
+          quantity: item.bulk ? 300 : 200,
+          minThreshold: item.bulk ? 50 : 40,
           unitId: item.bulk ? unitId(item.bulk.unit) : unitId("pza"),
         },
       })

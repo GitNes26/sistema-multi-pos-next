@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "../../src/lib/db/client"
 import { PERMISSIONS } from "../../src/lib/auth/permission-keys"
 import { isNessikTestEnabled, seedNessikTest } from "./nessik-test"
+import { DEFAULT_PLAN_EXCLUSIONS, PLAN_PERMISSION_KEYS } from "../../src/lib/billing/plan-permissions"
 
 // FASE 1.3.1 + FASE 2.8 — Seed de producción (base mínima)
 // - SuperAdmin default
@@ -901,12 +902,22 @@ export async function seedProduction() {
       features: ["Todo Crecimiento", "Operación multi-sucursal", "CEDIS y transferencias", "Roles y permisos avanzados", "Compras y recepciones", "Soporte para equipos amplios"],
     },
   ]
-  for (const plan of plans)
-    await prisma.subscriptionPlan.upsert({
+  for (const plan of plans) {
+    const saved = await prisma.subscriptionPlan.upsert({
       where: { name: plan.name },
       update: plan,
       create: plan,
+      select: { id: true, permissions: true },
     })
+    // Permisos incluidos por defecto; si el superAdmin ya los ajustó, se respetan.
+    if (saved.permissions === null) {
+      const excluded = DEFAULT_PLAN_EXCLUSIONS[plan.name] ?? []
+      await prisma.subscriptionPlan.update({
+        where: { id: saved.id },
+        data: { permissions: PLAN_PERMISSION_KEYS.filter((k) => !excluded.includes(k)) },
+      })
+    }
+  }
 
   // Empresa de pruebas NESSIK Test (apagar con SEED_NESSIK_TEST=false).
   if (isNessikTestEnabled()) await seedNessikTest()

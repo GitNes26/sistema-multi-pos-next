@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { isPlanBlockedPath } from "@/lib/billing/plan-permissions";
 import { isSuperadminOnlyPermission } from "@/lib/auth/permissions";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
 
@@ -82,10 +83,12 @@ function canSee(
   permissionKey: string | null,
   permissions: PermissionKey[] | null,
   isAdmin: boolean,
-  role: string | null
+  role: string | null,
+  planDenied: PermissionKey[] = []
 ): boolean {
   if (!permissionKey) return true;
   if (isSuperadminOnlyPermission(permissionKey)) return role === "superadmin";
+  if (role !== "superadmin" && planDenied.includes(permissionKey as PermissionKey)) return false;
   if (isAdmin) return true;
   return permissions?.includes(permissionKey as PermissionKey) ?? false;
 }
@@ -129,7 +132,8 @@ function filterTree(nodes: MenuNode[], keep: (n: MenuNode) => boolean): MenuNode
 export async function getMenuTree(
   permissions: PermissionKey[] | null,
   isAdmin: boolean,
-  role?: string | null
+  role?: string | null,
+  planDenied: PermissionKey[] = []
 ): Promise<MenuNode[]> {
   const rows = await prisma.menu.findMany({
     where: { isActive: true },
@@ -139,7 +143,8 @@ export async function getMenuTree(
   const nodes = rows.map((r) => toNode(r as MenuRow));
   const keep = (n: MenuNode) =>
     (n.href !== "/admin/settings/menus" || role === "superadmin") &&
-    canSee(n.permissionKey, permissions, isAdmin, role ?? null);
+    (role === "superadmin" || !n.href || !isPlanBlockedPath(n.href, planDenied)) &&
+    canSee(n.permissionKey, permissions, isAdmin, role ?? null, planDenied);
   return filterTree(buildTree(nodes), keep);
 }
 

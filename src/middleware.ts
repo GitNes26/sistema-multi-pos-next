@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import type { SessionRole } from "@/lib/auth/permissions";
+import { isPlanBlockedPath } from "@/lib/billing/plan-permissions";
 
 /** Páginas globales del superAdmin (no dependen de una empresa activa). */
 const PLATFORM_PATHS = [
@@ -33,6 +34,18 @@ export async function middleware(req: NextRequest) {
 
   // Sesión inválida (usuario desactivado/eliminado) → tratar como sin sesión.
   const authenticated = Boolean(token && !token.invalid);
+
+  // Áreas que el plan contratado no incluye (CEDIS, KDS, agenda,
+  // reservaciones): se redirige a "Mi plan" en lugar de abrir una pantalla vacía.
+  if (
+    authenticated &&
+    token!.scope === "app" &&
+    isPlanBlockedPath(pathname, token!.planDenied as string[] | undefined)
+  ) {
+    const url = new URL("/admin/settings/my-plan", req.url);
+    url.searchParams.set("bloqueado", pathname);
+    return NextResponse.redirect(url);
+  }
 
   // Al volver con el navegador, un cliente con sesión permanece en su portal.
   if (authenticated && token!.scope === "portal" && (pathname === "/" || pathname === "/portal/auth/login")) {

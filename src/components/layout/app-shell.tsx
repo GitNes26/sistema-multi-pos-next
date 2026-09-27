@@ -22,6 +22,8 @@ import type { UserMenuUser } from "@/components/layout/user-menu"
 export interface AppShellProps {
   user: UserMenuUser;
   permissions?: PermissionKey[];
+  /** Permisos que el plan de la empresa no incluye. */
+  planDenied?: PermissionKey[];
   logoUrl?: string | null;
   /** Modo de negocio resuelto en el servidor: evita que el menú muestre el de
    *  "retail" mientras la sesión del cliente termina de cargar. */
@@ -31,15 +33,15 @@ export interface AppShellProps {
 
 // FASE 5.1 / 5.10 / 14.7 — Un solo shell adaptativo.
 // El menú viene de la BD (useMenus) y cae al fallback hardcodeado mientras carga.
-export function AppShell({ user, permissions, logoUrl, businessMode: serverMode, children }: AppShellProps) {
+export function AppShell({ user, permissions, planDenied, logoUrl, businessMode: serverMode, children }: AppShellProps) {
   const { sections: dbSections, bottomItems } = useMenus();
   const { data: session } = useSession();
   const businessMode: BusinessMode =
     (session?.user as { businessMode?: BusinessMode } | undefined)?.businessMode ?? serverMode ?? "retail";
 
   const fallbackSections = React.useMemo(
-    () => filterNavSectionsByUserAndFeature({ user: { role: user.role, permissions } }, businessMode, NAV_SECTIONS),
-    [user.role, permissions, businessMode]
+    () => filterNavSectionsByUserAndFeature({ user: { role: user.role, permissions, planDenied } }, businessMode, NAV_SECTIONS),
+    [user.role, permissions, planDenied, businessMode]
   );
   // Also filter DB sections by businessMode (href → feature mapping)
   const filteredDbSections = React.useMemo(() => {

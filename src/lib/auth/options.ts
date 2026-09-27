@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
 import { verifyPassword, normalizeIdentifier } from "@/lib/auth/users"
 import { permissionsForRole } from "@/lib/auth/server-permissions"
+import { planDeniedPermissions } from "@/lib/billing/subscriptions"
 import { effectiveRole, type AppRole } from "@/lib/auth/permissions"
 import type { PermissionKey } from "@/lib/auth/permission-keys"
 
@@ -32,6 +33,8 @@ export type SessionUser = {
   /** Modo de negocio de la organización activa. */
   businessMode: BusinessMode
   permissions: PermissionKey[]
+  /** Permisos que el plan de la empresa activa no incluye (aplican a todos, propietario incluido). */
+  planDenied: PermissionKey[]
   scope: AuthScope
 }
 
@@ -47,6 +50,7 @@ declare module "next-auth" {
     organizationName?: string | null
     businessMode?: BusinessMode
     permissions?: PermissionKey[]
+    planDenied?: PermissionKey[]
     scope?: AuthScope
   }
 }
@@ -61,6 +65,7 @@ declare module "next-auth/jwt" {
     organizationName?: string | null
     businessMode?: BusinessMode
     permissions?: PermissionKey[]
+    planDenied?: PermissionKey[]
     scope?: AuthScope
     /** Sesión invalidada por re-validación en BD (usuario desactivado/eliminado). */
     invalid?: boolean
@@ -90,141 +95,79 @@ type ResolvedLoginUser = {
   }[]
 }
 
+const loginUserSelect = {
+  id: true,
+  email: true,
+  fullName: true,
+  avatarUrl: true,
+  passwordHash: true,
+  isActive: true,
+  isSuperadmin: true,
+  authVersion: true,
+  activationRequired: true,
+  lastOrganizationId: true,
+  employees: { select: { organizationId: true } },
+  customers: { select: { organizationId: true } },
+  memberships: { select: { organizationId: true, role: true, roleId: true } },
+} as const
+
+/** Solo dígitos; los últimos 10 identifican el número (sin lada de país). */
+const phoneKey = (value: string) => value.replace(/\D/g, "").slice(-10)
+
+/**
+ * Busca al usuario por el identificador del login, en este orden:
+ * correo → nº de nómina → nº de cliente → teléfono (usuario, empleado o
+ * cliente). Si un teléfono corresponde a varias cuentas, la contraseña decide
+ * cuál es; sin contraseña (o si ninguna coincide) no se resuelve.
+ */
 export async function resolveLoginUser(
-  identifier: string
+  identifier: string,
+  password?: string
 ): Promise<ResolvedLoginUser | null> {
   const value = normalizeIdentifier(identifier)
+  const active = (u: ResolvedLoginUser | null | undefined) => (u?.isActive ? u : null)
 
-  // 1) Por email (único global)
-  const byEmail = await prisma.user.findUnique({
-    where: { email: value },
-    select: {
-      id: true,
-      email: true,
-      fullName: true,
-      avatarUrl: true,
-      passwordHash: true,
-      isActive: true,
-      isSuperadmin: true,
-      authVersion: true,
-      activationRequired: true,
-      lastOrganizationId: true,
-      employees: { select: { organizationId: true } },
-      customers: { select: { organizationId: true } },
-      memberships: {
-        select: { organizationId: true, role: true, roleId: true },
-      },
-    },
-  })
-
-  if (byEmail) {
-    if (!byEmail.isActive) return null
-    return {
-      ...byEmail,
-      employees: byEmail.employees.map((e) => ({
-        organizationId: e.organizationId,
-      })),
-      customers: byEmail.customers.map((c) => ({
-        organizationId: c.organizationId,
-      })),
-      memberships: byEmail.memberships.map((m) => ({
-        organizationId: m.organizationId,
-        role: m.role,
-        roleId: m.roleId,
-      })),
-    }
+  if (value.includes("@")) {
+    return active(await prisma.user.findUnique({ where: { email: value }, select: loginUserSelect }))
   }
 
-  // 2) Por código de nómina (único por org)
   const byEmployee = await prisma.employee.findFirst({
     where: { employeeCode: value, isActive: true },
-    select: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          avatarUrl: true,
-          passwordHash: true,
-          isActive: true,
-          isSuperadmin: true,
-          authVersion: true,
-          activationRequired: true,
-          lastOrganizationId: true,
-          memberships: {
-            select: { organizationId: true, role: true, roleId: true },
-          },
-        },
-      },
-      organizationId: true,
-    },
+    select: { organizationId: true, user: { select: loginUserSelect } },
   })
   if (byEmployee) {
-    const u = byEmployee.user
-    if (!u.isActive) return null
-    return {
-      id: u.id,
-      email: u.email,
-      fullName: u.fullName,
-      avatarUrl: u.avatarUrl,
-      passwordHash: u.passwordHash,
-      isActive: u.isActive,
-      isSuperadmin: u.isSuperadmin,
-      authVersion: u.authVersion,
-      activationRequired: u.activationRequired,
-      lastOrganizationId: u.lastOrganizationId,
-      employees: [{ organizationId: byEmployee.organizationId }],
-      customers: [],
-      memberships: u.memberships.map((m) => ({
-        organizationId: m.organizationId,
-        role: m.role,
-        roleId: m.roleId,
-      })),
-    }
+    // Entrar con el nº de nómina fija la empresa de ese empleado.
+    return active({ ...byEmployee.user, employees: [{ organizationId: byEmployee.organizationId }], customers: [] })
   }
 
-  // 3) Por nº de cliente (único por org)
   const byCustomer = await prisma.customer.findFirst({
     where: { customerCode: value, isActive: true },
-    select: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-          avatarUrl: true,
-          passwordHash: true,
-          isActive: true,
-          isSuperadmin: true,
-          authVersion: true,
-          activationRequired: true,
-          lastOrganizationId: true,
-        },
-      },
-      organizationId: true,
-    },
+    select: { organizationId: true, user: { select: loginUserSelect } },
   })
   if (byCustomer) {
-    const u = byCustomer.user
-    if (!u.isActive) return null
-    return {
-      id: u.id,
-      email: u.email,
-      fullName: u.fullName,
-      avatarUrl: u.avatarUrl,
-      passwordHash: u.passwordHash,
-      isActive: u.isActive,
-      isSuperadmin: u.isSuperadmin,
-      authVersion: u.authVersion,
-      activationRequired: u.activationRequired,
-      lastOrganizationId: u.lastOrganizationId,
-      employees: [],
-      customers: [{ organizationId: byCustomer.organizationId }],
-      memberships: [],
-    }
+    return active({ ...byCustomer.user, employees: [], customers: [{ organizationId: byCustomer.organizationId }], memberships: [] })
   }
 
-  return null
+  const key = phoneKey(value)
+  if (key.length < 10) return null
+  // Los teléfonos se guardan con formato libre ("871 000 0000"): se filtran
+  // candidatos por los últimos 4 dígitos y se comparan normalizados.
+  const tail = key.slice(-4)
+  const [users, employees, customers] = await Promise.all([
+    prisma.user.findMany({ where: { phone: { contains: tail } }, select: { ...loginUserSelect, phone: true }, take: 50 }),
+    prisma.employee.findMany({ where: { phone: { contains: tail }, isActive: true }, select: { phone: true, user: { select: loginUserSelect } }, take: 50 }),
+    prisma.customer.findMany({ where: { phone: { contains: tail }, isActive: true }, select: { phone: true, user: { select: loginUserSelect } }, take: 50 }),
+  ])
+  const candidates = new Map<string, ResolvedLoginUser>()
+  for (const u of users) if (u.phone && phoneKey(u.phone) === key && u.isActive) candidates.set(u.id, u)
+  for (const r of [...employees, ...customers]) if (r.phone && phoneKey(r.phone) === key && r.user.isActive) candidates.set(r.user.id, r.user)
+
+  const list = [...candidates.values()]
+  if (list.length <= 1) return list[0] ?? null
+  if (!password) return null
+  const matches: ResolvedLoginUser[] = []
+  for (const u of list) if (await verifyPassword(password, u.passwordHash)) matches.push(u)
+  return matches.length === 1 ? matches[0] : null
 }
 
 function inferKindFromUser(
@@ -282,7 +225,7 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        identifier: { label: "Email o código", type: "text" },
+        identifier: { label: "Correo, teléfono o código", type: "text" },
         password: { label: "Contraseña", type: "password" },
         // Elección opcional del picker de org del login (multi-org).
         organizationId: { label: "Organización", type: "text" },
@@ -290,7 +233,7 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.identifier || !credentials?.password) return null
 
-        const user = await resolveLoginUser(credentials.identifier)
+        const user = await resolveLoginUser(credentials.identifier, credentials.password)
         if (!user) return null
         if (user.activationRequired) {
           throw new Error("Activa tu cuenta desde el correo de bienvenida o solicita un enlace nuevo en Olvidé mi contraseña.")
@@ -393,6 +336,8 @@ export const authOptions: NextAuthOptions = {
         // vuelve a "Sin organización" en lugar de quedar en un id colgado).
         const activeOrganizationId =
           organizationName !== null ? candidateOrgId : null
+        // El superAdmin no queda limitado por el plan de la empresa que opera.
+        const planDenied = kind.scope === "app" ? await planDeniedPermissions(activeOrganizationId) : []
 
         return {
           id: user.id,
@@ -406,6 +351,7 @@ export const authOptions: NextAuthOptions = {
           organizationName,
           businessMode,
           permissions,
+          planDenied,
           scope: kind.scope,
           authVersion: user.authVersion,
         }
@@ -432,6 +378,7 @@ export const authOptions: NextAuthOptions = {
         token.organizationName = user.organizationName ?? null
         token.businessMode = user.businessMode ?? "retail"
         token.permissions = user.permissions ?? []
+        token.planDenied = user.planDenied ?? []
         token.scope = user.scope ?? "app"
         token.name = user.name
         token.email = user.email
@@ -486,6 +433,9 @@ export const authOptions: NextAuthOptions = {
               next
             )
           }
+          if (token.scope === "app") {
+            token.planDenied = await planDeniedPermissions(next)
+          }
         } else {
           token.businessMode = "retail"
           token.organizationName = null
@@ -530,6 +480,8 @@ export const authOptions: NextAuthOptions = {
         } else if (activeOrganization) {
           token.organizationName = activeOrganization.name
           token.businessMode = activeOrganization.businessMode
+          // Si el superAdmin cambia el plan, la sesión lo refleja en ~1 minuto.
+          if (token.scope === "app") token.planDenied = await planDeniedPermissions(activeOrganizationId)
         } else if (activeOrganizationId) {
           token.activeOrganizationId = null
           token.organizationName = null
@@ -555,6 +507,7 @@ export const authOptions: NextAuthOptions = {
         organizationName: token.organizationName ?? null,
         businessMode: token.businessMode ?? "retail",
         permissions: token.permissions ?? [],
+        planDenied: token.planDenied ?? [],
         scope: token.scope ?? "app",
       }
       return session

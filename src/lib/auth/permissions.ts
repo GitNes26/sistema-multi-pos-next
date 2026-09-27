@@ -38,8 +38,10 @@ export function hasPermission(
   permission: PermissionKey
 ): boolean {
   if (!session?.user) return false;
-  const { role, permissions } = session.user;
+  const { role, permissions, planDenied } = session.user;
   if (isSuperadminOnlyPermission(permission)) return role === "superadmin";
+  // Lo que el plan contratado no incluye queda fuera para todos (propietario incluido).
+  if (role !== "superadmin" && planDenied?.includes(permission)) return false;
   if (isFullAccessRole(role)) return true;
   return permissions?.includes(permission) ?? false;
 }

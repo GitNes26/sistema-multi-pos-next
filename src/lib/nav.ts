@@ -343,6 +343,7 @@ export interface NavUser {
   user?: {
     role?: string | null;
     permissions?: PermissionKey[];
+    planDenied?: PermissionKey[];
   } | null;
 }
 
@@ -352,8 +353,9 @@ function navUserHasPermission(
 ): boolean {
   if (!permission) return true;
   if (!navUser?.user) return false;
-  const { role, permissions } = navUser.user;
+  const { role, permissions, planDenied } = navUser.user;
   if (isSuperadminOnlyPermission(permission)) return role === "superadmin";
+  if (role !== "superadmin" && planDenied?.includes(permission)) return false;
   if (role === "superadmin" || role === "owner" || role === "admin") return true;
   return permissions?.includes(permission) ?? false;
 }
