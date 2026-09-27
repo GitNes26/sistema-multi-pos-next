@@ -278,7 +278,7 @@ export function NewTransferWizard({
           {step === 2 && from && to && (
             <>
               <div className="rounded-2xl border bg-muted/40 p-4">
-                <TransferFlow status="in_transit" from={{ name: from.name, type: from.type }} to={{ name: to.name, type: to.type }} sent={units} received={null} />
+                <TransferFlow status="in_transit" from={{ name: from.name, type: from.type }} to={{ name: to.name, type: to.type }} sent={units} received={null} preview />
               </div>
               <ul className="divide-y rounded-xl border">
                 {lines.map(([id, qty]) => {

@@ -215,6 +215,8 @@ export interface UserRow {
   email: string
   isActive: boolean
   isSuperadmin: boolean
+  /** Empresas donde es cliente del portal (no usa membresía). */
+  customerOf: { organizationId: string; organizationName: string; businessMode: string }[]
   memberships: {
     membershipId: string
     organizationId: string
@@ -247,9 +249,11 @@ export async function listAllUsers(): Promise<UserRow[]> {
         },
         orderBy: { createdAt: "asc" },
       },
+      customers: { select: { organizationId: true, organization: { select: { name: true, businessMode: true } } } },
     },
   })
   return users.map((u) => ({
+    customerOf: u.customers.map((c) => ({ organizationId: c.organizationId, organizationName: c.organization.name, businessMode: c.organization.businessMode })),
     id: u.id,
     fullName: u.fullName,
     email: u.email,

@@ -80,6 +80,7 @@ type UserRow = {
   email: string
   isActive: boolean
   isSuperadmin: boolean
+  customerOf: { organizationId: string; organizationName: string; businessMode: BusinessMode }[]
   memberships: MembershipRow[]
 }
 
@@ -712,7 +713,7 @@ function UsersTab() {
   const [orgs, setOrgs] = React.useState<OrgRow[]>([])
   const [createOpen, setCreateOpen] = React.useState(false)
   const [assigning, setAssigning] = React.useState<UserRow | null>(null)
-  const [userFilter, setUserFilter] = React.useState<"all" | "unassigned" | "superadmin" | "inactive">("all")
+  const [userFilter, setUserFilter] = React.useState<"all" | "team" | "customers" | "unassigned" | "superadmin" | "inactive">("team")
   const [query, setQuery] = React.useState("")
 
   const load = React.useCallback(() => {
@@ -738,16 +739,22 @@ function UsersTab() {
     )
   }
 
+  const isCustomerOnly = (u: UserRow) => u.memberships.length === 0 && u.customerOf.length > 0
+  const isUnassigned = (u: UserRow) => !u.isSuperadmin && u.memberships.length === 0 && u.customerOf.length === 0
   const counts = {
     all: users.length,
-    unassigned: users.filter((u) => !u.isSuperadmin && u.memberships.length === 0).length,
+    team: users.filter((u) => u.memberships.length > 0).length,
+    customers: users.filter(isCustomerOnly).length,
+    unassigned: users.filter(isUnassigned).length,
     superadmin: users.filter((u) => u.isSuperadmin).length,
     inactive: users.filter((u) => !u.isActive).length,
   }
   const visible = users.filter(
     (u) =>
       (userFilter === "all" ||
-        (userFilter === "unassigned" && !u.isSuperadmin && u.memberships.length === 0) ||
+        (userFilter === "team" && u.memberships.length > 0) ||
+        (userFilter === "customers" && isCustomerOnly(u)) ||
+        (userFilter === "unassigned" && isUnassigned(u)) ||
         (userFilter === "superadmin" && u.isSuperadmin) ||
         (userFilter === "inactive" && !u.isActive)) &&
       (!query || `${u.fullName} ${u.email} ${u.memberships.map((m) => m.organizationName).join(" ")}`.toLowerCase().includes(query.toLowerCase()))
@@ -762,6 +769,8 @@ function UsersTab() {
           onChange={setUserFilter}
           options={[
             { value: "all", label: "Todos", count: counts.all },
+            { value: "team", label: "Equipo", count: counts.team },
+            { value: "customers", label: "Clientes", count: counts.customers },
             { value: "unassigned", label: "Sin empresa", count: counts.unassigned, countTone: counts.unassigned ? "warning" : undefined },
             { value: "superadmin", label: "Super admins", count: counts.superadmin },
             { value: "inactive", label: "Inactivos", count: counts.inactive },
@@ -793,7 +802,14 @@ function UsersTab() {
               <div className="flex min-w-0 flex-[2] flex-wrap items-center gap-1.5">
                 {u.isSuperadmin && <StatusPill tone="primary" dot={false}>Super admin</StatusPill>}
                 {!u.isActive && <ActiveStatusPill active={false} />}
-                {!u.isSuperadmin && u.memberships.length === 0 && <StatusPill tone="warning">Sin empresa asignada</StatusPill>}
+                {isUnassigned(u) && <StatusPill tone="warning">Sin empresa asignada</StatusPill>}
+                {u.customerOf.map((c) => (
+                  <span key={`c-${c.organizationId}`} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs">
+                    <ModeDot mode={c.businessMode} />
+                    <span className="font-medium">{c.organizationName}</span>
+                    <span className="text-muted-foreground">· Cliente</span>
+                  </span>
+                ))}
                 {u.memberships.map((m) => (
                   <span
                     key={m.membershipId}

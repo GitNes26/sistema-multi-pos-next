@@ -438,8 +438,15 @@ export async function receiveTransfer(
       const origin = item.inventoryId
         ? await tx.inventory.findUnique({ where: { id: item.inventoryId }, select: { unitId: true } })
         : null;
+      // Las filas de variante pueden guardarse sin productId (la clave única es
+      // variante + ubicación); las de granel van por producto sin variante.
       let dest = await tx.inventory.findFirst({
-        where: { organizationId, locationId: t.toLocationId, locationType: t.toLocationType, productId: item.productId, variantId: item.variantId },
+        where: {
+          organizationId,
+          locationId: t.toLocationId,
+          locationType: t.toLocationType,
+          ...(item.variantId ? { variantId: item.variantId } : { productId: item.productId, variantId: null }),
+        },
         select: { id: true },
       });
       if (dest) {

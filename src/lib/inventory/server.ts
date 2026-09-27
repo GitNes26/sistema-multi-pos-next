@@ -1254,7 +1254,8 @@ export async function importInventoryStock(
       const row = await findOrCreate(
         () =>
           prisma.inventory.findFirst({
-            where: { organizationId, locationId, locationType, variantId, productId },
+            // La fila de variante puede no tener productId: se busca por la clave única.
+            where: { organizationId, locationId, locationType, ...(variantId ? { variantId } : { productId, variantId: null }) },
           }),
         () =>
           prisma.inventory.create({

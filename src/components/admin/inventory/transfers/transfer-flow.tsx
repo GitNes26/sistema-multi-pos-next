@@ -38,12 +38,15 @@ export function TransferFlow({
   to,
   sent,
   received,
+  preview = false,
 }: {
   status: TransferStatus
   from: Place
   to: Place
   sent: number
   received: number | null
+  /** Vista previa antes de solicitar: aún no sale nada. */
+  preview?: boolean
 }) {
   const reduce = useReducedMotion()
   const moving = status === "in_transit"
@@ -54,7 +57,7 @@ export function TransferFlow({
 
   return (
     <div className={cn("flex items-center gap-2 sm:gap-4", cancelled && "opacity-60 grayscale")}>
-      <Node place={from} label={out ? "Salieron" : "Origen"} value={out || null} tone="text-foreground" active={status === "pending" || status === "preparing"} />
+      <Node place={from} label={preview ? "Enviará" : out ? "Salieron" : "Origen"} value={preview ? sent : out || null} tone="text-foreground" active={status === "pending" || status === "preparing"} />
       <div className="relative h-16 flex-1">
         <div className={cn("absolute inset-x-0 top-8 border-t-2 border-dashed", moving ? "border-primary/40" : arrived ? "border-success/50" : "border-border")} />
         {arrived && <motion.div initial={reduce ? false : { scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.9, ease: "easeOut" }} className="absolute inset-x-0 top-[31px] h-0.5 origin-left bg-success" />}
@@ -90,13 +93,13 @@ export function TransferFlow({
           </motion.span>
         )}
         <p className="absolute inset-x-0 top-12 mt-1 text-center text-xs text-muted-foreground">
-          {cancelled ? "Cancelado" : moving ? `${fmt(sent)} u. en camino` : arrived ? "Entregado" : status === "preparing" ? "Empacando…" : "Por preparar"}
+          {cancelled ? "Cancelado" : preview ? `${fmt(sent)} u. por enviar` : moving ? `${fmt(sent)} u. en camino` : arrived ? "Entregado" : status === "preparing" ? "Empacando…" : "Por preparar"}
         </p>
       </div>
       <Node
         place={to}
-        label={arrived ? "Entraron" : "Destino"}
-        value={arrived ? inn : null}
+        label={preview ? "Recibirá" : arrived ? "Entraron" : "Destino"}
+        value={preview ? sent : arrived ? inn : null}
         tone={arrived && received != null && received < sent ? "text-warning-ink" : "text-success-ink"}
         active={moving}
       />

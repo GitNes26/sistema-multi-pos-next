@@ -3,6 +3,14 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import type { SessionRole } from "@/lib/auth/permissions";
 
+/** Páginas globales del superAdmin (no dependen de una empresa activa). */
+const PLATFORM_PATHS = [
+  "/admin/settings/organizations",
+  "/admin/settings/subscriptions",
+  "/admin/settings/plans",
+  "/admin/settings/menus",
+];
+
 // FASE 2.7 — Middleware de protección de rutas.
 // - /pos          → cualquier sesión de app (no cliente)
 // - /admin        → solo owner/manager/superadmin
@@ -87,12 +95,13 @@ export async function middleware(req: NextRequest) {
     if (token!.scope === "portal" || !ADMIN_ONLY.includes((token!.role as SessionRole) ?? "")) {
       return NextResponse.redirect(new URL("/pos", req.url));
     }
-    // El superAdmin sin organización activa solo puede ver Organizaciones
-    // (ahí elige en qué empresa operar).
+    // El superAdmin sin organización activa solo ve las páginas globales de
+    // Plataforma (organizaciones, suscripciones, planes y menú); para el
+    // resto elige primero en qué empresa operar.
     if (
       token!.scope === "superadmin" &&
       !token!.activeOrganizationId &&
-      !pathname.startsWith("/admin/settings/organizations")
+      !PLATFORM_PATHS.some((p) => pathname.startsWith(p))
     ) {
       return NextResponse.redirect(new URL("/admin/settings/organizations", req.url));
     }
