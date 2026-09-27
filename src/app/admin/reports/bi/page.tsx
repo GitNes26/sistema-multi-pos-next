@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth/options"
 import { hasPermission } from "@/lib/auth/permissions"
 import { BiReportsPage } from "@/components/admin/reports/bi/bi-reports-page"
 
-export const metadata: Metadata = { title: "Business Intelligence — Reportes" }
+export const metadata: Metadata = { title: "Inteligencia de negocio" }
 
 export default async function BiReportsPageRoute() {
   const session = await getServerSession(authOptions)

@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { ArrowLeft, FileCheck2, ShieldCheck } from "lucide-react";
+import { FileCheck2, ShieldCheck } from "lucide-react";
+import { LegalShell } from "@/components/legal/legal-shell";
 
 export const LEGAL_VERSION = "2026-09-25";
 const LEGAL_VALUES: Record<string, string> = {
@@ -51,13 +51,12 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentKey, { title: string; summary:
 
 export function LegalDocument({ document }: { document: LegalDocumentKey }) {
   const data = LEGAL_DOCUMENTS[document];
-  return <main className="min-h-svh bg-muted/30 px-4 py-8 sm:py-12"><article className="mx-auto max-w-3xl overflow-hidden rounded-3xl border bg-background shadow-sm">
+  return <LegalShell backHref="/legal" backLabel="Centro legal"><article className="mx-auto max-w-3xl animate-rise-in overflow-hidden rounded-3xl border bg-background shadow-sm">
     <header className="border-b bg-gradient-to-br from-primary/10 via-background to-background p-6 sm:p-10">
-      <Link href="/legal" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Centro legal</Link>
       <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">{document === "privacidad" ? <ShieldCheck /> : <FileCheck2 />}</div>
       <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{data.title}</h1><p className="mt-3 leading-relaxed text-muted-foreground">{data.summary}</p>
       <p className="mt-4 text-xs text-muted-foreground">Última actualización: 25 de septiembre de 2026 · Versión {LEGAL_VERSION}</p>
     </header>
     <div className="space-y-8 p-6 sm:p-10">{data.sections.map((section) => <section key={section.title}><h2 className="text-lg font-semibold">{section.title}</h2><div className="mt-3 space-y-3 text-sm leading-7 text-foreground/80">{section.paragraphs.map((paragraph) => <p key={paragraph}>{resolveLegalText(paragraph)}</p>)}</div>{section.bullets && <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-foreground/80">{section.bullets.map((item) => <li key={item}>{item}</li>)}</ul>}</section>)}</div>
-  </article></main>;
+  </article></LegalShell>;
 }

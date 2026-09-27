@@ -1,5 +1,6 @@
 "use client"
 
+import { ActiveStatusPill, PurchaseStatusPill } from "@/components/shared/status-pills"
 import * as React from "react"
 import {
   Building2,
@@ -19,13 +20,20 @@ import {
   Sparkles,
   Truck,
   UserRound,
+  ArrowLeft,
+  ArrowRight,
+  Star,
+  Trash2,
+  DollarSign,
 } from "lucide-react"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { DialogComponent } from "@/components/ui/dialog"
+import { WizardSteps } from "@/components/base/wizard-steps"
+import { QuantityStepper } from "@/components/base/quantity-stepper"
+import { SegmentedFilter } from "@/components/base/segmented-filter"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { FormCombobox } from "@/components/base/form-combobox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -121,16 +129,6 @@ type Workspace = {
   }[]
 }
 
-const statusLabel: Record<string, string> = {
-  draft: "Borrador",
-  requested: "Solicitada",
-  quoted: "Respondida",
-  approved: "Aprobada",
-  sent: "Enviada",
-  partially_received: "Recepción parcial",
-  received: "Recibida",
-  cancelled: "Cancelada",
-}
 const money = new Intl.NumberFormat("es-MX", {
   style: "currency",
   currency: "MXN",
@@ -167,19 +165,7 @@ async function request(body?: Record<string, unknown>) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  return (
-    <Badge
-      variant={
-        status === "received"
-          ? "default"
-          : status === "cancelled"
-            ? "destructive"
-            : "secondary"
-      }
-    >
-      {statusLabel[status] ?? status}
-    </Badge>
-  )
+  return <PurchaseStatusPill status={status} />
 }
 
 export function PurchasingPage({
@@ -293,7 +279,7 @@ export function PurchasingPage({
         id: crypto.randomUUID(),
         productId,
         variantId: variantId || null,
-        description: `${product.name}${variant ? ` · ${variant.name}` : ""}`,
+        description: `${product.name}${variant && variant.name !== "Default" ? ` · ${variant.name}` : ""}`,
         quantity: linked?.minimumOrder ?? 1,
         unitCost: linked?.unitCost ?? Number(variant?.cost ?? 0),
         taxRate: 0,
@@ -379,7 +365,7 @@ export function PurchasingPage({
         />
       </div>
       <Tabs defaultValue="suppliers">
-        <TabsList className="h-auto w-full justify-start overflow-x-auto">
+        <TabsList className="scrollbar-none h-auto w-full justify-start overflow-x-auto overflow-y-hidden">
           <TabsTrigger value="suppliers">Proveedores</TabsTrigger>
           <TabsTrigger value="quotes" data-guide="purchasing-quotes-tab">
             Cotizaciones
@@ -436,9 +422,7 @@ export function PurchasingPage({
                         {s.tradeName ? ` · ${s.tradeName}` : ""}
                       </p>
                     </div>
-                    <Badge variant={s.isActive ? "default" : "secondary"}>
-                      {s.isActive ? "Activo" : "Inactivo"}
-                    </Badge>
+                    <ActiveStatusPill active={s.isActive} />
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -1089,260 +1073,318 @@ function PurchaseDocumentDialog({
   addItem: (value: string) => void
   submit: () => void
 }) {
-  const [errors, setErrors] = React.useState<Record<string, string>>({})
+  // Asistente: 1) proveedor (y destino), 2) productos, 3) revisar.
+  const steps = [
+    { title: "Proveedor", hint: kind === "order" ? "¿A quién le compras y a dónde llega la mercancía?" : "¿A qué proveedor le pides precios?" },
+    { title: "Productos", hint: "Los productos que ya surte este proveedor aparecen como sugerencias con su último costo." },
+    { title: "Revisar", hint: kind === "order" ? "Confirma importes. La orden queda como borrador hasta que se apruebe." : "Revisa lo que vas a cotizar." },
+  ]
+  const [step, setStep] = React.useState(0)
   React.useEffect(() => {
-    if (open) setErrors({})
+    if (open) {
+      setStep(doc.supplierId && items.length ? 1 : 0)
+    }
+    // Solo al abrir: el paso inicial depende de si viene precargado (desde una cotización).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, kind])
-  const submitValidated = () => {
-    const next: Record<string, string> = {}
-    if (!doc.supplierId) next.supplier = "Selecciona un proveedor."
-    if (kind === "order" && !doc.locationId) next.location = "Selecciona el destino del inventario."
-    if (!items.length) next.product = "Agrega al menos un producto."
-    for (const item of items) {
-      if (!Number.isFinite(item.quantity) || item.quantity <= 0) next[`qty-${item.id}`] = "La cantidad debe ser mayor que cero."
-      if (!Number.isFinite(item.unitCost) || item.unitCost < 0) next[`cost-${item.id}`] = "El costo no puede ser negativo."
-      if (!Number.isFinite(item.taxRate) || item.taxRate < 0 || item.taxRate > 1) next[`tax-${item.id}`] = "El impuesto debe estar entre 0 y 1."
-    }
-    setErrors(next)
-    const first = ["supplier", "location", "product", ...items.flatMap((item) => [`qty-${item.id}`, `cost-${item.id}`, `tax-${item.id}`])].find((key) => next[key])
-    if (first) {
-      const id = first === "supplier" ? "purchase-supplier" : first === "location" ? "purchase-target" : first === "product" ? "purchase-add-product" : first
-      requestAnimationFrame(() => document.getElementById(id)?.focus())
-      return
-    }
-    submit()
+
+  const supplier = data?.suppliers.find((s) => s.id === doc.supplierId) ?? null
+  const productName = (productId: string, variantId?: string | null) => {
+    const p = data?.products.find((x) => x.id === productId)
+    const v = p?.variants.find((x) => x.id === variantId)
+    return `${p?.name ?? "Producto"}${v && v.name !== "Default" ? ` · ${v.name}` : ""}`
   }
-  const options = (data?.products ?? []).flatMap((p) =>
-    p.variants.length
-      ? p.variants.map((v) => ({
-          value: `${p.id}|${v.id}`,
-          label: `${p.name} · ${v.name}`,
-          meta: v.sku ?? "",
-        }))
-      : [{ value: `${p.id}|`, label: p.name }]
-  )
-  const supplierOptions = (data?.suppliers ?? [])
-    .filter((s) => s.isActive)
-    .map((s) => ({ value: s.id, label: s.businessName, meta: s.code }))
-  const destinations =
-    doc.locationType === "cedis" ? (data?.cedis ?? []) : (data?.locations ?? [])
+  const has = (productId: string, variantId?: string | null) => items.some((i) => i.productId === productId && (i.variantId ?? "") === (variantId ?? ""))
+  const suggestions = (supplier?.products ?? []).filter((sp) => !has(sp.productId, sp.variantId))
+  const options = (data?.products ?? [])
+    .flatMap((p) =>
+      p.variants.length
+        ? p.variants.map((v) => ({ value: `${p.id}|${v.id}`, label: `${p.name}${v.name !== "Default" ? ` · ${v.name}` : ""}`, meta: v.sku ?? "" }))
+        : [{ value: `${p.id}|`, label: p.name, meta: "" }]
+    )
+    .filter((o) => !items.some((i) => `${i.productId}|${i.variantId ?? ""}` === o.value))
+  const destinations = doc.locationType === "cedis" ? (data?.cedis ?? []) : (data?.locations ?? [])
+
+  const subtotal = items.reduce((a, i) => a + Number(i.quantity) * Number(i.unitCost), 0)
+  const taxes = items.reduce((a, i) => a + Number(i.quantity) * Number(i.unitCost) * Number(i.taxRate), 0)
+  const update = (index: number, patch: Partial<Item>) => setItems((v) => v.map((x, i) => (i === index ? { ...x, ...patch } : x)))
+
+  const pickSupplier = (s: Supplier) => {
+    setDoc((v) => {
+      // Entrega sugerida = hoy + días de entrega del proveedor (si no se eligió otra).
+      const suggested = s.leadTimeDays > 0 && !v.expectedAt ? new Date(Date.now() + s.leadTimeDays * 86400000).toISOString().slice(0, 10) : v.expectedAt
+      return { ...v, supplierId: s.id, expectedAt: kind === "order" ? suggested : v.expectedAt }
+    })
+  }
+
+  const stepValid =
+    step === 0
+      ? Boolean(doc.supplierId) && (kind === "quote" || Boolean(doc.locationId))
+      : step === 1
+        ? items.length > 0 && items.every((i) => Number(i.quantity) > 0 && Number(i.unitCost) >= 0)
+        : true
+
   return (
     <DialogComponent
       open={open}
       onOpenChange={(v) => !v && close()}
-      title={
-        kind === "quote"
-          ? doc.quoteId ? "Modificar cotización" : "Nueva solicitud de cotización"
-          : "Nueva orden de compra"
-      }
-      description={
-        kind === "quote"
-          ? "Define qué necesitas para solicitar precios al proveedor."
-          : "Confirma destino, cantidades y costos antes de aprobación."
-      }
+      title={kind === "quote" ? (doc.quoteId ? "Modificar cotización" : "Nueva solicitud de cotización") : "Nueva orden de compra"}
+      description={kind === "quote" ? "Pide precios a tu proveedor en 3 pasos." : "Arma tu pedido al proveedor en 3 pasos."}
       icon={kind === "quote" ? <FileText /> : <ShoppingCart />}
-      size="4xl"
+      size="3xl"
+      bodyClassName="space-y-4"
       footer={
         <>
-          <Button variant="outline" onClick={close}>
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            form="purchase-document-form"
-            disabled={saving}
-          >
-            {saving && <Loader2 className="animate-spin" />}
-            {kind === "quote" ? doc.quoteId ? "Guardar cotización" : "Crear cotización" : "Crear orden"}
-          </Button>
+          {step > 0 ? (
+            <Button variant="ghost" onClick={() => setStep((s) => s - 1)} disabled={saving}>
+              <ArrowLeft /> Atrás
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={close}>Cancelar</Button>
+          )}
+          {step < 2 ? (
+            <Button onClick={() => setStep((s) => s + 1)} disabled={!stepValid}>
+              Continuar <ArrowRight />
+            </Button>
+          ) : (
+            <Button onClick={submit} disabled={saving}>
+              {saving ? <Loader2 className="animate-spin" /> : <Check />}
+              {kind === "quote" ? (doc.quoteId ? "Guardar cotización" : "Crear cotización") : "Crear orden"}
+            </Button>
+          )}
         </>
       }
     >
-      {error && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
-      <form id="purchase-document-form" noValidate onSubmit={(event) => { event.preventDefault(); submitValidated() }} className="space-y-5">
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormCombobox
-            id="purchase-supplier"
-            label="Proveedor"
-            required
-            icon={<Building2 />}
-            options={supplierOptions}
-            value={doc.supplierId}
-            onChange={(supplierId) => { setDoc((v) => ({ ...v, supplierId })); setErrors((v) => ({ ...v, supplier: "" })) }}
-            error={errors.supplier}
-          />
-          {kind === "quote" ? (
-            <InputGroupField
-              id="quote-valid"
-              label="Vigencia"
-              type="date"
-              leftIcon={<CalendarDays />}
-              value={doc.validUntil}
-              onChange={(e) =>
-                setDoc((v) => ({ ...v, validUntil: e.target.value }))
-              }
-            />
-          ) : (
-            <>
-              <FormCombobox
-                id="purchase-target-type"
-                label="Tipo de destino"
-                required
-                icon={<MapPin />}
+      <WizardSteps steps={steps} current={step} onStepClick={setStep} />
+      {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
+
+      {step === 0 && (
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <Label>Proveedor</Label>
+            {(data?.suppliers ?? []).filter((s) => s.isActive).length === 0 ? (
+              <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">Primero da de alta un proveedor en la pestaña Proveedores.</p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(data?.suppliers ?? []).filter((s) => s.isActive).map((s) => {
+                  const selected = s.id === doc.supplierId
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => pickSupplier(s)}
+                      aria-pressed={selected}
+                      className={cn("press rounded-xl border p-3 text-left transition-colors", selected ? "border-primary bg-primary/5 ring-2 ring-primary" : "hover:border-primary/40")}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Building2 className={cn("size-4", selected ? "text-primary" : "text-muted-foreground")} />
+                        <span className="truncate font-medium">{s.businessName}</span>
+                      </span>
+                      <span className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                        <span>{s.products.length} productos vinculados</span>
+                        {s.leadTimeDays > 0 && <span>Entrega en {s.leadTimeDays} días</span>}
+                        {s.paymentTerms && <span>{s.paymentTerms}</span>}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {kind === "order" ? (
+            <div className="space-y-2">
+              <Label>¿A dónde llega?</Label>
+              <SegmentedFilter
+                ariaLabel="Tipo de destino"
+                value={doc.locationType}
+                onChange={(locationType) => setDoc((v) => ({ ...v, locationType, locationId: "" }))}
                 options={[
                   { value: "location", label: "Sucursal" },
                   { value: "cedis", label: "CEDIS" },
                 ]}
-                value={doc.locationType}
-                onChange={(locationType) =>
-                  setDoc((v) => ({ ...v, locationType, locationId: "" }))
-                }
               />
-              <FormCombobox
-                id="purchase-target"
-                label="Destino del inventario"
-                required
-                icon={<MapPin />}
-                options={destinations.map((x) => ({
-                  value: x.id,
-                  label: x.name,
-                }))}
-                value={doc.locationId}
-                onChange={(locationId) => { setDoc((v) => ({ ...v, locationId })); setErrors((v) => ({ ...v, location: "" })) }}
-                error={errors.location}
-              />
+              <div className="grid gap-2 sm:grid-cols-3">
+                {destinations.map((d) => {
+                  const selected = d.id === doc.locationId
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setDoc((v) => ({ ...v, locationId: d.id }))}
+                      aria-pressed={selected}
+                      className={cn("press flex items-center gap-2 rounded-xl border p-3 text-left text-sm transition-colors", selected ? "border-primary bg-primary/5 ring-2 ring-primary" : "hover:border-primary/40")}
+                    >
+                      <MapPin className={cn("size-4 shrink-0", selected ? "text-primary" : "text-muted-foreground")} />
+                      <span className="truncate font-medium">{d.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
               <InputGroupField
                 id="order-expected"
                 label="Entrega esperada"
                 type="date"
                 leftIcon={<CalendarDays />}
                 value={doc.expectedAt}
-                onChange={(e) =>
-                  setDoc((v) => ({ ...v, expectedAt: e.target.value }))
-                }
+                helper={supplier?.leadTimeDays ? `Sugerida según los ${supplier.leadTimeDays} días de entrega del proveedor.` : undefined}
+                onChange={(e) => setDoc((v) => ({ ...v, expectedAt: e.target.value }))}
+                className="sm:max-w-xs"
               />
-            </>
-          )}
-        </div>
-        <FormCombobox
-          id="purchase-add-product"
-          label="Agregar producto o variante"
-          icon={<Plus />}
-          options={options.filter(
-            (o) =>
-              !items.some(
-                (i) => `${i.productId}|${i.variantId ?? ""}` === o.value
-              )
-          )}
-          value=""
-          onChange={(value) => { addItem(value); setErrors((v) => ({ ...v, product: "" })) }}
-          placeholder="Buscar y agregar…"
-          error={errors.product}
-        />
-        <div className="space-y-2">
-          {items.map((item, index) => (
-            <div
-              key={item.id}
-              className="grid gap-2 rounded-xl border p-3 md:grid-cols-[minmax(12rem,1fr)_8rem_9rem_6rem_auto]"
-            >
-              <div className="self-center">
-                <strong className="text-sm">{item.description}</strong>
-              </div>
-              <InputGroupField
-                id={`qty-${item.id}`}
-                label="Cantidad"
-                type="number"
-                min={0.001}
-                step="0.001"
-                leftIcon={<PackageCheck />}
-                value={item.quantity}
-                error={errors[`qty-${item.id}`]}
-                onChange={(e) => {
-                  setErrors((v) => ({ ...v, [`qty-${item.id}`]: "" }))
-                  setItems((v) =>
-                    v.map((x, i) =>
-                      i === index
-                        ? { ...x, quantity: Number(e.target.value) }
-                        : x
-                    )
-                  )
-                }}
-              />
-              <InputGroupField
-                id={`cost-${item.id}`}
-                label="Costo unitario"
-                type="number"
-                min={0}
-                step="0.01"
-                leftIcon={<ShoppingCart />}
-                value={item.unitCost}
-                error={errors[`cost-${item.id}`]}
-                onChange={(e) => {
-                  setErrors((v) => ({ ...v, [`cost-${item.id}`]: "" }))
-                  setItems((v) =>
-                    v.map((x, i) =>
-                      i === index
-                        ? { ...x, unitCost: Number(e.target.value) }
-                        : x
-                    )
-                  )
-                }}
-              />
-              <InputGroupField
-                id={`tax-${item.id}`}
-                label="Impuesto"
-                type="number"
-                min={0}
-                max={1}
-                step="0.01"
-                leftIcon={<FileText />}
-                value={item.taxRate}
-                error={errors[`tax-${item.id}`]}
-                onChange={(e) => {
-                  setErrors((v) => ({ ...v, [`tax-${item.id}`]: "" }))
-                  setItems((v) =>
-                    v.map((x, i) =>
-                      i === index
-                        ? { ...x, taxRate: Number(e.target.value) }
-                        : x
-                    )
-                  )
-                }}
-              />
-              <Button
-                type="button"
-                className="self-end"
-                variant="ghost"
-                size="sm"
-                onClick={() => setItems((v) => v.filter((_, i) => i !== index))}
-              >
-                Quitar
-              </Button>
             </div>
-          ))}
+          ) : (
+            <InputGroupField
+              id="quote-valid"
+              label="¿Hasta cuándo necesitas la respuesta?"
+              type="date"
+              leftIcon={<CalendarDays />}
+              value={doc.validUntil}
+              onChange={(e) => setDoc((v) => ({ ...v, validUntil: e.target.value }))}
+              className="sm:max-w-xs"
+            />
+          )}
         </div>
-        {items.length > 0 && (
-          <div className="flex justify-end rounded-xl bg-muted p-3 text-sm">
-            <strong>
-              Total estimado:{" "}
-              {money.format(
-                items.reduce(
-                  (a, i) => a + Number(i.quantity) * Number(i.unitCost) * (1 + Number(i.taxRate)),
-                  0
-                )
-              )}
-            </strong>
-          </div>
-        )}
-        <div className="space-y-2">
-          <Label htmlFor="purchase-notes">Notas y condiciones</Label>
-          <Textarea
-            id="purchase-notes"
-            value={doc.notes}
-            onChange={(e) => setDoc((v) => ({ ...v, notes: e.target.value }))}
+      )}
+
+      {step === 1 && (
+        <div className="space-y-4">
+          {suggestions.length > 0 && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5"><Sparkles className="size-4 text-primary" /> Lo que te surte {supplier?.businessName}</Label>
+              <div className="flex flex-wrap gap-2">
+                {suggestions.map((sp) => (
+                  <button
+                    key={sp.id}
+                    type="button"
+                    onClick={() => addItem(`${sp.productId}|${sp.variantId ?? ""}`)}
+                    className="press flex items-center gap-2 rounded-full border bg-card py-1.5 pr-3 pl-1.5 text-sm transition-colors hover:border-primary/40"
+                  >
+                    <span className="grid size-6 place-items-center rounded-full bg-primary/10 text-primary"><Plus className="size-3.5" /></span>
+                    <span className="font-medium">{productName(sp.productId, sp.variantId)}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">{money.format(sp.unitCost)}{sp.minimumOrder > 1 ? ` · mín. ${sp.minimumOrder}` : ""}</span>
+                    {sp.isPreferred && <Star className="size-3.5 fill-warning text-warning" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <FormCombobox
+            id="purchase-add-product"
+            label={suggestions.length ? "¿Algo más? Busca cualquier producto" : "Busca y agrega productos"}
+            icon={<Search />}
+            options={options}
+            value=""
+            onChange={(value) => addItem(value)}
+            placeholder="Nombre o SKU…"
           />
+
+          {items.length === 0 ? (
+            <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Aún no agregas productos.</p>
+          ) : (
+            <ul className="space-y-2">
+              {items.map((item, index) => {
+                const link = supplier?.products.find((p) => p.productId === item.productId && (p.variantId ?? "") === (item.variantId ?? ""))
+                const belowMin = link && item.quantity < link.minimumOrder
+                return (
+                  <li key={item.id} className="space-y-2 rounded-xl border bg-muted/30 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <strong className="text-sm">{item.description}</strong>
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar" onClick={() => setItems((v) => v.filter((_, i) => i !== index))}>
+                        <Trash2 className="text-destructive" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div className="space-y-1">
+                        <span className="block text-xs text-muted-foreground">Cantidad</span>
+                        <QuantityStepper size="sm" value={item.quantity} min={0} decimals={3} onChange={(quantity) => update(index, { quantity })} ariaLabel={`Cantidad de ${item.description}`} />
+                      </div>
+                      <InputGroupField
+                        id={`cost-${item.id}`}
+                        label="Costo unitario"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        leftIcon={<DollarSign />}
+                        value={item.unitCost}
+                        onChange={(e) => update(index, { unitCost: Number(e.target.value) })}
+                        className="w-36"
+                      />
+                      <div className="space-y-1">
+                        <span className="block text-xs text-muted-foreground">IVA</span>
+                        <div className="flex gap-1" role="radiogroup" aria-label="IVA">
+                          {[0, 0.08, 0.16].map((rate) => (
+                            <button
+                              key={rate}
+                              type="button"
+                              role="radio"
+                              aria-checked={item.taxRate === rate}
+                              onClick={() => update(index, { taxRate: rate })}
+                              className={cn("h-9 rounded-lg border px-2.5 text-sm tabular-nums transition-colors", item.taxRate === rate ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/40")}
+                            >
+                              {Math.round(rate * 100)}%
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <span className="ml-auto text-right">
+                        <span className="block text-xs text-muted-foreground">Importe</span>
+                        <strong className="tabular-nums">{money.format(item.quantity * item.unitCost * (1 + item.taxRate))}</strong>
+                      </span>
+                    </div>
+                    {belowMin && <p className="text-xs text-warning-ink">El pedido mínimo de este proveedor es {link.minimumOrder}.</p>}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </div>
-      </form>
+      )}
+
+      {step === 2 && (
+        <div className="space-y-4">
+          <div className="grid gap-3 rounded-2xl border bg-muted/40 p-4 sm:grid-cols-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Proveedor</p>
+              <p className="font-semibold">{supplier?.businessName ?? "—"}</p>
+            </div>
+            {kind === "order" ? (
+              <>
+                <div>
+                  <p className="text-xs text-muted-foreground">Llega a</p>
+                  <p className="font-semibold">{destinations.find((d) => d.id === doc.locationId)?.name ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Entrega esperada</p>
+                  <p className="font-semibold">{doc.expectedAt ? new Date(`${doc.expectedAt}T12:00:00`).toLocaleDateString("es-MX", { day: "numeric", month: "long" }) : "Sin fecha"}</p>
+                </div>
+              </>
+            ) : (
+              <div>
+                <p className="text-xs text-muted-foreground">Respuesta antes de</p>
+                <p className="font-semibold">{doc.validUntil ? new Date(`${doc.validUntil}T12:00:00`).toLocaleDateString("es-MX", { day: "numeric", month: "long" }) : "Sin fecha"}</p>
+              </div>
+            )}
+          </div>
+          <ul className="divide-y rounded-xl border text-sm">
+            {items.map((i) => (
+              <li key={i.id} className="flex justify-between gap-3 px-3 py-2">
+                <span className="truncate">{i.quantity} × {i.description}</span>
+                <span className="tabular-nums">{money.format(i.quantity * i.unitCost)}</span>
+              </li>
+            ))}
+          </ul>
+          <dl className="ml-auto max-w-xs space-y-1 text-sm">
+            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd className="tabular-nums">{money.format(subtotal)}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">IVA</dt><dd className="tabular-nums">{money.format(taxes)}</dd></div>
+            <div className="flex justify-between border-t pt-1 text-base font-semibold"><dt>Total estimado</dt><dd className="tabular-nums">{money.format(subtotal + taxes)}</dd></div>
+          </dl>
+          <div className="space-y-2">
+            <Label htmlFor="purchase-notes">Notas y condiciones</Label>
+            <Textarea id="purchase-notes" value={doc.notes} onChange={(e) => setDoc((v) => ({ ...v, notes: e.target.value }))} placeholder="Ej. entregar en horario de 8 a 12" />
+          </div>
+        </div>
+      )}
     </DialogComponent>
   )
 }

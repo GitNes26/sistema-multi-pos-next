@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { categoryPlaceholder, isPlaceholderImage, recolorPlaceholder } from "@/lib/catalog/auto-emoji";
 import { CrudError, type CrudModule, type ListParams, type CrudListResult } from "../types";
 
 export interface CategoryDto {
@@ -87,7 +88,8 @@ export const categoriesModule: CrudModule<CategoryDto> = {
         organizationId,
         name: data.name.trim(),
         parentId: data.parentId ? data.parentId : null,
-        imageUrl: data.imageUrl ?? null,
+        // Sin foto: imagen ilustrada con emoji y color propios de la categoría.
+        imageUrl: data.imageUrl || categoryPlaceholder(data.name.trim()),
         isActive: data.isActive ?? true,
       },
       include: { parent: { select: { name: true } }, _count: { select: { children: true, products: true } } },
@@ -106,16 +108,38 @@ export const categoriesModule: CrudModule<CategoryDto> = {
       if (!parent) throw new CrudError("La categoría padre no existe", 400, "parentId");
     }
 
+    const newName = data.name !== undefined ? data.name.trim() : existing.name;
+    const renamed = newName !== existing.name;
+    // Imagen: la foto enviada; si se quita (o no hay) y no es foto real,
+    // la ilustración se regenera con el nombre vigente.
+    const sentPhoto = data.imageUrl ? !isPlaceholderImage(data.imageUrl) : false;
+    const nextImage = sentPhoto
+      ? data.imageUrl!
+      : (data.imageUrl !== undefined && !data.imageUrl) || (isPlaceholderImage(existing.imageUrl) && (renamed || !existing.imageUrl))
+        ? categoryPlaceholder(newName)
+        : undefined;
+
     const c = await prisma.category.update({
       where: { id },
       data: {
-        ...(data.name !== undefined ? { name: data.name.trim() } : {}),
+        ...(data.name !== undefined ? { name: newName } : {}),
         ...(data.parentId !== undefined ? { parentId: data.parentId ? data.parentId : null } : {}),
-        ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl } : {}),
+        ...(nextImage !== undefined ? { imageUrl: nextImage } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
       },
       include: { parent: { select: { name: true } }, _count: { select: { children: true, products: true } } },
     });
+
+    // Al renombrar, los productos con imagen ilustrada toman el nuevo color.
+    if (renamed) {
+      const products = await prisma.product.findMany({
+        where: { organizationId, categoryId: id, imageUrl: { startsWith: "/api/placeholder/image" } },
+        select: { id: true, imageUrl: true },
+      });
+      for (const p of products) {
+        await prisma.product.update({ where: { id: p.id }, data: { imageUrl: recolorPlaceholder(p.imageUrl!, newName) } });
+      }
+    }
     return serialize(c);
   },
 

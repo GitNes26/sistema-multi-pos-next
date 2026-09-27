@@ -9,5 +9,11 @@ import { signOut } from "next-auth/react";
 // borrar las cookies de sesión (`next-auth.session-token` y `next-auth.csrf-token`),
 // lo que hace `signOut()` de forma automática.
 export function logout(callbackUrl = "/auth/login") {
+  // El menú en caché pertenece a esta sesión; no debe verlo el siguiente usuario.
+  try {
+    sessionStorage.removeItem("multi-pos-menu");
+  } catch {
+    // almacenamiento no disponible
+  }
   return signOut({ callbackUrl });
 }

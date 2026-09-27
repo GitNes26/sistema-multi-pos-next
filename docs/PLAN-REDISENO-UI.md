@@ -76,6 +76,22 @@
 
 ---
 
+## Fase 10 — Reportes, landing y navegación ✅
+- **Kit de reportes** (`src/components/admin/reports/report-kit.tsx`): filtros en contexto, `useBiReport`, `ReportState` (esqueleto/error/vacío), `Kpi` con variación, `ReportPanel`, `ReportTable` ordenable con barra en celda, `BarList`, `ShareBar`, `SeriesChart` e `Insights`. Todos los reportes (23 de BI + 5 generales) se construyen con él.
+- **Barra de filtros común** (`report-filters-bar.tsx`): atajos de periodo, fechas y sucursal; fija bajo el encabezado.
+- **Pulso del periodo** (`bi/period-pulse.tsx`): ventas, tickets, ticket promedio, margen, clientes y descuentos contra el periodo anterior (`report=summary`).
+- **Datos**: filtro de sucursal en todos los reportes, días/meses en hora local, días sin venta en cero, antigüedad de crédito FIFO, etiquetas en español, cohortes con primera compra histórica, ventas generales solo completadas y totales sin tope de filas.
+- **Flecha de regreso** compartida (`shared/back-button.tsx`) en `AuthShell` (todos los accesos) y `LegalShell` (centro legal y documentos).
+- **Landing** viva: demo animada del POS/portal, palabra rotativa, encabezado con sección activa, demos por diferenciador, selector de tipo de negocio (misma fuente que el onboarding), marquesina, preguntas frecuentes.
+
+## Fase 11 — Formularios guiados y flujos ✅
+- **Piezas compartidas**: `base/quantity-stepper.tsx` (cantidad táctil − / +) y `base/wizard-steps.tsx` (encabezado de asistente por pasos).
+- **Traslados con flujo** (migración `20260927120000_transfer_flow`): Solicitado → En preparación → En camino → Recibido. El stock sale al despachar y entra solo lo recibido; diferencias con nota. Sucursal o CEDIS en ambos extremos. GPS desde el teléfono del chofer (modo chofer) con mapa en vivo y recorrido guardado. Pestaña "Traslados" en Inventario y detalle en `/admin/inventory/transfers/[id]`.
+- **Combos**: asistente de 3 pasos (qué incluye → precio con atajos y medidor de ahorro → presentación) con vista previa en vivo.
+- **Órdenes de compra / cotizaciones**: asistente de 3 pasos con proveedor y destino en tarjetas, productos sugeridos del proveedor, IVA en botones y resumen.
+- **Armado de producto** (POS y portal, mismo componente): tamaño primero, avance por secciones, salto automático, reglas en palabras, aviso de máximo, fotos en opciones, botón que dice qué falta.
+- **Seguimiento del pedido en el portal**: estilo app de delivery (titular con minutos, barra por segmentos con horas, mapa a pantalla completa, llamar a sucursal, confeti al entregar).
+
 ## Pendiente del usuario
 
 1. Aplicar la migración en cada entorno: `npx prisma migrate deploy` (en la BD local ya se agregó la columna `surfaceTone` a mano).

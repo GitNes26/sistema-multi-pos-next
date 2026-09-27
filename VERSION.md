@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.22.0.0] — 2026-09-27
+- **Tipo:** `feat` (Minor)
+- feat: flujo de traslados de inventario (solicitud, preparacion, despacho con GPS del chofer y recepcion con diferencias), rediseño y correccion de datos de todos los reportes, asistentes guiados para combos y ordenes de compra, armado de producto mas didactico en POS y portal, seguimiento de pedido estilo app de delivery, flyers con 10 diseños por tipo, lector QR que explica por que no abre la camara, imagen ilustrada por defecto en productos y categorias, landing dinamica con desplazamiento suave, flecha de regreso en logins y legales, y etiquetas de estado compartidas
+
 ### [0.21.0.0] — 2026-09-26
 - **Tipo:** `feat` (Minor)
 - feat: se mejoro diseño con Clau y se agrego qr de usuario y otras mejoras

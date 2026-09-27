@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/layout/logo";
+import { BackButton } from "@/components/shared/back-button";
 import packageJson from "../../../package.json";
 
 // Pantalla de acceso a dos paneles: en tablet horizontal y escritorio, la marca
@@ -32,11 +33,14 @@ export function AuthShell({
   mode,
   footerLinks,
   logoUrl,
+  backHref = "/",
 }: {
   children: React.ReactNode;
   mode?: "pos" | "portal";
   footerLinks?: React.ReactNode;
   logoUrl?: string | null;
+  /** Adónde lleva la flecha de regreso si no hay página previa del sitio. */
+  backHref?: string;
 }) {
   const copy = BRAND_COPY[mode ?? "pos"];
   const home = mode === "portal" ? "/portal/auth/login" : "/";
@@ -81,8 +85,11 @@ export function AuthShell({
       </aside>
 
       {/* ── Formulario ── */}
-      <main className="safe-area-top safe-area-bottom flex min-h-dvh flex-col px-5 py-8 sm:px-8">
-        <div className="flex flex-1 flex-col items-center justify-center">
+      <main className="safe-area-top safe-area-bottom flex min-h-dvh flex-col px-5 pt-3 pb-8 sm:px-8 sm:pt-5">
+        <nav aria-label="Navegación" className="-ml-2">
+          <BackButton fallback={backHref} showLabel />
+        </nav>
+        <div className="flex flex-1 flex-col items-center justify-center pt-4">
           <div className="mb-8 flex w-full max-w-sm flex-col items-start gap-3 lg:hidden">
             <Link href={home} className="flex items-center gap-2.5 text-lg font-semibold tracking-tight">
               <Logo size={22} logoUrl={logoUrl} className="rounded-lg" />

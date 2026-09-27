@@ -18,7 +18,7 @@ export default async function AdminPublicationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-6xl">
       <PageHeader
         icon={<Megaphone className="size-5" />}
         title="Publicaciones"

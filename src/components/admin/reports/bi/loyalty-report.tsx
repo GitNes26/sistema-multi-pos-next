@@ -1,92 +1,62 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Star } from "lucide-react"
+import { Gift, Repeat, Star, Users } from "lucide-react"
+import { EntityCell } from "@/components/base/entity-cell"
+import { Insights, Kpi, KpiGrid, ReportEmpty, ReportPanel, ReportState, ReportTable, fmt, useBiReport } from "../report-kit"
 
-interface Props { from: string; to: string }
+interface Row { customerId: string; customerName: string; totalPoints: number; pointsBalance: number; totalSpent: number; orderCount: number; avgTicket: number; lastOrderDate: string | null }
+interface Data { rows: Row[]; totals: { activeCustomers: number; pointsIssued: number; pointsBalance: number; repeatCustomers: number } }
 
-interface Row {
-  customerId: string
-  customerName: string
-  totalPoints: number
-  totalSpent: number
-  orderCount: number
-  lastOrderDate: string | null
-}
-
-const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
-
-export function LoyaltyReport({ from, to }: Props) {
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    const params = new URLSearchParams({ report: "loyalty" })
-    if (from) params.set("from", from)
-    if (to) params.set("to", to)
-    fetch(`/api/reports/bi?${params}`)
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows ?? []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [from, to])
-
-  if (loading) return <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+export function LoyaltyReport() {
+  const state = useBiReport<Data>("loyalty")
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Star className="size-4" /> Programa de Lealtad
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="rounded-lg bg-muted p-3 text-center">
-              <div className="text-2xl font-bold">{rows.length}</div>
-              <div className="text-xs text-muted-foreground">Clientes activos</div>
-            </div>
-            <div className="rounded-lg bg-muted p-3 text-center">
-              <div className="text-2xl font-bold">{rows.reduce((a, r) => a + r.totalPoints, 0).toLocaleString()}</div>
-              <div className="text-xs text-muted-foreground">Puntos acumulados</div>
-            </div>
-            <div className="rounded-lg bg-muted p-3 text-center">
-              <div className="text-2xl font-bold">{money(rows.reduce((a, r) => a + r.totalSpent, 0))}</div>
-              <div className="text-xs text-muted-foreground">Total gastado</div>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4">Cliente</th>
-                  <th className="pb-2 pr-4 text-right">Puntos</th>
-                  <th className="pb-2 pr-4 text-right">Gastado</th>
-                  <th className="pb-2 pr-4 text-right">Pedidos</th>
-                  <th className="pb-2 text-right">Último pedido</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.customerId} className="border-b last:border-0">
-                    <td className="py-2 pr-4 font-medium">{r.customerName}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-warning-ink">{r.totalPoints.toLocaleString()}</td>
-                    <td className="py-2 pr-4 text-right font-mono">{money(r.totalSpent)}</td>
-                    <td className="py-2 pr-4 text-right">{r.orderCount}</td>
-                    <td className="py-2 text-right text-muted-foreground">{r.lastOrderDate ?? "-"}</td>
-                  </tr>
-                ))}
-                {rows.length === 0 && (
-                  <tr><td colSpan={5} className="py-4 text-center text-muted-foreground">Sin datos</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ReportState state={state}>
+      {({ rows, totals: t }) => {
+        if (rows.length === 0) return <ReportEmpty icon={Star} title="Sin actividad de clientes en el periodo" hint="Asigna el cliente en caja para acumular puntos y medir su lealtad." />
+        const spent = rows.reduce((s, r) => s + r.totalSpent, 0)
+        const top10 = rows.slice(0, Math.max(1, Math.ceil(rows.length * 0.1))).reduce((s, r) => s + r.totalSpent, 0)
+        return (
+          <>
+            <KpiGrid>
+              <Kpi label="Clientes activos" value={fmt.int(t.activeCustomers)} icon={Users} tone="primary" emphasis />
+              <Kpi label="Compran más de una vez" value={fmt.pct((t.repeatCustomers / Math.max(t.activeCustomers, 1)) * 100, 0)} icon={Repeat} tone="success" hint={`${fmt.int(t.repeatCustomers)} clientes`} />
+              <Kpi label="Puntos otorgados" value={fmt.int(t.pointsIssued)} icon={Star} tone="warning" />
+              <Kpi label="Saldo de puntos" value={fmt.int(t.pointsBalance)} icon={Gift} hint="pendiente de canjear" />
+            </KpiGrid>
+
+            <Insights
+              items={[
+                spent > 0 && <>El 10 % de los mejores clientes genera el <strong>{fmt.pct((top10 / spent) * 100, 0)}</strong> de lo que gastan los clientes identificados.</>,
+                t.pointsBalance > 0 && <>Hay <strong>{fmt.int(t.pointsBalance)}</strong> puntos sin canjear: recordarlos puede traer a esos clientes de vuelta.</>,
+              ]}
+            />
+
+            <ReportPanel title="Mejores clientes" description="Ordenados por gasto en el periodo." flush>
+              <ReportTable
+                rows={rows}
+                rowKey={(r) => r.customerId}
+                limit={20}
+                defaultSort={{ key: "totalSpent", dir: "desc" }}
+                columns={[
+                  {
+                    key: "customerName",
+                    label: "Cliente",
+                    render: (r) => (
+                      <EntityCell title={r.customerName} subtitle={r.lastOrderDate ? `Última compra ${fmt.day(r.lastOrderDate)}` : undefined} />
+                    ),
+                  },
+                  { key: "orderCount", label: "Compras", align: "right", render: (r) => fmt.int(r.orderCount) },
+                  { key: "avgTicket", label: "Ticket prom.", align: "right", render: (r) => fmt.money(r.avgTicket), hideOnMobile: true },
+                  { key: "totalPoints", label: "Puntos ganados", align: "right", render: (r) => fmt.int(r.totalPoints), hideOnMobile: true },
+                  { key: "pointsBalance", label: "Saldo", align: "right", render: (r) => fmt.int(r.pointsBalance), hideOnMobile: true },
+                  { key: "totalSpent", label: "Gasto", align: "right", bar: true, render: (r) => <strong>{fmt.money(r.totalSpent)}</strong> },
+                ]}
+              />
+            </ReportPanel>
+          </>
+        )
+      }}
+    </ReportState>
   )
 }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { isPlaceholderImage, productPlaceholder } from "@/lib/catalog/auto-emoji";
 import type { Prisma } from "@prisma/client";
 import { CrudError, type CrudModule, type ListParams, type CrudListResult } from "../types";
 
@@ -282,9 +283,20 @@ export const productsModule: CrudModule<ProductDto> = {
     const q = params.q?.trim() ?? "";
     const categoryId = (params.categoryId as string) || undefined;
     const productType = (params.productType as "standard" | "bulk" | "custom") || undefined;
+    // Filtro rápido del listado: en venta, agotado (activo pero sin venta) o inactivo.
+    const status = params.status as "active" | "unavailable" | "inactive" | undefined;
+    const statusWhere: Prisma.ProductWhereInput =
+      status === "active"
+        ? { isActive: true, isAvailable: true }
+        : status === "unavailable"
+          ? { isActive: true, isAvailable: false }
+          : status === "inactive"
+            ? { isActive: false }
+            : {};
 
     const where: Prisma.ProductWhereInput = {
       organizationId,
+      ...statusWhere,
       ...(categoryId ? { categoryId } : {}),
       ...(productType ? { productType } : {}),
       ...(q
@@ -332,6 +344,9 @@ export const productsModule: CrudModule<ProductDto> = {
           ? "custom"
           : "standard";
     const isNew = data.isNew === true;
+    const categoryName = categoryId
+      ? (await prisma.category.findUnique({ where: { id: categoryId }, select: { name: true } }))?.name ?? null
+      : null;
 
     const product = await prisma.product.create({
       data: {
@@ -339,7 +354,8 @@ export const productsModule: CrudModule<ProductDto> = {
         name: String(data.name).trim(),
         description: data.description ? String(data.description) : null,
         categoryId,
-        imageUrl: data.imageUrl ? String(data.imageUrl) : null,
+        // Sin foto: imagen ilustrada (emoji del producto + color de su categoría).
+        imageUrl: data.imageUrl ? String(data.imageUrl) : productPlaceholder(String(data.name).trim(), categoryName),
         taxRate: Number(data.taxRate) || 0,
         isActive: data.isActive !== false,
         isAvailable: data.isAvailable !== false,
@@ -419,7 +435,7 @@ export const productsModule: CrudModule<ProductDto> = {
 
   async update(organizationId, id, input, _ctx) {
     const data = input as Record<string, unknown>;
-    const existing = await prisma.product.findFirst({ where: { id, organizationId }, select: { id: true, productType: true, isNew: true, name: true, description: true, imageUrl: true } });
+    const existing = await prisma.product.findFirst({ where: { id, organizationId }, select: { id: true, productType: true, isNew: true, name: true, description: true, imageUrl: true, categoryId: true } });
     if (!existing) throw new CrudError("Producto no encontrado", 404);
     const categoryId = data.categoryId !== undefined
       ? await validateCategory(organizationId, data.categoryId)
@@ -436,13 +452,33 @@ export const productsModule: CrudModule<ProductDto> = {
     const newIsNew = data.isNew !== undefined ? data.isNew === true : existing.isNew;
     const isNewToggledOn = data.isNew === true && !existing.isNew;
 
+    // Imagen: la foto enviada; si se quita, o si es ilustrada y cambian el
+    // nombre o la categoría, se regenera la ilustración con los datos vigentes.
+    const nextName = data.name !== undefined ? String(data.name).trim() : existing.name;
+    const nextCategoryId = categoryId !== undefined ? categoryId : existing.categoryId;
+    const nameOrCategoryChanged = nextName !== existing.name || nextCategoryId !== existing.categoryId;
+    // El formulario reenvía la imagen actual: si es ilustrada, cuenta como "sin foto".
+    const sentPhoto = data.imageUrl ? !isPlaceholderImage(String(data.imageUrl)) : false;
+    const needsPlaceholder = sentPhoto
+      ? false
+      : data.imageUrl !== undefined && !data.imageUrl
+        ? true
+        : isPlaceholderImage(existing.imageUrl) && (nameOrCategoryChanged || !existing.imageUrl);
+    const placeholder = needsPlaceholder
+      ? productPlaceholder(
+          nextName,
+          nextCategoryId ? (await prisma.category.findUnique({ where: { id: nextCategoryId }, select: { name: true } }))?.name ?? null : null
+        )
+      : null;
+
     const product = await prisma.product.update({
       where: { id },
       data: {
+        ...(placeholder ? { imageUrl: placeholder } : {}),
         ...(data.name !== undefined ? { name: String(data.name).trim() } : {}),
         ...(data.description !== undefined ? { description: data.description ? String(data.description) : null } : {}),
         ...(categoryId !== undefined ? { categoryId } : {}),
-        ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl ? String(data.imageUrl) : null } : {}),
+        ...(sentPhoto ? { imageUrl: String(data.imageUrl) } : {}),
         ...(data.taxRate !== undefined ? { taxRate: Number(data.taxRate) || 0 } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive !== false } : {}),
         ...(data.isAvailable !== undefined ? { isAvailable: data.isAvailable !== false } : {}),
@@ -491,7 +527,7 @@ export const productsModule: CrudModule<ProductDto> = {
       const { createPublication } = await import("@/lib/publications/server");
       const productName = data.name ? String(data.name).trim() : existing.name;
       const productDesc = data.description !== undefined ? (data.description ? String(data.description) : null) : existing.description;
-      const productImg = data.imageUrl !== undefined ? (data.imageUrl ? String(data.imageUrl) : null) : existing.imageUrl;
+      const productImg = product.imageUrl ?? null;
       // Get first variant price
       const firstVariant = await prisma.productVariant.findFirst({
         where: { productId: id },

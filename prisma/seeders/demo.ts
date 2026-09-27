@@ -1360,6 +1360,7 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
     await d.inventory.create({
       data: {
         organizationId: org.id,
+        productId: product.id,
         variantId: variant.id,
         locationId: location.id,
         locationType: "location",
@@ -1543,6 +1544,7 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
       await d.inventory.create({
         data: {
           organizationId: org.id,
+          productId: product.id,
           variantId: variant.id,
           locationId: location.id,
           locationType: "location",
@@ -1624,6 +1626,7 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
           organizationId: org.id,
           locationId: location.id,
           locationType: "location",
+          productId: raw.id,
           variantId: rawVariant.id,
           quantity: ingredient.stock,
           unitId: unitPza?.id,
@@ -1803,7 +1806,8 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
     const at = new Date(now - input.minutesAgo * 60000)
     const subtotal = lineTotal(input.names)
     const discount = 0
-    const total = round2(subtotal * 1.16)
+    // IVA sobre los productos + envío y propina (antes se omitían del total).
+    const total = round2(subtotal * 1.16 + (input.deliveryFee ?? 0) + (input.tip ?? 0))
     const order = await d.order.create({
       data: {
         organizationId: org.id,
@@ -2804,6 +2808,7 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
     await d.inventory.create({
       data: {
         organizationId: org.id,
+        productId: product.id,
         variantId: variant.id,
         locationId: location.id,
         locationType: "location",
@@ -2974,7 +2979,8 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
     const at = new Date(now - input.minutesAgo * 60000)
     const subtotal = lineTotal(input.names)
     const discount = 0
-    const total = round2(subtotal * 1.16)
+    // IVA sobre los productos + envío y propina (antes se omitían del total).
+    const total = round2(subtotal * 1.16 + (input.deliveryFee ?? 0) + (input.tip ?? 0))
     const order = await d.order.create({
       data: {
         organizationId: org.id,
@@ -4336,6 +4342,7 @@ async function seedVerticalOrgDemo(
       await d.inventory.create({
         data: {
           organizationId: org.id,
+          productId: product.id,
           variantId: variant.id,
           locationId: location.id,
           locationType: "location",

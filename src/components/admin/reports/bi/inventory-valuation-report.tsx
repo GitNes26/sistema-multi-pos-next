@@ -1,78 +1,66 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Loader2, Package, AlertTriangle } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { money } from "@/lib/pos/money"
+import { PackageX, Warehouse, Wallet, TrendingUp } from "lucide-react"
+import { BarList, Insights, Kpi, KpiGrid, ReportEmpty, ReportPanel, ReportState, ReportTable, fmt, useBiReport } from "../report-kit"
 
-interface Row {
-  categoryName: string
-  valueAtCost: number
-  valueAtRetail: number
-  productCount: number
-  outOfStock: number
-}
+interface Row { categoryName: string; valueAtCost: number; valueAtRetail: number; potentialMargin: number; units: number; rotation: number; productCount: number; outOfStock: number }
+interface Data { rows: Row[]; totals: { valueAtCost: number; valueAtRetail: number; potentialMargin: number; units: number; productCount: number; outOfStock: number } }
 
-interface Props { from?: string; to?: string; locationId?: string }
-
-export function InventoryValuationReport({ from, to, locationId }: Props) {
-  const [data, setData] = useState<{ rows: Row[]; totals: { valueAtCost: number; valueAtRetail: number; outOfStock: number } } | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    const params = new URLSearchParams({ report: "inventory" })
-    if (from) params.set("from", from)
-    if (to) params.set("to", to)
-    if (locationId) params.set("locationId", locationId)
-    fetch(`/api/reports/bi?${params}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => { if (d.ok) setData(d) })
-      .catch((err) => console.error("[bi-inventory-valuation] Error cargando reporte:", err))
-      .finally(() => setLoading(false))
-  }, [from, to, locationId])
-
-  if (loading) return <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
-  if (!data) return <p className="py-10 text-center text-muted-foreground">Sin datos</p>
-
-  const maxCost = Math.max(...data.rows.map((r) => r.valueAtCost), 1)
+export function InventoryValuationReport() {
+  const state = useBiReport<Data>("inventory")
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        <Card><CardContent className="p-4">
-          <div className="text-xs text-muted-foreground">Valor a costo</div>
-          <p className="mt-1 text-xl font-black tabular-nums">{money(data.totals.valueAtCost)}</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <div className="text-xs text-muted-foreground">Valor a precio venta</div>
-          <p className="mt-1 text-xl font-black tabular-nums">{money(data.totals.valueAtRetail)}</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground"><AlertTriangle className="size-3" /> Sin stock</div>
-          <p className="mt-1 text-xl font-black text-destructive">{data.totals.outOfStock}</p>
-        </CardContent></Card>
-      </div>
+    <ReportState state={state}>
+      {({ rows, totals: t }) => {
+        if (rows.length === 0) return <ReportEmpty icon={Warehouse} hint="No hay existencias registradas." />
+        const slow = rows.filter((r) => r.valueAtCost > 0 && r.rotation < 0.2).sort((a, b) => b.valueAtCost - a.valueAtCost)
+        return (
+          <>
+            <KpiGrid>
+              <Kpi label="Valor a costo" value={fmt.money(t.valueAtCost)} icon={Wallet} tone="primary" emphasis hint={`${fmt.num(t.units, 0)} unidades`} />
+              <Kpi label="Valor a precio de venta" value={fmt.money(t.valueAtRetail)} />
+              <Kpi label="Margen potencial" value={fmt.money(t.potentialMargin)} icon={TrendingUp} tone="success" hint={fmt.pct((t.potentialMargin / Math.max(t.valueAtRetail, 1)) * 100)} />
+              <Kpi label="Registros sin existencia" value={fmt.int(t.outOfStock)} icon={PackageX} tone={t.outOfStock > 0 ? "danger" : "default"} hint={`de ${fmt.int(t.productCount)}`} />
+            </KpiGrid>
 
-      <div className="space-y-2">
-        {data.rows.map((r) => (
-          <div key={r.categoryName} className="rounded-xl border p-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">{r.categoryName}</p>
-                <p className="text-xs text-muted-foreground">{r.productCount} productos · {r.outOfStock} sin stock</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold tabular-nums">{money(r.valueAtCost)}</p>
-                <p className="text-xs text-muted-foreground tabular-nums">{money(r.valueAtRetail)} venta</p>
-              </div>
-            </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-success transition-all" style={{ width: `${(r.valueAtCost / maxCost) * 100}%` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+            <ReportPanel title="Dónde está el dinero" description="Valor del inventario a costo por categoría.">
+              <BarList
+                items={rows.slice(0, 10).map((r) => ({
+                  label: r.categoryName,
+                  value: r.valueAtCost,
+                  display: fmt.money(r.valueAtCost),
+                  secondary: `${fmt.pct((r.valueAtCost / Math.max(t.valueAtCost, 1)) * 100)} del total · rotación ${fmt.num(r.rotation)}`,
+                }))}
+              />
+            </ReportPanel>
+
+            <Insights
+              items={[
+                slow.length > 0 && (
+                  <><strong>{slow[0].categoryName}</strong> tiene {fmt.money(slow[0].valueAtCost)} en inventario y rota poco ({fmt.num(slow[0].rotation)} en el periodo): considera promoverla o comprar menos.</>
+                ),
+                <>La rotación es unidades vendidas en el periodo entre unidades en existencia; mientras más alta, más rápido se convierte el inventario en venta.</>,
+              ]}
+            />
+
+            <ReportPanel title="Detalle por categoría" flush>
+              <ReportTable
+                rows={rows}
+                rowKey={(r) => r.categoryName}
+                defaultSort={{ key: "valueAtCost", dir: "desc" }}
+                columns={[
+                  { key: "categoryName", label: "Categoría", render: (r) => <span className="font-medium">{r.categoryName}</span> },
+                  { key: "units", label: "Unidades", align: "right", render: (r) => fmt.num(r.units, 0), hideOnMobile: true },
+                  { key: "valueAtCost", label: "A costo", align: "right", bar: true, render: (r) => <strong>{fmt.money(r.valueAtCost)}</strong> },
+                  { key: "valueAtRetail", label: "A venta", align: "right", render: (r) => fmt.money(r.valueAtRetail), hideOnMobile: true },
+                  { key: "rotation", label: "Rotación", align: "right", render: (r) => <span className={r.rotation < 0.2 ? "text-warning-ink" : undefined}>{fmt.num(r.rotation)}</span> },
+                  { key: "outOfStock", label: "Sin existencia", align: "right", render: (r) => (r.outOfStock > 0 ? <span className="font-semibold text-destructive">{r.outOfStock}</span> : "0") },
+                ]}
+              />
+            </ReportPanel>
+          </>
+        )
+      }}
+    </ReportState>
   )
 }

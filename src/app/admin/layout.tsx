@@ -8,7 +8,6 @@ import { Splash } from "@/components/appearance/splash"
 import { AppShell } from "@/components/layout/app-shell"
 import { SessionGuard } from "@/components/auth/session-guard"
 import { OrganizationContextSync } from "@/components/auth/organization-context-sync"
-import { RouteTransition } from "@/components/layout/route-transition"
 import type { BusinessMode } from "@/lib/auth/options"
 
 export default async function AdminLayout({
@@ -50,6 +49,7 @@ export default async function AdminLayout({
         <Splash orgName={orgName} logoUrl={logoUrl} />
         <AppShell
           logoUrl={logoUrl}
+          businessMode={businessMode}
           permissions={session?.user?.permissions}
           user={{
             name: session?.user?.name,
@@ -62,7 +62,7 @@ export default async function AdminLayout({
             activeOrganizationId: session?.user?.activeOrganizationId,
           }}
         >
-          <RouteTransition>{children}</RouteTransition>
+          {children}
         </AppShell>
       </>
     </SessionGuard>

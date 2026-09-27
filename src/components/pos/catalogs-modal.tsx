@@ -16,13 +16,13 @@ import { Input } from "@/components/ui/input"
 import { usePosStore } from "@/stores/pos-store"
 import type { PosOrder, PosProduct, PosPromotion } from "@/types/pos"
 import { money } from "@/lib/pos/money"
-import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from "@/lib/pos/config"
 import { promotionScheduleLabel, pointsToMoney } from "@/lib/pos/pricing"
 import { cn } from "@/lib/utils"
 import { ProductCard } from "./product-card"
 import { PosOrderDetail } from "./pos-order-detail"
 import { usePosTotals } from "@/hooks/use-pos-totals"
 import { InputGroupField } from "../base"
+import { OrderStatusPill } from "@/components/shared/order-status-pill"
 
 interface CatalogsModalProps {
   open: boolean
@@ -275,13 +275,6 @@ export function CatalogsModal({
                   onClick={() => setSelectedOrderId(o.id)}
                   className="flex w-full items-center gap-3 rounded-xl border bg-card px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 active:bg-muted"
                 >
-                  <span
-                    className={cn(
-                      "size-2.5 shrink-0 rounded-full",
-                      ORDER_STATUS_COLORS[o.status]
-                    )}
-                    title={ORDER_STATUS_LABELS[o.status]}
-                  />
                   <span className="font-semibold">{o.orderNumber}</span>
                   <span className="truncate text-muted-foreground">
                     {o.customerName ?? "Cliente desconocido"}
@@ -291,9 +284,7 @@ export function CatalogsModal({
                       ? "A domicilio"
                       : "Recoger"}
                   </span>
-                  <Badge variant="outline" className="shrink-0">
-                    {ORDER_STATUS_LABELS[o.status]}
-                  </Badge>
+                  <OrderStatusPill status={o.status} className="shrink-0" />
                   <span className="shrink-0 font-semibold tabular-nums">
                     {money(o.total)}
                   </span>

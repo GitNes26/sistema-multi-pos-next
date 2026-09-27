@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { isUniqueViolation, prisma } from "@/lib/db";
 import type { $Enums, Prisma, BusinessMode } from "@prisma/client";
 import { PERMISSIONS } from "@/lib/auth/permission-keys";
 import {
@@ -67,11 +67,19 @@ export async function upsertCompanyProfile(organizationId: string, input: Compan
     throw new Error("El nombre de la empresa es obligatorio");
   }
   const data = { ...input, tradeName: input.tradeName.trim() };
-  const existing = await prisma.companyProfile.findUnique({ where: { organizationId } });
-  if (existing) {
-    return prisma.companyProfile.update({ where: { id: existing.id }, data });
+  const upsert = () =>
+    prisma.companyProfile.upsert({
+      where: { organizationId },
+      update: data,
+      create: { organizationId, ...data },
+    });
+  try {
+    return await upsert();
+  } catch (err) {
+    // Upsert no atómico en MySQL: reintentar resuelve la carrera como update.
+    if (!isUniqueViolation(err)) throw err;
+    return upsert();
   }
-  return prisma.companyProfile.create({ data: { organizationId, ...data } });
 }
 
 // ── Perfil de usuario (15.1) ────────────────────────────────────────────────

@@ -613,6 +613,15 @@ export async function getPortalHome(
     }),
   ])
 
+  // Foto del producto relacionado para los flyers que no tienen imagen propia.
+  const pubProductIds = [...new Set(publications.map((p) => (p.metadata as { productId?: unknown } | null)?.productId).filter((id): id is string => typeof id === "string"))]
+  const pubProductImages = new Map(
+    (pubProductIds.length
+      ? await prisma.product.findMany({ where: { id: { in: pubProductIds }, organizationId }, select: { id: true, imageUrl: true } })
+      : []
+    ).map((prod) => [prod.id, prod.imageUrl])
+  )
+
   console.log(
     `[portal/home] org=${organizationId} promos=${promotions.length} orders=${activeOrders.length} products=${newProducts.length} pubs=${publications.length} combos=${combosRaw.length}`
   )
@@ -659,7 +668,7 @@ export async function getPortalHome(
       id: p.id,
       title: p.title,
       content: p.content,
-      imageUrl: p.imageUrl,
+      imageUrl: p.imageUrl ?? pubProductImages.get(String((p.metadata as { productId?: unknown } | null)?.productId ?? "")) ?? null,
       type: p.type,
       publishedAt: p.publishedAt?.toISOString() ?? null,
       designId: typeof (p.metadata as { designId?: unknown } | null)?.designId === "string" ? String((p.metadata as { designId: string }).designId) : null,
@@ -851,6 +860,10 @@ export interface PortalOrderDetail {
   /** Coordenadas de la sucursal que surte (para el mapa de seguimiento). */
   locationLatitude: number | null
   locationLongitude: number | null
+  /** Teléfono de la sucursal (botón "Llamar" en el seguimiento). */
+  locationPhone: string | null
+  /** Minutos estimados de entrega a domicilio según la política de la empresa. */
+  estimatedMinutes: number | null
   createdAt: string
   updatedAt: string
   items: {
@@ -879,7 +892,7 @@ export async function getPortalOrder(
   const order = await prisma.order.findFirst({
     where: { id: orderId, organizationId, customerId },
     include: {
-      location: { select: { name: true, latitude: true, longitude: true } },
+      location: { select: { name: true, latitude: true, longitude: true, phone: true } },
       items: {
         include: { unit: { select: { name: true } } },
         orderBy: { createdAt: "asc" },
@@ -888,6 +901,7 @@ export async function getPortalOrder(
     },
   })
   if (!order) return null
+  const policy = await prisma.deliveryPolicy.findUnique({ where: { organizationId }, select: { deliveryEstimatedMins: true } })
 
   return {
     id: order.id,
@@ -924,6 +938,8 @@ export async function getPortalOrder(
       order.location?.longitude != null
         ? toNum(order.location.longitude)
         : null,
+    locationPhone: order.location?.phone ?? null,
+    estimatedMinutes: order.deliveryMethod === "delivery" ? (policy?.deliveryEstimatedMins ?? null) : null,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     items: order.items.map((i) => ({

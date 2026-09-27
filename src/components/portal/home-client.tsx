@@ -18,12 +18,7 @@ import { portalApi } from "@/lib/portal/client"
 import type { PortalHomeData } from "@/lib/portal/server"
 import { ThumbImage } from "@/components/base/thumb-image"
 import { money, qty } from "@/lib/pos/money"
-import {
-  ORDER_STATUS_LABELS,
-  ORDER_STATUS_COLORS,
-  type OrderStatusKey,
-} from "@/lib/orders/client"
-import { Badge } from "@/components/ui/badge"
+import { PublicationTypePill } from "@/components/shared/status-pills"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card } from "@/components/ui/card"
 import { TapScale } from "@/components/shared/tap-scale"
@@ -34,18 +29,7 @@ import { MaskReveal, MaskRevealImage } from "@/components/shared/mask-reveal"
 import { useParallax } from "@/hooks/use-parallax"
 import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 import { PublicationFlyer } from "@/components/publications/publication-flyer"
-
-const PUB_TYPE_LABELS: Record<string, string> = {
-  product_new: "Nuevo",
-  promotion: "Promoción",
-  notice: "Aviso",
-}
-
-const PUB_TYPE_COLORS: Record<string, string> = {
-  product_new: "bg-success text-success-foreground",
-  promotion: "bg-warning text-warning-foreground",
-  notice: "bg-info text-info-foreground",
-}
+import { OrderStatusPill } from "@/components/shared/order-status-pill"
 
 const { container, item } = STAGGER_FADE_UP;
 
@@ -215,13 +199,7 @@ export function HomeClient() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge
-                      className={
-                        ORDER_STATUS_COLORS[o.status as OrderStatusKey]
-                      }
-                    >
-                      {ORDER_STATUS_LABELS[o.status as OrderStatusKey]}
-                    </Badge>
+                    <OrderStatusPill status={o.status} />
                     <ChevronRight className="size-4 text-muted-foreground" />
                   </div>
                 </Link>
@@ -241,8 +219,8 @@ export function HomeClient() {
                 className="relative shrink-0 snap-start overflow-hidden rounded-2xl"
                 role="button"
                 tabIndex={0}
-                onClick={() => setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
-                onKeyDown={(e) => e.key === "Enter" && setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
+                onClick={() => setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt, designId: pub.designId, primaryColor: pub.primaryColor, secondaryColor: pub.secondaryColor })}
+                onKeyDown={(e) => e.key === "Enter" && setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt, designId: pub.designId, primaryColor: pub.primaryColor, secondaryColor: pub.secondaryColor })}
               >
                 <PublicationFlyer className="w-[min(19rem,calc(100vw-2rem))]" compact designId={pub.designId} title={pub.title} content={pub.content} imageUrl={pub.imageUrl} primaryColor={pub.primaryColor} secondaryColor={pub.secondaryColor} />
               </div>
@@ -380,8 +358,8 @@ export function HomeClient() {
                 className="press flex items-start gap-3 rounded-2xl border bg-card p-3.5"
                 role="button"
                 tabIndex={0}
-                onClick={() => setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
-                onKeyDown={(e) => e.key === "Enter" && setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt })}
+                onClick={() => setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt, designId: pub.designId, primaryColor: pub.primaryColor, secondaryColor: pub.secondaryColor })}
+                onKeyDown={(e) => e.key === "Enter" && setDetailItem({ kind: "publication", id: pub.id, title: pub.title, content: pub.content, imageUrl: pub.imageUrl, type: pub.type, publishedAt: pub.publishedAt, designId: pub.designId, primaryColor: pub.primaryColor, secondaryColor: pub.secondaryColor })}
               >
                 {pub.imageUrl && (
                   <ThumbImage
@@ -395,11 +373,7 @@ export function HomeClient() {
                     <p className="truncate text-sm font-semibold">
                       {pub.title}
                     </p>
-                    <Badge
-                      className={PUB_TYPE_COLORS[pub.type] ?? "bg-secondary"}
-                    >
-                      {PUB_TYPE_LABELS[pub.type] ?? pub.type}
-                    </Badge>
+                    <PublicationTypePill status={pub.type} />
                   </div>
                   {pub.content && (
                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">

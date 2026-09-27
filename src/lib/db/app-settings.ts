@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { isUniqueViolation, prisma } from "@/lib/db";
 import type { AppSettings } from "@prisma/client";
 
 // FASE 3 — lectura/escritura de app_settings por organización.
@@ -69,13 +69,18 @@ export async function upsertAppSettings(
   organizationId: string,
   patch: Partial<AppSettingsParams>
 ): Promise<AppSettingsParams> {
-  const existing = await prisma.appSettings.findUnique({ where: { organizationId } });
-  if (existing) {
-    const updated = await prisma.appSettings.update({ where: { id: existing.id }, data: patch });
-    return serializeSettings(updated);
+  const upsert = () =>
+    prisma.appSettings.upsert({
+      where: { organizationId },
+      update: patch,
+      create: { organizationId, ...DEFAULT_APP_SETTINGS, ...patch },
+    });
+  try {
+    return serializeSettings(await upsert());
+  } catch (err) {
+    // En MySQL el upsert de Prisma no es atómico: si otra request creó la
+    // fila en paralelo, el reintento cae en la rama de update.
+    if (!isUniqueViolation(err)) throw err;
+    return serializeSettings(await upsert());
   }
-  const created = await prisma.appSettings.create({
-    data: { organizationId, ...DEFAULT_APP_SETTINGS, ...patch },
-  });
-  return serializeSettings(created);
 }

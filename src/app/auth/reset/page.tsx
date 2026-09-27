@@ -13,7 +13,7 @@ export default async function ResetPasswordPage({
   const token = typeof params.token === "string" ? params.token : null;
 
   return (
-    <AuthShell>
+    <AuthShell backHref="/auth/login">
       <ResetPasswordForm token={token} />
     </AuthShell>
   );

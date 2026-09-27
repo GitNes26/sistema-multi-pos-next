@@ -8,6 +8,7 @@ import {
   X,
   CircleCheckBig,
   ArrowRight,
+  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DialogComponent } from "@/components/ui/dialog";
@@ -16,30 +17,33 @@ import { money } from "@/lib/pos/money";
 import { swalError, swalToast } from "@/lib/swal";
 import {
   DELIVERY_METHOD_LABELS,
-  ORDER_STATUS_COLORS,
   ORDER_STATUS_LABELS,
   ordersApi,
   type OrderDetail,
   type OrderStatusKey,
 } from "@/lib/orders/client";
-import { Badge } from "@/components/ui/badge";
+import { StatusPill } from "@/components/base/status-pill";
 import { cn } from "@/lib/utils";
 import { DeliveryConfirmDialog } from "./delivery-confirm-dialog";
 import { OrderPaymentDialog } from "./order-payment-dialog";
+import { OrderStatusPill } from "@/components/shared/order-status-pill";
+
+const shortDate = (iso: string) =>
+  new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 const FLOW: OrderStatusKey[] = ["pending", "confirmed", "preparing", "ready", "in_transit", "at_destination", "delivered"];
 
-function getNextAction(status: string, isDelivery: boolean): { label: string; icon: React.ReactNode; color: string } | "navigate" | null {
-  if (status === "pending") return { label: "Confirmar", icon: <CircleCheckBig className="size-4" />, color: "bg-info hover:bg-info/90" };
+function getNextAction(status: string, isDelivery: boolean): { label: string; icon: React.ReactNode } | "navigate" | null {
+  if (status === "pending") return { label: "Confirmar pedido", icon: <CircleCheckBig className="size-4" /> };
   if (status === "confirmed") return "navigate"; // → /prepare
   if (status === "preparing") return "navigate"; // → /prepare
   if (status === "ready") {
     return isDelivery
-      ? { label: "Enviar a domicilio", icon: <Truck className="size-4" />, color: "bg-violet-600 hover:bg-violet-700" }
-      : { label: "Confirmar recogida (PIN/QR)", icon: <CircleCheckBig className="size-4" />, color: "bg-info hover:bg-info/90" };
+      ? { label: "Enviar a domicilio", icon: <Truck className="size-4" /> }
+      : { label: "Confirmar recogida (PIN/QR)", icon: <CircleCheckBig className="size-4" /> };
   }
-  if (status === "in_transit") return { label: "Confirmar llegada", icon: <MapPin className="size-4" />, color: "bg-purple-600 hover:bg-purple-700" };
-  if (status === "at_destination") return { label: "Confirmar entrega (PIN/QR)", icon: <CircleCheckBig className="size-4" />, color: "bg-info hover:bg-info/90" };
+  if (status === "in_transit") return { label: "Confirmar llegada", icon: <MapPin className="size-4" /> };
+  if (status === "at_destination") return { label: "Confirmar entrega (PIN/QR)", icon: <CircleCheckBig className="size-4" /> };
   return null;
 }
 
@@ -97,6 +101,8 @@ export function OrderDetailDialog({
     ? FLOW
     : FLOW.filter((s) => s !== "in_transit" && s !== "at_destination");
   const currentFlowIdx = order ? visibleFlow.indexOf(order.status as OrderStatusKey) : -1;
+  // El pedido no guarda impuestos por separado: es lo que falta para llegar al total.
+  const taxes = order ? Math.round((order.total - order.subtotal + order.discount - order.deliveryFee) * 100) / 100 : 0;
 
   const advanceStatus = async () => {
     if (!order || !nextAction || nextAction === "navigate") return;
@@ -151,16 +157,15 @@ export function OrderDetailDialog({
             <div>
               <h3 className="text-lg font-bold">Pedido #{order.orderNumber}</h3>
               <p className="text-xs text-muted-foreground">
-                {new Date(order.createdAt).toLocaleString("es-MX")} · {order.customerName ?? "Cliente"}
+                {shortDate(order.createdAt)} · {order.customerName ?? "Sin cliente registrado"}
               </p>
             </div>
-            <Badge className={cn("text-xs", ORDER_STATUS_COLORS[order.status as OrderStatusKey])}>
-              {ORDER_STATUS_LABELS[order.status as OrderStatusKey]}
-            </Badge>
+            <OrderStatusPill status={order.status} />
           </div>
 
           {/* Flow progress */}
           {order.status !== "cancelled" && (
+            <div>
             <div className="flex items-center gap-1">
               {visibleFlow.map((s, i) => (
                 <div key={s} className={cn("flex items-center", i < visibleFlow.length - 1 && "flex-1")}>
@@ -172,13 +177,20 @@ export function OrderDetailDialog({
                         : "bg-muted text-muted-foreground"
                     )}
                   >
-                    {i + 1}
+                    {i < currentFlowIdx ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}
                   </div>
                   {i < visibleFlow.length - 1 && (
-                    <div className={cn("mx-0.5 mb-4 h-0.5 flex-1 rounded", i < currentFlowIdx ? "bg-primary" : "bg-muted")} />
+                    <div className={cn("mx-0.5 h-0.5 flex-1 rounded", i < currentFlowIdx ? "bg-primary" : "bg-muted")} />
                   )}
                 </div>
               ))}
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Paso {Math.max(1, currentFlowIdx + 1)} de {visibleFlow.length}
+              {currentFlowIdx + 1 < visibleFlow.length && (
+                <> · sigue: <span className="font-medium text-foreground">{ORDER_STATUS_LABELS[visibleFlow[currentFlowIdx + 1]]}</span></>
+              )}
+            </p>
             </div>
           )}
 
@@ -190,7 +202,7 @@ export function OrderDetailDialog({
                 <div key={it.id} className="flex justify-between text-sm">
                   <span className="min-w-0 truncate">
                     {it.quantity}× {it.productName}
-                    {it.variantName ? ` (${it.variantName})` : ""}
+                    {it.variantName && it.variantName !== "Default" ? ` (${it.variantName})` : ""}
                   </span>
                   <span className="shrink-0 font-medium tabular-nums">{money(it.lineTotal)}</span>
                 </div>
@@ -201,6 +213,18 @@ export function OrderDetailDialog({
                 <span>Subtotal</span>
                 <span>{money(order.subtotal)}</span>
               </div>
+              {order.discount > 0 && (
+                <div className="flex justify-between text-success-ink">
+                  <span>Descuento</span>
+                  <span>-{money(order.discount)}</span>
+                </div>
+              )}
+              {taxes > 0.009 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Impuestos</span>
+                  <span>{money(taxes)}</span>
+                </div>
+              )}
               {order.deliveryFee > 0 && (
                 <div className="flex justify-between text-muted-foreground">
                   <span>{order.deliveryMethod === "delivery" ? "Envío" : "Cargo por recoger"}</span>
@@ -226,11 +250,7 @@ export function OrderDetailDialog({
 
             {/* Estado de pago */}
             <div className="mt-2 flex items-center gap-2 border-t pt-2">
-              {order.isPaid ? (
-                <Badge className="bg-success text-success-foreground">Pagado</Badge>
-              ) : (
-                <Badge variant="secondary" className="bg-warning text-warning-foreground">Pendiente de pago</Badge>
-              )}
+              {order.isPaid ? <StatusPill tone="success">Pagado</StatusPill> : <StatusPill tone="warning">Pendiente de pago</StatusPill>}
               {order.paymentMethod && (
                 <span className="text-xs text-muted-foreground">
                   {order.paymentMethod === "cash" ? "Efectivo" : order.paymentMethod === "card" ? "Tarjeta" : order.paymentMethod === "wallet" ? "Monedero" : order.paymentMethod}
@@ -260,7 +280,7 @@ export function OrderDetailDialog({
                 {nextAction === "navigate" ? (
                   <motion.div key="nav" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                     <Button
-                      className="w-full bg-orange-600 hover:bg-orange-700"
+                      className="w-full"
                       onClick={() => {
                         onChanged?.();
                         window.location.href = `/admin/orders/${order.id}/prepare`;
@@ -272,7 +292,7 @@ export function OrderDetailDialog({
                 ) : nextAction ? (
                   <motion.div key="advance" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                     <Button
-                      className={cn("w-full", nextAction.color)}
+                      className="w-full"
                       onClick={advanceStatus}
                       disabled={saving}
                     >
@@ -321,7 +341,7 @@ export function OrderDetailDialog({
                       {ORDER_STATUS_LABELS[h.status as OrderStatusKey] ?? h.status}
                     </span>
                     <time className="text-[0.65rem] text-muted-foreground/70">
-                      {new Date(h.createdAt).toLocaleString("es-MX")}
+                      {shortDate(h.createdAt)}
                     </time>
                   </li>
                 ))}

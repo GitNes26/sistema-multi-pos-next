@@ -21,7 +21,7 @@ export default async function OnboardingPage() {
   if (memberships > 0) redirect("/admin");
 
   return (
-    <AuthShell>
+    <AuthShell backHref="/auth/login">
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <CardTitle className="text-lg">Bienvenido a Multi-POS</CardTitle>

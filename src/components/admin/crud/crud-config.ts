@@ -1,4 +1,5 @@
 import type React from "react";
+import type { StatusTone } from "@/components/base/status-pill";
 import { PromotionDescriptionPreview } from "@/components/admin/promotions/description-preview";
 
 // FASE 7 — Metadatos de UI para el CRUD genérico del admin (solo lado cliente).
@@ -97,9 +98,11 @@ export interface CrudField {
 export interface CrudColumn {
   key: string
   label: string
-  type?: "text" | "money" | "percent" | "boolean" | "badge" | "count" | "code" | "datetime"
+  type?: "text" | "money" | "percent" | "boolean" | "badge" | "count" | "code" | "datetime" | "points"
   /** Convierte el valor crudo a una etiqueta para los tipos badge/text. */
   displayMap?: Record<string, string>
+  /** Tono de la etiqueta por valor (tipo badge): p. ej. { active: "success" }. */
+  tones?: Record<string, StatusTone>
 }
 
 export interface CrudUiConfig {
@@ -110,6 +113,12 @@ export interface CrudUiConfig {
   searchPlaceholder?: string
   columns: CrudColumn[]
   fields: CrudField[]
+  /** Nombre en singular para títulos: "Editar categoría". */
+  singular?: string
+  /** Texto del botón de alta: "Nueva categoría" (respeta el género). */
+  newLabel?: string
+  /** Columnas que se muestran como línea secundaria bajo el nombre (y salen de la tabla). */
+  subtitleKeys?: string[]
   /** Componente renderizado después de los campos del formulario, recibe los valores actuales. */
   afterFields?: (props: { values: Record<string, unknown> }) => React.JSX.Element | null
   beforeFields?: (props: { values: Record<string, unknown> }) => React.JSX.Element | null
@@ -153,6 +162,8 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
   categories: {
     module: "categories",
     title: "Categorías",
+    singular: "categoría",
+    newLabel: "Nueva categoría",
     description: "Organiza tus productos por categorías.",
     canDelete: true,
     searchPlaceholder: "Buscar por nombre…",
@@ -195,6 +206,8 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
   units: {
     module: "units",
     title: "Unidades de medida",
+    singular: "unidad",
+    newLabel: "Nueva unidad",
     description: "Unidades para peso, volumen y piezas.",
     canDelete: true,
     searchPlaceholder: "Buscar por nombre o abreviatura…",
@@ -260,16 +273,19 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
   customers: {
     module: "customers",
     title: "Clientes",
+    singular: "cliente",
+    newLabel: "Nuevo cliente",
+    subtitleKeys: ["email"],
     description: "Gestiona clientes y puntos de lealtad.",
     canDelete: true,
     searchPlaceholder: "Buscar por nombre, teléfono o nº de cliente…",
     columns: [
       { key: "fullName", label: "Nombre" },
-      { key: "customerCode", label: "Nº cliente", type: "badge" },
+      { key: "customerCode", label: "Nº cliente", type: "code" },
       { key: "phone", label: "Teléfono" },
       { key: "email", label: "Correo" },
-      { key: "accessStatus", label: "Acceso al portal", type: "badge", displayMap: { not_invited: "Sin invitación", pending: "Activación pendiente", active: "Activo" } },
-      { key: "points", label: "Puntos" },
+      { key: "accessStatus", label: "Acceso al portal", type: "badge", displayMap: { not_invited: "Sin invitación", pending: "Activación pendiente", active: "Activo" }, tones: { not_invited: "neutral", pending: "warning", active: "success" } },
+      { key: "points", label: "Puntos", type: "points" },
       { key: "isActive", label: "Estado", type: "boolean" },
     ],
     fields: [
@@ -330,6 +346,9 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
   locations: {
     module: "locations",
     title: "Sucursales",
+    singular: "sucursal",
+    newLabel: "Nueva sucursal",
+    subtitleKeys: ["address"],
     description: "Ubicaciones del negocio.",
     canDelete: true,
     searchPlaceholder: "Buscar por nombre, encargado o dirección…",
@@ -447,6 +466,9 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
   positions: {
     module: "positions",
     title: "Puestos",
+    singular: "puesto",
+    newLabel: "Nuevo puesto",
+    subtitleKeys: ["description"],
     description: "Puestos de empleado (cajero, supervisor…).",
     canDelete: true,
     searchPlaceholder: "Buscar por nombre…",
@@ -479,6 +501,9 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
   employees: {
     module: "employees",
     title: "Empleados",
+    singular: "empleado",
+    newLabel: "Nuevo empleado",
+    subtitleKeys: ["email"],
     description: "Equipo y accesos de la organización.",
     canDelete: true,
     searchPlaceholder: "Buscar por nombre, nómina, teléfono o correo…",
@@ -611,6 +636,8 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
   cashRegisters: {
     module: "cashRegisters",
     title: "Cajas",
+    singular: "caja",
+    newLabel: "Nueva caja",
     description: "Cajas registradoras por sucursal.",
     canDelete: true,
     searchPlaceholder: "Buscar por nombre…",
@@ -660,6 +687,9 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
   cedis: {
     module: "cedis",
     title: "CEDIS",
+    singular: "CEDIS",
+    newLabel: "Nuevo CEDIS",
+    subtitleKeys: ["address"],
     description: "Centros de distribución.",
     canDelete: true,
     searchPlaceholder: "Buscar por nombre, encargado o dirección…",
@@ -762,6 +792,8 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
   promotions: {
     module: "promotions",
     title: "Promociones",
+    singular: "promoción",
+    newLabel: "Nueva promoción",
     description: "Ofertas, descuentos y cupones.",
     canDelete: true,
     searchPlaceholder: "Buscar por nombre o código de cupón…",

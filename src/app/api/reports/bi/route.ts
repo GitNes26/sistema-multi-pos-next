@@ -24,6 +24,7 @@ import {
   getTablePerformance,
   getAppointmentsPerformance,
   getRentalPerformance,
+  getPeriodSummary,
 } from "@/lib/reports/bi-server";
 import { prisma } from "@/lib/db";
 import { reportsForMode } from "@/lib/reports/bi-catalog";
@@ -48,6 +49,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, businessMode: mode, reports: reportsForMode(mode) });
     }
     switch (report) {
+      case "summary": return NextResponse.json({ ok: true, ...await getPeriodSummary(guard.organizationId, filters) });
       case "omnichannel": {
         const data = await getOmnichannelReport(guard.organizationId, filters);
         return NextResponse.json({ ok: true, ...data });
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest) {
       }
       case "cohorts": {
         const months = parseInt(sp.get("months") ?? "6", 10);
-        const data = await getCustomerCohorts(guard.organizationId, months);
+        const data = await getCustomerCohorts(guard.organizationId, Math.min(12, Math.max(3, months)), locationId);
         return NextResponse.json({ ok: true, ...data });
       }
       case "employee_ranking": {
@@ -90,7 +92,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, ...data });
       }
       case "low_stock": {
-        const data = await getLowStockAlerts(guard.organizationId);
+        const data = await getLowStockAlerts(guard.organizationId, locationId);
         return NextResponse.json({ ok: true, ...data });
       }
       case "segmentation": {
@@ -118,7 +120,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, ...data });
       }
       case "fill_rate": {
-        const data = await getInventoryFillRate(guard.organizationId);
+        const data = await getInventoryFillRate(guard.organizationId, locationId);
         return NextResponse.json({ ok: true, ...data });
       }
       case "employee_margin": {

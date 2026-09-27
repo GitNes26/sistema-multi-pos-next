@@ -32,17 +32,6 @@ export const ORDER_STATUS_LABELS: Record<OrderStatusKey, string> = {
   cancelled: "Cancelado",
 };
 
-export const ORDER_STATUS_COLORS: Record<OrderStatusKey, string> = {
-  pending: "bg-warning text-warning-foreground",
-  confirmed: "bg-info text-info-foreground",
-  preparing: "bg-orange-500 text-white",
-  ready: "bg-success text-success-foreground",
-  in_transit: "bg-violet-500 text-white",
-  at_destination: "bg-purple-500 text-white",
-  delivered: "bg-blue-600 text-white",
-  cancelled: "bg-destructive text-white",
-};
-
 /** Flujos de estado por tipo de entrega */
 export const ORDER_FLOW_PICKUP: OrderStatusKey[] = [
   "pending", "confirmed", "preparing", "ready", "delivered",

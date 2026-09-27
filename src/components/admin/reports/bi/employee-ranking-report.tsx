@@ -1,89 +1,76 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Users, Award } from "lucide-react"
+import { Medal, Receipt, UserCheck, Users } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Insights, Kpi, KpiGrid, ReportEmpty, ReportPanel, ReportState, ReportTable, fmt, useBiReport } from "../report-kit"
 
-interface Props { from: string; to: string }
+interface Row { employeeName: string; totalSales: number; saleCount: number; avgTicket: number; totalUnits: number; unitsPerTicket: number; sharePct: number }
 
-interface Row {
-  employeeName: string
-  totalSales: number
-  saleCount: number
-  avgTicket: number
-  totalUnits: number
-}
+const MEDALS = ["text-warning", "text-muted-foreground", "text-warning-ink/70"]
 
-const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
-
-export function EmployeeRankingReport({ from, to }: Props) {
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    const params = new URLSearchParams({ report: "employee_ranking" })
-    if (from) params.set("from", from)
-    if (to) params.set("to", to)
-    fetch(`/api/reports/bi?${params}`)
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows ?? []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [from, to])
-
-  if (loading) return <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+export function EmployeeRankingReport() {
+  const state = useBiReport<{ rows: Row[] }>("employee_ranking")
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Users className="size-4" /> Ranking de Empleados
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4">#</th>
-                  <th className="pb-2 pr-4">Empleado</th>
-                  <th className="pb-2 pr-4 text-right">Ventas</th>
-                  <th className="pb-2 pr-4 text-right">Ticket Prom.</th>
-                  <th className="pb-2 pr-4 text-right">Pedidos</th>
-                  <th className="pb-2 text-right">Unidades</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={r.employeeName} className="border-b last:border-0">
-                    <td className="py-2 pr-4">
-                      {i < 3 ? (
-                        <Badge variant={i === 0 ? "default" : "secondary"} className="text-xs">
-                          <Award className="mr-1 size-3" />
-                          {i + 1}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">{i + 1}</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 font-medium">{r.employeeName}</td>
-                    <td className="py-2 pr-4 text-right font-mono">{money(r.totalSales)}</td>
-                    <td className="py-2 pr-4 text-right font-mono">{money(r.avgTicket)}</td>
-                    <td className="py-2 pr-4 text-right">{r.saleCount}</td>
-                    <td className="py-2 text-right">{r.totalUnits}</td>
-                  </tr>
-                ))}
-                {rows.length === 0 && (
-                  <tr><td colSpan={6} className="py-4 text-center text-muted-foreground">Sin datos</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ReportState state={state}>
+      {({ rows }) => {
+        if (rows.length === 0) return <ReportEmpty icon={Users} hint="No hay ventas completadas en el periodo." />
+        const total = rows.reduce((s, r) => s + r.totalSales, 0)
+        const tickets = rows.reduce((s, r) => s + r.saleCount, 0)
+        const avgTicket = tickets ? total / tickets : 0
+        const bestTicket = [...rows].sort((a, b) => b.avgTicket - a.avgTicket)[0]
+        return (
+          <>
+            <KpiGrid>
+              <Kpi label="Personas vendiendo" value={fmt.int(rows.length)} icon={Users} />
+              <Kpi label="Líder en ventas" value={<span className="text-base sm:text-lg">{rows[0].employeeName}</span>} icon={Medal} tone="primary" emphasis hint={fmt.money(rows[0].totalSales)} />
+              <Kpi label="Ticket promedio del equipo" value={fmt.money(avgTicket)} icon={Receipt} />
+              <Kpi label="Mejor ticket promedio" value={fmt.money(bestTicket.avgTicket)} icon={UserCheck} tone="success" hint={bestTicket.employeeName} />
+            </KpiGrid>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {rows.slice(0, 3).map((r, i) => (
+                <div key={r.employeeName} className="flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-e1">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-muted">
+                    <Medal className={cn("size-5", MEDALS[i])} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{r.employeeName}</p>
+                    <p className="text-sm tabular-nums text-muted-foreground">
+                      {fmt.money(r.totalSales)} · {fmt.pct(r.sharePct, 0)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Insights
+              items={[
+                bestTicket.avgTicket > avgTicket * 1.15 && bestTicket.employeeName !== rows[0].employeeName && (
+                  <><strong>{bestTicket.employeeName}</strong> logra el ticket más alto ({fmt.money(bestTicket.avgTicket)}), {fmt.pct(((bestTicket.avgTicket - avgTicket) / avgTicket) * 100, 0)} sobre el promedio: su forma de vender puede servir de ejemplo.</>
+                ),
+                rows.length > 1 && rows[0].sharePct > 50 && <><strong>{rows[0].employeeName}</strong> concentra más de la mitad de las ventas.</>,
+              ]}
+            />
+
+            <ReportPanel title="Desempeño" flush>
+              <ReportTable
+                rows={rows}
+                rowKey={(r) => r.employeeName}
+                defaultSort={{ key: "totalSales", dir: "desc" }}
+                columns={[
+                  { key: "employeeName", label: "Empleado", render: (r) => <span className="font-medium">{r.employeeName}</span> },
+                  { key: "saleCount", label: "Tickets", align: "right", render: (r) => fmt.int(r.saleCount) },
+                  { key: "avgTicket", label: "Ticket prom.", align: "right", render: (r) => fmt.money(r.avgTicket) },
+                  { key: "unitsPerTicket", label: "Art./ticket", align: "right", render: (r) => fmt.num(r.unitsPerTicket, 1), hideOnMobile: true },
+                  { key: "sharePct", label: "Part.", align: "right", render: (r) => fmt.pct(r.sharePct), hideOnMobile: true },
+                  { key: "totalSales", label: "Ventas", align: "right", bar: true, render: (r) => <strong>{fmt.money(r.totalSales)}</strong> },
+                ]}
+              />
+            </ReportPanel>
+          </>
+        )
+      }}
+    </ReportState>
   )
 }

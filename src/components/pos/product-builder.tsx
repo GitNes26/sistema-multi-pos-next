@@ -1,11 +1,9 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
-import { motion } from "framer-motion"
-import { Check, Minus, Plus, ShoppingCart, X } from "lucide-react"
+import { useEffect, useRef, useState, useMemo, useCallback } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { Check, ShoppingCart, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { money } from "@/lib/pos/money"
 import type {
@@ -15,6 +13,7 @@ import type {
 } from "@/types/pos"
 import { calculateOptionExtra, calculateOptionValueCharges, optionRuleForVariant, type OptionVariantRule } from "@/lib/products/option-rules"
 import { ThumbImage } from "@/components/base/thumb-image"
+import { QuantityStepper } from "@/components/base/quantity-stepper"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -84,98 +83,105 @@ interface ProductBuilderProps {
 /*  Animated Price Counter                                             */
 /* ------------------------------------------------------------------ */
 
-function AnimatedPrice({
-  value,
-  className,
-}: {
-  value: number
-  className?: string
-}) {
+function AnimatedPrice({ value, className }: { value: number; className?: string }) {
   return (
-    <span
-      className={cn(
-        "tabular-nums transition-all duration-300 ease-out",
-        className
-      )}
+    <motion.span
       key={value}
+      initial={{ y: 6, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      className={cn("inline-block tabular-nums", className)}
     >
-      <span className="inline-block animate-[pricePop_0.3s_ease-out]">
-        {money(value)}
-      </span>
-    </span>
+      {money(value)}
+    </motion.span>
   )
 }
 
+/** Regla de selección en palabras simples. */
+function ruleText(option: PosProductOption): string {
+  const min = option.required ? Math.max(1, option.minSelect) : option.minSelect
+  const max = option.maxSelect
+  if (max <= 1) return option.required ? "Elige 1" : "Opcional · elige 1"
+  if (min > 1 && min === max) return `Elige ${max}`
+  if (min >= 1) return `Elige de ${min} a ${max}`
+  return `Opcional · hasta ${max}`
+}
+
 /* ------------------------------------------------------------------ */
-/*  Option Pill (single value chip)                                    */
+/*  Option value: pastilla o tarjeta con foto                          */
 /* ------------------------------------------------------------------ */
 
-function OptionPill({
+function OptionValueButton({
   value,
   isSelected,
   onToggle,
-  size = "md",
-  disabled = false,
+  withImage,
+  multi,
 }: {
   value: PosProductOptionValue
   isSelected: boolean
   onToggle: () => void
-  size?: "sm" | "md" | "lg"
-  disabled?: boolean
+  withImage: boolean
+  multi: boolean
 }) {
-  const sizeClasses = {
-    sm: "min-h-11 px-3 py-2 text-xs gap-1.5",
-    md: "min-h-12 px-4 py-2.5 text-sm gap-2",
-    lg: "min-h-13 px-5 py-3 text-base gap-2.5",
+  const disabled = !value.isActive
+  if (withImage) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onToggle}
+        aria-pressed={isSelected}
+        className={cn(
+          "relative flex touch-manipulation flex-col overflow-hidden rounded-2xl border-2 bg-card text-left transition-[border-color,box-shadow,transform] duration-200 active:scale-[0.97] disabled:opacity-45",
+          isSelected ? "border-primary shadow-e2" : "border-border hover:border-primary/40"
+        )}
+      >
+        <span className="relative aspect-[4/3] w-full bg-muted">
+          {value.imageUrl && <ThumbImage src={value.imageUrl} alt="" className="size-full object-cover" />}
+          <span
+            className={cn(
+              "absolute top-1.5 right-1.5 grid size-6 place-items-center rounded-full border-2 transition-colors",
+              isSelected ? "border-primary bg-primary text-primary-foreground" : "border-white/80 bg-black/20 text-transparent"
+            )}
+          >
+            <Check className="size-3.5" strokeWidth={3} />
+          </span>
+        </span>
+        <span className="flex flex-1 flex-col gap-0.5 p-2">
+          <span className="line-clamp-2 text-sm leading-tight font-medium">{value.value}</span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {disabled ? "Sin existencia" : value.extraPrice > 0 ? `+${money(value.extraPrice)}` : "Sin costo"}
+          </span>
+        </span>
+      </button>
+    )
   }
-
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onToggle}
+      aria-pressed={isSelected}
       className={cn(
-        "relative inline-flex touch-manipulation items-center rounded-xl border-2 font-medium transition-all duration-200",
-        "hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-none",
-        sizeClasses[size],
-        isSelected
-          ? "border-primary bg-primary text-primary-foreground shadow-e1"
-          : "border-border bg-card text-foreground hover:border-primary/40"
+        "relative inline-flex min-h-12 touch-manipulation items-center gap-2 rounded-xl border-2 px-3.5 py-2 text-sm font-medium transition-[border-color,background-color,transform] duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45",
+        isSelected ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card hover:border-primary/40"
       )}
     >
-      {/* Check indicator */}
       <span
         className={cn(
-          "flex size-4 items-center justify-center rounded-full transition-all duration-200",
-          isSelected
-            ? "bg-primary-foreground/25 text-primary-foreground"
-            : "bg-muted text-transparent"
+          "grid size-5 shrink-0 place-items-center border-2 transition-colors",
+          multi ? "rounded-md" : "rounded-full",
+          isSelected ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40 text-transparent"
         )}
       >
-        <Check className="size-2.5" />
+        <Check className="size-3" strokeWidth={3} />
       </span>
-
-      {/* Label */}
       <span>{value.value}</span>
-      {disabled && <span className="text-xs font-normal">Sin stock</span>}
-
-      {/* Price badge */}
-      {value.extraPrice > 0 && (
-        <span
-          className={cn(
-            "rounded-full px-1.5 py-0.5 text-xs font-bold tabular-nums",
-            isSelected
-              ? "bg-primary-foreground/20 text-primary-foreground"
-              : "bg-primary/10 text-primary"
-          )}
-        >
-          +{money(value.extraPrice)}
-        </span>
-      )}
-
-      {/* Active ring pulse */}
-      {isSelected && !disabled && (
-        <span className="absolute inset-0 rounded-full animate-[ringPulse_2s_ease-in-out_infinite] border-2 border-primary/50" />
+      {disabled ? (
+        <span className="text-xs font-normal text-muted-foreground">Sin existencia</span>
+      ) : (
+        value.extraPrice > 0 && <span className="text-xs font-semibold text-primary tabular-nums">+{money(value.extraPrice)}</span>
       )}
     </button>
   )
@@ -190,46 +196,49 @@ function OptionSection({
   selected,
   onToggle,
   showValidation,
+  shake,
+  sectionRef,
 }: {
   option: PosProductOption
   selected: Set<string>
   onToggle: (valueId: string) => void
   showValidation: boolean
+  shake: number
+  sectionRef: (el: HTMLElement | null) => void
 }) {
-  const isValid = !option.required || selected.size >= option.minSelect
-  const activeCount = selected.size
-  const maxLabel =
-    option.maxSelect > 1
-      ? `hasta ${option.maxSelect}`
-      : option.required
-        ? "1"
-        : "0-1"
+  const need = option.required ? Math.max(1, option.minSelect) : 0
+  const isValid = selected.size >= need
+  const withImage = option.values.some((v) => v.imageUrl)
+  const multi = option.maxSelect > 1
 
   return (
-    <motion.div className="space-y-3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-      {/* Section header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-            {option.name}
-          </h3>
-          {option.required && (
-            <Badge variant="destructive" className="text-xs px-1.5 py-0">
-              Requerido
-            </Badge>
-          )}
+    <motion.section
+      ref={sectionRef}
+      key={shake}
+      animate={shake ? { x: [0, -6, 6, -4, 4, 0] } : undefined}
+      transition={{ duration: 0.35 }}
+      className={cn(
+        "scroll-mt-4 space-y-3 rounded-2xl border p-4 transition-colors",
+        !isValid && showValidation ? "border-destructive/50 bg-destructive/[0.03]" : isValid && need > 0 ? "border-success/30" : "border-border"
+      )}
+    >
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-semibold">{option.name}</h3>
+          <p className={cn("text-xs", !isValid && showValidation ? "text-destructive" : "text-muted-foreground")}>{ruleText(option)}</p>
         </div>
         <span
           className={cn(
-            "text-xs font-medium tabular-nums transition-colors",
-            isValid ? "text-success-ink" : "text-destructive"
+            "flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums transition-colors",
+            isValid && need > 0 ? "bg-success/15 text-success-ink" : need > 0 ? "bg-warning/20 text-warning-ink" : "bg-muted text-muted-foreground"
           )}
         >
-          {activeCount}/{maxLabel}
+          {isValid && need > 0 && <Check className="size-3" strokeWidth={3} />}
+          {multi ? `${selected.size}/${option.maxSelect}` : isValid && need > 0 ? "Listo" : need > 0 ? "Requerido" : "Opcional"}
         </span>
-      </div>
+      </header>
       {option.effectiveRule && (
-        <p className="text-xs text-muted-foreground">
+        <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
           Incluye {option.effectiveRule.included} sin costo
           {option.effectiveRule.overageMode === "blocked"
             ? "; no admite adicionales."
@@ -239,32 +248,24 @@ function OptionSection({
         </p>
       )}
 
-      {/* Pills grid */}
-      <div className="flex flex-wrap gap-2">
+      <div className={withImage ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "flex flex-wrap gap-2"}>
         {option.values.map((value) => (
-            <OptionPill
-              key={value.id}
-              value={value}
-              isSelected={selected.has(value.id)}
-              disabled={!value.isActive}
-              onToggle={() => value.isActive && onToggle(value.id)}
-            />
-          ))}
+          <OptionValueButton
+            key={value.id}
+            value={value}
+            isSelected={selected.has(value.id)}
+            withImage={withImage}
+            multi={multi}
+            onToggle={() => value.isActive && onToggle(value.id)}
+          />
+        ))}
       </div>
       {option.values.length > 0 && option.values.every((value) => !value.isActive) && (
         <p className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs text-warning-ink">
-          Este insumo forma parte de la configuración, pero ninguna presentación tiene existencias. No puede seleccionarse por ahora.
+          Ninguna opción de esta sección tiene existencias por ahora.
         </p>
       )}
-
-      {/* Validation message */}
-      {!isValid && showValidation && (
-        <p className="flex items-center gap-1 text-xs text-destructive">
-          <span className="size-1 rounded-full bg-destructive" />
-          Selecciona al menos {option.minSelect} {option.name.toLowerCase()}
-        </p>
-      )}
-    </motion.div>
+    </motion.section>
   )
 }
 
@@ -272,31 +273,17 @@ function OptionSection({
 /*  Notes Input                                                        */
 /* ------------------------------------------------------------------ */
 
-function NotesInput({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (v: string) => void
-}) {
-  const presets = [
-    "Sin azúcar",
-    "Extra crema",
-    "Poco cocido",
-    "Sin cebolla",
-    "Bien cocido",
-    "Extra salsa",
-  ]
+const NOTE_PRESETS = ["Sin cebolla", "Sin picante", "Extra salsa", "Para llevar", "Bien cocido", "Sin azúcar"]
 
+function NotesInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-        Notas / Modificaciones
-      </h3>
-
-      {/* Quick presets */}
+    <section className="space-y-3 rounded-2xl border p-4">
+      <header>
+        <h3 className="font-semibold">¿Alguna indicación?</h3>
+        <p className="text-xs text-muted-foreground">Opcional · toca un atajo o escribe</p>
+      </header>
       <div className="flex flex-wrap gap-1.5">
-        {presets.map((preset) => {
+        {NOTE_PRESETS.map((preset) => {
           const isActive = value.toLowerCase().includes(preset.toLowerCase())
           return (
             <button
@@ -304,81 +291,44 @@ function NotesInput({
               type="button"
               onClick={() => {
                 if (isActive) {
-                  // Remove preset from notes
                   const regex = new RegExp(`[,;]?\\s*${preset}`, "gi")
-                  onChange(value.replace(regex, "").trim())
+                  onChange(value.replace(regex, "").replace(/^[,;\s]+/, "").trim())
                 } else {
                   onChange(value ? `${value}, ${preset}` : preset)
                 }
               }}
+              aria-pressed={isActive}
               className={cn(
-                "rounded-full border px-2.5 py-1 text-xs transition-all duration-200 hover:shadow-sm active:scale-95",
-                isActive
-                  ? "border-warning bg-warning/10 text-warning-ink"
-                  : "border-border bg-muted text-muted-foreground hover:border-border"
+                "min-h-9 rounded-full border px-3 text-sm transition-colors active:scale-95",
+                isActive ? "border-primary bg-primary/10 text-foreground" : "bg-card text-muted-foreground hover:border-primary/40"
               )}
             >
-              {isActive && <Check className="mr-0.5 inline size-3" />}
+              {isActive && <Check className="mr-1 inline size-3.5" />}
               {preset}
             </button>
           )
         })}
       </div>
-
-      {/* Textarea */}
       <div className="relative">
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Escribe notas adicionales..."
-          className="w-full rounded-2xl border-2 border-border bg-muted px-4 py-3 text-sm placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:outline-none focus:ring-4 focus:ring-success/10"
+          placeholder="Escribe aquí otra indicación…"
+          className="w-full rounded-xl border bg-background px-3.5 py-2.5 pr-9 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30"
           rows={2}
         />
         {value && (
           <button
             type="button"
             onClick={() => onChange("")}
-            className="absolute right-3 top-3 rounded-full bg-muted p-0.5 text-muted-foreground transition-colors hover:bg-muted-foreground/30"
+            aria-label="Borrar indicaciones"
+            className="absolute top-2.5 right-2.5 rounded-full bg-muted p-1 text-muted-foreground hover:text-foreground"
           >
             <X className="size-3" />
           </button>
         )}
       </div>
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-/*  Quantity Selector                                                  */
-/* ------------------------------------------------------------------ */
-
-function QuantitySelector({
-  value,
-  onChange,
-}: {
-  value: number
-  onChange: (v: number) => void
-}) {
-  return (
-    <div className="inline-flex items-center gap-1 rounded-full border-2 border-border bg-card p-1">
-      <button
-        type="button"
-        onClick={() => onChange(Math.max(1, value - 1))}
-        className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground transition-all hover:bg-muted/80 active:scale-90"
-      >
-        <Minus className="size-4" />
-      </button>
-      <span className="min-w-[3rem] text-center text-lg font-bold tabular-nums">
-        {value}
-      </span>
-      <button
-        type="button"
-        onClick={() => onChange(value + 1)}
-        className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-all hover:bg-primary/20 active:scale-90"
-      >
-        <Plus className="size-4" />
-      </button>
-    </div>
+    </section>
   )
 }
 
@@ -386,38 +336,32 @@ function QuantitySelector({
 /*  Main ProductBuilder                                                */
 /* ------------------------------------------------------------------ */
 
-export function ProductBuilder({
-  product,
-  portalProduct,
-  open,
-  onClose,
-  onAdd,
-}: ProductBuilderProps) {
+export function ProductBuilder({ product, portalProduct, open, onClose, onAdd }: ProductBuilderProps) {
   // Normalize: use portalProduct if provided, else POS product
   const activeProduct = portalProduct ?? product ?? null
-  const [selections, setSelections] = useState<Map<string, Set<string>>>(
-    new Map()
-  )
+  const [selections, setSelections] = useState<Map<string, Set<string>>>(new Map())
   // Tamaño (variante) elegido — solo relevante en el portal, donde el builder
   // es la única pantalla y la variante no se eligió antes de abrir el panel.
   const [variantId, setVariantId] = useState<string | null>(null)
   const [notes, setNotes] = useState("")
   const [quantity, setQuantity] = useState(1)
   const [showValidation, setShowValidation] = useState(false)
+  const [shakes, setShakes] = useState<Record<string, number>>({})
+  const [bump, setBump] = useState<{ id: number; amount: number } | null>(null)
+  const sectionRefs = useRef(new Map<string, HTMLElement>())
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const portalVariants = portalProduct?.variants ?? []
-  const selectedVariant =
-    portalVariants.find((v) => v.id === variantId) ?? portalVariants[0] ?? null
+  const selectedVariant = portalVariants.find((v) => v.id === variantId) ?? portalVariants[0] ?? null
   const effectiveVariantId = portalProduct ? selectedVariant?.id : product?.variantId
   const activeOptions = useMemo(
-    () => (activeProduct?.options ?? []).filter(
-      (option) => !option.appliesToVariantId || option.appliesToVariantId === effectiveVariantId
-    ).map((option) => {
-      const effectiveRule = optionRuleForVariant(option.variantRules, effectiveVariantId)
-      return effectiveRule
-        ? { ...option, maxSelect: effectiveRule.maxSelect, effectiveRule }
-        : { ...option, effectiveRule: null }
-    }),
+    () =>
+      (activeProduct?.options ?? [])
+        .filter((option) => !option.appliesToVariantId || option.appliesToVariantId === effectiveVariantId)
+        .map((option) => {
+          const effectiveRule = optionRuleForVariant(option.variantRules, effectiveVariantId)
+          return effectiveRule ? { ...option, maxSelect: effectiveRule.maxSelect, effectiveRule } : { ...option, effectiveRule: null }
+        }),
     [activeProduct, effectiveVariantId]
   )
 
@@ -427,6 +371,7 @@ export function ProductBuilder({
     setNotes("")
     setQuantity(1)
     setShowValidation(false)
+    setShakes({})
   }, [])
 
   const handleClose = useCallback(() => {
@@ -445,60 +390,71 @@ export function ProductBuilder({
     return () => window.removeEventListener("keydown", closeOnEscape)
   }, [handleClose, open])
 
-  const toggleValue = useCallback(
-    (option: PosProductOption, valueId: string) => {
-      setSelections((prev) => {
-        const next = new Map(prev)
-        const current = new Set(next.get(option.id) ?? new Set<string>())
-
-        if (current.has(valueId)) {
-          // Quitar la selección.
-          current.delete(valueId)
-        } else if (option.maxSelect <= 1) {
-          // Selección única: elegir otro valor reemplaza al anterior.
-          current.clear()
-          current.add(valueId)
-        } else if (current.size < option.maxSelect) {
-          current.add(valueId)
-        }
-
-        if (current.size === 0) next.delete(option.id)
-        else next.set(option.id, current)
-        return next
-      })
-    },
-    []
-  )
-
   // Si cambia el producto mientras el panel está abierto, empezar de cero
   // (nunca arrastrar selecciones/notas de un producto anterior).
   useEffect(() => {
     resetSelections()
   }, [activeProduct?.id, resetSelections])
 
+  const needOf = (option: PosProductOption) => (option.required ? Math.max(1, option.minSelect) : 0)
+  const isSatisfied = useCallback(
+    (option: PosProductOption, sel = selections) => (sel.get(option.id)?.size ?? 0) >= (option.required ? Math.max(1, option.minSelect) : 0),
+    [selections]
+  )
+
+  const scrollToSection = useCallback((id: string) => {
+    const el = sectionRefs.current.get(id)
+    el?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [])
+
+  const toggleValue = useCallback(
+    (option: PosProductOption, valueId: string) => {
+      const prev = selections
+      const next = new Map(prev)
+      const current = new Set(next.get(option.id) ?? new Set<string>())
+      let changed = true
+      if (current.has(valueId)) {
+        current.delete(valueId)
+      } else if (option.maxSelect <= 1) {
+        current.clear()
+        current.add(valueId)
+      } else if (current.size < option.maxSelect) {
+        current.add(valueId)
+      } else {
+        // Límite alcanzado: se avisa en lugar de ignorar el toque en silencio.
+        changed = false
+        setShakes((s) => ({ ...s, [option.id]: (s[option.id] ?? 0) + 1 }))
+      }
+      if (!changed) return
+      if (current.size === 0) next.delete(option.id)
+      else next.set(option.id, current)
+      setSelections(next)
+
+      const value = option.values.find((v) => v.id === valueId)
+      if (value && value.extraPrice > 0 && current.has(valueId)) setBump({ id: Date.now(), amount: value.extraPrice })
+
+      // Selección única completada → pasar a la siguiente sección pendiente.
+      if (option.maxSelect <= 1 && current.size === 1) {
+        const idx = activeOptions.findIndex((o) => o.id === option.id)
+        const nextPending = activeOptions.slice(idx + 1).find((o) => needOf(o) > 0 && (next.get(o.id)?.size ?? 0) < needOf(o))
+        if (nextPending) window.setTimeout(() => scrollToSection(nextPending.id), 250)
+      }
+    },
+    [selections, activeOptions, scrollToSection]
+  )
+
   const totalExtraPrice = useMemo(() => {
     if (!activeProduct) return 0
     let total = 0
     for (const option of activeOptions) {
       const selected = selections.get(option.id) ?? new Set()
-      total += calculateOptionExtra(
-        option.values.filter((value) => selected.has(value.id)).map((value) => value.extraPrice),
-        option.effectiveRule
-      )
+      total += calculateOptionExtra(option.values.filter((value) => selected.has(value.id)).map((value) => value.extraPrice), option.effectiveRule)
     }
     return total
   }, [activeProduct, activeOptions, selections])
 
-  const isValid = useMemo(() => {
-    if (!activeProduct) return false
-    for (const option of activeOptions) {
-      if (option.required) {
-        const selected = selections.get(option.id) ?? new Set()
-        if (selected.size < option.minSelect) return false
-      }
-    }
-    return true
-  }, [activeProduct, activeOptions, selections])
+  const missing = useMemo(() => activeOptions.filter((o) => !isSatisfied(o)), [activeOptions, isSatisfied])
+  const isValid = Boolean(activeProduct) && missing.length === 0
 
   const buildSelectedOptions = useCallback((): SelectedOption[] => {
     if (!activeProduct) return []
@@ -506,18 +462,12 @@ export function ProductBuilder({
     for (const option of activeOptions) {
       const selected = selections.get(option.id) ?? new Set()
       if (selected.size === 0) continue
-      const values = option.values
-        .filter((v) => selected.has(v.id))
+      const values = option.values.filter((v) => selected.has(v.id))
       const charges = calculateOptionValueCharges(values, option.effectiveRule)
-      const pricedValues = values.map((v) => ({
-          id: v.id,
-          value: v.value,
-          extraPrice: charges.get(v.id) ?? 0,
-        }))
       result.push({
         optionId: option.id,
         optionName: option.name,
-        values: pricedValues,
+        values: values.map((v) => ({ id: v.id, value: v.value, extraPrice: charges.get(v.id) ?? 0 })),
       })
     }
     return result
@@ -529,8 +479,14 @@ export function ProductBuilder({
       // sin esto, el clic en «Agregar» burbujea y navega al detalle.
       e?.preventDefault()
       e?.stopPropagation()
-      if (!activeProduct || !isValid) {
+      if (!activeProduct) return
+      if (!isValid) {
         setShowValidation(true)
+        const first = missing[0]
+        if (first) {
+          scrollToSection(first.id)
+          setShakes((s) => ({ ...s, [first.id]: (s[first.id] ?? 0) + 1 }))
+        }
         return
       }
       onAdd({
@@ -543,296 +499,209 @@ export function ProductBuilder({
       })
       handleClose()
     },
-    [
-      activeProduct,
-      isValid,
-      onAdd,
-      buildSelectedOptions,
-      totalExtraPrice,
-      notes,
-      quantity,
-      handleClose,
-      portalProduct,
-      selectedVariant,
-    ]
+    [activeProduct, isValid, missing, scrollToSection, onAdd, buildSelectedOptions, totalExtraPrice, notes, quantity, handleClose, portalProduct, selectedVariant]
   )
-
-  const handleClear = useCallback(() => {
-    resetSelections()
-  }, [resetSelections])
 
   if (!activeProduct || activeProduct.options.length === 0) return null
 
   // Base price: portal usa la variante elegida; POS ya trae su precio propio
-  const basePrice = portalProduct
-    ? (selectedVariant?.price ?? portalProduct.variants[0]?.price ?? 0)
-    : (product?.price ?? 0)
+  const basePrice = portalProduct ? (selectedVariant?.price ?? portalProduct.variants[0]?.price ?? 0) : (product?.price ?? 0)
   const finalPrice = basePrice + totalExtraPrice
+  const requiredCount = activeOptions.filter((o) => needOf(o) > 0).length
+  const doneCount = requiredCount - missing.length
+  const summary = buildSelectedOptions()
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className={cn(
-          "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300",
-          open ? "opacity-100" : "pointer-events-none opacity-0"
-        )}
+        className={cn("fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300", open ? "opacity-100" : "pointer-events-none opacity-0")}
         onClick={handleClose}
       />
 
       {/* Panel */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-background shadow-e3 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-          "max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:h-[95dvh] max-md:max-h-[95dvh] max-md:rounded-t-3xl",
-          "md:inset-y-0 md:right-0 md:bottom-0 md:left-auto md:w-[520px] md:rounded-l-3xl",
-          open
-            ? "max-md:translate-y-0 md:translate-x-0"
-            : "max-md:translate-y-full md:translate-x-full"
+          "fixed z-50 flex flex-col overflow-hidden bg-background shadow-e3 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "max-md:inset-x-0 max-md:bottom-0 max-md:h-[95dvh] max-md:rounded-t-3xl",
+          "md:inset-y-0 md:right-0 md:w-[540px] md:rounded-l-3xl",
+          open ? "max-md:translate-y-0 md:translate-x-0" : "max-md:translate-y-full md:translate-x-full"
         )}
         role="dialog"
         aria-modal="true"
         aria-label={`Configurar ${activeProduct.name}`}
       >
-        <div className="mx-auto mt-2 h-1 w-12 shrink-0 rounded-full bg-muted-foreground/30 md:hidden" />
-        {/* Header */}
-        <div className="relative flex items-center gap-4 border-b border-border px-6 py-4">
-          {/* Product image thumbnail */}{" "}
-          {activeProduct.imageUrl && (
-            <div className="relative size-14 shrink-0 overflow-hidden rounded-2xl border-2 border-border">
-              <ThumbImage
-                src={activeProduct.imageUrl}
-                alt={activeProduct.name}
-                className="size-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <h2 className="truncate text-lg font-bold text-foreground dark:text-white">
-              {activeProduct.name}
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Configura tu {activeProduct.name} al gusto
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {/* Portada */}
+          <div className="relative">
+            {activeProduct.imageUrl ? (
+              <div className="relative h-44 w-full bg-muted sm:h-52">
+                <ThumbImage src={activeProduct.imageUrl} alt="" className="size-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent" />
+              </div>
+            ) : (
+              <div className="h-6" />
+            )}
+            <div className="absolute top-2 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-white/70 md:hidden" />
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Cerrar"
+              className="absolute top-3 right-3 grid size-10 place-items-center rounded-full bg-background/90 text-foreground shadow-e2 backdrop-blur transition-transform active:scale-90"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+
+          <div className={cn("space-y-1 px-5", activeProduct.imageUrl ? "-mt-10 relative" : "pt-2")}>
+            <h2 className="font-heading text-2xl leading-tight font-semibold tracking-tight">{activeProduct.name}</h2>
+            <p className="text-sm text-muted-foreground">
+              Desde <span className="font-semibold text-foreground tabular-nums">{money(basePrice)}</span>
+              {requiredCount > 0 && ` · ${requiredCount} ${requiredCount === 1 ? "elección obligatoria" : "elecciones obligatorias"}`}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
 
-        {/* Scrollable options */}
-        <ScrollArea className="min-h-0 flex-1 px-4 py-4 sm:px-6 sm:py-5">
-          <div className="space-y-6">
-            {/* Product hero image (if exists) */}
-            {activeProduct.imageUrl && (
-              <div className="flex justify-center">
-                <div className="relative overflow-hidden rounded-3xl bg-surface-sunken p-6">
-                  <ThumbImage
-                    src={activeProduct.imageUrl}
-                    alt={activeProduct.name}
-                    className="h-36 w-36 rounded-2xl object-cover shadow-e2"
-                  />
-                  <div className="absolute -bottom-2 -right-2 rounded-full bg-primary px-3 py-1 text-sm font-bold text-primary-foreground shadow-e2">
-                    <AnimatedPrice value={finalPrice} />
-                  </div>
-                </div>
+          {/* Avance por secciones (toca para ir) */}
+          {activeOptions.length > 1 && (
+            <nav aria-label="Secciones" className="sticky top-0 z-10 mt-3 border-b bg-background/95 px-5 py-2.5 backdrop-blur">
+              <div className="mb-2 h-1 overflow-hidden rounded-full bg-muted">
+                <motion.div className="h-full rounded-full bg-primary" animate={{ width: `${requiredCount ? (doneCount / requiredCount) * 100 : 100}%` }} transition={{ duration: 0.4 }} />
               </div>
-            )}
-
-            {/* Base price (if no image) */}
-            {!activeProduct.imageUrl && (
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">
-                  Precio base
-                </p>
-                <AnimatedPrice
-                  value={basePrice}
-                  className="text-2xl font-bold text-foreground dark:text-white"
-                />
+              <div className="scrollbar-none -mx-1 flex gap-1.5 overflow-x-auto px-1">
+                {activeOptions.map((o) => {
+                  const ok = isSatisfied(o)
+                  const req = needOf(o) > 0
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onClick={() => scrollToSection(o.id)}
+                      className={cn(
+                        "flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors",
+                        ok && req ? "border-success/40 bg-success/10 text-success-ink" : req ? "border-warning/50 text-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      {ok && req && <Check className="size-3" strokeWidth={3} />}
+                      {o.name}
+                    </button>
+                  )
+                })}
               </div>
-            )}
+            </nav>
+          )}
 
-            {/* Options */}
-            {activeOptions.map((option) => {
-              const selected = selections.get(option.id) ?? new Set()
-              return (
-                <OptionSection
-                  key={option.id}
-                  option={option}
-                  selected={selected}
-                  onToggle={(valueId) => toggleValue(option, valueId)}
-                  showValidation={showValidation}
-                />
-              )
-            })}
-
-            {/* Tamaño (variante) — solo portal: el builder es la única pantalla
-                de configuración y la variante no se eligió antes de abrirlo. */}
+          <div className="space-y-4 px-4 py-4 sm:px-5">
+            {/* Tamaño primero: las opciones pueden depender de él */}
             {portalProduct && portalVariants.length > 1 && (
-              <div>
-                <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Tamaño
-                </h4>
-                <div className="flex flex-wrap items-center gap-2">
+              <section className="space-y-3 rounded-2xl border p-4">
+                <header>
+                  <h3 className="font-semibold">Tamaño</h3>
+                  <p className="text-xs text-muted-foreground">Elige 1</p>
+                </header>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {portalVariants.map((v) => {
                     const active = selectedVariant?.id === v.id
-                    const unavailable =
-                      v.isAvailable === false ||
-                      (portalProduct.trackInventory && (v.stock ?? 0) <= 0)
-                    const diff = v.price - (portalVariants[0]?.price ?? 0)
+                    const unavailable = v.isAvailable === false || (portalProduct.trackInventory && (v.stock ?? 0) <= 0)
                     return (
                       <button
                         key={v.id}
                         type="button"
                         disabled={unavailable}
                         onClick={() => setVariantId(v.id)}
+                        aria-pressed={active}
                         className={cn(
-                          "inline-flex min-h-11 touch-manipulation items-center rounded-xl border px-4 py-2 text-sm font-medium transition-colors active:scale-[0.97]",
-                          active
-                            ? "border-foreground bg-foreground text-background"
-                            : "border-border bg-card text-foreground hover:border-border",
-                          unavailable && "cursor-not-allowed opacity-45"
+                          "flex min-h-14 flex-col items-start justify-center rounded-xl border-2 px-3 py-2 text-left transition-colors active:scale-[0.97] disabled:opacity-45",
+                          active ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
                         )}
                       >
-                        {v.name ?? "Regular"}
-                        {unavailable && (
-                          <span className="ml-1 text-xs">· Ya no hay</span>
-                        )}
-                        {diff !== 0 && (
-                          <span className="ml-1 text-xs opacity-70">
-                            {diff > 0
-                              ? `+$${diff.toFixed(2)}`
-                              : `-$${Math.abs(diff).toFixed(2)}`}
-                          </span>
-                        )}
+                        <span className="text-sm font-semibold">{v.name && v.name !== "Default" ? v.name : "Regular"}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{unavailable ? "Agotado" : money(v.price)}</span>
                       </button>
                     )
                   })}
                 </div>
-              </div>
+              </section>
             )}
 
-            {/* Notes */}
+            {activeOptions.map((option) => (
+              <OptionSection
+                key={option.id}
+                option={option}
+                selected={selections.get(option.id) ?? new Set()}
+                onToggle={(valueId) => toggleValue(option, valueId)}
+                showValidation={showValidation}
+                shake={shakes[option.id] ?? 0}
+                sectionRef={(el) => {
+                  if (el) sectionRefs.current.set(option.id, el)
+                  else sectionRefs.current.delete(option.id)
+                }}
+              />
+            ))}
+
             <NotesInput value={notes} onChange={setNotes} />
 
-            {/* Selected summary badges */}
-            {buildSelectedOptions().length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Tu selección
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {buildSelectedOptions().map((opt) =>
-                    opt.values.map((v) => (
-                      <Badge
-                        key={v.id}
-                        variant="secondary"
-                        className="gap-1 bg-primary/10 text-primary"
-                      >
-                        {v.value}
-                        {v.extraPrice > 0 && (
-                          <span className="text-xs">
-                            +{money(v.extraPrice)}
-                          </span>
-                        )}
-                      </Badge>
-                    ))
-                  )}
-                </div>
-              </div>
+            {summary.length > 0 && (
+              <section className="space-y-2 rounded-2xl bg-muted/50 p-4">
+                <p className="text-sm font-semibold">Tu {activeProduct.name.toLowerCase()} lleva</p>
+                <ul className="space-y-1 text-sm">
+                  {summary.map((opt) => (
+                    <li key={opt.optionId} className="flex gap-2">
+                      <span className="shrink-0 text-muted-foreground">{opt.optionName}:</span>
+                      <span className="min-w-0">{opt.values.map((v) => v.value + (v.extraPrice > 0 ? ` (+${money(v.extraPrice)})` : "")).join(", ")}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
-        {/* Footer — sticky bottom bar */}
-        <div className="border-t border-border bg-background/95 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-lg sm:px-6">
-          {/* Price breakdown */}
-          <div className="mb-3 space-y-1">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Precio base</span>
-              <span className="tabular-nums">{money(basePrice)}</span>
-            </div>
-            {totalExtraPrice > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Extras</span>
-                <span className="tabular-nums text-foreground">
-                  +{money(totalExtraPrice)}
-                </span>
-              </div>
+        {/* Barra inferior */}
+        <div className="relative border-t bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-lg sm:px-5">
+          <AnimatePresence>
+            {bump && (
+              <motion.span
+                key={bump.id}
+                initial={{ opacity: 0, y: 0, scale: 0.8 }}
+                animate={{ opacity: [0, 1, 1, 0], y: -34, scale: 1 }}
+                transition={{ duration: 0.9, ease: "easeOut" }}
+                onAnimationComplete={() => setBump(null)}
+                className="pointer-events-none absolute right-6 -top-2 rounded-full bg-primary px-2.5 py-1 text-xs font-bold text-primary-foreground shadow-e2 tabular-nums"
+              >
+                +{money(bump.amount)}
+              </motion.span>
             )}
-            <div className="flex items-center justify-between border-t border-border pt-1">
-              <span className="text-xs text-muted-foreground">Por unidad</span>
-              <AnimatedPrice
-                value={finalPrice}
-                className="text-lg font-bold text-foreground dark:text-white"
-              />
-            </div>
-            {quantity > 1 && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground">
-                  Total ({quantity}×)
-                </span>
-                <AnimatedPrice
-                  value={finalPrice * quantity}
-                  className="text-2xl font-bold tracking-tight text-foreground"
-                />
-              </div>
+          </AnimatePresence>
+          <div className="mb-2 flex items-baseline justify-between text-sm">
+            <span className="text-muted-foreground">
+              {money(basePrice)}
+              {totalExtraPrice > 0 && <> + extras {money(totalExtraPrice)}</>}
+              {quantity > 1 && <> · ×{quantity}</>}
+            </span>
+            {!isValid && requiredCount > 0 && (
+              <span className="text-xs font-medium text-warning-ink">
+                {missing.length === 1 ? `Falta: ${missing[0].name}` : `Faltan ${missing.length} secciones`}
+              </span>
             )}
           </div>
-
-          {/* Controls */}
           <div className="flex items-center gap-3">
-            <QuantitySelector value={quantity} onChange={setQuantity} />
-
-            <div className="flex flex-1 gap-2">
-              <Button
-                variant="outline"
-                onClick={handleClear}
-                className="shrink-0 rounded-full border-border text-muted-foreground hover:bg-muted/80"
-              >
-                Limpiar
-              </Button>
-              <Button
-                onClick={handleAdd}
-                className="flex-1 rounded-full bg-primary text-primary-foreground shadow-e2 transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
-              >
-                <ShoppingCart className="mr-2 size-4" />
-                Agregar
-                <AnimatedPrice
-                  value={finalPrice * quantity}
-                  className="ml-1 text-sm"
-                />
-              </Button>
-            </div>
+            <QuantityStepper value={quantity} min={1} onChange={setQuantity} ariaLabel="Cantidad" />
+            <Button
+              onClick={handleAdd}
+              size="lg"
+              className={cn("h-12 flex-1 rounded-xl text-base shadow-e2 transition-[opacity,transform] active:scale-[0.98]", !isValid && "opacity-80")}
+            >
+              {isValid ? (
+                <>
+                  <ShoppingCart className="size-5" /> Agregar · <AnimatedPrice value={finalPrice * quantity} />
+                </>
+              ) : (
+                <>Elige {missing[0]?.name.toLowerCase() ?? "las opciones"}</>
+              )}
+            </Button>
           </div>
         </div>
       </div>
-
-      {/* Keyframes */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        @keyframes pricePop {
-          0% { transform: scale(0.8); opacity: 0; }
-          50% { transform: scale(1.05); }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes ringPulse {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0; transform: scale(1.05); }
-        }
-        @keyframes slideUp {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-      `,
-        }}
-      />
     </>
   )
 }

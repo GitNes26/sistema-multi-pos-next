@@ -25,7 +25,7 @@ export default async function PortalLoginPage({
   }
 
   return (
-    <AuthShell mode="portal">
+    <AuthShell mode="portal" backHref="/portal">
       <LoginForm mode="portal" callbackUrl={callbackUrl} error={error} />
     </AuthShell>
   );

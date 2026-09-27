@@ -1,17 +1,21 @@
+import type { Metadata } from "next"
+import { Layers } from "lucide-react"
+import { PageHeader } from "@/components/layout/page-header"
 import { CombosManager } from "@/components/admin/combos/combos-manager"
 
 export const dynamic = "force-dynamic"
 
+export const metadata: Metadata = { title: "Combos" }
+
 export default async function CombosPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Combos</h1>
-        <p className="text-sm text-muted-foreground">
-          Administra los combos de productos con precios especiales
-        </p>
-      </div>
+    <>
+      <PageHeader
+        icon={<Layers className="size-5" />}
+        title="Combos"
+        description="Administra los combos de productos con precios especiales."
+      />
       <CombosManager />
-    </div>
+    </>
   )
 }

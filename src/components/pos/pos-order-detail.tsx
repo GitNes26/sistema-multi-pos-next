@@ -18,11 +18,11 @@ import { money } from "@/lib/pos/money";
 import { swalConfirm, swalToast, swalError } from "@/lib/swal";
 import {
   DELIVERY_METHOD_LABELS,
-  ORDER_STATUS_COLORS,
   ORDER_STATUS_LABELS,
 } from "@/lib/orders/client";
 import type { OrderDetail } from "@/lib/orders/server";
 import { cn } from "@/lib/utils";
+import { OrderStatusPill } from "@/components/shared/order-status-pill";
 
 /** Estados en los que la orden sigue abierta en cocina (sin cobrar). */
 const KITCHEN_OPEN_STATUSES = new Set(["pending", "confirmed", "preparing"]);
@@ -113,9 +113,7 @@ export function PosOrderDetail({
         <>
           Pedido #{order?.orderNumber ?? ""}
           {order && (
-            <span className={`ml-2 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${ORDER_STATUS_COLORS[order.status as keyof typeof ORDER_STATUS_COLORS] ?? "bg-muted text-muted-foreground"}`}>
-              {ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}
-            </span>
+            <OrderStatusPill status={order.status} className="ml-2 align-middle" />
           )}
         </>
       }

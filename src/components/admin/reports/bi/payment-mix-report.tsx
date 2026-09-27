@@ -1,77 +1,71 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CreditCard } from "lucide-react"
+import { Banknote, CreditCard, Gift, Landmark, Wallet, type LucideIcon } from "lucide-react"
+import { Insights, Kpi, KpiGrid, ReportEmpty, ReportPanel, ReportState, ReportTable, ShareBar, fmt, useBiReport } from "../report-kit"
 
-interface Props { from: string; to: string }
+interface Row { method: string; methodKey: string; count: number; total: number; avgAmount: number; pct: number }
 
-interface Row {
-  method: string
-  count: number
-  total: number
-  pct: number
-}
+const ICONS: Record<string, LucideIcon> = { cash: Banknote, card: CreditCard, wallet: Wallet, points: Gift, credit: Landmark }
 
-const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
-
-const METHOD_COLORS: Record<string, string> = {
-  cash: "bg-success",
-  card: "bg-info",
-  credit: "bg-orange-500",
-  points: "bg-purple-500",
-  other: "bg-muted-foreground/30",
-}
-
-export function PaymentMixReport({ from, to }: Props) {
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    const params = new URLSearchParams({ report: "payment_mix" })
-    if (from) params.set("from", from)
-    if (to) params.set("to", to)
-    fetch(`/api/reports/bi?${params}`)
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows ?? []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [from, to])
-
-  if (loading) return <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+export function PaymentMixReport() {
+  const state = useBiReport<{ rows: Row[] }>("payment_mix")
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <CreditCard className="size-4" /> Mix de Métodos de Pago
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {rows.map((r) => (
-              <div key={r.method} className="flex items-center gap-3">
-                <span className="w-24 text-sm font-medium capitalize">{r.method}</span>
-                <div className="flex-1">
-                  <div className="h-6 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={`h-full rounded-full ${METHOD_COLORS[r.method] ?? "bg-muted-foreground/30"}`}
-                      style={{ width: `${r.pct}%` }}
-                    />
-                  </div>
-                </div>
-                <span className="w-16 text-right text-sm font-mono">{r.pct.toFixed(1)}%</span>
-                <span className="w-20 text-right text-sm font-mono">{money(r.total)}</span>
-              </div>
-            ))}
-            {rows.length === 0 && (
-              <div className="py-4 text-center text-muted-foreground">Sin datos</div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ReportState state={state}>
+      {({ rows }) => {
+        if (rows.length === 0) return <ReportEmpty icon={CreditCard} hint="No hay pagos registrados en el periodo." />
+        const total = rows.reduce((s, r) => s + r.total, 0)
+        const count = rows.reduce((s, r) => s + r.count, 0)
+        const cash = rows.find((r) => r.methodKey === "cash")
+        const digital = rows.filter((r) => r.methodKey === "card" || r.methodKey === "wallet").reduce((s, r) => s + r.total, 0)
+        return (
+          <>
+            <KpiGrid>
+              <Kpi label="Cobrado" value={fmt.money(total)} icon={Wallet} tone="primary" emphasis hint={`${fmt.int(count)} pagos`} />
+              <Kpi label="Método principal" value={rows[0].method} hint={fmt.pct(rows[0].pct)} />
+              <Kpi label="Efectivo" value={fmt.pct(cash?.pct ?? 0)} icon={Banknote} tone="success" hint={fmt.money(cash?.total ?? 0)} />
+              <Kpi label="Tarjeta y digital" value={fmt.pct((digital / Math.max(total, 1)) * 100)} icon={CreditCard} tone="info" hint={fmt.money(digital)} />
+            </KpiGrid>
+
+            <ReportPanel title="Participación por método">
+              <ShareBar segments={rows.map((r) => ({ label: r.method, value: r.total }))} />
+            </ReportPanel>
+
+            <Insights
+              items={[
+                cash && cash.pct >= 60 && <>El <strong>{fmt.pct(cash.pct, 0)}</strong> se cobra en efectivo: revisa los cortes de caja con frecuencia y considera incentivar pagos con tarjeta.</>,
+                rows.some((r) => r.methodKey === "credit") && <>Parte de la venta se cobró a crédito; consulta <strong>Cartera de crédito</strong> para dar seguimiento a los saldos.</>,
+              ]}
+            />
+
+            <ReportPanel title="Detalle" flush>
+              <ReportTable
+                rows={rows}
+                rowKey={(r) => r.methodKey}
+                defaultSort={{ key: "total", dir: "desc" }}
+                columns={[
+                  {
+                    key: "method",
+                    label: "Método",
+                    render: (r) => {
+                      const Icon = ICONS[r.methodKey] ?? Wallet
+                      return (
+                        <span className="flex items-center gap-2 font-medium">
+                          <Icon className="size-4 text-muted-foreground" /> {r.method}
+                        </span>
+                      )
+                    },
+                  },
+                  { key: "count", label: "Pagos", align: "right", render: (r) => fmt.int(r.count) },
+                  { key: "avgAmount", label: "Pago promedio", align: "right", render: (r) => fmt.money(r.avgAmount), hideOnMobile: true },
+                  { key: "pct", label: "Participación", align: "right", render: (r) => fmt.pct(r.pct) },
+                  { key: "total", label: "Importe", align: "right", bar: true, render: (r) => <strong>{fmt.money(r.total)}</strong> },
+                ]}
+              />
+            </ReportPanel>
+          </>
+        )
+      }}
+    </ReportState>
   )
 }

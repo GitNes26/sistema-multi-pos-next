@@ -10,7 +10,8 @@ import {
 } from "@/lib/nav";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
 import { useMenus } from "@/hooks/use-menus";
-import { useBusinessMode } from "@/hooks/use-business-mode"
+import { useSession } from "next-auth/react"
+import type { BusinessMode } from "@/lib/auth/options"
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { NavigationDrawer } from "@/components/layout/navigation-drawer";
@@ -22,14 +23,19 @@ export interface AppShellProps {
   user: UserMenuUser;
   permissions?: PermissionKey[];
   logoUrl?: string | null;
+  /** Modo de negocio resuelto en el servidor: evita que el menú muestre el de
+   *  "retail" mientras la sesión del cliente termina de cargar. */
+  businessMode?: BusinessMode | null;
   children: React.ReactNode;
 }
 
 // FASE 5.1 / 5.10 / 14.7 — Un solo shell adaptativo.
 // El menú viene de la BD (useMenus) y cae al fallback hardcodeado mientras carga.
-export function AppShell({ user, permissions, logoUrl, children }: AppShellProps) {
+export function AppShell({ user, permissions, logoUrl, businessMode: serverMode, children }: AppShellProps) {
   const { sections: dbSections, bottomItems } = useMenus();
-  const businessMode = useBusinessMode();
+  const { data: session } = useSession();
+  const businessMode: BusinessMode =
+    (session?.user as { businessMode?: BusinessMode } | undefined)?.businessMode ?? serverMode ?? "retail";
 
   const fallbackSections = React.useMemo(
     () => filterNavSectionsByUserAndFeature({ user: { role: user.role, permissions } }, businessMode, NAV_SECTIONS),

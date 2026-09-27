@@ -853,8 +853,6 @@ model Location {
   dailySalesSummaries  DailySalesSummary[]
   hourlySnapshots      HourlySalesSnapshot[]
   inventorySnapshots   InventorySnapshot[]
-  transfersFrom        Transfer[]            @relation("TransferFrom")
-  transfersTo          Transfer[]            @relation("TransferTo")
 
   @@map("locations")
 }
@@ -2476,28 +2474,62 @@ model InventorySnapshot {
 
 enum TransferStatus {
   pending
+  preparing
   in_transit
   received
   cancelled
 }
 
 model Transfer {
-  id             String         @id @default(cuid())
-  organizationId String
-  fromLocationId String
-  toLocationId   String
-  status         TransferStatus @default(pending)
-  notes          String?
-  createdAt      DateTime       @default(now())
-  completedAt    DateTime?
+  id               String         @id @default(cuid())
+  organizationId   String
+  /// Folio consecutivo por organización (T-0001).
+  number           Int            @default(0)
+  // Origen y destino pueden ser sucursal o CEDIS (sin FK: la tabla depende del tipo).
+  fromLocationId   String
+  fromLocationType LocationType   @default(location)
+  toLocationId     String
+  toLocationType   LocationType   @default(location)
+  status           TransferStatus @default(pending)
+  notes            String?        @db.Text
+  requestedById    String?
+  dispatchedById   String?
+  receivedById     String?
+  driverName       String?
+  vehicle          String?
+  expectedAt       DateTime?
+  dispatchedAt     DateTime?
+  receivedAt       DateTime?
+  receiveNotes     String?        @db.Text
+  hasDiscrepancy   Boolean        @default(false)
+  // Última posición reportada por el chofer (el historial vive en TransferTrackPoint).
+  lastLat          Decimal?       @db.Decimal(10, 8)
+  lastLng          Decimal?       @db.Decimal(11, 8)
+  lastLocationAt   DateTime?
+  createdAt        DateTime       @default(now())
+  completedAt      DateTime?
 
-  organization Organization   @relation(fields: [organizationId], references: [id])
-  fromLocation Location       @relation("TransferFrom", fields: [fromLocationId], references: [id])
-  toLocation   Location       @relation("TransferTo", fields: [toLocationId], references: [id])
+  organization Organization         @relation(fields: [organizationId], references: [id])
   items        TransferItem[]
+  trackPoints  TransferTrackPoint[]
 
   @@index([organizationId, status])
+  @@index([organizationId, number])
   @@map("transfers")
+}
+
+model TransferTrackPoint {
+  id         String   @id @default(cuid())
+  transferId String
+  lat        Decimal  @db.Decimal(10, 8)
+  lng        Decimal  @db.Decimal(11, 8)
+  accuracy   Float?
+  recordedAt DateTime @default(now())
+
+  transfer Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+
+  @@index([transferId, recordedAt])
+  @@map("transfer_track_points")
 }
 
 model TransferItem {
@@ -2507,6 +2539,9 @@ model TransferItem {
   variantId   String?
   quantity    Decimal  @db.Decimal(14, 4)
   receivedQty Decimal? @db.Decimal(14, 4)
+  /// Fila de inventario de origen (identifica producto/variante y unidad).
+  inventoryId String?
+  receiveNote String?
 
   transfer Transfer @relation(fields: [transferId], references: [id])
   product  Product  @relation(fields: [productId], references: [id])

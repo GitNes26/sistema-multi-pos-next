@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Recuperar acceso o activar cuenta" }
 
 export default function ForgotPasswordPage() {
   return (
-    <AuthShell
+    <AuthShell backHref="/auth/login"
       footerLinks={
         <>
           <a href="/auth/login" className="hover:text-foreground hover:underline">

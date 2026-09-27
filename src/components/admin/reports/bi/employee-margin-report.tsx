@@ -1,85 +1,58 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { UserCheck } from "lucide-react"
+import { Percent, TrendingUp, UserCheck } from "lucide-react"
+import { BarList, Kpi, KpiGrid, ReportEmpty, ReportPanel, ReportState, ReportTable, fmt, useBiReport } from "../report-kit"
 
-interface Props { from: string; to: string }
+interface Row { employeeName: string; totalRevenue: number; totalCost: number; margin: number; marginPct: number; saleCount: number; marginPerSale: number }
 
-interface Row {
-  employeeName: string
-  totalRevenue: number
-  totalCost: number
-  margin: number
-  marginPct: number
-  saleCount: number
-}
-
-const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
-
-export function EmployeeMarginReport({ from, to }: Props) {
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    const params = new URLSearchParams({ report: "employee_margin" })
-    if (from) params.set("from", from)
-    if (to) params.set("to", to)
-    fetch(`/api/reports/bi?${params}`)
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows ?? []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [from, to])
-
-  if (loading) return <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+export function EmployeeMarginReport() {
+  const state = useBiReport<{ rows: Row[] }>("employee_margin")
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <UserCheck className="size-4" /> Margen por Empleado
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4">Empleado</th>
-                  <th className="pb-2 pr-4 text-right">Ingresos</th>
-                  <th className="pb-2 pr-4 text-right">Costo</th>
-                  <th className="pb-2 pr-4 text-right">Margen</th>
-                  <th className="pb-2 pr-4 text-right">Margen %</th>
-                  <th className="pb-2 text-right">Ventas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.employeeName} className="border-b last:border-0">
-                    <td className="py-2 pr-4 font-medium">{r.employeeName}</td>
-                    <td className="py-2 pr-4 text-right font-mono">{money(r.totalRevenue)}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-orange-600">{money(r.totalCost)}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-success-ink">{money(r.margin)}</td>
-                    <td className="py-2 pr-4 text-right">
-                      <Badge variant={r.marginPct >= 30 ? "default" : "secondary"}>
-                        {r.marginPct.toFixed(1)}%
-                      </Badge>
-                    </td>
-                    <td className="py-2 text-right">{r.saleCount}</td>
-                  </tr>
-                ))}
-                {rows.length === 0 && (
-                  <tr><td colSpan={6} className="py-4 text-center text-muted-foreground">Sin datos</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ReportState state={state} kpis={3}>
+      {({ rows }) => {
+        if (rows.length === 0) return <ReportEmpty icon={UserCheck} hint="No hay ventas completadas en el periodo." />
+        const margin = rows.reduce((s, r) => s + r.margin, 0)
+        const revenue = rows.reduce((s, r) => s + r.totalRevenue, 0)
+        const bestPerSale = [...rows].sort((a, b) => b.marginPerSale - a.marginPerSale)[0]
+        return (
+          <>
+            <KpiGrid cols={3}>
+              <Kpi label="Margen generado" value={fmt.money(margin)} icon={TrendingUp} tone="success" emphasis />
+              <Kpi label="Margen % del equipo" value={fmt.pct(revenue ? (margin / revenue) * 100 : 0)} icon={Percent} />
+              <Kpi label="Mayor margen por venta" value={fmt.money(bestPerSale.marginPerSale)} icon={UserCheck} tone="primary" hint={bestPerSale.employeeName} />
+            </KpiGrid>
+
+            <ReportPanel title="Ganancia atribuida" description="Margen bruto de las ventas cobradas por cada persona.">
+              <BarList
+                items={rows.map((r) => ({
+                  label: r.employeeName,
+                  value: r.margin,
+                  display: fmt.money(r.margin),
+                  secondary: `${fmt.pct(r.marginPct)} de margen · ${fmt.int(r.saleCount)} ventas`,
+                  tone: "success",
+                }))}
+              />
+            </ReportPanel>
+
+            <ReportPanel title="Detalle" flush>
+              <ReportTable
+                rows={rows}
+                rowKey={(r) => r.employeeName}
+                defaultSort={{ key: "margin", dir: "desc" }}
+                columns={[
+                  { key: "employeeName", label: "Empleado", render: (r) => <span className="font-medium">{r.employeeName}</span> },
+                  { key: "totalRevenue", label: "Ingresos", align: "right", render: (r) => fmt.money(r.totalRevenue) },
+                  { key: "totalCost", label: "Costo", align: "right", render: (r) => fmt.money(r.totalCost), hideOnMobile: true },
+                  { key: "marginPerSale", label: "Por venta", align: "right", render: (r) => fmt.money(r.marginPerSale), hideOnMobile: true },
+                  { key: "marginPct", label: "Margen %", align: "right", render: (r) => fmt.pct(r.marginPct) },
+                  { key: "margin", label: "Margen", align: "right", bar: true, render: (r) => <strong>{fmt.money(r.margin)}</strong> },
+                ]}
+              />
+            </ReportPanel>
+          </>
+        )
+      }}
+    </ReportState>
   )
 }

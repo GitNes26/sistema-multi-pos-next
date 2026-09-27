@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import * as yup from "yup";
-import { AlertCircle, Check, FileText, Megaphone, PackageSearch, Palette, Pencil, Plus, Trash2, Heading } from "lucide-react";
+import { AlertCircle, Check, FileText, Megaphone, PackageSearch, Palette, Pencil, Plus, Trash2, Heading, CalendarClock } from "lucide-react";
 import { publicationsApi } from "@/lib/publications/client";
 import {
   PUBLICATION_TYPES,
-  PUBLICATION_TYPE_LABELS,
   type PublicationInput,
   type PublicationKind,
   type PublicationRow,
@@ -20,22 +19,18 @@ import { FormCombobox } from "@/components/base/form-combobox";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { Attachment } from "@/components/base/attachment";
 import { DatePicker } from "@/components/base/date-picker";
-import { TooltipButton } from "@/components/shared/tooltip-button";
 import { SwitchField } from "@/components/base/switch-field";
-import { Badge } from "@/components/ui/badge";
+import { StatusPill } from "@/components/base/status-pill";
+import { PublicationTypePill } from "@/components/shared/status-pills";
+import { RowActions } from "@/components/base/row-actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DialogComponent } from "@/components/ui/dialog";
 import { useFocusInvalid } from "@/hooks/use-focus-invalid";
-import { PUBLICATION_DESIGNS } from "@/lib/publications/designs";
+import { designsForType } from "@/lib/publications/designs";
 import { PublicationFlyer, flyerColors } from "@/components/publications/publication-flyer";
 import { cn } from "@/lib/utils";
 import { crudApi } from "@/lib/api";
 
-const TYPE_COLORS: Record<string, string> = {
-  product_new: "bg-success text-success-foreground",
-  promotion: "bg-warning text-warning-foreground",
-  notice: "bg-info text-info-foreground",
-};
 
 const EMPTY_FORM: PublicationInput & { id?: string } = {
   id: undefined,
@@ -172,35 +167,39 @@ export function PublicationsManager() {
       ) : items.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No hay publicaciones</p>
       ) : (
-        <div className="space-y-2">
-          {items.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 rounded-lg border p-3">
-              {p.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.imageUrl} alt={p.title} className="size-12 shrink-0 rounded-md object-cover" />
-              ) : (
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                  <Megaphone className="size-5" />
-                </span>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-medium">{p.title}</p>
-                  <Badge className={TYPE_COLORS[p.type] ?? "bg-secondary"}>
-                    {PUBLICATION_TYPE_LABELS[p.type as PublicationKind] ?? p.type}
-                  </Badge>
-                  {!p.isActive && <Badge variant="outline">Inactiva</Badge>}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {items.map((p) => {
+            const productImage = products.find((x) => x.id === p.productId)?.imageUrl ?? null;
+            return (
+              <article key={p.id} className={cn("group overflow-hidden rounded-2xl border bg-card shadow-e1 transition-shadow hover:shadow-e2", !p.isActive && "opacity-70")}>
+                <button type="button" onClick={() => openEdit(p)} className="block w-full p-2 pb-0 text-left" aria-label={`Editar ${p.title}`}>
+                  <PublicationFlyer designId={p.designId} title={p.title} content={p.content} imageUrl={p.imageUrl ?? productImage} primaryColor={p.primaryColor} secondaryColor={p.secondaryColor} />
+                </button>
+                <div className="flex items-start gap-2 p-3">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <PublicationTypePill status={p.type} />
+                      {!p.isActive && <StatusPill tone="neutral">Inactiva</StatusPill>}
+                    </div>
+                    <p className="truncate text-sm font-medium">{p.title}</p>
+                    {(p.startsAt || p.endsAt) && (
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <CalendarClock className="size-3.5" />
+                        {p.startsAt ? new Date(p.startsAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" }) : "Hoy"}
+                        {" – "}
+                        {p.endsAt ? new Date(p.endsAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" }) : "sin fin"}
+                      </p>
+                    )}
+                  </div>
+                  <RowActions
+                    name={p.title}
+                    primary={{ label: "Editar", icon: Pencil, onSelect: () => openEdit(p) }}
+                    items={[{ label: "Eliminar", icon: Trash2, destructive: true, onSelect: () => remove(p) }]}
+                  />
                 </div>
-                {p.content && <p className="truncate text-xs text-muted-foreground">{p.content}</p>}
-              </div>
-              <TooltipButton label="Editar" variant="ghost" size="icon-xs" onClick={() => openEdit(p)}>
-                <Pencil className="size-3.5" />
-              </TooltipButton>
-              <TooltipButton label="Eliminar" variant="ghost" size="icon-xs" onClick={() => remove(p)}>
-                <Trash2 className="size-3.5 text-destructive" />
-              </TooltipButton>
-            </div>
-          ))}
+              </article>
+            );
+          })}
         </div>
       )}
 
@@ -255,23 +254,26 @@ export function PublicationsManager() {
                 value={form.type}
                 onChange={(v) => {
                   const type = v as PublicationKind;
-                  const designId = PUBLICATION_DESIGNS.find((design) => design.type === type)?.id ?? "general";
+                  const designId = designsForType(type)[0]?.id ?? "general";
                   setForm({ ...form, type, metadata: { ...(form.metadata ?? {}), designId, primaryColor: flyerColors(designId)[0], secondaryColor: flyerColors(designId)[1] } });
                 }}
                 options={PUBLICATION_TYPES.map((t) => ({ value: t.value, label: t.label }))}
                 searchable={false}
                 clearable={false}
               />
-              {form.type === "product_new" && (
+              {form.type !== "notice" && (
                 <FormCombobox
                   id="publication-product"
-                  label="Producto relacionado"
+                  label={form.type === "promotion" ? "Producto en promoción (opcional)" : "Producto relacionado"}
                   infoTooltip="Selecciona el producto para incorporar automáticamente su nombre e imagen en los diseños del flyer."
                   icon={<PackageSearch className="size-4" />}
                   value={typeof (form.metadata as { productId?: unknown } | null)?.productId === "string" ? String((form.metadata as { productId: string }).productId) : null}
                   onChange={(value) => {
                     const product = products.find((item) => item.id === value);
-                    setForm({ ...form, title: form.title || product?.name || "", imageUrl: product?.imageUrl ?? form.imageUrl, metadata: { ...(form.metadata ?? {}), productId: value || null } });
+                    const previous = products.find((item) => item.id === (form.metadata as { productId?: string } | null)?.productId);
+                    // Si la imagen actual era la del producto anterior (o no había), se usa la del nuevo.
+                    const keepOwnImage = Boolean(form.imageUrl) && form.imageUrl !== previous?.imageUrl;
+                    setForm({ ...form, title: form.title || product?.name || "", imageUrl: keepOwnImage ? form.imageUrl : product?.imageUrl ?? null, metadata: { ...(form.metadata ?? {}), productId: value || null } });
                   }}
                   options={products.map((product) => ({ value: product.id, label: product.name }))}
                   placeholder="Busca el producto que deseas anunciar"
@@ -282,10 +284,10 @@ export function PublicationsManager() {
                   <div className="flex items-center gap-1.5">
                     <Palette className="size-4 text-muted-foreground" />
                     <Label>Diseño rápido</Label>
-                    <span className="text-xs text-muted-foreground">La imagen cargada se integra automáticamente al diseño</span>
+                    <span className="text-xs text-muted-foreground">10 diseños · la foto se integra automáticamente</span>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {PUBLICATION_DESIGNS.filter((design) => design.type === form.type).map((design) => {
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                    {designsForType(form.type).map((design) => {
                       const selected = (form.metadata as { designId?: string } | null)?.designId === design.id;
                       return (
                         <button
@@ -293,10 +295,11 @@ export function PublicationsManager() {
                           type="button"
                           aria-pressed={selected}
                           onClick={() => setForm({ ...form, title: form.title || design.title, content: form.content || design.content, metadata: { ...(form.metadata ?? {}), designId: design.id, primaryColor: flyerColors(design.id)[0], secondaryColor: flyerColors(design.id)[1] } })}
-                          className={cn("relative overflow-hidden rounded-xl border text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", selected && "ring-2 ring-primary ring-offset-2")}
+                          className={cn("press relative rounded-xl border p-1 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", selected ? "border-primary ring-2 ring-primary" : "hover:border-primary/40")}
                         >
-                          {selected && <Check className="absolute right-2 top-2 size-4" />}
-                          <PublicationFlyer compact designId={design.id} title={form.title || design.title} content={form.content || design.content} imageUrl={form.imageUrl} />
+                          {selected && <span className="absolute top-2.5 right-2.5 z-10 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground shadow"><Check className="size-3" /></span>}
+                          <PublicationFlyer designId={design.id} title={form.title || design.title} content={form.content || design.content} imageUrl={form.imageUrl} className="rounded-lg" />
+                          <span className="block truncate px-1 pt-1 text-xs font-medium">{design.name}</span>
                         </button>
                       );
                     })}

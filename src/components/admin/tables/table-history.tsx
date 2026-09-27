@@ -10,13 +10,13 @@ import {
   ShoppingBag,
   TrendingUp,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { DialogComponent } from "@/components/ui/dialog"
 import { Spinner } from "@/components/base/spinner"
 import { EmptyState } from "@/components/shared/empty-state"
 import { money } from "@/lib/pos/money"
 import { cn } from "@/lib/utils"
+import { OrderStatusPill } from "@/components/shared/order-status-pill"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -74,24 +74,6 @@ interface HistoryData {
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-
-const ORDER_STATUS_LABELS: Record<string, string> = {
-  pending: "Pendiente",
-  confirmed: "Confirmado",
-  preparing: "Preparando",
-  ready: "Listo",
-  delivered: "Entregado",
-  cancelled: "Cancelado",
-}
-
-const ORDER_STATUS_COLORS: Record<string, string> = {
-  pending: "bg-muted text-muted-foreground",
-  confirmed: "bg-info/10 text-info-ink",
-  preparing: "bg-warning/10 text-warning-ink",
-  ready: "bg-success/10 text-success-ink",
-  delivered: "bg-success/10 text-success-ink",
-  cancelled: "bg-destructive/10 text-destructive",
-}
 
 function formatDuration(start: string, end: string | null): string {
   const ms = (end ? new Date(end) : new Date()).getTime() - new Date(start).getTime()
@@ -260,15 +242,7 @@ export function TableHistoryDialog({ open, tableId, tableNumber, onClose }: Prop
                             <span className="font-mono text-xs">
                               #{s.order.orderNumber}
                             </span>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-xs px-1.5 py-0",
-                                ORDER_STATUS_COLORS[s.order.status] ?? ""
-                              )}
-                            >
-                              {ORDER_STATUS_LABELS[s.order.status] ?? s.order.status}
-                            </Badge>
+                            <OrderStatusPill status={s.order.status} />
                           </div>
                           <span className="font-semibold tabular-nums">
                             {money(s.order.total)}
@@ -305,15 +279,7 @@ export function TableHistoryDialog({ open, tableId, tableNumber, onClose }: Prop
                       <span className="font-mono font-medium text-xs">
                         #{o.orderNumber}
                       </span>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs px-1.5 py-0",
-                          ORDER_STATUS_COLORS[o.status] ?? ""
-                        )}
-                      >
-                        {ORDER_STATUS_LABELS[o.status] ?? o.status}
-                      </Badge>
+                      <OrderStatusPill status={o.status} />
                       <span className="text-xs text-muted-foreground hidden sm:inline">
                         {o.itemCount} art.
                       </span>

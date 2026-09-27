@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { findOrCreate, prisma } from "@/lib/db";
 import { parseSchedule, type DaySchedule } from "@/lib/schedule";
 import type { ReservationPolicy } from "@prisma/client";
 import { dayBounds, hmToMinutes } from "@/lib/tables/reservations-utils";
@@ -9,13 +9,16 @@ import { dayBounds, hmToMinutes } from "@/lib/tables/reservations-utils";
 // la disponibilidad: qué días puede seleccionar el cliente (horario de la
 // sucursal) y qué horarios tiene la sucursal abiertos (slots).
 
-/** Política de la organización con defaults aplicados (siempre usable). */
+/**
+ * Política de la organización con defaults aplicados (siempre usable).
+ * Idempotente: el portal dispara varias consultas de disponibilidad en
+ * paralelo y todas pueden intentar crear la política por defecto.
+ */
 export async function getReservationPolicy(organizationId: string): Promise<ReservationPolicy> {
-  const existing = await prisma.reservationPolicy.findUnique({
-    where: { organizationId },
-  });
-  if (existing) return existing;
-  return prisma.reservationPolicy.create({ data: { organizationId } });
+  return findOrCreate(
+    () => prisma.reservationPolicy.findUnique({ where: { organizationId } }),
+    () => prisma.reservationPolicy.create({ data: { organizationId } })
+  );
 }
 
 export type PolicyViolation = { field: string; message: string };

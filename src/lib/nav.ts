@@ -442,11 +442,33 @@ export function isNavActive(item: NavItem, pathname: string): boolean {
   }
   if (!item.href) return false;
   if (item.href === "/admin") return pathname === "/admin";
-  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+  if (pathname === item.href) return true;
+  if (!pathname.startsWith(`${item.href}/`)) return false;
+  // /admin/reports no debe marcarse activo en /admin/reports/bi si "BI" es
+  // su propio item: gana la ruta registrada más específica.
+  const href = item.href;
+  for (const other of knownHrefs()) {
+    if (other !== href && other.startsWith(`${href}/`) && (pathname === other || pathname.startsWith(`${other}/`))) return false;
+  }
+  return true;
+}
+
+// Rutas del menú conocidas (fallback + las que llegan de la BD).
+const KNOWN_HREFS = new Set<string>();
+function collectHrefs(items: NavItem[]) {
+  for (const it of items) {
+    if (it.href) KNOWN_HREFS.add(it.href);
+    if (it.children?.length) collectHrefs(it.children);
+  }
+}
+function knownHrefs() {
+  if (KNOWN_HREFS.size === 0) for (const section of NAV_SECTIONS) collectHrefs(section.items);
+  return KNOWN_HREFS;
 }
 
 /** Convierte el árbol de BD (MenuNode) a NavSection[] con íconos resueltos. */
 function mapMenuItem(n: MenuNode): NavItem {
+  if (n.href) knownHrefs().add(n.href);
   return {
     href: n.href ?? undefined,
     label: n.label,

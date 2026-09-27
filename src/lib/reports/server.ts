@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { localDay } from "@/lib/reports/bi-server";
 
 // FASE 10 — Agregaciones de reportes y analytics (dashboard + reportes filtrados).
 
@@ -82,7 +83,7 @@ function whereFrom(organizationId: string, f: ReportFilters) {
   if (f.locationId) where.locationId = f.locationId;
   if (f.employeeId) where.employeeId = f.employeeId;
   if (f.cashRegisterId) where.cashRegisterId = f.cashRegisterId;
-  if (f.status) where.status = f.status;
+  where.status = f.status || "completed";
   if (f.from || f.to) {
     where.createdAt = {
       ...(f.from ? { gte: new Date(`${f.from}T00:00:00`) } : {}),
@@ -134,7 +135,7 @@ export async function getDashboardData(organizationId: string): Promise<Dashboar
       let margin = 0;
 
       for (const s of sales) {
-        const key = s.createdAt.toISOString().slice(0, 10);
+        const key = localDay(s.createdAt);
         const d = byDayMap.get(key) ?? { total: 0, count: 0 };
         d.total += toNum(s.total);
         d.count += 1;
@@ -169,8 +170,8 @@ export async function getDashboardData(organizationId: string): Promise<Dashboar
         }));
 
       return {
-        from: from.toISOString().slice(0, 10),
-        to: to.toISOString().slice(0, 10),
+        from: localDay(from),
+        to: localDay(to),
         sales: round2(periodTotal),
         count: sales.length,
         margin: round2(margin),
@@ -226,9 +227,10 @@ export interface SalesReportRow {
 }
 
 export async function getSalesReport(organizationId: string, f: ReportFilters) {
-  const [rows, refunds] = await Promise.all([
+  const where = whereFrom(organizationId, f);
+  const [rows, refunds, agg, series, payments] = await Promise.all([
     prisma.sale.findMany({
-      where: whereFrom(organizationId, f),
+      where,
       include: {
         location: { select: { name: true } },
         cashRegister: { select: { name: true } },
@@ -256,7 +258,35 @@ export async function getSalesReport(organizationId: string, f: ReportFilters) {
       },
       _sum: { total: true },
     }),
+    prisma.sale.aggregate({
+      where,
+      _sum: { subtotal: true, discount: true, tax: true, total: true, pointsEarned: true },
+      _count: true,
+    }),
+    prisma.sale.findMany({ where, select: { createdAt: true, total: true } }),
+    prisma.salePayment.groupBy({ by: ["method"], where: { sale: where }, _sum: { amount: true }, _count: true }),
   ]);
+
+  // Serie diaria y por hora en hora local, con todas las ventas del filtro
+  // (la tabla se limita a 2000 filas; las gráficas no deben depender de eso).
+  const byDayMap = new Map<string, { total: number; count: number }>();
+  const byHour = Array.from({ length: 24 }, (_, hour) => ({ hour, total: 0, count: 0 }));
+  for (const s of series) {
+    const key = localDay(s.createdAt);
+    const d = byDayMap.get(key) ?? { total: 0, count: 0 };
+    d.total += toNum(s.total);
+    d.count += 1;
+    byDayMap.set(key, d);
+    const h = byHour[s.createdAt.getHours()];
+    h.total += toNum(s.total);
+    h.count += 1;
+  }
+  const byDay = [...byDayMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, v]) => ({ day, total: round2(v.total), count: v.count }));
+  const byPayment = payments
+    .map((p) => ({ method: p.method, amount: round2(toNum(p._sum.amount)), count: p._count }))
+    .sort((a, b) => b.amount - a.amount);
 
   const mapped: SalesReportRow[] = rows.map((s) => ({
     id: s.id,
@@ -276,24 +306,30 @@ export async function getSalesReport(organizationId: string, f: ReportFilters) {
     changeGiven: toNum(s.changeGiven),
   }));
 
-  const totals = mapped.reduce(
-    (acc, r) => {
-      acc.subtotal += r.subtotal;
-      acc.discount += r.discount;
-      acc.tax += r.tax;
-      acc.total += r.total;
-      acc.pointsEarned += r.pointsEarned;
-      return acc;
+  const rounded = mapValues(
+    {
+      subtotal: toNum(agg._sum.subtotal),
+      discount: toNum(agg._sum.discount),
+      tax: toNum(agg._sum.tax),
+      total: toNum(agg._sum.total),
+      pointsEarned: toNum(agg._sum.pointsEarned),
     },
-    { subtotal: 0, discount: 0, tax: 0, total: 0, pointsEarned: 0 }
+    round2
   );
-
-  const rounded = mapValues(totals, round2);
   const refundsTotal = round2(toNum(refunds._sum.total));
   return {
     rows: mapped,
-    count: mapped.length,
-    totals: { ...rounded, refundsTotal, netTotal: round2(rounded.total - refundsTotal) },
+    count: agg._count,
+    totals: {
+      ...rounded,
+      refundsTotal,
+      netTotal: round2(rounded.total - refundsTotal),
+      count: agg._count,
+      avgTicket: agg._count > 0 ? round2(rounded.total / agg._count) : 0,
+    },
+    byDay,
+    byHour: byHour.map((h) => ({ ...h, total: round2(h.total) })),
+    byPayment,
   };
 }
 
@@ -413,31 +449,31 @@ export async function getOrdersReport(organizationId: string, f: ReportFilters) 
     rows,
     count: rows.length,
     totals: {
-      total: round2(rows.reduce((a, r) => a + r.total, 0)),
+      total: round2(rows.filter((r) => r.status !== "cancelled").reduce((a, r) => a + r.total, 0)),
       delivery: rows.filter((r) => r.deliveryMethod === "delivery").length,
       pickup: rows.filter((r) => r.deliveryMethod === "pickup").length,
+      cancelled: rows.filter((r) => r.status === "cancelled").length,
+      delivered: rows.filter((r) => r.status === "delivered").length,
     },
     byStatus: [...byStatus.entries()].map(([status, count]) => ({ status, count })),
   };
 }
 
 export async function getCustomersReport(organizationId: string, f: ReportFilters) {
+  const saleWhere = {
+    status: "completed" as const,
+    ...(f.locationId ? { locationId: f.locationId } : {}),
+    ...(f.from || f.to
+      ? { createdAt: { ...(f.from ? { gte: new Date(`${f.from}T00:00:00`) } : {}), ...(f.to ? { lte: new Date(`${f.to}T23:59:59.999`) } : {}) } }
+      : {}),
+  };
+  // Antes se tomaban los primeros 500 por nombre y luego se ordenaba por
+  // gasto: los mejores clientes con nombres "tardíos" quedaban fuera.
   const customers = await prisma.customer.findMany({
-    where: { organizationId },
+    where: { organizationId, sales: { some: saleWhere } },
     include: {
-      sales: {
-        where: {
-          status: "completed",
-          ...(f.from || f.to
-            ? { createdAt: { ...(f.from ? { gte: new Date(`${f.from}T00:00:00`) } : {}), ...(f.to ? { lte: new Date(`${f.to}T23:59:59.999`) } : {}) } }
-            : {}),
-        },
-        select: { total: true, createdAt: true },
-        orderBy: { createdAt: "desc" },
-      },
+      sales: { where: saleWhere, select: { total: true, createdAt: true }, orderBy: { createdAt: "desc" } },
     },
-    orderBy: { fullName: "asc" },
-    take: Math.min(1000, f.limit ?? 500),
   });
 
   const rows: CustomersReportRow[] = customers
@@ -451,9 +487,22 @@ export async function getCustomersReport(organizationId: string, f: ReportFilter
       totalSpent: round2(c.sales.reduce((a, s) => a + toNum(s.total), 0)),
       lastPurchaseAt: c.sales[0]?.createdAt?.toISOString() ?? null,
     }))
-    .sort((a, b) => b.totalSpent - a.totalSpent);
+    .sort((a, b) => b.totalSpent - a.totalSpent)
+    .slice(0, Math.min(1000, f.limit ?? 500));
 
-  return { rows, count: rows.length };
+  const totalSpent = round2(rows.reduce((a, r) => a + r.totalSpent, 0));
+  const purchases = rows.reduce((a, r) => a + r.salesCount, 0);
+  return {
+    rows,
+    count: rows.length,
+    totals: {
+      customers: rows.length,
+      totalSpent,
+      purchases,
+      avgSpent: rows.length > 0 ? round2(totalSpent / rows.length) : 0,
+      repeatCustomers: rows.filter((r) => r.salesCount > 1).length,
+    },
+  };
 }
 
 function mapValues<T extends Record<string, number>>(obj: T, fn: (n: number) => number): T {

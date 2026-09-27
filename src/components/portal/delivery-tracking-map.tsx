@@ -17,7 +17,13 @@ interface DeliveryTrackingMapProps {
   destination: TrackingPoint | null
   /** Origen: sucursal que surte el pedido. */
   origin: TrackingPoint | null
-  height?: number
+  height?: number | string
+  /** Recorrido ya realizado (se dibuja como línea continua). */
+  trail?: TrackingPoint[]
+  /** Textos de la leyenda (por defecto: repartidor / tú / sucursal). */
+  labels?: { driver?: string; destination?: string; origin?: string }
+  /** Permite zoom con rueda y controles (vista de escritorio amplia). */
+  interactive?: boolean
 }
 
 /** Ícono de mapa como HTML inline (evita assets de imagen). */
@@ -52,10 +58,15 @@ export function DeliveryTrackingMap({
   destination,
   origin,
   height = 230,
+  trail = [],
+  labels = {},
+  interactive = false,
 }: DeliveryTrackingMapProps) {
+  const text = { driver: "Repartidor", destination: "Tú", origin: "Sucursal", ...labels }
   const points: TrackingPoint[] = [driver, destination, origin].filter(
     (p): p is TrackingPoint => p != null
   )
+  const fitPoints = trail.length > 1 ? [...points, trail[0]] : points
   const center: [number, number] =
     points[0] != null ? [points[0].lat, points[0].lng] : [19.4326, -99.1332]
 
@@ -65,28 +76,34 @@ export function DeliveryTrackingMap({
         center={center}
         zoom={15}
         style={{ height: "100%", width: "100%" }}
-        scrollWheelZoom={false}
-        zoomControl={false}
+        scrollWheelZoom={interactive}
+        zoomControl={interactive}
         attributionControl={false}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <FitPoints points={points} />
+        <FitPoints points={fitPoints} />
 
         {origin && (
           <Marker
             position={[origin.lat, origin.lng]}
             icon={pinIcon("&#127970;", "#10b981")}
-            title="Sucursal"
+            title={text.origin}
           />
         )}
         {destination && (
           <Marker
             position={[destination.lat, destination.lng]}
             icon={pinIcon("&#127968;", "#2563eb")}
-            title="Tu dirección"
+            title={text.destination}
+          />
+        )}
+        {trail.length > 1 && (
+          <Polyline
+            positions={trail.map((p) => [p.lat, p.lng] as [number, number])}
+            pathOptions={{ color: "#8b5cf6", weight: 4, opacity: 0.85 }}
           />
         )}
         {driver && destination && (
@@ -107,7 +124,7 @@ export function DeliveryTrackingMap({
           <Marker
             position={[driver.lat, driver.lng]}
             icon={pinIcon("&#128666;", "#8b5cf6")}
-            title="Repartidor"
+            title={text.driver}
             zIndexOffset={500}
           />
         )}
@@ -116,16 +133,16 @@ export function DeliveryTrackingMap({
       {/* Leyenda */}
       <div className="pointer-events-none absolute right-2 bottom-2 z-[1000] flex items-center gap-2 rounded-lg bg-background/90 px-2 py-1 text-xs shadow-md backdrop-blur-sm">
         <span className="flex items-center gap-1">
-          <span className="size-2 rounded-full bg-[#8b5cf6]" /> Repartidor
+          <span className="size-2 rounded-full bg-[#8b5cf6]" /> {text.driver}
         </span>
         {destination && (
           <span className="flex items-center gap-1">
-            <span className="size-2 rounded-full bg-[#2563eb]" /> Tú
+            <span className="size-2 rounded-full bg-[#2563eb]" /> {text.destination}
           </span>
         )}
         {origin && (
           <span className="flex items-center gap-1">
-            <span className="size-2 rounded-full bg-[#10b981]" /> Sucursal
+            <span className="size-2 rounded-full bg-[#10b981]" /> {text.origin}
           </span>
         )}
       </div>

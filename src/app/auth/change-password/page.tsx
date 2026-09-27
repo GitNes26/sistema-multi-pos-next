@@ -12,7 +12,7 @@ export default async function ChangePasswordPage() {
   if (!session?.user) redirect("/auth/login");
 
   return (
-    <AuthShell>
+    <AuthShell backHref="/auth/login">
       <ChangePasswordForm />
     </AuthShell>
   );

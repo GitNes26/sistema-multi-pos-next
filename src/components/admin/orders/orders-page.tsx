@@ -6,28 +6,28 @@ import { Eye, Radio, Search } from "lucide-react"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { DatePicker } from "@/components/base/date-picker"
 import { FormCombobox } from "@/components/base/form-combobox"
 import { SwitchField } from "@/components/base/switch-field"
 import { DataTable } from "@/components/base/data-table"
-import { ResizableSplit } from "@/components/ui/resizable-split"
-import { useMediaQuery } from "@/hooks/use-media-query"
 import { swalError } from "@/lib/swal"
 import { money } from "@/lib/pos/money"
-import { cn } from "@/lib/utils"
 import {
   DELIVERY_METHOD_LABELS,
   ORDER_STATUSES,
-  ORDER_STATUS_COLORS,
   ORDER_STATUS_LABELS,
   ordersApi,
 } from "@/lib/orders/client"
 import type { OrderRow } from "@/lib/orders/server"
 import { OrderDetailDialog } from "./order-detail-dialog"
+import { OrderStatusPill } from "@/components/shared/order-status-pill"
+import { SegmentedFilter } from "@/components/base/segmented-filter"
 
 // FASE 12.1 — Vista admin de pedidos: filtros, estados y acciones.
+
+const localIso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 
 const STATUS_TABS = [
   { value: "all", label: "Todos" },
@@ -43,7 +43,6 @@ export function OrdersPage({
 }) {
   const router = useRouter()
   // Mismo patrón de persistencia que el POS: reparto por sucursal y eje.
-  const isWide = useMediaQuery("(min-width: 1024px)")
 
   const [status, setStatus] = useState("all")
   const [method, setMethod] = useState("all")
@@ -125,7 +124,7 @@ export function OrdersPage({
         id: "fecha",
         header: "Fecha",
         cell: ({ row }: { row: { original: OrderRow } }) =>
-          new Date(row.original.createdAt).toLocaleString("es-MX"),
+          new Date(row.original.createdAt).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
       },
       {
         id: "cliente",
@@ -152,19 +151,7 @@ export function OrdersPage({
         id: "estado",
         header: "Estado",
         cell: ({ row }: { row: { original: OrderRow } }) => (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold",
-              ORDER_STATUS_COLORS[
-                row.original.status as keyof typeof ORDER_STATUS_COLORS
-              ] ?? "bg-muted text-muted-foreground"
-            )}
-          >
-            <span className="size-1.5 rounded-full bg-current opacity-80" />
-            {ORDER_STATUS_LABELS[
-              row.original.status as keyof typeof ORDER_STATUS_LABELS
-            ] ?? row.original.status}
-          </span>
+          <OrderStatusPill status={row.original.status} />
         ),
       },
       {
@@ -220,8 +207,8 @@ export function OrdersPage({
         minSizes={isWide ? [20, 45] : [30, 35]}
         maxSizes={isWide ? [50, 80] : [65, 70]}
         first={ */}
-          <Card className="h-full overflow-y-auto overscroll-contain mb-3">
-            <CardContent className="space-y-3 pt-0">
+          <Card>
+            <CardContent className="space-y-3 pt-5">
               <div className="flex flex-wrap items-center gap-2">
                 <InputGroupField
                   placeholder="Buscar # o cliente"
@@ -232,14 +219,14 @@ export function OrdersPage({
                 />
                 <DatePicker
                   value={from ? new Date(from + "T00:00:00") : null}
-                  onChange={(d) => setFrom(d ? d.toISOString().split("T")[0] : "")}
+                  onChange={(d) => setFrom(d ? localIso(d) : "")}
                   placeholder="Desde"
                   clearable
                   className="w-40"
                 />
                 <DatePicker
                   value={to ? new Date(to + "T00:00:00") : null}
-                  onChange={(d) => setTo(d ? d.toISOString().split("T")[0] : "")}
+                  onChange={(d) => setTo(d ? localIso(d) : "")}
                   placeholder="Hasta"
                   clearable
                   className="w-40"
@@ -276,28 +263,6 @@ export function OrdersPage({
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 border rounded-lg bg-muted/50 px-2 py-1 text-xs font-semibold ">
-                {STATUS_TABS.map((t) => {
-                  const count = t.value === "all" ? total : (counts[t.value] ?? 0)
-                  return (
-                    <Badge
-                      key={t.value}
-                      variant={status === t.value ? "default" : "secondary"}
-                      className="cursor-pointer select-none"
-                      onClick={() => setStatus(t.value)}
-                    >
-                      {t.label}{" "}
-                      <span className="ml-1 tabular-nums opacity-80">{count}</span>
-                    </Badge>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-         {/* }
-         second={ */}
-          <Card className="h-full overflow-y-auto overscroll-contain">
-            <CardContent className="space-y-3 pt-5">
               <DataTable
                 columns={columns}
                 data={rows}
@@ -309,6 +274,19 @@ export function OrdersPage({
                 rowKey={(r) => r.id}
                 onRefresh={() => load()}
                 refreshing={loading}
+                toolbarSlot={
+                  <SegmentedFilter
+                    ariaLabel="Estado del pedido"
+                    value={status}
+                    onChange={setStatus}
+                    options={STATUS_TABS.map((t) => ({
+                      value: t.value,
+                      label: t.label,
+                      count: t.value === "all" ? total : (counts[t.value] ?? 0),
+                      countTone: t.value === "pending" && (counts.pending ?? 0) > 0 ? "warning" : undefined,
+                    }))}
+                  />
+                }
               />
             </CardContent>
           </Card>

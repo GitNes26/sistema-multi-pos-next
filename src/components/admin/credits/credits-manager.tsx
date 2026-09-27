@@ -1,5 +1,6 @@
 "use client"
 
+import { CreditStatusPill } from "@/components/shared/status-pills"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import {
@@ -69,12 +70,6 @@ const TX_TYPE_LABELS: Record<string, string> = {
   payment: "Abono",
   adjustment: "Ajuste",
   writeoff: "Descargo",
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  active: "Activa",
-  suspended: "Suspendida",
-  settled: "Liquidada",
 }
 
 export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
@@ -182,17 +177,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
         header: "Estado",
         accessorKey: "status",
         cell: ({ row }) => (
-          <Badge
-            variant={
-              row.original.status === "active"
-                ? "default"
-                : row.original.status === "suspended"
-                  ? "destructive"
-                  : "secondary"
-            }
-          >
-            {STATUS_LABELS[row.original.status] ?? row.original.status}
-          </Badge>
+          <CreditStatusPill status={row.original.status} />
         ),
       },
     ]
@@ -363,17 +348,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
               {row.customerPhone ?? row.customerCode ?? "—"}
             </p>
           </div>
-          <Badge
-            variant={
-              row.status === "active"
-                ? "default"
-                : row.status === "suspended"
-                  ? "destructive"
-                  : "secondary"
-            }
-          >
-            {STATUS_LABELS[row.status] ?? row.status}
-          </Badge>
+          <CreditStatusPill status={row.status} />
         </div>
         {isSuperadmin && row.organizationName && (
           <Badge variant="outline" className="text-xs">

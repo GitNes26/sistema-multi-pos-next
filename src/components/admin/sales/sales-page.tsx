@@ -50,6 +50,12 @@ interface SaleFilters {
   to: string
 }
 
+// Valor de "todas" en los selectores; en los filtros se guarda como "" (sin filtro).
+const ALL = "__all"
+const SHORT_DATE: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }
+const localIso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+
 const EMPTY_FILTERS: SaleFilters = {
   q: "",
   locationId: "",
@@ -190,7 +196,7 @@ export function SalesPage({
         id: "fecha",
         header: "Fecha",
         cell: ({ row }: { row: { original: SaleRow } }) =>
-          new Date(row.original.createdAt).toLocaleString("es-MX"),
+          new Date(row.original.createdAt).toLocaleString("es-MX", SHORT_DATE),
       },
       {
         id: "sucursal",
@@ -284,22 +290,12 @@ export function SalesPage({
         <TabsContent value="ventas" className="space-y-0">
           <Card>
             <CardContent className="space-y-3 pt-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <InputGroupField
-                  placeholder="Cliente, cajero, folio…"
-                  leftIcon={<Search className="size-4" />}
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  className="h-8 w-64"
-                />
-              </div>
-
               <div className="flex flex-wrap items-center gap-2">
                 <FormCombobox
-                  value={filters.locationId}
-                  onChange={(v) => setFilters((f) => ({ ...f, locationId: v }))}
+                  value={filters.locationId || ALL}
+                  onChange={(v) => setFilters((f) => ({ ...f, locationId: v === ALL ? "" : v }))}
                   options={[
-                    { value: "__all", label: "Todas las sucursales" },
+                    { value: ALL, label: "Todas las sucursales" },
                     ...options.locations.map((l) => ({
                       value: l.id,
                       label: l.name,
@@ -307,13 +303,13 @@ export function SalesPage({
                   ]}
                   clearable={false}
                   searchable={options.locations.length > 5}
-                  className="w-44"
+                  className="w-52"
                 />
                 <FormCombobox
-                  value={filters.employeeId}
-                  onChange={(v) => setFilters((f) => ({ ...f, employeeId: v }))}
+                  value={filters.employeeId || ALL}
+                  onChange={(v) => setFilters((f) => ({ ...f, employeeId: v === ALL ? "" : v }))}
                   options={[
-                    { value: "__all", label: "Todos los empleados" },
+                    { value: ALL, label: "Todos los empleados" },
                     ...options.employees.map((e) => ({
                       value: e.id,
                       label: e.name,
@@ -321,15 +317,15 @@ export function SalesPage({
                   ]}
                   clearable={false}
                   searchable={options.employees.length > 5}
-                  className="w-44"
+                  className="w-52"
                 />
                 <FormCombobox
-                  value={filters.cashRegisterId}
+                  value={filters.cashRegisterId || ALL}
                   onChange={(v) =>
-                    setFilters((f) => ({ ...f, cashRegisterId: v }))
+                    setFilters((f) => ({ ...f, cashRegisterId: v === ALL ? "" : v }))
                   }
                   options={[
-                    { value: "__all", label: "Todas las cajas" },
+                    { value: ALL, label: "Todas las cajas" },
                     ...options.registers.map((r) => ({
                       value: r.id,
                       label: r.name,
@@ -337,7 +333,7 @@ export function SalesPage({
                   ]}
                   clearable={false}
                   searchable={options.registers.length > 5}
-                  className="w-44"
+                  className="w-52"
                 />
                 <DatePicker
                   value={
@@ -346,7 +342,7 @@ export function SalesPage({
                   onChange={(d) =>
                     setFilters((f) => ({
                       ...f,
-                      from: d ? d.toISOString().split("T")[0] : "",
+                      from: d ? localIso(d) : "",
                     }))
                   }
                   placeholder="Desde"
@@ -358,7 +354,7 @@ export function SalesPage({
                   onChange={(d) =>
                     setFilters((f) => ({
                       ...f,
-                      to: d ? d.toISOString().split("T")[0] : "",
+                      to: d ? localIso(d) : "",
                     }))
                   }
                   placeholder="Hasta"
@@ -366,9 +362,9 @@ export function SalesPage({
                   className="w-40"
                 />
 
-                {(filters.locationId !== "__all" ||
-                  filters.employeeId !== "__all" ||
-                  filters.cashRegisterId !== "__all" ||
+                {(filters.locationId ||
+                  filters.employeeId ||
+                  filters.cashRegisterId ||
                   filters.from ||
                   filters.to) && (
                   <Button
@@ -431,6 +427,15 @@ export function SalesPage({
                 )}
                 onRefresh={() => load()}
                 refreshing={loading}
+                toolbarSlot={
+                  <InputGroupField
+                    placeholder="Cliente, cajero, folio…"
+                    leftIcon={<Search className="size-4" />}
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    className="w-full sm:w-72"
+                  />
+                }
               />
 
               {!loading && total > 0 && (
@@ -500,7 +505,7 @@ function SaleCard({ row, onOpen }: { row: SaleRow; onOpen: () => void }) {
           <Badge variant="secondary">{row.locationName}</Badge>
         </div>
         <p className="text-xs text-muted-foreground">
-          {new Date(row.createdAt).toLocaleString("es-MX")} ·{" "}
+          {new Date(row.createdAt).toLocaleString("es-MX", SHORT_DATE)} ·{" "}
           {row.customerName ?? "Cliente general"}
         </p>
       </div>

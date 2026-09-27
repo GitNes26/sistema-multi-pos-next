@@ -1,5 +1,8 @@
 "use client"
 
+import { ActiveStatusPill } from "@/components/shared/status-pills"
+import { StatusPill } from "@/components/base/status-pill"
+import { BusinessModeBadge } from "@/components/shared/business-mode-badge"
 import * as React from "react"
 import * as yup from "yup"
 import { useRouter } from "next/navigation"
@@ -138,16 +141,6 @@ function ModeDot({
   )
 }
 
-/** Badge del modo de negocio con tooltip de descripción. */
-function ModeBadge({ mode }: { mode: BusinessMode }) {
-  const info = businessModeInfo(mode)
-  return (
-    <Badge variant="secondary" title={info.description} className="gap-1.5">
-      <ModeDot mode={mode} />
-      {info.label}
-    </Badge>
-  )
-}
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -266,7 +259,7 @@ function OrganizationsTab() {
                   {org.ownerName ?? "—"} · {org.ownerEmail ?? ""}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  <ModeBadge mode={org.businessMode} />
+                  <BusinessModeBadge mode={org.businessMode} />
                   <Badge variant="secondary">{org.currency}</Badge>
                   <Badge variant="outline">{org.memberCount} miembros</Badge>
                   {org.adminCount > 0 && (
@@ -727,10 +720,8 @@ function UsersTab() {
                 <span className="truncate text-sm font-medium">
                   {u.fullName}
                 </span>
-                {u.isSuperadmin && (
-                  <Badge variant="secondary">Super admin</Badge>
-                )}
-                {!u.isActive && <Badge variant="outline">Inactivo</Badge>}
+                {u.isSuperadmin && <StatusPill tone="primary" dot={false}>Super admin</StatusPill>}
+                {!u.isActive && <ActiveStatusPill active={false} />}
               </div>
               <p className="truncate text-xs text-muted-foreground">
                 {u.email}

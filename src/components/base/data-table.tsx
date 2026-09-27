@@ -24,6 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   EyeOff,
+  Inbox,
   RefreshCw,
   Search,
 } from "lucide-react"
@@ -59,7 +60,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/base/spinner"
 import { InputGroupField } from "./input-group-field"
 
@@ -200,7 +200,10 @@ export function DataTable<TData, TValue>({
         {visibleRows.map((row) => (
           <div
             key={row.id}
-            className="rounded-xl border bg-card p-3.5"
+            className={cn(
+              "rounded-2xl border bg-card p-3.5",
+              onRowClick && "cursor-pointer transition-colors active:bg-muted"
+            )}
             onClick={() => onRowClick?.(row.original)}
           >
             {renderCard ? renderCard(row.original) : defaultCard(row)}
@@ -210,23 +213,39 @@ export function DataTable<TData, TValue>({
     )
   }
 
+  // Tarjeta móvil por defecto: la primera columna es el título, el resto se
+  // muestra como pares etiqueta/valor y las acciones van en su propia fila.
   function defaultCard(row: Row<TData>) {
     const cells = row.getVisibleCells().filter((c) => c.column.id !== "select")
+    const actions = cells.find((c) => c.column.id === "actions")
+    const content = cells.filter((c) => c.column.id !== "actions")
+    const [first, ...rest] = content
     return (
-      <div className="flex flex-col gap-1.5">
-        {cells.map((cell) => (
-          <div
-            key={cell.id}
-            className="flex items-baseline justify-between gap-2"
-          >
-            <span className="truncate text-xs font-medium text-muted-foreground">
-              {headerLabel(cell.column)}
-            </span>
-            <span className="truncate text-sm">
-              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-            </span>
+      <div className="flex flex-col gap-3">
+        {first && (
+          <div className="min-w-0 text-sm">
+            {flexRender(first.column.columnDef.cell, first.getContext())}
           </div>
-        ))}
+        )}
+        {rest.length > 0 && (
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+            {rest.map((cell) => (
+              <div key={cell.id} className="min-w-0">
+                <dt className="truncate text-xs text-muted-foreground">
+                  {headerLabel(cell.column)}
+                </dt>
+                <dd className="truncate text-sm">
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {actions && (
+          <div className="-mb-1 flex justify-end border-t pt-2" onClick={(e) => e.stopPropagation()}>
+            {flexRender(actions.column.columnDef.cell, actions.getContext())}
+          </div>
+        )}
       </div>
     )
   }
@@ -365,7 +384,7 @@ export function DataTable<TData, TValue>({
                 <TableRow>
                   <TableCell
                     colSpan={allColumns.length}
-                    className="h-32 text-center"
+                    className="text-center"
                   >
                     <RowEmpty message={emptyMessage} />
                   </TableCell>
@@ -401,9 +420,12 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
 
 function RowEmpty({ message }: { message: string }) {
   return (
-    <Badge variant="outline" className="text-muted-foreground">
-      {message}
-    </Badge>
+    <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+      <span className="flex size-11 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+        <Inbox className="size-5" />
+      </span>
+      <p className="text-sm text-muted-foreground">{message}</p>
+    </div>
   )
 }
 

@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Recuperar acceso o activar cuenta" }
 
 export default function PortalForgotPasswordPage() {
   return (
-    <AuthShell mode="portal">
+    <AuthShell mode="portal" backHref="/portal/auth/login">
       <ForgotPasswordForm />
     </AuthShell>
   );

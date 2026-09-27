@@ -153,7 +153,11 @@ export function OrgSwitcher({
                 : "hidden min-w-0 max-w-40 truncate md:block"
             }
           >
-            {activeName ?? (isSuperadmin ? "Sin organización" : "Organización")}
+            {activeName ??
+              (orgs === null && activeOrganizationId ? (
+                // Mientras llega la lista: marcador, no "Sin organización".
+                <span className="inline-block h-3.5 w-24 animate-pulse rounded bg-muted align-middle" aria-label="Cargando organización" />
+              ) : isSuperadmin ? "Sin organización" : "Organización")}
           </span>
           {activeOrgMode ? (
             <BusinessModeBadge

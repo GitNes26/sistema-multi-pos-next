@@ -7,14 +7,13 @@ import { ChevronRight, ClipboardList } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import type { PortalOrderRow } from "@/lib/portal/server";
 import { money } from "@/lib/pos/money";
-import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, type OrderStatusKey } from "@/lib/orders/client";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { STAGGER, DURATION } from "@/lib/animation-tokens";
 import { PullToRefresh } from "@/components/shared/pull-to-refresh";
 import { EmptyState } from "@/components/shared/empty-state";
 import { OrdersEmptyIllustration } from "@/components/shared/animated-illustrations";
+import { OrderStatusPill } from "@/components/shared/order-status-pill";
 
 export function OrdersClient() {
   const [orders, setOrders] = useState<PortalOrderRow[] | null>(null);
@@ -85,9 +84,7 @@ export function OrdersClient() {
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Badge className={ORDER_STATUS_COLORS[o.status as OrderStatusKey]}>
-                    {ORDER_STATUS_LABELS[o.status as OrderStatusKey]}
-                  </Badge>
+                  <OrderStatusPill status={o.status} />
                   <ChevronRight className="size-4 text-muted-foreground" />
                 </div>
               </Link>

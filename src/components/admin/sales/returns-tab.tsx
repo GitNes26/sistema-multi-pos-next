@@ -1,5 +1,6 @@
 "use client";
 
+import { ReturnStatusPill, ReturnTypePill } from "@/components/shared/status-pills";
 import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle,
@@ -13,7 +14,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DialogComponent } from "@/components/ui/dialog";
 import { InputGroupField } from "@/components/base/input-group-field";
@@ -26,27 +26,6 @@ import { toast } from "sonner";
 import { money, qty } from "@/lib/pos/money";
 import { RefundCompletionDialog } from "./refund-completion-dialog";
 import { SlideToPay } from "@/components/shared/slide-to-pay";
-
-const RETURN_TYPE_LABELS: Record<string, string> = {
-  refund: "Reembolso",
-  coupon: "Cupón",
-  points: "Puntos",
-  exchange: "Cambio",
-};
-
-const RETURN_STATUS_LABELS: Record<string, string> = {
-  pending: "Pendiente",
-  approved: "Aprobada",
-  completed: "Completada",
-  rejected: "Rechazada",
-};
-
-const RETURN_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline",
-  approved: "default",
-  completed: "secondary",
-  rejected: "destructive",
-};
 
 const REFUND_METHOD_LABELS: Record<string, string> = {
   cash: "Efectivo",
@@ -323,12 +302,8 @@ export function ReturnsTab({ canView, canManage }: Props) {
                     <span className="text-sm font-medium">
                       Dev. #{row.id.slice(-6).toUpperCase()}
                     </span>
-                    <Badge variant={RETURN_STATUS_VARIANT[row.status] ?? "outline"}>
-                      {RETURN_STATUS_LABELS[row.status] ?? row.status}
-                    </Badge>
-                    <Badge variant="secondary">
-                      {RETURN_TYPE_LABELS[row.returnType] ?? row.returnType}
-                    </Badge>
+                    <ReturnStatusPill status={row.status} />
+                    <ReturnTypePill type={row.returnType} />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Venta #{row.sale?.locationSaleNumber ?? row.sale?.saleNumber ?? "—"}
@@ -467,12 +442,8 @@ function ReturnDetailContent({
           </p>
         </div>
         <div className="flex gap-2">
-          <Badge variant={RETURN_STATUS_VARIANT[detail.status] ?? "outline"}>
-            {RETURN_STATUS_LABELS[detail.status]}
-          </Badge>
-          <Badge variant="secondary">
-            {RETURN_TYPE_LABELS[detail.returnType]}
-          </Badge>
+          <ReturnStatusPill status={detail.status} />
+          <ReturnTypePill type={detail.returnType} />
         </div>
       </div>
 

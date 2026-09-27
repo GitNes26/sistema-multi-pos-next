@@ -9,13 +9,9 @@ import {
   Eye,
   FileSpreadsheet,
   ImagePlus,
-  Layers,
   Layers3,
   Loader2,
   MailCheck,
-  Package,
-  PackagePlus,
-  CookingPot,
   Plus,
   Pencil,
   RotateCcw,
@@ -24,6 +20,7 @@ import {
   Upload,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useBusinessMode } from "@/hooks/use-business-mode"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -44,7 +41,6 @@ import {
 } from "@/lib/api"
 import { BulkImagesDialog } from "./bulk-images-dialog"
 import { money } from "@/lib/pos/money"
-import { categoryAccent } from "@/lib/catalog/placeholder"
 import { swalConfirm, swalError, swalToast } from "@/lib/swal"
 import { CrudForm } from "./crud-form"
 import { ProductsForm } from "./products-form"
@@ -57,10 +53,20 @@ import {
   type CrudColumn,
   type CrudUiConfig,
 } from "./crud-config"
-import { ThumbImage } from "@/components/base/thumb-image"
 import { Switch } from "@/components/ui/switch"
 import { BulkCategoriesDialog } from "./bulk-categories-dialog"
+import {
+  EMPTY_PRODUCT_FILTERS,
+  ProductFilters,
+  ProductNameCell,
+  ProductPriceCell,
+  ProductRowActions,
+  ProductStatusPill,
+  ProductTypeBadge,
+  type ProductFilterState,
+} from "./products-list-parts"
 import { cn } from "@/lib/utils"
+import { EntityCell, RowActions, StatusPill } from "@/components/base"
 
 interface CrudPageProps {
   moduleKey: string
@@ -84,10 +90,10 @@ function renderCell(column: CrudColumn, row: Record<string, unknown>) {
 
   switch (type) {
     case "boolean":
-      return (
-        <Badge variant={value ? "default" : "secondary"}>
-          {value ? "Sí" : "No"}
-        </Badge>
+      return value ? (
+        <StatusPill tone="success" dot={false}>Sí</StatusPill>
+      ) : (
+        <StatusPill tone="neutral" dot={false}>No</StatusPill>
       )
     case "money":
       return <span className="tabular-nums">{money(Number(value))}</span>
@@ -103,20 +109,41 @@ function renderCell(column: CrudColumn, row: Record<string, unknown>) {
           {Number(value)}
         </span>
       )
+    case "points":
+      // Los puntos se acumulan con fracciones; se muestran completos, como en el portal.
+      return (
+        <span className="font-medium tabular-nums">
+          {Math.floor(Number(value)).toLocaleString("es-MX")}
+          <span className="ml-1 text-xs font-normal text-muted-foreground">pts</span>
+        </span>
+      )
     case "code":
       return (
-        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+        <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-xs">
           {String(value)}
         </code>
       )
-    case "badge":
+    case "badge": {
+      const label = column.displayMap?.[String(value)] ?? String(value)
+      const tone = column.tones?.[String(value)]
+      return (
+        <StatusPill tone={tone ?? "neutral"} dot={Boolean(tone)}>
+          {label}
+        </StatusPill>
+      )
+    }
+    case "datetime":
+      return (
+        <span className="tabular-nums text-muted-foreground">
+          {new Date(String(value)).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })}
+        </span>
+      )
+    case "text":
     default:
       return (
-        <Badge variant="secondary">
-          {column.displayMap && value != null
-            ? (column.displayMap[String(value)] ?? String(value))
-            : String(value)}
-        </Badge>
+        <span className="block max-w-72 truncate">
+          {column.displayMap?.[String(value)] ?? String(value)}
+        </span>
       )
   }
 }
@@ -137,6 +164,7 @@ export function CrudPage({
   icon,
 }: CrudPageProps) {
   const router = useRouter()
+  const businessMode = useBusinessMode()
   const config = useMemo<CrudUiConfig | null>(
     () => (isProducts(moduleKey) ? null : (getCrudUi(moduleKey) ?? null)),
     [moduleKey]
@@ -155,6 +183,8 @@ export function CrudPage({
   const [pageSize] = useState(20)
   const [q, setQ] = useState("")
   const debouncedQ = useDebounce(q)
+  const [productFilters, setProductFilters] = useState<ProductFilterState>(EMPTY_PRODUCT_FILTERS)
+  const [productCategories, setProductCategories] = useState<{ id: string; name: string }[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null)
   const [formSaving, setFormSaving] = useState(false)
@@ -186,10 +216,14 @@ export function CrudPage({
     async (signal?: AbortSignal) => {
       setLoading(true)
       try {
+        const filters = isProducts(moduleKey)
+          ? Object.fromEntries(Object.entries(productFilters).filter(([, v]) => v))
+          : {}
         const res = await crudApi.list(moduleKey, {
           page,
           pageSize,
           q: debouncedQ,
+          ...filters,
         })
         if (signal?.aborted) return
         setRows(res.rows)
@@ -204,7 +238,7 @@ export function CrudPage({
         if (!signal?.aborted) setLoading(false)
       }
     },
-    [moduleKey, page, pageSize, debouncedQ]
+    [moduleKey, page, pageSize, debouncedQ, productFilters]
   )
 
   useEffect(() => {
@@ -217,7 +251,22 @@ export function CrudPage({
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedQ])
+  }, [debouncedQ, productFilters])
+
+  // Categorías para el filtro del listado de productos.
+  useEffect(() => {
+    if (!isProducts(moduleKey)) return
+    crudApi
+      .list("categories", { page: 1, pageSize: 200 })
+      .then((res) =>
+        setProductCategories(
+          res.rows
+            .filter((r) => r.isActive !== false)
+            .map((r) => ({ id: String(r.id), name: String(r.name ?? "") }))
+        )
+      )
+      .catch(() => setProductCategories([]))
+  }, [moduleKey])
 
   const isDebouncing = q !== debouncedQ
 
@@ -286,32 +335,45 @@ export function CrudPage({
 
   const columns = useMemo(() => {
     if (!config) return []
-    return config.columns.map<ColumnDef<Record<string, unknown>, unknown>>(
-      (col) => ({
+    const subtitleKeys = new Set(config.subtitleKeys ?? [])
+    const visible = config.columns.filter((col) => !subtitleKeys.has(col.key))
+    return visible.map<ColumnDef<Record<string, unknown>, unknown>>(
+      (col, index) => ({
         id: col.key,
-        header: col.label,
+        header: col.key === "isActive" || col.key === "active" ? "Activo" : col.label,
         accessorKey: col.key,
-        cell: ({ row }) =>
-          col.key === "isActive" || col.key === "active" ? (
-            <div
-              className="flex items-center gap-2"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <Switch
-                checked={Boolean(row.original[col.key])}
-                disabled={!canManage}
-                onCheckedChange={(checked) =>
-                  void toggleActive(row.original, checked)
-                }
-                aria-label={`${Boolean(row.original[col.key]) ? "Desactivar" : "Activar"} ${String(row.original.name ?? "registro")}`}
+        cell: ({ row }) => {
+          const r = row.original
+          // Primera columna: la entidad (imagen/inicial + nombre + línea de apoyo).
+          if (index === 0) {
+            const subtitle = (config.subtitleKeys ?? [])
+              .map((k) => r[k])
+              .filter((v) => v !== undefined && v !== null && v !== "")
+              .map(String)
+              .join(" · ")
+            return (
+              <EntityCell
+                title={String(r[col.key] ?? "—")}
+                subtitle={subtitle || undefined}
+                image={typeof r.imageUrl === "string" ? r.imageUrl : null}
+                muted={r.isActive === false}
               />
-              <span className="text-xs text-muted-foreground">
-                {Boolean(row.original[col.key]) ? "Activo" : "Inactivo"}
-              </span>
-            </div>
-          ) : (
-            renderCell(col, row.original)
-          ),
+            )
+          }
+          if (col.key === "isActive" || col.key === "active") {
+            return (
+              <div onClick={(event) => event.stopPropagation()}>
+                <Switch
+                  checked={Boolean(r[col.key])}
+                  disabled={!canManage}
+                  onCheckedChange={(checked) => void toggleActive(r, checked)}
+                  aria-label={`${Boolean(r[col.key]) ? "Desactivar" : "Activar"} ${String(r.name ?? r.fullName ?? "registro")}`}
+                />
+              </div>
+            )
+          }
+          return renderCell(col, r)
+        },
       })
     )
   }, [canManage, config, toggleActive])
@@ -321,140 +383,49 @@ export function CrudPage({
   >(
     () => [
       {
-        id: "image",
-        header: "",
-        cell: ({ row }) => {
-          const img = String(row.original.imageUrl ?? "")
-          return img ? (
-            <ThumbImage
-              src={img}
-              alt=""
-              className="size-10 rounded-md object-cover"
-            />
-          ) : (
-            // Sin foto real: anillo + icono con el color de la categoría, el
-            // mismo lenguaje visual que las imágenes placeholder generadas.
-            <span
-              className="flex size-10 items-center justify-center rounded-md border-2"
-              style={{
-                borderColor: categoryAccent(
-                  row.original.categoryName
-                    ? String(row.original.categoryName)
-                    : null
-                ),
-                color: categoryAccent(
-                  row.original.categoryName
-                    ? String(row.original.categoryName)
-                    : null
-                ),
-              }}
-            >
-              <Package className="size-4" />
-            </span>
-          )
-        },
-      },
-      { id: "name", header: "Nombre", accessorKey: "name" },
-      {
-        id: "categoryName",
-        header: "Categoría",
-        accessorKey: "categoryName",
-        cell: ({ row }) =>
-          row.original.categoryName ? (
-            <Badge variant="secondary">
-              {String(row.original.categoryName)}
-            </Badge>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
+        id: "name",
+        header: "Producto",
+        accessorKey: "name",
+        cell: ({ row }) => <ProductNameCell row={row.original} />,
       },
       {
         id: "productType",
         header: "Tipo",
         accessorKey: "productType",
-        cell: ({ row }) => {
-          const t = row.original.productType
-          const label =
-            t === "bulk"
-              ? "Granel"
-              : t === "custom"
-                ? "Personalizado"
-                : "Estándar"
-          return (
-            <Badge
-              variant={
-                t === "bulk"
-                  ? "outline"
-                  : t === "custom"
-                    ? "default"
-                    : "secondary"
-              }
-              className={
-                t === "custom"
-                  ? "bg-warning/15 text-warning-ink"
-                  : undefined
-              }
-            >
-              {label}
-            </Badge>
-          )
-        },
+        cell: ({ row }) => <ProductTypeBadge type={row.original.productType} />,
       },
       {
         id: "price",
-        header: "Precio",
-        cell: ({ row }) => {
-          const variants =
-            (row.original.variants as { price: number }[] | undefined) ?? []
-          const price = variants[0]?.price
-          return price !== undefined ? (
-            <span className="tabular-nums">{money(Number(price))}</span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          )
-        },
-      },
-      {
-        id: "variantsCount",
-        header: "Variantes",
+        header: () => <span className="ml-auto">Precio</span>,
         cell: ({ row }) => (
-          <span className="tabular-nums text-muted-foreground">
-            {(row.original.variants as unknown[] | undefined)?.length ?? 0}
-          </span>
+          <div className="text-right">
+            <ProductPriceCell row={row.original} />
+          </div>
         ),
       },
       {
         id: "isAvailable",
-        header: "Venta",
+        header: "En venta",
         accessorKey: "isAvailable",
         cell: ({ row }) => (
-          <div
-            className="flex items-center gap-2"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <div onClick={(event) => event.stopPropagation()}>
             <Switch
-              checked={row.original.isAvailable !== false}
+              checked={row.original.isAvailable !== false && row.original.isActive !== false}
               disabled={!canManage || row.original.isActive === false}
               onCheckedChange={(checked) =>
                 void toggleProductAvailability(row.original, checked)
               }
               aria-label={`${row.original.isAvailable !== false ? "Marcar agotado" : "Marcar disponible"} ${String(row.original.name ?? "producto")}`}
             />
-            <span className="text-xs text-muted-foreground">
-              {row.original.isAvailable !== false ? "Disponible" : "Ya no hay"}
-            </span>
           </div>
         ),
       },
       {
         id: "isActive",
-        header: "Estado",
+        header: "Activo",
         accessorKey: "isActive",
         cell: ({ row }) => (
-          <div
-            className="flex items-center gap-2"
-            onClick={(event) => event.stopPropagation()}
-          >
+          <div onClick={(event) => event.stopPropagation()}>
             <Switch
               checked={Boolean(row.original.isActive)}
               disabled={!canManage}
@@ -463,9 +434,6 @@ export function CrudPage({
               }
               aria-label={`${Boolean(row.original.isActive) ? "Desactivar" : "Activar"} ${String(row.original.name ?? "producto")}`}
             />
-            <span className="text-xs text-muted-foreground">
-              {row.original.isActive ? "Activo" : "Inactivo"}
-            </span>
           </div>
         ),
       },
@@ -647,6 +615,32 @@ export function CrudPage({
     ColumnDef<Record<string, unknown>, unknown>[]
   >(() => {
     if (!canManage) return []
+    if (isProducts(moduleKey)) {
+      return [
+        {
+          id: "actions",
+          header: "",
+          enableSorting: false,
+          enableHiding: false,
+          cell: ({ row }) => (
+            <ProductRowActions
+              row={row.original}
+              canDelete={canDelete}
+              deleting={deletingId === String(row.original.id)}
+              onEdit={() => openEdit(row.original)}
+              onVariants={() => setVariantsProduct(row.original)}
+              onInventory={() =>
+                router.push(
+                  `/admin/inventory?q=${encodeURIComponent(String(row.original.name ?? ""))}`
+                )
+              }
+              onRecipe={() => setRecipeProduct(row.original)}
+              onDelete={() => void handleDelete(row.original)}
+            />
+          ),
+        },
+      ]
+    }
     return [
       {
         id: "actions",
@@ -654,147 +648,64 @@ export function CrudPage({
         enableSorting: false,
         enableHiding: false,
         cell: ({ row }) => {
-          const isInactive = row.original.isActive === false
+          const r = row.original
+          const id = String(r.id)
+          const name = String(r.name ?? r.fullName ?? "registro")
+          if (r.isActive === false) {
+            return (
+              <RowActions
+                name={name}
+                busy={restoringId === id}
+                primary={{ label: "Restaurar", icon: RotateCcw, onSelect: () => void handleRestore(r), disabled: restoringId === id }}
+              />
+            )
+          }
           return (
-            <div
-              className="flex items-center justify-end gap-1"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {isInactive ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1.5 text-success-ink hover:text-success-ink"
-                  disabled={restoringId === String(row.original.id)}
-                  onClick={() => handleRestore(row.original)}
-                  title={
-                    restoringId === String(row.original.id)
-                      ? "Restaurando…"
-                      : "Restaurar"
-                  }
-                >
-                  {restoringId === String(row.original.id) ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <RotateCcw className="size-3.5" />
-                  )}
-                  Restaurar
-                </Button>
-              ) : (
-                <>
-                  {moduleKey === "customers" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => openActivity(row.original)}
-                    >
-                      <Eye className="size-4" />
-                    </Button>
-                  )}
-                  {moduleKey === "customers" && row.original.accessStatus === "pending" && (
-                    <TooltipButton
-                      label="Reenviar activación"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-primary"
-                      disabled={resendingId === String(row.original.id)}
-                      onClick={async () => {
-                        const id = String(row.original.id)
-                        setResendingId(id)
-                        try {
-                          await crudApi.resendActivation("customers", id)
-                          swalToast("Correo de activación reenviado")
-                        } catch (error) {
-                          swalError("No se pudo reenviar", error instanceof Error ? error.message : undefined)
-                        } finally {
-                          setResendingId(null)
-                        }
-                      }}
-                    >
-                      {resendingId === String(row.original.id) ? <Loader2 className="size-4 animate-spin" /> : <MailCheck className="size-4" />}
-                    </TooltipButton>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8"
-                    onClick={() => openEdit(row.original)}
-                    title="Editar"
-                    aria-label={`Editar ${String(row.original.name ?? "registro")}`}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                  {(row.original.productType === "standard" ||
-                    row.original.productType === "custom") && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      title="Variantes"
-                      data-guide="variants-btn"
-                      onClick={() => setVariantsProduct(row.original)}
-                    >
-                      <Layers className="size-4" />
-                    </Button>
-                  )}
-                  {moduleKey === "products" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      title="Consultar y llenar inventario"
-                      aria-label={`Consultar inventario de ${String(row.original.name ?? "producto")}`}
-                      onClick={() =>
-                        router.push(
-                          `/admin/inventory?q=${encodeURIComponent(String(row.original.name ?? ""))}`
-                        )
-                      }
-                    >
-                      <PackagePlus className="size-4" />
-                    </Button>
-                  )}
-                  {moduleKey === "products" &&
-                    row.original.productType === "custom" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      title="Receta e insumos"
-                      onClick={() => setRecipeProduct(row.original)}
-                    >
-                      <CookingPot className="size-4" />
-                    </Button>
-                  )}
-                  {canDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 text-destructive"
-                      disabled={deletingId === String(row.original.id)}
-                      onClick={() => handleDelete(row.original)}
-                      title={
-                        deletingId === String(row.original.id)
-                          ? "Eliminando…"
-                          : "Eliminar"
-                      }
-                    >
-                      {deletingId === String(row.original.id) ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-4" />
-                      )}
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
+            <RowActions
+              name={name}
+              busy={deletingId === id || resendingId === id}
+              primary={{ label: "Editar", icon: Pencil, onSelect: () => openEdit(r) }}
+              items={[
+                {
+                  label: "Ver actividad",
+                  icon: Eye,
+                  hidden: moduleKey !== "customers",
+                  onSelect: () => void openActivity(r),
+                },
+                {
+                  label: "Reenviar activación",
+                  icon: MailCheck,
+                  hint: "Envía otra vez el correo de acceso",
+                  hidden: !(moduleKey === "customers" && r.accessStatus === "pending"),
+                  disabled: resendingId === id,
+                  onSelect: async () => {
+                    setResendingId(id)
+                    try {
+                      await crudApi.resendActivation("customers", id)
+                      swalToast("Correo de activación reenviado")
+                    } catch (error) {
+                      swalError("No se pudo reenviar", error instanceof Error ? error.message : undefined)
+                    } finally {
+                      setResendingId(null)
+                    }
+                  },
+                },
+                {
+                  label: "Eliminar",
+                  icon: Trash2,
+                  destructive: true,
+                  hidden: !canDelete,
+                  disabled: deletingId === id,
+                  onSelect: () => void handleDelete(r),
+                },
+              ]}
+            />
           )
         },
       },
     ]
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, canDelete, moduleKey, restoringId, resendingId])
+  }, [canManage, canDelete, moduleKey, restoringId, resendingId, deletingId])
 
   const activeColumns = isProducts(moduleKey) ? productsColumns : columns
   const tableColumns = canManage
@@ -809,7 +720,12 @@ export function CrudPage({
     <>
       <PageHeader
         icon={icon}
-        title={meta.title}
+        title={
+          // Mismo nombre que el menú: en servicios e híbrido el catálogo incluye servicios.
+          isProducts(moduleKey) && (businessMode === "services" || businessMode === "hybrid")
+            ? "Productos y servicios"
+            : meta.title
+        }
         description={meta.description}
         actions={
           canManage && (
@@ -881,7 +797,8 @@ export function CrudPage({
                 </>
               )}
               <Button onClick={openCreate} data-guide="crud-new">
-                <Plus className="size-4" /> Nuevo
+                <Plus className="size-4" />
+                {isProducts(moduleKey) ? "Nuevo producto" : (config?.newLabel ?? "Nuevo")}
               </Button>
             </div>
           )
@@ -889,7 +806,14 @@ export function CrudPage({
       />
 
       <Card data-guide="crud-table">
-        <CardContent className="space-y-2 pt-5">
+        <CardContent className="space-y-3 pt-5">
+          {isProducts(moduleKey) && (
+            <ProductFilters
+              value={productFilters}
+              onChange={setProductFilters}
+              categories={productCategories}
+            />
+          )}
           <DataTable
             columns={tableColumns}
             data={rows}
@@ -897,27 +821,49 @@ export function CrudPage({
             showColumnVisibility={false}
             showPagination={false}
             loading={loading}
-            emptyMessage="Sin resultados"
+            emptyMessage={
+              isProducts(moduleKey) && (productFilters.status || productFilters.productType || productFilters.categoryId || q)
+                ? "Ningún producto coincide con los filtros"
+                : "Sin resultados"
+            }
             rowKey={(r) => String(r.id)}
+            onRowClick={canManage ? openEdit : undefined}
+            renderCard={
+              isProducts(moduleKey)
+                ? (row) => (
+                    <div className="space-y-2.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <ProductNameCell row={row} />
+                        <ProductPriceCell row={row} />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <ProductStatusPill row={row} />
+                        <ProductTypeBadge type={row.productType} />
+                      </div>
+                    </div>
+                  )
+                : undefined
+            }
             onRefresh={() => load()}
             refreshing={loading}
             toolbarSlot={
-              <div className="flex flex-1 items-center gap-2">
-                <div className="relative w-full max-w-56">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <div className="relative w-full sm:w-80 sm:flex-none">
                   <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-muted-foreground" />
                   <Input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder={searchPlaceholder}
-                    className="h-8 pl-9 md:pl-9 desk:pl-9 pr-8 md:pr-8 desk:pr-8"
+                    aria-label={searchPlaceholder}
+                    className="pl-9 md:pl-9 desk:pl-9 pr-8 md:pr-8 desk:pr-8"
                     data-guide="crud-search"
                   />
                   {(isDebouncing || loading) && (
                     <Loader2 className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 animate-spin text-muted-foreground" />
                   )}
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {total} reg.
+                <span className="shrink-0 text-xs text-muted-foreground tabular">
+                  {total} {total === 1 ? "registro" : "registros"}
                 </span>
               </div>
             }
@@ -959,8 +905,20 @@ export function CrudPage({
       <DialogComponent
         open={dialogOpen}
         onOpenChange={(o) => !o && setDialogOpen(false)}
-        title={editing ? "Editar" : "Nuevo"}
-        description={meta.title}
+        title={
+          isProducts(moduleKey)
+            ? editing ? "Editar producto" : "Nuevo producto"
+            : editing
+              ? `Editar ${config?.singular ?? "registro"}`
+              : (config?.newLabel ?? "Nuevo registro")
+        }
+        description={
+          isProducts(moduleKey)
+            ? editing ? String(editing.name ?? "") : "Completa los datos básicos; podrás agregar variantes después."
+            : editing
+              ? String(editing.name ?? editing.fullName ?? meta.title)
+              : meta.description
+        }
         className="max-w-[90vw]"
         footerClassName="gap-2"
         dataGuide={`${moduleKey}-dialog`}

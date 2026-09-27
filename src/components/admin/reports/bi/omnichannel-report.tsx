@@ -1,9 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Loader2, TrendingUp, Globe, Store, ArrowRightLeft } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { money } from "@/lib/pos/money"
+import { Globe, Store, TrendingUp } from "lucide-react"
+import { Insights, Kpi, KpiGrid, ReportPanel, ReportState, ReportTable, ShareBar, fmt, useBiReport } from "../report-kit"
 
 interface Row {
   locationName: string
@@ -13,86 +11,81 @@ interface Row {
   pctWeb: number
   aovPos: number
   aovPortal: number
+  posCount: number
+  portalCount: number
+}
+interface Data {
+  rows: Row[]
+  totals: { posSales: number; portalSales: number; total: number; pctWeb: number; posCount: number; portalCount: number; aovPos: number; aovPortal: number }
 }
 
-interface Props { from?: string; to?: string; locationId?: string }
-
-export function OmnichannelReport({ from, to, locationId }: Props) {
-  const [data, setData] = useState<{ rows: Row[]; totals: { posSales: number; portalSales: number; total: number; pctWeb: number } } | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    const params = new URLSearchParams({ report: "omnichannel" })
-    if (from) params.set("from", from)
-    if (to) params.set("to", to)
-    if (locationId) params.set("locationId", locationId)
-    fetch(`/api/reports/bi?${params}`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => { if (d.ok) setData(d) })
-      .catch((err) => console.error("[bi-omnichannel] Error cargando reporte:", err))
-      .finally(() => setLoading(false))
-  }, [from, to, locationId])
-
-  if (loading) return <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
-  if (!data) return <p className="py-10 text-center text-muted-foreground">Sin datos</p>
-
-  const maxTotal = Math.max(...data.rows.map((r) => r.total), 1)
+export function OmnichannelReport() {
+  const state = useBiReport<Data>("omnichannel")
 
   return (
-    <div className="space-y-4">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground"><TrendingUp className="size-3" /> Venta Total</div>
-            <p className="mt-1 text-xl font-black tabular-nums">{money(data.totals.total)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground"><Store className="size-3" /> POS Físico</div>
-            <p className="mt-1 text-xl font-black tabular-nums">{money(data.totals.posSales)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground"><Globe className="size-3" /> Portal Web</div>
-            <p className="mt-1 text-xl font-black tabular-nums">{money(data.totals.portalSales)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground"><ArrowRightLeft className="size-3" /> % Web</div>
-            <p className="mt-1 text-xl font-black tabular-nums">{data.totals.pctWeb}%</p>
-          </CardContent>
-        </Card>
-      </div>
+    <ReportState state={state}>
+      {({ rows, totals: t }) => {
+        const maxTotal = Math.max(...rows.map((r) => r.total), 1)
+        const aovGap = t.aovPos > 0 && t.aovPortal > 0 ? ((t.aovPortal - t.aovPos) / t.aovPos) * 100 : null
+        return (
+          <>
+            <KpiGrid>
+              <Kpi label="Venta total" value={fmt.money(t.total)} icon={TrendingUp} tone="primary" emphasis hint={`${fmt.int(t.posCount + t.portalCount)} tickets`} />
+              <Kpi label="Punto de venta" value={fmt.money(t.posSales)} icon={Store} hint={`Ticket ${fmt.money(t.aovPos)}`} />
+              <Kpi label="Portal en línea" value={fmt.money(t.portalSales)} icon={Globe} tone="info" hint={`Ticket ${fmt.money(t.aovPortal)}`} />
+              <Kpi label="Participación en línea" value={fmt.pct(t.pctWeb)} tone="info" hint={`${fmt.int(t.portalCount)} pedidos`} />
+            </KpiGrid>
 
-      {/* Chart + Table */}
-      <Card>
-        <CardHeader><CardTitle className="text-sm">Ventas por sucursal</CardTitle></CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {data.rows.map((r) => (
-              <div key={r.locationName} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium">{r.locationName}</span>
-                  <span className="tabular-nums">{money(r.total)} <span className="text-muted-foreground">({r.pctWeb}% web)</span></span>
-                </div>
-                <div className="flex h-5 overflow-hidden rounded-full bg-muted">
-                  <div className="bg-success transition-all" style={{ width: `${(r.posSales / maxTotal) * 100}%` }} />
-                  <div className="bg-info transition-all" style={{ width: `${(r.portalSales / maxTotal) * 100}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-success" /> POS</span>
-            <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-info" /> Portal</span>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            <ReportPanel title="Mezcla de canales" description="Proporción de la venta que entra por caja y por el portal.">
+              <ShareBar
+                segments={[
+                  { label: "Punto de venta", value: t.posSales, display: fmt.money(t.posSales) },
+                  { label: "Portal", value: t.portalSales, display: fmt.money(t.portalSales) },
+                ]}
+              />
+            </ReportPanel>
+
+            <Insights
+              items={[
+                aovGap != null && Math.abs(aovGap) >= 5 && (
+                  <>El ticket del portal es <strong>{fmt.pct(Math.abs(aovGap), 0)} {aovGap > 0 ? "mayor" : "menor"}</strong> que el de caja.</>
+                ),
+                rows.length > 1 && (
+                  <><strong>{rows[0].locationName}</strong> concentra {fmt.pct((rows[0].total / Math.max(t.total, 1)) * 100, 0)} de la venta.</>
+                ),
+                t.total > 0 && t.pctWeb < 5 && <>El portal aporta menos del 5 %: promoverlo en ticket y redes puede abrir un canal adicional.</>,
+              ]}
+            />
+
+            <ReportPanel title="Por sucursal" flush>
+              <ReportTable
+                rows={rows}
+                rowKey={(r) => r.locationName}
+                defaultSort={{ key: "total", dir: "desc" }}
+                columns={[
+                  { key: "locationName", label: "Sucursal", render: (r) => <span className="font-medium">{r.locationName}</span> },
+                  {
+                    key: "mix",
+                    label: "Mezcla",
+                    value: (r) => r.pctWeb,
+                    render: (r) => (
+                      <span className="flex h-2 w-28 overflow-hidden rounded-full bg-muted" title={`${fmt.pct(r.pctWeb)} en línea`}>
+                        <span className="bg-primary" style={{ width: `${(r.posSales / maxTotal) * 100}%` }} />
+                        <span className="bg-info" style={{ width: `${(r.portalSales / maxTotal) * 100}%` }} />
+                      </span>
+                    ),
+                    hideOnMobile: true,
+                  },
+                  { key: "posSales", label: "Caja", align: "right", render: (r) => fmt.money(r.posSales) },
+                  { key: "portalSales", label: "Portal", align: "right", render: (r) => fmt.money(r.portalSales) },
+                  { key: "pctWeb", label: "% en línea", align: "right", render: (r) => fmt.pct(r.pctWeb), hideOnMobile: true },
+                  { key: "total", label: "Total", align: "right", render: (r) => <strong>{fmt.money(r.total)}</strong> },
+                ]}
+              />
+            </ReportPanel>
+          </>
+        )
+      }}
+    </ReportState>
   )
 }

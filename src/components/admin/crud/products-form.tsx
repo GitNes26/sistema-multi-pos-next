@@ -760,33 +760,48 @@ export function ProductsForm({
         />
       </FieldRow>
 
-      <div className="flex flex-wrap gap-6 sm:col-span-2">
-        <SwitchField
-          id="prod-active"
-          label="Activo"
-          description="Visible en el menú"
-          checked={isActive}
-          onCheckedChange={setIsActive}
-        />
-        <SwitchField
-          id="prod-track"
-          label="Controlar inventario"
-          description="Seguimiento de existencias"
-          checked={trackInventory}
-          onCheckedChange={setTrackInventory}
-        />
-        <SwitchField
-          id="prod-available"
-          label="Disponible para venta"
-          description={
-            isAvailable
-              ? "Puede agregarse en POS y portal"
-              : "Se muestra como Ya no hay y no puede venderse"
-          }
-          checked={isAvailable}
-          onCheckedChange={setIsAvailable}
-          infoTooltip="Úsalo como pausa operativa cuando se termine un producto o preparación. No modifica el inventario contable."
-        />
+      {/* Visibilidad y control: una lista agrupada, mismas medidas para todos */}
+      <section className="space-y-2 sm:col-span-2" aria-labelledby="product-visibility-title">
+        <h3 id="product-visibility-title" className="text-sm font-semibold">Visibilidad y control</h3>
+        <div className="grid divide-y overflow-hidden rounded-xl border bg-card sm:grid-cols-2 sm:divide-y-0 [&>*]:px-3 [&>*]:py-1 sm:[&>*:nth-child(n+3)]:border-t sm:[&>*:nth-child(even)]:border-l">
+          <SwitchField
+            id="prod-active"
+            label="Activo"
+            description="Visible en el menú"
+            checked={isActive}
+            onCheckedChange={setIsActive}
+            border={false}
+          />
+          <SwitchField
+            id="prod-track"
+            label="Controlar inventario"
+            description="Seguimiento de existencias"
+            checked={trackInventory}
+            onCheckedChange={setTrackInventory}
+            border={false}
+          />
+          <SwitchField
+            id="prod-available"
+            label="Disponible para venta"
+            description={
+              isAvailable
+                ? "Puede agregarse en POS y portal"
+                : "Se muestra como «Ya no hay»"
+            }
+            checked={isAvailable}
+            onCheckedChange={setIsAvailable}
+            infoTooltip="Úsalo como pausa operativa cuando se termine un producto o preparación. No modifica el inventario contable."
+            border={false}
+          />
+          <SwitchField
+            id="prod-new"
+            label="Producto nuevo"
+            description="Genera publicación automática"
+            checked={isNew}
+            onCheckedChange={setIsNew}
+            border={false}
+          />
+        </div>
         {!isAvailable && (
           <InputField
             id="product-availabilityNote"
@@ -797,35 +812,7 @@ export function ProductsForm({
             placeholder="Ej. Se terminó el guiso de hoy"
           />
         )}
-        <SwitchField
-          id="prod-new"
-          label="Producto nuevo"
-          description="Genera publicación automática"
-          checked={isNew}
-          onCheckedChange={setIsNew}
-          className="w-full"
-        />
-        {/* <div className="flex items-center justify-between gap-2  border border-input rounded-md p-3">
-          <Switch
-            id="prod-active"
-            checked={isActive}
-            onCheckedChange={setIsActive}
-          />
-          <label htmlFor="prod-active" className="cursor-pointer text-sm">
-            Activo
-          </label>
-        </div> */}
-        {/* <div className="flex items-center justify-between gap-2  border border-input rounded-md p-3">
-          <Switch
-            id="prod-track"
-            checked={trackInventory}
-            onCheckedChange={setTrackInventory}
-          />
-          <label htmlFor="prod-track" className="cursor-pointer text-sm">
-            Controlar inventario
-          </label>
-        </div> */}
-      </div>
+      </section>
 
       {productType === "bulk" ? (
         <>

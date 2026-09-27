@@ -166,7 +166,7 @@ export async function GET(req: NextRequest) {
           ];
           data.rows.forEach((r) => ws.addRow([r.promotionName, r.discountGiven, r.revenueGenerated, r.ordersCount, r.roi]));
         } else if (type === "low_stock") {
-          const data = await getLowStockAlerts(guard.organizationId);
+          const data = await getLowStockAlerts(guard.organizationId, biFilters.locationId);
           ws.columns = [
             { header: "Producto", width: 25 }, { header: "Sucursal", width: 20 }, { header: "Stock", width: 10 },
             { header: "Mínimo", width: 10 }, { header: "Déficit", width: 10 },
@@ -208,7 +208,7 @@ export async function GET(req: NextRequest) {
           ];
           data.rows.forEach((r) => ws.addRow([r.fromLocation, r.toLocation, r.status, r.itemCount, r.totalQty, r.createdAt]));
         } else if (type === "fill_rate") {
-          const data = await getInventoryFillRate(guard.organizationId);
+          const data = await getInventoryFillRate(guard.organizationId, biFilters.locationId);
           ws.columns = [
             { header: "Sucursal", width: 22 }, { header: "Total", width: 10 },
             { header: "Con stock", width: 10 }, { header: "Sin stock", width: 10 },

@@ -23,17 +23,6 @@ export const PAYMENT_METHOD_LABELS: Record<$Enums.PaymentMethod, string> = {
 };
 
 // 6.20 – Semáforo de pedidos.
-export const ORDER_STATUS_COLORS: Record<$Enums.OrderStatus, string> = {
-  pending: "bg-warning",
-  confirmed: "bg-info",
-  preparing: "bg-orange-500",
-  ready: "bg-success",
-  in_transit: "bg-violet-500",
-  at_destination: "bg-purple-500",
-  delivered: "bg-blue-600",
-  cancelled: "bg-destructive",
-};
-
 export const ORDER_STATUS_LABELS: Record<$Enums.OrderStatus, string> = {
   pending: "Pendiente",
   confirmed: "Confirmado",

@@ -1,6 +1,6 @@
 import { Prisma, type $Enums } from "@prisma/client";
 import ExcelJS from "exceljs";
-import { prisma } from "@/lib/db";
+import { findOrCreate, prisma } from "@/lib/db";
 import { CrudError } from "@/lib/crud/types";
 import type { ImportResult } from "@/lib/excel/spreadsheet";
 import { persistNotification } from "@/lib/notifications/helpers";
@@ -137,13 +137,16 @@ export async function inventorySnapshot(
       ? {
           OR: [
             { product: { name: { contains: q } } },
+            { variant: { product: { name: { contains: q } } } },
             { variant: { name: { contains: q } } },
             { variant: { sku: { contains: q } } },
             { variant: { barcode: { contains: q } } },
           ],
         }
       : {}),
-    ...(productType === "standard" || productType === "bulk" || productType === "custom" ? { product: { productType } } : {}),
+    ...(productType === "standard" || productType === "bulk" || productType === "custom"
+      ? { AND: [{ OR: [{ product: { productType } }, { variant: { product: { productType } } }] }] }
+      : {}),
   };
 
   const rows = await prisma.inventory.findMany({
@@ -152,7 +155,18 @@ export async function inventorySnapshot(
       product: {
         select: { id: true, name: true, productType: true, trackInventory: true, imageUrl: true, variants: { select: { id: true } } },
       },
-      variant: { select: { id: true, name: true, sku: true, barcode: true } },
+      // Filas ligadas solo a la variante (sin productId): el producto se toma de ella.
+      variant: {
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          barcode: true,
+          product: {
+            select: { id: true, name: true, productType: true, trackInventory: true, imageUrl: true, variants: { select: { id: true } } },
+          },
+        },
+      },
       unit: { select: { name: true, abbreviation: true } },
     },
     orderBy: [{ product: { name: "asc" } }, { variant: { name: "asc" } }],
@@ -164,24 +178,25 @@ export async function inventorySnapshot(
   // en sus variantes, por lo que esa fila obsoleta no debe mostrarse.
   .filter((r) => !(r.product?.productType === "custom" && !r.variantId && r.product.variants.length > 0))
   .map((r) => {
+    const product = r.product ?? r.variant?.product ?? null;
     const quantity = num(r.quantity);
     const min = num(r.minThreshold);
     const status = quantity <= 0 ? "empty" : quantity <= min ? "low" : "ok";
     return {
       id: r.id,
-      productId: r.productId,
+      productId: r.productId ?? product?.id ?? null,
       variantId: r.variantId,
-      productName: r.product?.name ?? "—",
-      productImage: r.product?.imageUrl ?? null,
+      productName: product?.name ?? "—",
+      productImage: product?.imageUrl ?? null,
       variantName: r.variant?.name ?? null,
       sku: r.variant?.sku ?? null,
       barcode: r.variant?.barcode ?? null,
-      productType: (r.product?.productType ?? "standard") as "standard" | "bulk" | "custom",
+      productType: (product?.productType ?? "standard") as "standard" | "bulk" | "custom",
       quantity,
       unit: r.unit?.abbreviation ?? null,
       minThreshold: min,
       status,
-      trackInventory: r.product?.trackInventory ?? false,
+      trackInventory: product?.trackInventory ?? false,
     };
   });
 
@@ -227,7 +242,7 @@ export async function maybeNotifyLowStock(
     where: { id: inventoryId, organizationId },
     include: {
       product: { select: { name: true } },
-      variant: { select: { name: true } },
+      variant: { select: { name: true, product: { select: { name: true } } } },
       unit: { select: { name: true } },
     },
   });
@@ -326,7 +341,7 @@ async function movementById(organizationId: string, inventoryId: string, type: $
     orderBy: { createdAt: "desc" },
     include: {
       product: { select: { name: true } },
-      variant: { select: { name: true } },
+      variant: { select: { name: true, product: { select: { name: true } } } },
       unit: { select: { abbreviation: true } },
       employee: { select: { fullName: true } },
     },
@@ -337,7 +352,7 @@ async function movementById(organizationId: string, inventoryId: string, type: $
     type: m.type,
     quantity: num(m.quantity),
     reason: m.reason,
-    productName: m.product?.name ?? "—",
+    productName: (m.product ?? m.variant?.product)?.name ?? "—",
     variantName: m.variant?.name ?? null,
     unit: m.unit?.abbreviation ?? null,
     performer: m.employee?.fullName ?? performerName,
@@ -538,7 +553,7 @@ function movementWhere(
 
 const movementInclude = {
   product: { select: { name: true } },
-  variant: { select: { name: true } },
+  variant: { select: { name: true, product: { select: { name: true } } } },
   unit: { select: { abbreviation: true } },
   employee: { select: { fullName: true } },
 } as const;
@@ -550,7 +565,7 @@ function mapMovement(m: {
   reason: string | null;
   createdAt: Date;
   product: { name: string } | null;
-  variant: { name: string } | null;
+  variant: { name: string; product?: { name: string } | null } | null;
   unit: { abbreviation: string } | null;
   employee: { fullName: string } | null;
 }): MovementRow {
@@ -559,7 +574,7 @@ function mapMovement(m: {
     type: m.type,
     quantity: num(m.quantity),
     reason: m.reason,
-    productName: m.product?.name ?? "—",
+    productName: (m.product ?? m.variant?.product)?.name ?? "—",
     variantName: m.variant?.name ?? null,
     unit: m.unit?.abbreviation ?? null,
     performer: m.employee?.fullName ?? null,
@@ -618,7 +633,7 @@ export async function exportMovementsXlsx(organizationId: string, f: MovementFil
     ws.addRow([
       new Date(m.createdAt).toLocaleString("es-MX"),
       MOVEMENT_TYPE_LABELS[m.type] ?? m.type,
-      m.product?.name ?? "—",
+      (m.product ?? m.variant?.product)?.name ?? "—",
       m.variant?.name ?? "",
       num(m.quantity),
       m.unit?.abbreviation ?? "pza",
@@ -1205,23 +1220,25 @@ export async function importInventoryStock(
     }
 
     try {
-      let row = await prisma.inventory.findFirst({
-        where: { organizationId, locationId, locationType, variantId, productId },
-      });
-      if (!row) {
-        row = await prisma.inventory.create({
-          data: {
-            organizationId,
-            locationId,
-            locationType,
-            variantId,
-            productId,
-            quantity: 0,
-            unitId: null,
-            minThreshold: 0,
-          },
-        });
-      }
+      const row = await findOrCreate(
+        () =>
+          prisma.inventory.findFirst({
+            where: { organizationId, locationId, locationType, variantId, productId },
+          }),
+        () =>
+          prisma.inventory.create({
+            data: {
+              organizationId,
+              locationId,
+              locationType,
+              variantId,
+              productId,
+              quantity: 0,
+              unitId: null,
+              minThreshold: 0,
+            },
+          })
+      );
 
       const current = num(row.quantity);
       const delta = Math.round((quantity - current) * 1000) / 1000;

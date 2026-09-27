@@ -1,113 +1,64 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tag } from "lucide-react"
+import { Receipt, Tag, TrendingUp } from "lucide-react"
+import { StatusPill } from "@/components/base/status-pill"
+import { Insights, Kpi, KpiGrid, ReportEmpty, ReportPanel, ReportState, ReportTable, fmt, useBiReport } from "../report-kit"
 
-interface Props { from: string; to: string }
+interface Row { promotionId: string; promotionName: string; discountGiven: number; ordersCount: number; revenueGenerated: number; avgTicket: number; roi: number }
 
-interface Row {
-  promotionId: string
-  promotionName: string
-  discountGiven: number
-  ordersCount: number
-  revenueGenerated: number
-  roi: number
-}
+// El ROI compara el ingreso de las ventas con promoción contra lo que costó
+// el descuento. No mide ventas incrementales (lo que se habría vendido igual).
+const roiTone = (roi: number): "success" | "primary" | "warning" | "danger" => roi >= 500 ? "success" : roi >= 100 ? "primary" : roi >= 0 ? "warning" : "danger"
 
-const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
-
-export function PromosRoiReport({ from, to }: Props) {
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    const params = new URLSearchParams({ report: "promos_roi" })
-    if (from) params.set("from", from)
-    if (to) params.set("to", to)
-    fetch(`/api/reports/bi?${params}`)
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows ?? []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [from, to])
-
-  const totalDiscount = rows.reduce((a, r) => a + r.discountGiven, 0)
-  const totalRevenue = rows.reduce((a, r) => a + r.revenueGenerated, 0)
-
-  if (loading) return <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+export function PromosRoiReport() {
+  const state = useBiReport<{ rows: Row[] }>("promos_roi")
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{rows.length}</div>
-              <div className="text-xs text-muted-foreground">Promociones activas</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-destructive">{money(totalDiscount)}</div>
-              <div className="text-xs text-muted-foreground">Descuento total</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-success-ink">{money(totalRevenue)}</div>
-              <div className="text-xs text-muted-foreground">Ingresos generados</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <ReportState state={state}>
+      {({ rows }) => {
+        if (rows.length === 0) return <ReportEmpty icon={Tag} title="Ninguna promoción se usó en este periodo" hint="Cuando una venta aplique una promoción, aparecerá aquí." />
+        const discount = rows.reduce((s, r) => s + r.discountGiven, 0)
+        const revenue = rows.reduce((s, r) => s + r.revenueGenerated, 0)
+        const uses = rows.reduce((s, r) => s + r.ordersCount, 0)
+        const best = [...rows].sort((a, b) => b.roi - a.roi)[0]
+        const worst = [...rows].sort((a, b) => a.roi - b.roi)[0]
+        return (
+          <>
+            <KpiGrid>
+              <Kpi label="Ventas con promoción" value={fmt.money(revenue)} icon={TrendingUp} tone="primary" emphasis />
+              <Kpi label="Descuento otorgado" value={fmt.money(discount)} icon={Tag} tone="warning" hint={`${fmt.pct((discount / Math.max(revenue, 1)) * 100)} de esas ventas`} />
+              <Kpi label="Usos" value={fmt.int(uses)} icon={Receipt} hint={`${rows.length} promociones`} />
+              <Kpi label="Retorno global" value={fmt.pct(discount > 0 ? ((revenue - discount) / discount) * 100 : 0, 0)} tone="success" />
+            </KpiGrid>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Tag className="size-4" /> ROI por Promoción
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4">Promoción</th>
-                  <th className="pb-2 pr-4 text-right">Descuento</th>
-                  <th className="pb-2 pr-4 text-right">Ingresos</th>
-                  <th className="pb-2 pr-4 text-right">Pedidos</th>
-                  <th className="pb-2 text-right">ROI</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.promotionId} className="border-b last:border-0">
-                    <td className="py-2 pr-4 font-medium">{r.promotionName}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-destructive">{money(r.discountGiven)}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-success-ink">{money(r.revenueGenerated)}</td>
-                    <td className="py-2 pr-4 text-right">{r.ordersCount}</td>
-                    <td className="py-2 text-right">
-                      <Badge variant={r.roi >= 100 ? "default" : "secondary"}>
-                        {r.roi.toFixed(0)}%
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-                {rows.length === 0 && (
-                  <tr><td colSpan={5} className="py-4 text-center text-muted-foreground">Sin promociones</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            <Insights
+              items={[
+                <><strong>{best.promotionName}</strong> tiene el mejor retorno: {fmt.pct(best.roi, 0)} ({fmt.money(best.revenueGenerated)} vendidos por {fmt.money(best.discountGiven)} de descuento).</>,
+                rows.length > 1 && worst.promotionId !== best.promotionId && worst.roi < 100 && (
+                  <><strong>{worst.promotionName}</strong> rinde poco ({fmt.pct(worst.roi, 0)}): evalúa ajustar el beneficio o las condiciones.</>
+                ),
+                <span key="nota" className="text-muted-foreground">El retorno compara el ingreso de las ventas con promoción contra el descuento; no distingue ventas que se habrían hecho igual.</span>,
+              ]}
+            />
+
+            <ReportPanel title="Rendimiento por promoción" flush>
+              <ReportTable
+                rows={rows}
+                rowKey={(r) => r.promotionId}
+                defaultSort={{ key: "revenueGenerated", dir: "desc" }}
+                columns={[
+                  { key: "promotionName", label: "Promoción", render: (r) => <span className="font-medium">{r.promotionName}</span> },
+                  { key: "ordersCount", label: "Usos", align: "right", render: (r) => fmt.int(r.ordersCount) },
+                  { key: "discountGiven", label: "Descuento", align: "right", render: (r) => fmt.money(r.discountGiven) },
+                  { key: "avgTicket", label: "Ticket promedio", align: "right", render: (r) => fmt.money(r.avgTicket), hideOnMobile: true },
+                  { key: "revenueGenerated", label: "Ventas", align: "right", bar: true, render: (r) => <strong>{fmt.money(r.revenueGenerated)}</strong> },
+                  { key: "roi", label: "Retorno", align: "right", render: (r) => <StatusPill tone={roiTone(r.roi)}>{fmt.pct(r.roi, 0)}</StatusPill> },
+                ]}
+              />
+            </ReportPanel>
+          </>
+        )
+      }}
+    </ReportState>
   )
 }

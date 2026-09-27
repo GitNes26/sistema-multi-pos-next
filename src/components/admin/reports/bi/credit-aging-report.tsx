@@ -1,116 +1,86 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { AlertTriangle } from "lucide-react"
+import Link from "next/link"
+import { ArrowRight, Landmark, TriangleAlert, Users, Wallet } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { StatusPill, type StatusTone } from "@/components/base/status-pill"
+import { BarList, Kpi, KpiGrid, ReportEmpty, ReportPanel, ReportState, ReportTable, fmt, useBiReport } from "../report-kit"
 
-interface Row {
-  customerId: string
-  customerName: string
-  balance: number
-  creditLimit: number | null
-  oldestDebtDate: string | null
-  daysOverdue: number
-  agingBucket: string
+interface Row { customerId: string; customerName: string; balance: number; creditLimit: number | null; usagePct: number | null; oldestDebtDate: string | null; daysOverdue: number; agingBucket: string }
+interface Data { rows: Row[]; buckets: { label: string; count: number; balance: number }[]; totals: { balance: number; overdue: number; overduePct: number; customers: number } }
+
+const BUCKET_TONE: Record<string, StatusTone> = {
+  "Al corriente": "success",
+  "1–30 días": "warning",
+  "31–60 días": "warning",
+  "61–90 días": "danger",
+  "Más de 90 días": "danger",
 }
+const barTone = (t: StatusTone) => (t === "danger" ? "danger" : t === "warning" ? "warning" : "success") as "danger" | "warning" | "success"
 
-const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
-
-const bucketColor = (bucket: string) => {
-  if (bucket === "Current") return "bg-success/10 text-success-ink"
-  if (bucket.includes("30")) return "bg-warning/10 text-warning-ink"
-  if (bucket.includes("60")) return "bg-orange-100 text-orange-800"
-  return "bg-destructive/10 text-destructive"
-}
-
-export function CreditAgingReport({ from: _from, to: _to }: { from: string; to: string }) {
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    fetch("/api/reports/bi?report=credit_aging")
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows ?? []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [])
-
-  const totalDebt = rows.reduce((a, r) => a + r.balance, 0)
-  const overLimit = rows.filter((r) => r.creditLimit != null && r.balance > r.creditLimit)
-
-  if (loading) return <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+export function CreditAgingReport() {
+  const state = useBiReport<Data>("credit_aging")
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-destructive">{money(totalDebt)}</div>
-              <div className="text-xs text-muted-foreground">Cartera total</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{rows.length}</div>
-              <div className="text-xs text-muted-foreground">Clientes con deuda</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{overLimit.length}</div>
-              <div className="text-xs text-muted-foreground">Sobre límite</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <ReportState state={state}>
+      {({ rows, buckets, totals: t }) => {
+        if (rows.length === 0) return <ReportEmpty icon={Landmark} title="No hay saldos pendientes" hint="Ningún cliente tiene deuda a crédito." />
+        return (
+          <>
+            <KpiGrid>
+              <Kpi label="Cartera total" value={fmt.money(t.balance)} icon={Wallet} tone="primary" emphasis />
+              <Kpi label="Vencida" value={fmt.money(t.overdue)} icon={TriangleAlert} tone={t.overdue > 0 ? "danger" : "success"} hint={fmt.pct(t.overduePct)} />
+              <Kpi label="Clientes con saldo" value={fmt.int(t.customers)} icon={Users} />
+              <Kpi label="Mayor antigüedad" value={`${fmt.int(rows[0].daysOverdue)} días`} hint={rows[0].customerName} tone={rows[0].daysOverdue > 60 ? "danger" : "warning"} />
+            </KpiGrid>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <AlertTriangle className="size-4" /> Antigüedad de Saldos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4">Cliente</th>
-                  <th className="pb-2 pr-4 text-right">Saldo</th>
-                  <th className="pb-2 pr-4 text-right">Límite</th>
-                  <th className="pb-2 pr-4 text-right">Días</th>
-                  <th className="pb-2 text-right">Segmento</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.customerId} className="border-b last:border-0">
-                    <td className="py-2 pr-4 font-medium">{r.customerName}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-destructive">{money(r.balance)}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-muted-foreground">{r.creditLimit != null ? money(r.creditLimit) : "-"}</td>
-                    <td className="py-2 pr-4 text-right">{r.daysOverdue}</td>
-                    <td className="py-2 text-right">
-                      <Badge variant="secondary" className={bucketColor(r.agingBucket)}>
-                        {r.agingBucket}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-                {rows.length === 0 && (
-                  <tr><td colSpan={5} className="py-4 text-center text-muted-foreground">Sin deuda pendiente</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            <ReportPanel title="Antigüedad de la cartera" description="Saldo agrupado por días de vencimiento de la deuda más antigua pendiente.">
+              <BarList
+                items={buckets.map((b) => ({
+                  label: b.label,
+                  value: b.balance,
+                  display: fmt.money(b.balance),
+                  secondary: `${fmt.int(b.count)} ${b.count === 1 ? "cliente" : "clientes"}`,
+                  tone: barTone(BUCKET_TONE[b.label] ?? "neutral"),
+                }))}
+              />
+            </ReportPanel>
+
+            <ReportPanel
+              title="Clientes con saldo"
+              flush
+              actions={
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/admin/credits">
+                    Gestionar cobranza <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              }
+            >
+              <ReportTable
+                rows={rows}
+                rowKey={(r) => r.customerId}
+                limit={20}
+                defaultSort={{ key: "daysOverdue", dir: "desc" }}
+                columns={[
+                  { key: "customerName", label: "Cliente", render: (r) => <span className="font-medium">{r.customerName}</span> },
+                  { key: "oldestDebtDate", label: "Deuda desde", render: (r) => (r.oldestDebtDate ? fmt.day(r.oldestDebtDate) : "—"), hideOnMobile: true },
+                  {
+                    key: "usagePct",
+                    label: "Uso del límite",
+                    align: "right",
+                    value: (r) => r.usagePct ?? -1,
+                    render: (r) => (r.usagePct == null ? <span className="text-muted-foreground">Sin límite</span> : <span className={r.usagePct >= 90 ? "font-semibold text-destructive" : undefined}>{fmt.pct(r.usagePct, 0)}</span>),
+                    hideOnMobile: true,
+                  },
+                  { key: "daysOverdue", label: "Antigüedad", render: (r) => <StatusPill tone={BUCKET_TONE[r.agingBucket] ?? "neutral"}>{r.agingBucket}</StatusPill> },
+                  { key: "balance", label: "Saldo", align: "right", bar: true, render: (r) => <strong>{fmt.money(r.balance)}</strong> },
+                ]}
+              />
+            </ReportPanel>
+          </>
+        )
+      }}
+    </ReportState>
   )
 }

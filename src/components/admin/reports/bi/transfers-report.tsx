@@ -1,91 +1,69 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ArrowRightLeft } from "lucide-react"
+import { ArrowRight, ArrowRightLeft, PackageCheck, Truck } from "lucide-react"
+import { StatusPill, type StatusTone } from "@/components/base/status-pill"
+import { Kpi, KpiGrid, ReportEmpty, ReportPanel, ReportState, ReportTable, fmt, useBiReport } from "../report-kit"
 
-interface Props { from: string; to: string }
+interface Row { id: string; fromLocation: string; toLocation: string; status: string; itemCount: number; totalQty: number; createdAt: string }
+interface Data { rows: Row[]; totals: { total: number; received: number; inTransit: number; pending: number; cancelled: number; units: number } }
 
-interface Row {
-  id: string
-  fromLocation: string
-  toLocation: string
-  status: string
-  itemCount: number
-  totalQty: number
-  createdAt: string
+const STATUS: Record<string, { label: string; tone: StatusTone }> = {
+  pending: { label: "Pendiente", tone: "warning" },
+  in_transit: { label: "En tránsito", tone: "info" },
+  received: { label: "Recibida", tone: "success" },
+  cancelled: { label: "Cancelada", tone: "neutral" },
 }
 
-const statusColor = (s: string) => {
-  if (s === "completed") return "bg-success/10 text-success-ink"
-  if (s === "in_transit") return "bg-info/10 text-info-ink"
-  if (s === "cancelled") return "bg-destructive/10 text-destructive"
-  return "bg-muted text-foreground"
-}
-
-export function TransfersReport({ from, to }: Props) {
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    const params = new URLSearchParams({ report: "transfers" })
-    if (from) params.set("from", from)
-    if (to) params.set("to", to)
-    fetch(`/api/reports/bi?${params}`)
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows ?? []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [from, to])
-
-  if (loading) return <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+export function TransfersReport() {
+  const state = useBiReport<Data>("transfers")
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <ArrowRightLeft className="size-4" /> Transferencias CEDIS ↔ Sucursales
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4">Origen</th>
-                  <th className="pb-2 pr-4">Destino</th>
-                  <th className="pb-2 pr-4">Estado</th>
-                  <th className="pb-2 pr-4 text-right">Items</th>
-                  <th className="pb-2 pr-4 text-right">Cantidad</th>
-                  <th className="pb-2 text-right">Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id} className="border-b last:border-0">
-                    <td className="py-2 pr-4 font-medium">{r.fromLocation}</td>
-                    <td className="py-2 pr-4">{r.toLocation}</td>
-                    <td className="py-2 pr-4">
-                      <Badge variant="secondary" className={statusColor(r.status)}>
-                        {r.status}
-                      </Badge>
-                    </td>
-                    <td className="py-2 pr-4 text-right">{r.itemCount}</td>
-                    <td className="py-2 pr-4 text-right font-mono">{r.totalQty}</td>
-                    <td className="py-2 text-right text-muted-foreground">{r.createdAt}</td>
-                  </tr>
-                ))}
-                {rows.length === 0 && (
-                  <tr><td colSpan={6} className="py-4 text-center text-muted-foreground">Sin transferencias</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ReportState state={state}>
+      {({ rows, totals: t }) => (
+        <>
+          <KpiGrid>
+            <Kpi label="Transferencias" value={fmt.int(t.total)} icon={ArrowRightLeft} tone="primary" emphasis hint={`${fmt.num(t.units, 0)} unidades`} />
+            <Kpi label="Recibidas" value={fmt.int(t.received)} icon={PackageCheck} tone="success" hint={t.total ? fmt.pct((t.received / t.total) * 100, 0) : undefined} />
+            <Kpi label="En tránsito" value={fmt.int(t.inTransit)} icon={Truck} tone="info" />
+            <Kpi label="Pendientes" value={fmt.int(t.pending)} tone={t.pending > 0 ? "warning" : "default"} />
+          </KpiGrid>
+
+          <ReportPanel title="Movimientos entre ubicaciones" flush>
+            {rows.length === 0 ? (
+              <ReportEmpty icon={ArrowRightLeft} title="Sin transferencias en el periodo" />
+            ) : (
+              <ReportTable
+                rows={rows}
+                rowKey={(r) => r.id}
+                limit={20}
+                columns={[
+                  { key: "createdAt", label: "Fecha", render: (r) => fmt.day(r.createdAt) },
+                  {
+                    key: "route",
+                    label: "Ruta",
+                    value: (r) => `${r.fromLocation} ${r.toLocation}`,
+                    render: (r) => (
+                      <span className="flex items-center gap-1.5 font-medium">
+                        {r.fromLocation} <ArrowRight className="size-3.5 text-muted-foreground" /> {r.toLocation}
+                      </span>
+                    ),
+                  },
+                  { key: "itemCount", label: "Partidas", align: "right", render: (r) => fmt.int(r.itemCount), hideOnMobile: true },
+                  { key: "totalQty", label: "Unidades", align: "right", bar: true, render: (r) => <strong>{fmt.num(r.totalQty)}</strong> },
+                  {
+                    key: "status",
+                    label: "Estado",
+                    render: (r) => {
+                      const s = STATUS[r.status] ?? { label: r.status, tone: "neutral" as const }
+                      return <StatusPill tone={s.tone}>{s.label}</StatusPill>
+                    },
+                  },
+                ]}
+              />
+            )}
+          </ReportPanel>
+        </>
+      )}
+    </ReportState>
   )
 }

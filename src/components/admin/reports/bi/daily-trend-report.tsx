@@ -1,71 +1,89 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp } from "lucide-react"
+import { CalendarDays, TrendingUp } from "lucide-react"
+import { Insights, Kpi, KpiGrid, ReportPanel, ReportState, ReportTable, SeriesChart, fmt, useBiReport } from "../report-kit"
 
-interface Props { from: string; to: string }
+interface Row { date: string; totalSales: number; orderCount: number; avgTicket: number }
 
-interface Row {
-  date: string
-  totalSales: number
-  orderCount: number
-  avgTicket: number
-}
+const DOW = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"]
 
-const money = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
-
-export function DailyTrendReport({ from, to }: Props) {
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    const params = new URLSearchParams({ report: "daily_trend" })
-    if (from) params.set("from", from)
-    if (to) params.set("to", to)
-    fetch(`/api/reports/bi?${params}`)
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows ?? []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [from, to])
-
-  const maxSales = Math.max(...rows.map((r) => r.totalSales), 1)
-
-  if (loading) return <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+export function DailyTrendReport() {
+  const state = useBiReport<{ rows: Row[] }>("daily_trend")
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <TrendingUp className="size-4" /> Tendencia de Ventas Diarias
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1">
-            {rows.map((r) => (
-              <div key={r.date} className="flex items-center gap-3">
-                <span className="w-24 text-xs text-muted-foreground">{r.date.slice(5)}</span>
-                <div className="flex-1">
-                  <div className="h-4 overflow-hidden rounded bg-primary/20">
-                    <div
-                      className="h-full rounded bg-primary"
-                      style={{ width: `${(r.totalSales / maxSales) * 100}%` }}
-                    />
-                  </div>
-                </div>
-                <span className="w-20 text-right text-xs font-mono">{money(r.totalSales)}</span>
-                <span className="w-12 text-right text-xs text-muted-foreground">{r.orderCount}</span>
-              </div>
-            ))}
-            {rows.length === 0 && (
-              <div className="py-4 text-center text-muted-foreground">Sin datos</div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ReportState state={state}>
+      {({ rows }) => {
+        const withSales = rows.filter((r) => r.orderCount > 0)
+        const total = rows.reduce((s, r) => s + r.totalSales, 0)
+        const tickets = rows.reduce((s, r) => s + r.orderCount, 0)
+        const best = withSales.reduce<Row | null>((b, r) => (!b || r.totalSales > b.totalSales ? r : b), null)
+        const avgDay = rows.length ? total / rows.length : 0
+
+        // Promedio por día de la semana para detectar el día fuerte y el débil.
+        const byDow = Array.from({ length: 7 }, () => ({ total: 0, days: 0 }))
+        for (const r of rows) {
+          const d = new Date(`${r.date}T12:00:00`).getDay()
+          byDow[d].total += r.totalSales
+          byDow[d].days += 1
+        }
+        const dowAvg = byDow.map((d, i) => ({ i, avg: d.days ? d.total / d.days : 0 })).filter((d) => byDow[d.i].days > 0)
+        const strong = dowAvg.reduce((a, b) => (b.avg > a.avg ? b : a), dowAvg[0])
+        const weak = dowAvg.reduce((a, b) => (b.avg < a.avg ? b : a), dowAvg[0])
+
+        const half = Math.floor(rows.length / 2)
+        const first = rows.slice(0, half).reduce((s, r) => s + r.totalSales, 0)
+        const second = rows.slice(half).reduce((s, r) => s + r.totalSales, 0)
+        const trend = first > 0 ? ((second - first) / first) * 100 : null
+
+        return (
+          <>
+            <KpiGrid>
+              <Kpi label="Venta del periodo" value={fmt.money(total)} icon={TrendingUp} tone="primary" emphasis />
+              <Kpi label="Promedio diario" value={fmt.money(avgDay)} hint={`${rows.length} días`} />
+              <Kpi label="Días con venta" value={`${withSales.length} / ${rows.length}`} icon={CalendarDays} />
+              <Kpi label="Mejor día" value={best ? fmt.money(best.totalSales) : "—"} hint={best ? fmt.day(best.date) : undefined} tone="success" />
+            </KpiGrid>
+
+            <ReportPanel title="Ventas por día" description="Importe vendido y número de tickets, incluidos los días sin venta.">
+              <SeriesChart
+                data={rows}
+                xKey="date"
+                xFormat={fmt.day}
+                series={[
+                  { key: "totalSales", label: "Ventas" },
+                  { key: "orderCount", label: "Tickets", kind: "line", color: "var(--info)", right: true },
+                ]}
+              />
+            </ReportPanel>
+
+            <Insights
+              items={[
+                trend != null && Math.abs(trend) >= 1 && (
+                  <>La segunda mitad del periodo vendió <strong>{fmt.pct(Math.abs(trend), 0)} {trend > 0 ? "más" : "menos"}</strong> que la primera.</>
+                ),
+                strong && weak && strong.i !== weak.i && (
+                  <>El <strong>{DOW[strong.i]}</strong> es el día más fuerte ({fmt.money(strong.avg)} en promedio) y el <strong>{DOW[weak.i]}</strong> el más débil ({fmt.money(weak.avg)}).</>
+                ),
+                tickets > 0 && <>Ticket promedio del periodo: <strong>{fmt.money(total / tickets)}</strong>.</>,
+              ]}
+            />
+
+            <ReportPanel title="Detalle diario" flush>
+              <ReportTable
+                rows={[...rows].reverse()}
+                rowKey={(r) => r.date}
+                limit={14}
+                columns={[
+                  { key: "date", label: "Día", render: (r) => <span className="font-medium capitalize">{fmt.dayLong(r.date)}</span> },
+                  { key: "orderCount", label: "Tickets", align: "right", render: (r) => fmt.int(r.orderCount) },
+                  { key: "avgTicket", label: "Ticket promedio", align: "right", render: (r) => fmt.money(r.avgTicket), hideOnMobile: true },
+                  { key: "totalSales", label: "Ventas", align: "right", bar: true, render: (r) => <strong>{fmt.money(r.totalSales)}</strong> },
+                ]}
+              />
+            </ReportPanel>
+          </>
+        )
+      }}
+    </ReportState>
   )
 }

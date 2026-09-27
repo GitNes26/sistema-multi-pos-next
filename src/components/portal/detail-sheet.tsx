@@ -2,8 +2,10 @@
 
 import { Calendar, Sparkles, Info } from "lucide-react"
 import { BottomSheet } from "./bottom-sheet"
-import { Badge } from "@/components/ui/badge"
+import { StatusPill } from "@/components/base/status-pill"
+import { PublicationTypePill } from "@/components/shared/status-pills"
 import { money } from "@/lib/pos/money"
+import { PublicationFlyer } from "@/components/publications/publication-flyer"
 
 export interface DetailPublication {
   kind: "publication"
@@ -13,6 +15,9 @@ export interface DetailPublication {
   imageUrl: string | null
   type: string
   publishedAt: string | null
+  designId?: string | null
+  primaryColor?: string | null
+  secondaryColor?: string | null
 }
 
 export interface DetailPromotion {
@@ -34,12 +39,6 @@ const PUB_TYPE_LABELS: Record<string, string> = {
   product_new: "Nuevo",
   promotion: "Promoción",
   notice: "Aviso",
-}
-
-const PUB_TYPE_COLORS: Record<string, string> = {
-  product_new: "bg-success text-success-foreground",
-  promotion: "bg-warning text-warning-foreground",
-  notice: "bg-info text-info-foreground",
 }
 
 const BENEFIT_LABELS: Record<string, string> = {
@@ -74,9 +73,9 @@ function PromosDetail({ item }: { item: DetailPromotion }) {
 
       <div>
         <h3 className="text-lg font-bold">{item.name}</h3>
-        <Badge className="mt-1 bg-warning text-warning-foreground">
+        <StatusPill tone="warning" className="mt-1">
           {BENEFIT_LABELS[item.benefit] ?? item.benefit}
-        </Badge>
+        </StatusPill>
       </div>
 
       {item.descriptionFinal && (
@@ -137,21 +136,21 @@ function PromosDetail({ item }: { item: DetailPromotion }) {
 function PublicationDetail({ item }: { item: DetailPublication }) {
   return (
     <div className="space-y-4">
-      {item.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={item.imageUrl}
-          alt={item.title}
-          className="h-48 w-full rounded-xl object-cover"
-        />
-      )}
+      {/* El mismo flyer que se ve en el carrusel y en el panel */}
+      <PublicationFlyer
+        designId={item.designId}
+        title={item.title}
+        content={item.content}
+        imageUrl={item.imageUrl}
+        primaryColor={item.primaryColor}
+        secondaryColor={item.secondaryColor}
+        className="shadow-e2"
+      />
 
       <div>
         <h3 className="text-lg font-bold">{item.title}</h3>
         <div className="mt-1 flex items-center gap-2">
-          <Badge className={PUB_TYPE_COLORS[item.type] ?? "bg-secondary"}>
-            {PUB_TYPE_LABELS[item.type] ?? item.type}
-          </Badge>
+          <PublicationTypePill status={item.type} />
           {item.publishedAt && (
             <span className="text-xs text-muted-foreground">
               {formatDate(item.publishedAt)}

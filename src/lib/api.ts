@@ -611,7 +611,15 @@ export const reportsApi = {
   dashboard: () =>
     request<{ ok: boolean; data: DashboardData }>(`/api/reports?type=dashboard`).then((r) => r.data),
   sales: (filters?: ReportFilters) =>
-    request<{ ok: boolean; rows: SalesReportRow[]; count: number; totals: { subtotal: number; discount: number; tax: number; total: number; refundsTotal: number; netTotal: number; pointsEarned: number } }>(
+    request<{
+      ok: boolean;
+      rows: SalesReportRow[];
+      count: number;
+      totals: { subtotal: number; discount: number; tax: number; total: number; refundsTotal: number; netTotal: number; pointsEarned: number; count: number; avgTicket: number };
+      byDay: { day: string; total: number; count: number }[];
+      byHour: { hour: number; total: number; count: number }[];
+      byPayment: { method: string; amount: number; count: number }[];
+    }>(
       `/api/reports?${reportParams("sales", filters)}`
     ),
   cash: (filters?: ReportFilters) =>
@@ -619,11 +627,11 @@ export const reportsApi = {
       `/api/reports?${reportParams("cash", filters)}`
     ),
   orders: (filters?: ReportFilters) =>
-    request<{ ok: boolean; rows: OrdersReportRow[]; count: number; totals: { total: number; delivery: number; pickup: number }; byStatus: { status: string; count: number }[] }>(
+    request<{ ok: boolean; rows: OrdersReportRow[]; count: number; totals: { total: number; delivery: number; pickup: number; cancelled: number; delivered: number }; byStatus: { status: string; count: number }[] }>(
       `/api/reports?${reportParams("orders", filters)}`
     ),
   customers: (filters?: ReportFilters) =>
-    request<{ ok: boolean; rows: CustomersReportRow[]; count: number }>(
+    request<{ ok: boolean; rows: CustomersReportRow[]; count: number; totals: { customers: number; totalSpent: number; purchases: number; avgSpent: number; repeatCustomers: number } }>(
       `/api/reports?${reportParams("customers", filters)}`
     ),
   credit: (filters?: ReportFilters) =>

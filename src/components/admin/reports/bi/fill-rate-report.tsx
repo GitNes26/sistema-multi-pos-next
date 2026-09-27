@@ -1,68 +1,51 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Package } from "lucide-react"
+import { PackageCheck, PackageX, Target } from "lucide-react"
+import { BarList, Insights, Kpi, KpiGrid, ReportEmpty, ReportPanel, ReportState, fmt, useBiReport } from "../report-kit"
 
-interface Row {
-  locationName: string
-  totalProducts: number
-  inStock: number
-  outOfStock: number
-  fillRate: number
-}
+interface Row { locationName: string; totalProducts: number; inStock: number; outOfStock: number; fillRate: number }
+interface Data { rows: Row[]; totals: { totalProducts: number; inStock: number; outOfStock: number; fillRate: number } }
 
-export function FillRateReport({ from: _from, to: _to }: { from: string; to: string }) {
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(true)
+const tone = (r: number): "success" | "primary" | "warning" | "danger" => r >= 90 ? "success" : r >= 75 ? "warning" : "danger"
 
-  useEffect(() => {
-    setLoading(true)
-    fetch("/api/reports/bi?report=fill_rate")
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows ?? []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false))
-  }, [])
-
-  if (loading) return <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+export function FillRateReport() {
+  const state = useBiReport<Data>("fill_rate")
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Package className="size-4" /> Fill Rate por Sucursal
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {rows.map((r) => (
-              <div key={r.locationName} className="space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{r.locationName}</span>
-                  <span className={r.fillRate < 80 ? "text-destructive font-bold" : "text-muted-foreground"}>
-                    {r.fillRate.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="h-3 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full ${r.fillRate >= 90 ? "bg-success" : r.fillRate >= 70 ? "bg-warning" : "bg-destructive"}`}
-                    style={{ width: `${r.fillRate}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{r.inStock}/{r.totalProducts} productos con stock</span>
-                  <span>{r.outOfStock} sin stock</span>
-                </div>
-              </div>
-            ))}
-            {rows.length === 0 && (
-              <div className="py-4 text-center text-muted-foreground">Sin datos de inventario</div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ReportState state={state} kpis={3}>
+      {({ rows, totals: t }) => {
+        if (rows.length === 0) return <ReportEmpty icon={Target} hint="No hay registros de inventario." />
+        return (
+          <>
+            <KpiGrid cols={3}>
+              <Kpi label="Disponibilidad general" value={fmt.pct(t.fillRate)} icon={Target} tone={tone(t.fillRate)} emphasis />
+              <Kpi label="Con existencia" value={fmt.int(t.inStock)} icon={PackageCheck} tone="success" hint={`de ${fmt.int(t.totalProducts)}`} />
+              <Kpi label="Sin existencia" value={fmt.int(t.outOfStock)} icon={PackageX} tone={t.outOfStock > 0 ? "danger" : "default"} />
+            </KpiGrid>
+
+            <ReportPanel title="Disponibilidad por ubicación" description="Porcentaje del catálogo con existencia mayor a cero. Meta sugerida: 90 % o más.">
+              <BarList
+                max={100}
+                items={rows.map((r) => ({
+                  label: r.locationName,
+                  value: r.fillRate,
+                  display: fmt.pct(r.fillRate),
+                  secondary: `${fmt.int(r.inStock)} con existencia · ${fmt.int(r.outOfStock)} agotados`,
+                  tone: tone(r.fillRate),
+                }))}
+              />
+            </ReportPanel>
+
+            <Insights
+              items={[
+                rows[0].fillRate < 90 && (
+                  <><strong>{rows[0].locationName}</strong> tiene la menor disponibilidad ({fmt.pct(rows[0].fillRate)}): revisa el reporte de Stock bajo o una transferencia desde otra ubicación.</>
+                ),
+              ]}
+            />
+          </>
+        )
+      }}
+    </ReportState>
   )
 }

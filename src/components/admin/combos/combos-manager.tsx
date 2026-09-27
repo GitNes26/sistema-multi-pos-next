@@ -1,5 +1,6 @@
 "use client"
 
+import { ActiveStatusPill } from "@/components/shared/status-pills"
 import { useEffect, useState, useCallback, useMemo } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import {
@@ -9,25 +10,18 @@ import {
   Pencil,
   ShoppingCart,
   DollarSign,
-  GripVertical,
   Puzzle,
-  ImageIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { InputGroupField } from "@/components/base/input-group-field"
-import { FormCombobox } from "@/components/base/form-combobox"
-import { SwitchField } from "@/components/base/switch-field"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable } from "@/components/base/data-table"
 import { Spinner } from "@/components/base/spinner"
 import { EmptyState } from "@/components/shared/empty-state"
 import { DialogComponent } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { money } from "@/lib/pos/money"
+import { swalConfirm } from "@/lib/swal"
+import { ComboWizard } from "./combo-wizard"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -81,306 +75,31 @@ interface ProductOption {
   variants: ComboProductVariant[]
 }
 
+// La API serializa los Decimal como texto ("120.00"): sin convertirlos, la
+// suma de precios concatenaba cadenas y el ahorro salía en miles de millones.
+function normalizeCombo(c: Combo): Combo {
+  return {
+    ...c,
+    comboPrice: Number(c.comboPrice ?? 0),
+    items: (c.items ?? []).map((i) => ({
+      ...i,
+      quantity: Number(i.quantity ?? 0),
+      extraPrice: Number(i.extraPrice ?? 0),
+      variant: i.variant ? { ...i.variant, price: Number(i.variant.price ?? 0) } : i.variant,
+      product: i.product
+        ? { ...i.product, variants: (i.product.variants ?? []).map((v) => ({ ...v, price: Number(v.price ?? 0) })) }
+        : i.product,
+    })),
+  }
+}
+
 // Helper: get price from combo item (variant price or first variant of product)
 function getItemUnitPrice(item: { productId: string; variantId?: string | null; extraPrice: number }, product?: ComboProduct, variant?: ComboVariant | null): number {
   // Prefer variant price
-  if (variant?.price) return variant.price
+  if (variant?.price) return Number(variant.price)
   // Fallback: first variant of product
-  if (product?.variants?.[0]?.price) return product.variants[0].price
+  if (product?.variants?.[0]?.price) return Number(product.variants[0].price)
   return 0
-}
-
-/* ------------------------------------------------------------------ */
-/*  Combo Form                                                         */
-/* ------------------------------------------------------------------ */
-
-function ComboForm({
-  initial,
-  products,
-  onSave,
-  onClose,
-}: {
-  initial?: Combo | null
-  products: ProductOption[]
-  onSave: (data: {
-    id?: string
-    name: string
-    description: string
-    imageUrl: string
-    comboPrice: number
-    isActive: boolean
-    items: {
-      productId: string
-      variantId?: string
-      quantity: number
-      extraPrice: number
-    }[]
-  }) => Promise<void>
-  onClose: () => void
-}) {
-  const [name, setName] = useState(initial?.name ?? "")
-  const [description, setDescription] = useState(initial?.description ?? "")
-  const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "")
-  const [comboPrice, setComboPrice] = useState(initial?.comboPrice ?? 0)
-  const [isActive, setIsActive] = useState(initial?.isActive ?? true)
-  const [items, setItems] = useState<
-    { productId: string; variantId: string; quantity: number; extraPrice: number }[]
-  >(
-    initial?.items.map((i) => ({
-      productId: i.productId,
-      variantId: i.variantId ?? i.product?.variants?.[0]?.id ?? "",
-      quantity: i.quantity,
-      extraPrice: i.extraPrice,
-    })) ?? [],
-  )
-  const [saving, setSaving] = useState(false)
-
-  const suggestedPrice = useMemo(
-    () =>
-      items.reduce((sum, item) => {
-        const product = products.find((p) => p.id === item.productId)
-        const variant = product?.variants?.find((v) => v.id === item.variantId)
-        const unitPrice = variant?.price ?? product?.variants?.[0]?.price ?? 0
-        return sum + unitPrice * item.quantity
-      }, 0),
-    [items, products],
-  )
-
-  const addItem = () => {
-    setItems((prev) => [...prev, { productId: "", variantId: "", quantity: 1, extraPrice: 0 }])
-  }
-
-  const removeItem = (idx: number) => {
-    setItems((prev) => prev.filter((_, i) => i !== idx))
-  }
-
-  const updateItem = (
-    idx: number,
-    patch: Partial<{ productId: string; variantId: string; quantity: number; extraPrice: number }>,
-  ) => {
-    setItems((prev) =>
-      prev.map((item, i) => (i === idx ? { ...item, ...patch } : item)),
-    )
-  }
-
-  const handleSave = async () => {
-    if (!name.trim()) return
-    if (items.length === 0) return
-    if (items.some((i) => !i.productId)) return
-    setSaving(true)
-    try {
-      await onSave({
-        id: initial?.id,
-        name: name.trim(),
-        description: description.trim(),
-        imageUrl: imageUrl.trim(),
-        comboPrice,
-        isActive,
-        items,
-      })
-      onClose()
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="space-y-5">
-      {/* Basic info */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <InputGroupField
-            label="Nombre"
-            required
-            leftIcon={<Package className="size-4" />}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ej: Combo Desayuno"
-          />
-        <div>
-            <InputGroupField
-              label="Precio del combo"
-              required
-              leftIcon={<DollarSign className="size-4" />}
-              type="number"
-              min={0}
-              step={0.5}
-              value={comboPrice}
-              onChange={(e) => setComboPrice(Number(e.target.value))}
-            />
-          {suggestedPrice > 0 && comboPrice !== suggestedPrice && (
-            <p className="text-xs text-muted-foreground">
-              Precio sugerido (suma de productos): {money(suggestedPrice)}
-              {comboPrice < suggestedPrice && (
-                <span className="ml-1 text-success-ink">
-                  (ahorro de {money(suggestedPrice - comboPrice)})
-                </span>
-              )}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label className="text-sm font-semibold">Descripción</Label>
-        <Textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe el combo..."
-          rows={2}
-        />
-      </div>
-
-      <InputGroupField
-        label="Imagen del combo"
-        leftIcon={<ImageIcon className="size-4" />}
-        helper="Puedes pegar una URL pública o una ruta de archivo ya cargada."
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://... o /uploads/..."
-        />
-
-      <SwitchField id="combo-active" label="Combo activo" description="Los combos inactivos se conservan en el historial pero no aparecen para vender." checked={isActive} onCheckedChange={setIsActive} />
-
-      {/* Items */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-semibold">
-            Productos en el combo ({items.length})
-          </Label>
-          <Button variant="outline" size="sm" onClick={addItem}>
-            <Plus className="mr-1 size-3" />
-            Agregar producto
-          </Button>
-        </div>
-
-        {items.length === 0 && (
-          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Agrega al menos un producto al combo
-          </div>
-        )}
-
-        <div className="space-y-2">
-          {items.map((item, idx) => {
-            const product = products.find((p) => p.id === item.productId)
-            const selectedVariant = product?.variants?.find((v) => v.id === item.variantId)
-            const unitPrice = selectedVariant?.price ?? product?.variants?.[0]?.price ?? 0
-            const hasMultipleVariants = (product?.variants?.length ?? 0) > 1
-            return (
-              <div
-                key={idx}
-                className="grid gap-2 rounded-xl border bg-muted/30 p-3 sm:grid-cols-[auto_minmax(12rem,1fr)_minmax(9rem,.7fr)_auto_auto_auto] sm:items-end"
-              >
-                <GripVertical className="size-4 shrink-0 text-muted-foreground" />
-
-                {/* Product selector */}
-                <FormCombobox
-                  id={`combo-product-${idx}`}
-                  label={`Producto ${idx + 1}`}
-                  icon={<Package className="size-4" />}
-                  value={item.productId}
-                  onChange={(newProductId) => {
-                    const newProduct = products.find((p) => p.id === newProductId)
-                    const firstVariant = newProduct?.variants?.[0]
-                    updateItem(idx, {
-                      productId: newProductId,
-                      variantId: firstVariant?.id ?? "",
-                    })
-                  }}
-                  options={products.map((product) => ({ value: product.id, label: product.name, meta: product.variants.length > 1 ? `${product.variants.length} variantes` : money(product.variants[0]?.price ?? 0) }))}
-                  placeholder="Busca un producto"
-                  emptyText="No hay productos disponibles"
-                />
-
-                {/* Variant selector (only if multiple variants) */}
-                {hasMultipleVariants && (
-                  <FormCombobox
-                    id={`combo-variant-${idx}`}
-                    label="Variante"
-                    icon={<Puzzle className="size-4" />}
-                    value={item.variantId}
-                    onChange={(variantId) => updateItem(idx, { variantId })}
-                    options={(product?.variants ?? []).map((variant) => ({ value: variant.id, label: variant.name, meta: money(variant.price) }))}
-                  />
-                )}
-
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7"
-                    onClick={() =>
-                      updateItem(idx, {
-                        quantity: Math.max(0.1, item.quantity - 0.5),
-                      })
-                    }
-                  >
-                    −
-                  </Button>
-                  <span className="w-8 text-center text-sm font-bold tabular-nums">
-                    {item.quantity}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7"
-                    onClick={() =>
-                      updateItem(idx, { quantity: item.quantity + 0.5 })
-                    }
-                  >
-                    +
-                  </Button>
-                </div>
-
-                <div className="relative w-24">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                    +
-                  </span>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={0.5}
-                    value={item.extraPrice}
-                    onChange={(e) =>
-                      updateItem(idx, { extraPrice: Number(e.target.value) })
-                    }
-                    className="h-8 pl-5 text-xs"
-                  />
-                </div>
-
-                <span className="w-20 text-right text-xs font-semibold tabular-nums">
-                  {product
-                    ? money(unitPrice * item.quantity + item.extraPrice)
-                    : "—"}
-                </span>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 text-destructive"
-                  onClick={() => removeItem(idx)}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Save */}
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button
-          onClick={handleSave}
-          disabled={saving || !name.trim() || items.length === 0}
-        >
-          {saving ? "Guardando..." : initial ? "Actualizar" : "Crear combo"}
-        </Button>
-      </div>
-    </div>
-  )
 }
 
 /* ------------------------------------------------------------------ */
@@ -398,7 +117,7 @@ export function CombosManager() {
   const fetchCombos = useCallback(async () => {
     try {
       const res = await fetch("/api/combos")
-      if (res.ok) setCombos(await res.json())
+      if (res.ok) setCombos(((await res.json()) as Combo[]).map(normalizeCombo))
     } catch {
       // ignore
     } finally {
@@ -461,7 +180,7 @@ export function CombosManager() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Eliminar este combo?")) return
+    if (!(await swalConfirm("Eliminar combo", "Dejará de aparecer en el POS y en el portal.", { danger: true }))) return
     await fetch(`/api/combos?id=${id}`, { method: "DELETE" })
     fetchCombos()
   }
@@ -554,9 +273,7 @@ export function CombosManager() {
         accessorKey: "isActive",
         header: "Estado",
         cell: ({ row }) => (
-          <Badge variant={row.original.isActive ? "default" : "secondary"}>
-            {row.original.isActive ? "Activo" : "Inactivo"}
-          </Badge>
+          <ActiveStatusPill active={row.original.isActive} />
         ),
       },
     ],
@@ -664,9 +381,7 @@ export function CombosManager() {
                   <p className="font-semibold">{combo.name}</p>
                   <p className="text-sm font-bold tabular-nums">{money(combo.comboPrice)}</p>
                 </div>
-                <Badge variant={combo.isActive ? "default" : "secondary"}>
-                  {combo.isActive ? "Activo" : "Off"}
-                </Badge>
+                <ActiveStatusPill active={combo.isActive} />
               </div>              <div className="flex flex-wrap gap-1">
                 {combo.items.slice(0, 4).map((item) => (
                   <Badge key={item.id} variant="secondary" className="text-xs">
@@ -706,8 +421,8 @@ export function CombosManager() {
         />
       )}
 
-      {/* Create/Edit dialog */}
-      <DialogComponent
+      {/* Create/Edit: asistente en 3 pasos */}
+      <ComboWizard
         open={formOpen}
         onOpenChange={(o) => {
           if (!o) {
@@ -715,24 +430,10 @@ export function CombosManager() {
             setEditingCombo(null)
           }
         }}
-        title={editingCombo ? "Editar combo" : "Nuevo combo"}
-        description="Agrupa productos con un precio especial"
-        size="2xl"
-        dataGuide="combo-dialog"
-      >
-        <ScrollArea className="max-h-[70vh]">
-          <ComboForm
-            key={editingCombo?.id ?? "new"}
-            initial={editingCombo}
-            products={products}
-            onSave={handleSave}
-            onClose={() => {
-              setFormOpen(false)
-              setEditingCombo(null)
-            }}
-          />
-        </ScrollArea>
-      </DialogComponent>
+        initial={editingCombo}
+        products={products}
+        onSave={handleSave}
+      />
 
       {/* Detail dialog */}
       <DialogComponent

@@ -5,6 +5,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   ArrowLeftRight,
   Barcode,
+  ChevronDown,
+  Truck,
   ClipboardCheck,
   FileDown,
   FileSpreadsheet,
@@ -40,8 +42,19 @@ import { DataTable } from "@/components/base/data-table";
 import { crudApi, inventoryApi, type ExcelImportResult, type InventoryRow, type InventoryMovement, type InventoryRevision, type RevisionDetailData, type RevisionItem, type RevisionStatus } from "@/lib/api";
 import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { playSound } from "@/lib/sounds";
-import { SlideToPay } from "@/components/shared/slide-to-pay";
 import { cn } from "@/lib/utils";
+import { useRouter, useSearchParams } from "next/navigation";
+import { TransfersBoard } from "./transfers/transfers-board";
+import { NewTransferWizard } from "./transfers/new-transfer-wizard";
+
+type InventoryTab = "stock" | "movements" | "revisions" | "transfers";
+import { EntityCell, RowActions, SegmentedFilter, StatusPill, type StatusTone } from "@/components/base";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface InventoryPageProps {
   canManage: boolean;
@@ -62,23 +75,46 @@ const MOVEMENT_TYPES: { value: string; label: string }[] = [
   { value: "return", label: "Devolución (entrada)" },
 ];
 
+const STATUS_META: Record<InventoryRow["status"], { label: string; tone: StatusTone }> = {
+  ok: { label: "Suficiente", tone: "success" },
+  low: { label: "Bajo", tone: "warning" },
+  empty: { label: "Agotado", tone: "danger" },
+};
+
 function statusBadge(status: InventoryRow["status"]) {
-  if (status === "empty") return <Badge variant="destructive">Sin stock</Badge>;
-  if (status === "low") return <Badge className="bg-warning text-warning-foreground">Stock bajo</Badge>;
-  return <Badge variant="secondary">OK</Badge>;
+  const m = STATUS_META[status];
+  return <StatusPill tone={m.tone}>{m.label}</StatusPill>;
+}
+
+/** Nivel de existencia contra el mínimo: la barra llena equivale a 3× el mínimo. */
+function StockLevel({ row }: { row: InventoryRow }) {
+  const target = Math.max(row.minThreshold * 3, 1);
+  const pct = Math.max(0, Math.min(100, (row.quantity / target) * 100));
+  const tone = row.status === "empty" ? "bg-destructive" : row.status === "low" ? "bg-warning" : "bg-success";
+  return (
+    <div className="flex min-w-32 items-center gap-2.5">
+      <span className="w-14 text-right font-semibold tabular-nums">
+        {fmtStock(row.quantity, row.unit)}
+        <span className="ml-1 text-xs font-normal text-muted-foreground">{row.unit ?? "pza"}</span>
+      </span>
+      <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden>
+        <span className={cn("absolute inset-y-0 left-0 rounded-full", tone)} style={{ width: `${pct}%` }} />
+      </span>
+    </div>
+  );
 }
 
 function movementTypeBadge(type: string) {
-  const map: Record<string, { label: string; className: string }> = {
-    purchase: { label: "Compra", className: "bg-success text-success-foreground" },
-    adjustment: { label: "Ajuste", className: "bg-info text-info-foreground" },
-    sale: { label: "Venta", className: "bg-destructive text-destructive-foreground" },
-    return: { label: "Devolución", className: "bg-success text-success-foreground" },
-    transfer_in: { label: "Transferencia +", className: "bg-indigo-500 text-white" },
-    transfer_out: { label: "Transferencia −", className: "bg-orange-500 text-white" },
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    purchase: { label: "Compra", tone: "success" },
+    adjustment: { label: "Ajuste", tone: "info" },
+    sale: { label: "Venta", tone: "neutral" },
+    return: { label: "Devolución", tone: "success" },
+    transfer_in: { label: "Transferencia +", tone: "primary" },
+    transfer_out: { label: "Transferencia −", tone: "warning" },
   };
-  const m = map[type] ?? { label: type, className: "" };
-  return <Badge className={m.className}>{m.label}</Badge>;
+  const m = map[type] ?? { label: type, tone: "neutral" as const };
+  return <StatusPill tone={m.tone} dot={false}>{m.label}</StatusPill>;
 }
 
 function revisionStatusBadge(status: RevisionStatus) {
@@ -106,78 +142,46 @@ function fmtMin(qty: number, unit: string | null): string {
   return qty.toFixed(3).replace(/\.?0+$/, "");
 }
 
+function InventoryProductCell({ row }: { row: InventoryRow }) {
+  const variant = row.variantName && row.variantName !== "Default" ? row.variantName : null;
+  const meta = [variant, row.sku ? `SKU ${row.sku}` : row.barcode].filter(Boolean).join(" · ");
+  return <EntityCell title={row.productName} subtitle={meta || undefined} image={row.productImage} />;
+}
+
 function stockColumns(): ColumnDef<InventoryRow, unknown>[] {
   return [
     {
       accessorKey: "productName",
       header: "Producto",
-      cell: ({ row }) => {
-        const r = row.original;
-        return (
-          <div className="flex items-center gap-2">
-            {r.productImage ? (
-              <img
-                src={r.productImage}
-                alt={r.productName}
-                className="size-8 rounded-md object-cover"
-              />
-            ) : (
-              <div className="flex size-8 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
-                {r.productName.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="truncate font-medium">{r.productName}</p>
-              {r.variantName && (
-                <p className="truncate text-xs text-muted-foreground">{r.variantName}</p>
-              )}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      id: "skuBarcode",
-      header: "SKU / Código de barras",
-      accessorFn: (r) => r.sku ?? r.barcode ?? "",
-      cell: ({ row }) => {
-        const r = row.original;
-        if (!r.sku && !r.barcode)
-          return <span className="text-muted-foreground">—</span>;
-        return (
-          <span className="text-muted-foreground">
-            {r.sku && <span>{r.sku}</span>}
-            {r.sku && r.barcode && <span className="ml-1 text-xs">·</span>}
-            {r.barcode && (
-              <span className="ml-1 text-xs font-mono">{r.barcode}</span>
-            )}
-          </span>
-        );
-      },
+      cell: ({ row }) => <InventoryProductCell row={row.original} />,
     },
     {
       accessorKey: "productType",
       header: "Tipo",
       cell: ({ row }) => (
-        <Badge variant={row.original.productType === "bulk" ? "outline" : "secondary"}>
-          {row.original.productType === "bulk" ? "Granel" : "Estándar"}
-        </Badge>
+        <span
+          className={cn(
+            "inline-flex rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+            row.original.productType === "bulk" ? "bg-foreground/85 text-background" : "bg-muted text-muted-foreground"
+          )}
+        >
+          {row.original.productType === "bulk" ? "Granel" : row.original.productType === "custom" ? "Personalizado" : "Estándar"}
+        </span>
       ),
     },
     {
       accessorKey: "quantity",
-      header: "Stock",
-      cell: ({ row }) => <span className="tabular-nums font-medium">{fmtStock(row.original.quantity, row.original.unit)}</span>,
-    },
-    {
-      accessorKey: "unit",
-      header: "Unidad",
-      cell: ({ row }) => row.original.unit ?? "pza",
+      header: "Existencia",
+      cell: ({ row }) => <StockLevel row={row.original} />,
     },
     {
       accessorKey: "minThreshold",
       header: "Mínimo",
-      cell: ({ row }) => <span className="tabular-nums text-muted-foreground">{fmtMin(row.original.minThreshold, row.original.unit)}</span>,
+      cell: ({ row }) => (
+        <span className="tabular-nums text-muted-foreground">
+          {fmtMin(row.original.minThreshold, row.original.unit)}
+        </span>
+      ),
     },
     {
       accessorKey: "status",
@@ -472,130 +476,16 @@ function ThresholdDialog({
   );
 }
 
-function TransferDialog({
-  row,
-  locations,
-  cedis,
-  onClose,
-  onDone,
-}: {
-  row: InventoryRow;
-  locations: LocationOption[];
-  cedis: LocationOption[];
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const [toType, setToType] = useState<"location" | "cedis">("location");
-  const [toId, setToId] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [reason, setReason] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const targets = toType === "location" ? locations : cedis;
-
-  const submit = async () => {
-    const qty = Number(quantity);
-    if (!Number.isFinite(qty) || qty <= 0) {
-      swalError("Cantidad inválida", "Ingresa una cantidad mayor a 0.");
-      return;
-    }
-    if (!toId) {
-      swalError("Destino", "Selecciona la ubicación de destino.");
-      return;
-    }
-    setSaving(true);
-    try {
-      await inventoryApi.transfer({
-        fromInventoryId: row.id,
-        toLocationType: toType,
-        toLocationId: toId,
-        quantity: qty,
-        reason: reason || undefined,
-      });
-      swalToast("Transferencia registrada");
-      onDone();
-      onClose();
-    } catch (err) {
-      swalError("No se pudo transferir", err instanceof Error ? err.message : undefined);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <DialogComponent
-      open
-      onOpenChange={(o) => !o && onClose()}
-      title="Transferir stock"
-      description={`${row.variantName ?? row.productName} · disponible: ${row.quantity} ${row.unit ?? ""}`}
-      className="sm:max-w-md"
-      bodyClassName="space-y-3"
-      footer={<Button variant="ghost" onClick={onClose} disabled={saving}>Cancelar</Button>}
-    >
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Destino tipo</Label>
-              <Select value={toType} onValueChange={(v) => {
-                setToType(v as "location" | "cedis");
-                setToId("");
-              }}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="location">Sucursal</SelectItem>
-                  <SelectItem value="cedis">CEDIS</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Ubicación</Label>
-              <Select value={toId} onValueChange={setToId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecciona…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {targets.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>
-                      {l.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <InputGroupField
-            label={`Cantidad (${row.unit ?? "pza"})`}
-            type="number"
-            step="any"
-            min={0}
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="0"
-            leftIcon={<Hash className="size-4" />}
-          />
-          <div className="space-y-1.5">
-            <Label htmlFor="transferReason">Motivo (opcional)</Label>
-            <Textarea id="transferReason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. traslado de mercancía" />
-          </div>
-          <SlideToPay
-            action="transfer"
-            label={`Desliza para transferir ${quantity || 0} ${row.unit ?? "unidades"}`}
-            hint="El movimiento ajustará las existencias de ambos destinos"
-            onConfirm={submit}
-            loading={saving}
-            disabled={!toId || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0}
-          />
-    </DialogComponent>
-  );
-}
 
 export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps) {
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [cedis, setCedis] = useState<LocationOption[]>([]);
   const [locationType, setLocationType] = useState<"location" | "cedis">("location");
   const [locationId, setLocationId] = useState("");
-  const [tab, setTab] = useState<"stock" | "movements" | "revisions">("stock");
+  // ?tab=transfers abre directamente los traslados (enlaces desde el detalle).
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<InventoryTab>(() => (searchParams.get("tab") as InventoryTab | null) ?? "stock");
+  const router = useRouter();
 
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
@@ -639,7 +529,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [productType, setProductType] = useState("");
-  const [lowOnly, setLowOnly] = useState(false);
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "empty">("all");
   const [bulkOpen, setBulkOpen] = useState(false);
 
   useEffect(() => {
@@ -701,7 +591,6 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
           locationId,
           q: debouncedQ || undefined,
           productType: productType || undefined,
-          lowOnly: lowOnly || undefined,
         });
         setRows(res.rows);
       } else if (tab === "movements") {
@@ -726,7 +615,7 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
     } finally {
       setLoading(false);
     }
-  }, [locationType, locationId, tab, debouncedQ, productType, lowOnly, mType, mFrom, mTo]);
+  }, [locationType, locationId, tab, debouncedQ, productType, mType, mFrom, mTo]);
 
   useEffect(() => {
     load();
@@ -734,26 +623,139 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
 
   const currentLocations = locationType === "location" ? locations : cedis;
 
-  const lowCount = useMemo(() => rows.filter((r) => r.status !== "ok").length, [rows]);
+  const stockCounts = useMemo(
+    () => ({
+      low: rows.filter((r) => r.status === "low").length,
+      empty: rows.filter((r) => r.status === "empty").length,
+    }),
+    [rows]
+  );
+  const filteredRows = useMemo(
+    () => (stockFilter === "all" ? rows : rows.filter((r) => r.status === stockFilter)),
+    [rows, stockFilter]
+  );
 
   return (
     <>
-      <PageHeader icon={icon} title="Inventario" description="Existencias, movimientos, mínimos y transferencias." />
+      <PageHeader
+        icon={icon}
+        title="Inventario"
+        description="Existencias, movimientos, mínimos y transferencias."
+        actions={
+          tab === "stock" && locationId ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={exportBusy !== null}>
+                    {exportBusy === "xlsx" || exportBusy === "pdf" ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
+                    Exportar
+                    <ChevronDown className="size-3.5 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem
+                    onSelect={async () => {
+                      setExportBusy("xlsx");
+                      try {
+                        await inventoryApi.exportXlsx({ locationType, locationId });
+                      } catch (err) {
+                        swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
+                      } finally {
+                        setExportBusy(null);
+                      }
+                    }}
+                  >
+                    <FileSpreadsheet className="size-4" /> Excel (.xlsx)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={async () => {
+                      setExportBusy("pdf");
+                      try {
+                        await inventoryApi.exportPdf({ locationType, locationId });
+                      } catch (err) {
+                        swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
+                      } finally {
+                        setExportBusy(null);
+                      }
+                    }}
+                  >
+                    <FileDown className="size-4" /> PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <FormCombobox
+              {canManage && (
+                <>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept=".xlsx"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleImportFile(f);
+                    }}
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={importing || exportBusy !== null}>
+                        {importing || exportBusy === "template" ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                        Importar
+                        <ChevronDown className="size-3.5 opacity-60" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-72">
+                      <DropdownMenuItem
+                        onSelect={async () => {
+                          setExportBusy("template");
+                          try {
+                            await inventoryApi.exportImportTemplate({ locationType, locationId });
+                          } catch (err) {
+                            swalError("No se pudo descargar la plantilla", err instanceof Error ? err.message : undefined);
+                          } finally {
+                            setExportBusy(null);
+                          }
+                        }}
+                      >
+                        <FileSpreadsheet className="size-4" />
+                        <span>
+                          <span className="block">1. Descargar plantilla</span>
+                          <span className="block text-xs text-muted-foreground">Con instrucciones y el catálogo actual</span>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => importInputRef.current?.click()}>
+                        <Upload className="size-4" />
+                        <span>
+                          <span className="block">2. Subir archivo lleno</span>
+                          <span className="block text-xs text-muted-foreground">Existencias finales de esta ubicación</span>
+                        </span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button size="sm" onClick={() => setBulkOpen(true)} disabled={rows.length === 0}>
+                    <ListChecks className="size-4" /> Captura rápida
+                  </Button>
+                </>
+              )}
+            </div>
+          ) : undefined
+        }
+      />
+
+      {/* Ubicación: define qué inventario se ve en todas las pestañas */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <SegmentedFilter
+          ariaLabel="Tipo de ubicación"
           value={locationType}
-          onChange={(v) => {
-            setLocationType(v as "location" | "cedis");
+          onChange={(value) => {
+            if (value === locationType) return;
+            setLocationType(value);
             setLocationId("");
           }}
           options={[
             { value: "location", label: "Sucursal" },
             { value: "cedis", label: "CEDIS" },
           ]}
-          clearable={false}
-          searchable={false}
-          className="w-32"
         />
         <FormCombobox
           value={locationId}
@@ -761,209 +763,21 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
           options={currentLocations.map((l) => ({ value: l.id, label: l.name }))}
           clearable={false}
           searchable={currentLocations.length > 5}
-          className="min-w-48"
+          className="min-w-56"
         />
-
-        {tab === "stock" && (
-          <>
-            <InputGroupField
-              placeholder="Buscar producto, SKU…"
-              leftIcon={<Search className="size-4" />}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="h-8 w-56"
-              data-guide="inv-search"
-            />
-            <FormCombobox
-              value={productType}
-              onChange={setProductType}
-              options={[
-                { value: "", label: "Todos" },
-                { value: "standard", label: "Estándar" },
-                { value: "bulk", label: "Granel" },
-              ]}
-              clearable={false}
-              searchable={false}
-              className="w-36"
-            />
-            <Button
-              variant={lowOnly ? "default" : "outline"}
-              size="sm"
-              onClick={() => setLowOnly((v) => !v)}
-            >
-              <TriangleAlert className="size-4" /> Solo bajo stock {lowCount > 0 && `(${lowCount})`}
-            </Button>
-            {locationId && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={exportBusy !== null}
-                  onClick={async () => {
-                    setExportBusy("xlsx");
-                    try {
-                      await inventoryApi.exportXlsx({ locationType, locationId });
-                    } catch (err) {
-                      swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
-                    } finally {
-                      setExportBusy(null);
-                    }
-                  }}
-                  title="Exportar listado en Excel (.xlsx)"
-                >
-                  {exportBusy === "xlsx" ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
-                  XLSX
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={exportBusy !== null}
-                  onClick={async () => {
-                    setExportBusy("pdf");
-                    try {
-                      await inventoryApi.exportPdf({ locationType, locationId });
-                    } catch (err) {
-                      swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
-                    } finally {
-                      setExportBusy(null);
-                    }
-                  }}
-                  title="Exportar inventario en PDF"
-                >
-                  {exportBusy === "pdf" ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
-                  PDF
-                </Button>
-              </>
-            )}
-            {canManage && locationId && (
-              <>
-                <Button variant="default" size="sm" onClick={() => setBulkOpen(true)} disabled={rows.length === 0}>
-                  <ListChecks className="size-4" /> Captura rápida
-                </Button>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept=".xlsx"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleImportFile(f);
-                  }}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={importing || exportBusy !== null}
-                  onClick={async () => {
-                    setExportBusy("template");
-                    try {
-                      await inventoryApi.exportImportTemplate({ locationType, locationId });
-                    } catch (err) {
-                      swalError("No se pudo descargar la plantilla", err instanceof Error ? err.message : undefined);
-                    } finally {
-                      setExportBusy(null);
-                    }
-                  }}
-                  title="Plantilla vacía con instrucciones y el catálogo actualizado de productos"
-                >
-                  {exportBusy === "template" ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
-                  Plantilla
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={importing}
-                  onClick={() => importInputRef.current?.click()}
-                  title="1) Descarga la plantilla · 2) llena las existencias finales · 3) selecciona la ubicación · 4) importa el archivo"
-                >
-                  {importing ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                  Importar
-                </Button>
-              </>
-            )}
-          </>
-        )}
-
-        {tab === "movements" && (
-          <>
-            <InputGroupField
-              placeholder="Buscar producto, SKU…"
-              leftIcon={<Search className="size-4" />}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="h-8 w-56"
-            />
-            <FormCombobox
-              value={mType}
-              onChange={setMType}
-              options={[
-                { value: "", label: "Todos" },
-                ...MOVEMENT_TYPES.map((t) => ({ value: t.value, label: t.label })),
-                { value: "transfer_in", label: "Transferencia +" },
-                { value: "transfer_out", label: "Transferencia −" },
-              ]}
-              clearable={false}
-              searchable={false}
-              className="w-40"
-            />
-            <DatePicker
-              value={mFrom ? new Date(mFrom + "T00:00:00") : null}
-              onChange={(d) => setMFrom(d ? d.toISOString().split("T")[0] : "")}
-              placeholder="Desde"
-              clearable
-              className="w-40"
-            />
-            <DatePicker
-              value={mTo ? new Date(mTo + "T00:00:00") : null}
-              onChange={(d) => setMTo(d ? d.toISOString().split("T")[0] : "")}
-              placeholder="Hasta"
-              clearable
-              className="w-40"
-            />
-            {locationId && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={exportBusy !== null}
-                onClick={async () => {
-                  setExportBusy("movements");
-                  try {
-                    await inventoryApi.exportMovementsXlsx({
-                      locationType,
-                      locationId,
-                      type: mType || undefined,
-                      from: mFrom || undefined,
-                      to: mTo || undefined,
-                    });
-                  } catch (err) {
-                    swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
-                  } finally {
-                    setExportBusy(null);
-                  }
-                }}
-                title="Exportar historial de movimientos en Excel (.xlsx)"
-              >
-                {exportBusy === "movements" ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
-                XLSX
-              </Button>
-            )}
-          </>
-        )}
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "stock" | "movements" | "revisions")}>
-        <TabsList>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as InventoryTab)}>
+        <TabsList className="mb-3">
           <TabsTrigger value="stock">Existencias</TabsTrigger>
           <TabsTrigger value="movements">Historial de movimientos</TabsTrigger>
           <TabsTrigger value="revisions">Revisiones físicas</TabsTrigger>
+          <TabsTrigger value="transfers">Traslados</TabsTrigger>
         </TabsList>
 
         <TabsContent value="stock">
           <Card>
             <CardContent className="pt-5">
-              {loading ? (
-                <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
-              ) : (
                 <DataTable
                   columns={[
                     ...stockColumns(),
@@ -974,54 +788,34 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                             header: "",
                             cell: ({ row }: { row: { original: InventoryRow } }) => {
                               const r = row.original;
+                              const open = (d: "movement" | "threshold" | "transfer") => {
+                                setActive(r);
+                                setDialog(d);
+                              };
                               return (
-                                <div className="flex items-center justify-end gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    data-guide="inv-movement"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActive(r);
-                                      setDialog("movement");
-                                    }}
-                                  >
-                                    Movimiento
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    data-guide="inv-threshold"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActive(r);
-                                      setDialog("threshold");
-                                    }}
-                                  >
-                                    Mínimo
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    data-guide="inv-transfer"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActive(r);
-                                      setDialog("transfer");
-                                    }}
-                                  >
-                                    <ArrowLeftRight className="size-4" />
-                                  </Button>
-                                </div>
+                                <RowActions
+                                  name={r.productName}
+                                  primary={{ label: "Movimiento", icon: ArrowLeftRight, onSelect: () => open("movement"), "data-guide": "inv-movement" }}
+                                  items={[
+                                    { label: "Ajustar mínimo", icon: TriangleAlert, onSelect: () => open("threshold"), "data-guide": "inv-threshold" },
+                                    { label: "Trasladar a otra ubicación", icon: Truck, onSelect: () => open("transfer"), "data-guide": "inv-transfer" },
+                                  ]}
+                                />
                               );
                             },
                           },
                         ]
                       : []),
                   ]}
-                  data={rows}
+                  data={filteredRows}
                   loading={loading}
-                  emptyMessage="Sin existencias para esta ubicación."
+                  emptyMessage={
+                    stockFilter === "low"
+                      ? "Nada bajo el mínimo en esta ubicación."
+                      : stockFilter === "empty"
+                        ? "Ningún producto agotado en esta ubicación."
+                        : "Sin existencias para esta ubicación."
+                  }
                   pageSize={20}
                   pageSizeOptions={[10, 20, 50, 100]}
                   searchable={false}
@@ -1029,93 +823,68 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
                   onRefresh={() => load()}
                   refreshing={loading}
                   toolbarSlot={
-                    canManage && rows.filter((r) => r.status !== "ok").length > 0 ? (
-                      <Badge variant="outline" className="text-xs">
-                        <TriangleAlert className="mr-1 size-3" />
-                        {rows.filter((r) => r.status !== "ok").length} bajo stock
-                      </Badge>
-                    ) : undefined
+                    <>
+                <SegmentedFilter
+                  ariaLabel="Estado de existencias"
+                  value={stockFilter}
+                  onChange={setStockFilter}
+                  options={[
+                    { value: "all", label: "Todos", count: rows.length },
+                    { value: "low", label: "Bajo mínimo", count: stockCounts.low, countTone: "warning" },
+                    { value: "empty", label: "Agotados", count: stockCounts.empty, countTone: "danger" },
+                  ]}
+                />
+                <InputGroupField
+                  placeholder="Buscar producto o SKU…"
+                  aria-label="Buscar producto o SKU"
+                  leftIcon={<Search className="size-4" />}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="w-64"
+                  data-guide="inv-search"
+                />
+                <FormCombobox
+                  value={productType}
+                  onChange={setProductType}
+                  options={[
+                    { value: "", label: "Todos los tipos" },
+                    { value: "standard", label: "Estándar" },
+                    { value: "bulk", label: "Granel" },
+                  ]}
+                  clearable={false}
+                  searchable={false}
+                  className="w-44"
+                />
+                                  </>
                   }
                   renderCard={(r) => (
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {r.productImage ? (
-                          <img
-                            src={r.productImage}
-                            alt={r.productName}
-                            className="size-10 rounded-md object-cover"
-                          />
-                        ) : (
-                          <div className="flex size-10 items-center justify-center rounded-md bg-muted text-sm text-muted-foreground">
-                            {r.productName.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{r.productName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {r.sku ?? r.barcode ?? "—"} · {r.unit ?? "pza"}
-                          </p>
-                          {r.status !== "ok" && (
-                            <Badge
-                              variant="outline"
-                              className={`mt-1 text-xs ${r.status === "empty" ? "border-destructive text-destructive" : "border-warning text-warning-ink"}`}
-                            >
-                              {r.status === "empty" ? "Sin stock" : `Mín. ${r.minThreshold}`}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="tabular-nums font-medium mr-1">{fmtStock(r.quantity, r.unit)}</span>
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <InventoryProductCell row={r} />
                         {statusBadge(r.status)}
-                        {canManage && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              title="Movimiento"
-                              data-guide="inv-movement"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActive(r);
-                                setDialog("movement");
-                              }}
-                            >
-                              <ArrowLeftRight className="size-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              title="Mínimo"
-                              data-guide="inv-threshold"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActive(r);
-                                setDialog("threshold");
-                              }}
-                            >
-                              <TriangleAlert className="size-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              title="Transferir"
-                              data-guide="inv-transfer"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActive(r);
-                                setDialog("transfer");
-                              }}
-                            >
-                              <Barcode className="size-3.5" />
-                            </Button>
-                          </>
-                        )}
                       </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <StockLevel row={r} />
+                        </div>
+                        <span className="text-xs text-muted-foreground tabular-nums">Mín. {fmtMin(r.minThreshold, r.unit)}</span>
+                      </div>
+                      {canManage && (
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button variant="outline" size="sm" data-guide="inv-movement" onClick={() => { setActive(r); setDialog("movement"); }}>
+                            <ArrowLeftRight className="size-4" /> Movimiento
+                          </Button>
+                          <Button variant="outline" size="sm" data-guide="inv-threshold" onClick={() => { setActive(r); setDialog("threshold"); }}>
+                            <TriangleAlert className="size-4" /> Mínimo
+                          </Button>
+                          <Button variant="outline" size="sm" data-guide="inv-transfer" onClick={() => { setActive(r); setDialog("transfer"); }}>
+                            <Truck className="size-4" /> Transferir
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 />
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1123,6 +892,70 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
         <TabsContent value="movements">
           <Card>
             <CardContent className="pt-5">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <InputGroupField
+                  placeholder="Buscar producto o SKU…"
+                  aria-label="Buscar producto o SKU"
+                  leftIcon={<Search className="size-4" />}
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="w-64"
+                />
+                <FormCombobox
+                  value={mType}
+                  onChange={setMType}
+                  options={[
+                    { value: "", label: "Todos los movimientos" },
+                    ...MOVEMENT_TYPES.map((t) => ({ value: t.value, label: t.label })),
+                    { value: "transfer_in", label: "Transferencia +" },
+                    { value: "transfer_out", label: "Transferencia −" },
+                  ]}
+                  clearable={false}
+                  searchable={false}
+                  className="w-60"
+                />
+                <DatePicker
+                  value={mFrom ? new Date(mFrom + "T00:00:00") : null}
+                  onChange={(d) => setMFrom(d ? d.toISOString().split("T")[0] : "")}
+                  placeholder="Desde"
+                  clearable
+                  className="w-40"
+                />
+                <DatePicker
+                  value={mTo ? new Date(mTo + "T00:00:00") : null}
+                  onChange={(d) => setMTo(d ? d.toISOString().split("T")[0] : "")}
+                  placeholder="Hasta"
+                  clearable
+                  className="w-40"
+                />
+                {locationId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto"
+                    disabled={exportBusy !== null}
+                    onClick={async () => {
+                      setExportBusy("movements");
+                      try {
+                        await inventoryApi.exportMovementsXlsx({
+                          locationType,
+                          locationId,
+                          type: mType || undefined,
+                          from: mFrom || undefined,
+                          to: mTo || undefined,
+                        });
+                      } catch (err) {
+                        swalError("No se pudo exportar", err instanceof Error ? err.message : undefined);
+                      } finally {
+                        setExportBusy(null);
+                      }
+                    }}
+                  >
+                    {exportBusy === "movements" ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
+                    Exportar Excel
+                  </Button>
+                )}
+              </div>
               {loading ? (
                 <Loader2 className="mx-auto size-5 animate-spin text-muted-foreground" />
               ) : (
@@ -1164,6 +997,10 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="transfers">
+          <TransfersBoard canManage={canManage} locationId={locationId || undefined} />
         </TabsContent>
 
         <TabsContent value="revisions">
@@ -1273,15 +1110,12 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
       {active && dialog === "threshold" && (
         <ThresholdDialog row={active} onClose={() => setDialog(null)} onDone={load} />
       )}
-      {active && dialog === "transfer" && (
-        <TransferDialog
-          row={active}
-          locations={locations}
-          cedis={cedis}
-          onClose={() => setDialog(null)}
-          onDone={load}
-        />
-      )}
+      <NewTransferWizard
+        open={Boolean(active && dialog === "transfer")}
+        onOpenChange={(o) => !o && setDialog(null)}
+        preset={active && dialog === "transfer" ? { fromType: locationType, fromId: locationId, inventoryId: active.id } : undefined}
+        onCreated={(id) => router.push(`/admin/inventory/transfers/${id}`)}
+      />
 
       {newRevisionOpen && (
         <NewRevisionDialog

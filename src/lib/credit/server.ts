@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db"
+import { isUniqueViolation, prisma } from "@/lib/db"
 import type { Prisma } from "@prisma/client"
 
 // ── Credit Policy (per organization) ──────────────────────────────────────
@@ -109,16 +109,25 @@ export async function ensureCustomerCredit(
     select: { id: true },
   })
   if (!customer) throw new Error("Cliente no encontrado en esta empresa")
-  const row = await prisma.customerCredit.create({
-    data: {
-      customerId,
-      organizationId,
-      creditLimit: null,
-      useDefaultLimit: true,
-      currentBalance: 0,
-      status: "active",
-    },
-  })
+  let row
+  try {
+    row = await prisma.customerCredit.create({
+      data: {
+        customerId,
+        organizationId,
+        creditLimit: null,
+        useDefaultLimit: true,
+        currentBalance: 0,
+        status: "active",
+      },
+    })
+  } catch (err) {
+    // Otra request creó la cuenta en paralelo (customerId es @unique).
+    if (!isUniqueViolation(err)) throw err
+    const winner = await getCustomerCredit(organizationId, customerId)
+    if (winner) return winner
+    throw err
+  }
   return {
     id: row.id,
     customerId: row.customerId,
