@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { playSound } from "@/lib/sounds"
 import { STAGGER } from "@/lib/animation-tokens"
+import { PortalHero } from "./portal-hero";
 
 interface PortalNotification {
   id: string
@@ -131,21 +132,17 @@ export function NotificationsClient() {
   return (
     <PullToRefresh onRefresh={() => load(tab === "unread" ? "unread" : undefined, false)}>
       <div className="space-y-4 p-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Bell className="size-5 text-primary" />
-            <h1 className="font-heading text-xl font-semibold tracking-tight">Notificaciones</h1>
-            {unreadList.length > 0 && (
-              <Badge className="h-5 px-1.5 text-xs font-bold">{unreadList.length}</Badge>
-            )}
-          </div>
-          {unreadList.length > 0 && (
-            <Button variant="ghost" size="sm" className="gap-1.5 text-sm text-primary" onClick={markAllAsRead}>
-              <CheckCheck className="size-4" /> Marcar leídas
+        <PortalHero
+          icon={Bell}
+          tone="primary"
+          title="Notificaciones"
+          subtitle={unreadList.length ? `Tienes ${unreadList.length} sin leer` : "Estás al día con tus avisos."}
+          action={unreadList.length > 0 ? (
+            <Button variant="outline" size="sm" className="gap-1.5 bg-background/70" onClick={markAllAsRead}>
+              <CheckCheck className="size-4" /> Leídas
             </Button>
-          )}
-        </div>
+          ) : undefined}
+        />
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as "unread" | "history")}>
           <TabsList className="w-full">

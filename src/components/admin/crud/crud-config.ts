@@ -606,8 +606,10 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         options: [
           { value: "", label: "No definido" },
           { value: "hourly", label: "Por hora" },
+          { value: "daily", label: "Por día" },
+          { value: "weekly", label: "Semanal" },
           { value: "monthly", label: "Mensual" },
-          { value: "commission", label: "Por comisión" },
+          { value: "commission", label: "Solo comisión" },
         ],
       },
       {
@@ -616,7 +618,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         type: "number",
         icon: "DollarSign",
         placeholder: "0.00",
-        help: "Monto por hora, mensual o monto base de comisión.",
+        help: "Monto según el tipo (por hora, por día, semanal o mensual). Horario, horas extra, festivos y propinas se configuran en Nómina.",
       },
       {
         key: "paymentFrequency",

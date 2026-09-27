@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.23.0.0] — 2026-09-27
+- **Tipo:** `feat` (Minor)
+- feat: nomina ligera (configuracion de pago por empleado con horario, horas extra, festivos, descansos, comisiones y propinas; percepciones y deducciones configurables; periodos con captura manual, cierre, pago y recibo impreso o por correo que no es CFDI), bascula conectada al POS por puerto serie con animacion de peso y precio en vivo y modo de prueba, animacion de traslados entre sucursales, captura rapida de inventario con escaner, modo sumar y minimos sugeridos por ventas, pedidos sugeridos por proveedor al llegar al minimo que generan ordenes de compra, conciliacion de inventario al cambiar el tipo de producto y ocultar productos desactivados, tipo Servicio explicado y guia de variantes, topicos y receta en productos personalizados, rediseño de credito, control de suscripciones y organizaciones y roles, seccion de menu Plataforma exclusiva del superAdmin, portal de clientes con identidad por seccion en pedidos, listas, credito, favoritos, notificaciones, combos y metodos de pago, y empresa de pruebas NESSIK Test en el seeder de produccion
+
 ### [0.22.0.0] — 2026-09-27
 - **Tipo:** `feat` (Minor)
 - feat: flujo de traslados de inventario (solicitud, preparacion, despacho con GPS del chofer y recepcion con diferencias), rediseño y correccion de datos de todos los reportes, asistentes guiados para combos y ordenes de compra, armado de producto mas didactico en POS y portal, seguimiento de pedido estilo app de delivery, flyers con 10 diseños por tipo, lector QR que explica por que no abre la camara, imagen ilustrada por defecto en productos y categorias, landing dinamica con desplazamiento suave, flecha de regreso en logins y legales, y etiquetas de estado compartidas

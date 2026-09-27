@@ -435,7 +435,7 @@ export const productsModule: CrudModule<ProductDto> = {
 
   async update(organizationId, id, input, _ctx) {
     const data = input as Record<string, unknown>;
-    const existing = await prisma.product.findFirst({ where: { id, organizationId }, select: { id: true, productType: true, isNew: true, name: true, description: true, imageUrl: true, categoryId: true } });
+    const existing = await prisma.product.findFirst({ where: { id, organizationId }, select: { id: true, productType: true, isNew: true, name: true, description: true, imageUrl: true, categoryId: true, bulkUnitId: true } });
     if (!existing) throw new CrudError("Producto no encontrado", 404);
     const categoryId = data.categoryId !== undefined
       ? await validateCategory(organizationId, data.categoryId)
@@ -520,6 +520,13 @@ export const productsModule: CrudModule<ProductDto> = {
           },
         });
       }
+    }
+
+    // Cambió la forma del producto: el inventario se une en la fila vigente
+    // (sin duplicados en inventario, POS ni portal).
+    if (productType !== existing.productType || product.bulkUnitId !== existing.bulkUnitId) {
+      const { reconcileProductInventory } = await import("@/lib/inventory/reconcile");
+      await reconcileProductInventory(organizationId, id);
     }
 
     // Auto-generate publication when isNew is toggled on

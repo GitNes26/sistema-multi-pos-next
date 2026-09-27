@@ -141,3 +141,10 @@ export async function sendOrganizationWelcomeLink(email: string, organizationId:
     capabilities,
   });
 }
+
+/** Correo de negocio (p. ej. recibo de nómina) con el diseño de la marca. */
+export async function sendBusinessMail(to: string, subject: string, title: string, contentHtml: string, businessName?: string | null) {
+  if (!mailConfigured()) throw new Error("El correo no está configurado en el servidor (SMTP)");
+  const html = emailShell(escapeHtml(title), contentHtml, { businessName }).replace("Mensaje automático de seguridad · No respondas este correo.", "Mensaje automático · Guarda este correo como comprobante.");
+  await transport().sendMail({ from: mailFrom(businessName), to, subject, html });
+}

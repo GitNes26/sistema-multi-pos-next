@@ -10,6 +10,7 @@ import { InputGroupField } from "@/components/base/input-group-field"
 import { transfersApi, type TransferListRow } from "@/lib/inventory/transfers-client"
 import { cn } from "@/lib/utils"
 import { TransferStatusPill, TransferStepper } from "./transfer-status"
+import { TransferFlowMini } from "./transfer-flow"
 import { NewTransferWizard } from "./new-transfer-wizard"
 import { useRouter } from "next/navigation"
 
@@ -138,6 +139,7 @@ export function TransfersBoard({ canManage, locationId }: { canManage: boolean; 
                 </div>
                 <TransferStatusPill status={r.status} />
               </div>
+              <TransferFlowMini status={r.status} />
               <TransferStepper status={r.status} compact />
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <span className="tabular-nums">{r.itemCount} productos · {r.totalQty} u.</span>

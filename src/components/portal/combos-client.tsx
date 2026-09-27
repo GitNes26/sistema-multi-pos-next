@@ -14,6 +14,7 @@ import { ThumbImage } from "@/components/base/thumb-image"
 import { cn } from "@/lib/utils"
 import { STAGGER_FADE_UP } from "@/lib/animation-tokens"
 import Link from "next/link"
+import { PortalHero } from "./portal-hero";
 
 const { container, item } = STAGGER_FADE_UP;
 
@@ -92,17 +93,18 @@ export function CombosClient() {
       initial="hidden"
       animate="show"
     >
-      {/* Header */}
-      <motion.div variants={item} className="flex items-center gap-3">
-        <Link href="/portal" className="flex size-8 items-center justify-center rounded-full bg-muted transition hover:bg-muted/80">
-          <ArrowLeft className="size-4" />
-        </Link>
-        <div>
-          <h1 className="text-lg font-bold">Combos especiales</h1>
-          <p className="text-xs text-muted-foreground">
-            {combos.length} combo{combos.length !== 1 ? "s" : ""} disponible{combos.length !== 1 ? "s" : ""}
-          </p>
-        </div>
+      <motion.div variants={item}>
+        <PortalHero
+          icon={Puzzle}
+          tone="warning"
+          title="Combos especiales"
+          subtitle={`${combos.length} combo${combos.length !== 1 ? "s" : ""} con precio especial, armados para ti.`}
+          action={
+            <Link href="/portal" aria-label="Volver a la tienda" className="flex size-9 items-center justify-center rounded-full bg-background/70 transition hover:bg-background">
+              <ArrowLeft className="size-4" />
+            </Link>
+          }
+        />
       </motion.div>
 
       {/* Empty state */}

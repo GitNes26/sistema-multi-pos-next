@@ -13,6 +13,7 @@ import { SwipeableRow } from "@/components/shared/swipeable-row";
 import { Skeleton } from "@/components/ui/skeleton";
 import { STAGGER } from "@/lib/animation-tokens";
 import { FavoritesEmptyIllustration } from "@/components/shared/animated-illustrations";
+import { PortalHero } from "./portal-hero";
 
 export function FavoritesClient() {
   const products = usePortalStore((s) => s.products);
@@ -53,16 +54,12 @@ export function FavoritesClient() {
   return (
     <PullToRefresh onRefresh={load}>
       <div className="space-y-4 p-4">
-        {/* Header */}
-        <div className="flex items-center gap-2">
-          <Heart className="size-5 text-primary fill-primary/30" />
-          <h1 className="text-lg font-bold">Favoritos</h1>
-          {favProducts.length > 0 && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
-              {favProducts.length}
-            </span>
-          )}
-        </div>
+        <PortalHero
+          icon={Heart}
+          tone="danger"
+          title="Favoritos"
+          subtitle={favProducts.length ? `${favProducts.length} producto${favProducts.length === 1 ? "" : "s"} que te encantan, a un toque del carrito.` : "Toca el corazón en cualquier producto para guardarlo aquí."}
+        />
 
         {loading ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

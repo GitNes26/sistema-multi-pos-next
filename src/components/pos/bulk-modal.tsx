@@ -9,6 +9,8 @@ import { Numpad, type NumpadKey } from "./numpad";
 import type { PosProduct } from "@/types/pos";
 import { money, qty, round2, clamp, snapToStep } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
+import { kgToUnit, scale, useScale } from "@/lib/pos/scale";
+import { ScaleReadout, scaleIsLive } from "./scale-panel";
 
 interface BulkUnit {
   id: string;
@@ -40,6 +42,10 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
   const [amountStr, setAmountStr] = useState("");
   const [mode, setMode] = useState<EntryMode>("cantidad");
   const [unitId, setUnitId] = useState<string>("");
+  // Con báscula conectada la cantidad sigue al peso, hasta que el cajero
+  // escriba una cantidad a mano (entonces se puede volver a "Usar báscula").
+  const scaleState = useScale();
+  const [followScale, setFollowScale] = useState(true);
 
   useEffect(() => {
     if (!product) return;
@@ -48,6 +54,7 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
     setQtyStr(String(editing?.draft.qty ?? "1"));
     setAmountStr("");
     setMode("cantidad");
+    setFollowScale(!editing);
   }, [product, editing]);
 
   const units = useMemo<BulkUnit[]>(() => {
@@ -83,7 +90,11 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
   const abbrev = activeUnit?.abbrev ?? bulk.unitAbbrev;
   const unitName = activeUnit?.name ?? bulk.unitName;
 
-  const parsedQty = Math.max(0, parseFloat(qtyStr.replace(",", ".")) || 0);
+  const scaleQty = scaleIsLive(scaleState) && scaleState.kg != null ? kgToUnit(scaleState.kg, abbrev) : null;
+  const scaleReady = scaleIsLive(scaleState) && kgToUnit(1, abbrev) != null;
+  const usingScale = scaleReady && followScale && mode === "cantidad";
+  const typedQty = Math.max(0, parseFloat(qtyStr.replace(",", ".")) || 0);
+  const parsedQty = usingScale ? (scaleQty ?? 0) : typedQty;
   const snappedQty = snapToStep(parsedQty, step);
   const qtyClamped = clamp(snappedQty, minQty, maxQty);
 
@@ -93,6 +104,13 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
   const liveAmount = mode === "cantidad" ? round2(parsedQty * pricePerUnit) : parsedAmount;
 
   const onKey = (key: NumpadKey) => {
+    if (usingScale) {
+      // Captura manual: deja de seguir la báscula y empieza desde cero.
+      setFollowScale(false);
+      if (key !== "clear" && key !== "backspace") setQtyStr(key === "." ? "0." : key);
+      else setQtyStr("");
+      return;
+    }
     const field = mode === "cantidad" ? setQtyStr : setAmountStr;
     const current = mode === "cantidad" ? qtyStr : amountStr;
     if (key === "clear") return field("");
@@ -114,6 +132,7 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
     const snapped = clamp(snapToStep(v, step), minQty, maxQty);
     setQtyStr(String(snapped));
     setMode("cantidad");
+    setFollowScale(false);
   };
 
   const confirm = () => {
@@ -122,7 +141,7 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
     onConfirm(product, { qty: finalQty, unitId: activeUnit.id, pricePerUnit, abbrev, unitName }, editing?.key);
   };
 
-  const presets = [minQty, 0.25, 0.5, 0.75, 1, 2].filter((v) => v >= minQty);
+  const presets = [...new Set([minQty, 0.25, 0.5, 0.75, 1, 2])].filter((v) => v >= minQty);
 
   return (
     <DialogComponent
@@ -143,7 +162,7 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={confirm} size="lg" className="flex-1">
+          <Button onClick={confirm} size="lg" className="flex-1" disabled={usingScale && parsedQty <= 0}>
             {editing ? "Guardar cambios" : `Agregar · ${money(liveAmount)}`}
           </Button>
         </>
@@ -183,6 +202,18 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
           ))}
         </div>
 
+        {usingScale || (scaleReady && mode === "cantidad") ? (
+          <ScaleReadout
+            quantity={parsedQty}
+            unitAbbrev={abbrev}
+            pricePerUnit={pricePerUnit}
+            stable={usingScale ? scaleState.stable : true}
+            following={usingScale}
+            demo={scaleState.status === "demo"}
+            maxQty={maxQty}
+            onFollow={() => setFollowScale(true)}
+          />
+        ) : (
         <div className="rounded-xl border bg-card p-3">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{mode === "cantidad" ? `Cantidad en ${abbrev}` : "Monto deseado"}</span>
@@ -205,6 +236,16 @@ export function BulkModal({ open, product, editing, onClose, onConfirm }: BulkMo
             </p>
           )}
         </div>
+        )}
+        {!scaleReady && mode === "cantidad" && kgToUnit(1, abbrev) != null && scaleState.status !== "unsupported" && (
+          <button
+            type="button"
+            onClick={() => void scale.connect()}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-muted"
+          >
+            <Scale className="size-3.5" /> ¿Tienes báscula? Conéctala para pesar automáticamente
+          </button>
+        )}
 
         {mode === "cantidad" && (
           <div className="flex flex-wrap gap-1.5">

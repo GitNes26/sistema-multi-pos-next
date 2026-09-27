@@ -100,6 +100,28 @@ export interface InventoryRow {
   trackInventory: boolean;
 }
 
+export interface ReorderLine {
+  inventoryId: string;
+  productId: string;
+  variantId: string | null;
+  name: string;
+  image: string | null;
+  unit: string | null;
+  current: number;
+  min: number;
+  suggested: number;
+  unitCost: number;
+  minimumOrder: number;
+  supplierSku: string | null;
+}
+
+export interface ReorderGroup {
+  supplierId: string | null;
+  supplierName: string;
+  leadTimeDays: number;
+  lines: ReorderLine[];
+}
+
 export interface InventoryMovement {
   id: string;
   type: string;
@@ -275,6 +297,17 @@ export const inventoryApi = {
     }),
   bulkUpdate: (rows: { inventoryId: string; quantity: number; minThreshold: number }[]) =>
     inventoryRequest<{ ok: boolean; updated: number }>("/api/inventory/bulk", { method: "POST", body: JSON.stringify({ rows }) }),
+  velocity: (params: { locationType: string; locationId: string; coverage?: number }) =>
+    inventoryRequest<{ ok: boolean; rows: { inventoryId: string; dailyAverage: number; suggestedMin: number }[] }>(
+      `/api/inventory/velocity?${new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)]))}`
+    ),
+  reorderSuggestions: (params: { locationType: string; locationId: string }) =>
+    inventoryRequest<{ ok: boolean; groups: ReorderGroup[] }>(`/api/inventory/reorder?${new URLSearchParams(params)}`),
+  createReorderOrders: (body: {
+    locationType: string;
+    locationId: string;
+    orders: { supplierId: string; lines: { productId: string; variantId: string | null; quantity: number; unitCost: number; description?: string; link?: boolean }[] }[];
+  }) => inventoryRequest<{ ok: boolean; orders: { id: string; folio: string }[] }>("/api/inventory/reorder", { method: "POST", body: JSON.stringify(body) }),
   transfer: (body: {
     fromInventoryId: string;
     toLocationType: string;

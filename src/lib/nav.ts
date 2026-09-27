@@ -6,6 +6,7 @@ import {
   BellRing,
   Boxes,
   Briefcase,
+  HandCoins,
   Building2,
   ChefHat,
   ClipboardList,
@@ -124,6 +125,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Puestos",
         icon: Briefcase,
         permission: "employees.view",
+      },
+      {
+        href: "/admin/payroll",
+        label: "Nómina",
+        icon: HandCoins,
+        permission: "employees.manage",
       },
       {
         href: "/admin/combos",
@@ -268,6 +275,24 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: "settings.manage",
       },
       {
+        href: "/admin/settings/users",
+        label: "Usuarios y permisos",
+        icon: ShieldCheck,
+        permission: "users.manage",
+      },
+    ],
+  },
+  {
+    // Exclusivo del superadministrador: administra todas las empresas.
+    title: "Plataforma",
+    items: [
+      {
+        href: "/admin/settings/organizations",
+        label: "Organizaciones y roles",
+        icon: Building2,
+        permission: "organizations.manage",
+      },
+      {
         href: "/admin/settings/subscriptions",
         label: "Control de suscripciones",
         icon: ShieldCheck,
@@ -280,21 +305,9 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: "organizations.manage",
       },
       {
-        href: "/admin/settings/users",
-        label: "Usuarios y permisos",
-        icon: ShieldCheck,
-        permission: "users.manage",
-      },
-      {
         href: "/admin/settings/menus",
         label: "Menú",
         icon: Menu,
-        permission: "users.manage",
-      },
-      {
-        href: "/admin/settings/organizations",
-        label: "Organizaciones y roles",
-        icon: Building2,
         permission: "organizations.manage",
       },
     ],
@@ -346,7 +359,7 @@ function navUserHasPermission(
 }
 
 function navUserCanSeeItem(navUser: NavUser | null, item: NavItem): boolean {
-  if (item.href === "/admin/settings/menus" && !["admin", "superadmin"].includes(navUser?.user?.role ?? "")) return false;
+  if (item.href === "/admin/settings/menus" && navUser?.user?.role !== "superadmin") return false;
   return navUserHasPermission(navUser, item.permission);
 }
 
@@ -359,7 +372,7 @@ export function filterNavSections(
     .map((section) => ({
       ...section,
       items: section.items.filter(
-        (item) => (item.href !== "/admin/settings/menus" || ["admin", "superadmin"].includes(session?.user?.role ?? "")) && (!item.permission || hasPermission(session, item.permission))
+        (item) => (item.href !== "/admin/settings/menus" || session?.user?.role === "superadmin") && (!item.permission || hasPermission(session, item.permission))
       ),
     }))
     .filter((section) => section.items.length > 0);

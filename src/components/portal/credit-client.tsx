@@ -114,37 +114,48 @@ export function CreditClient() {
         initial="hidden"
         animate="show"
       >
-        {/* Credit Summary Card */}
-        <motion.div variants={STAGGER_FADE_UP.item} className="rounded-2xl border border-warning/30 bg-warning/10 p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Landmark className="size-5 text-warning-ink" />
-          <h2 className="text-lg font-bold">Mi Crédito</h2>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground">Saldo pendiente</p>
-            <AnimatedNumber
-              value={credit?.currentBalance ?? 0}
-              format={money}
-              className={cn("text-2xl font-black tabular-nums", hasDebt ? "text-destructive" : "text-success-ink")}
-            />
+        {/* Tarjeta de crédito: disponible, usado y límite */}
+        {credit && <motion.div variants={STAGGER_FADE_UP.item} className="relative overflow-hidden rounded-3xl bg-foreground p-5 text-background shadow-e3">
+          <div aria-hidden className="pointer-events-none absolute -right-12 -top-16 size-48 rounded-full bg-warning/40 blur-3xl" />
+          <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-10 size-44 rounded-full bg-primary/40 blur-3xl" />
+          <div className="relative flex items-center justify-between">
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <Landmark className="size-5" /> Mi crédito
+            </span>
+            <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", credit?.status === "suspended" ? "bg-destructive text-white" : hasDebt ? "bg-warning text-warning-foreground" : "bg-success text-white")}>
+              {credit?.status === "suspended" ? "Suspendido" : hasDebt ? "Con saldo" : "Al corriente"}
+            </span>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Límite de crédito</p>
-            <p className="text-2xl font-black tabular-nums">
-              {credit?.creditLimit != null ? money(credit.creditLimit) : "Sin límite"}
-            </p>
-          </div>
-        </div>
-
-        {credit?.status === "suspended" && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            <AlertTriangle className="size-4" />
-            Tu cuenta de crédito está suspendida. Contacta soporte.
-          </div>
-        )}
-      </motion.div>
+          <p className="relative mt-5 text-xs opacity-70">{credit?.creditLimit != null ? "Disponible para comprar" : "Saldo pendiente"}</p>
+          <AnimatedNumber
+            value={credit?.creditLimit != null ? Math.max(0, credit.creditLimit - credit.currentBalance) : (credit?.currentBalance ?? 0)}
+            format={money}
+            className="relative block font-heading text-4xl font-semibold tracking-tight tabular-nums"
+          />
+          {credit?.creditLimit != null && credit.creditLimit > 0 && (
+            <div className="relative mt-4">
+              <div className="h-2 overflow-hidden rounded-full bg-background/15">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(100, (credit.currentBalance / credit.creditLimit) * 100)}%` }}
+                  transition={{ duration: 0.9, ease: "easeOut" }}
+                  className={cn("h-full rounded-full", credit.currentBalance / credit.creditLimit >= 0.8 ? "bg-destructive" : "bg-warning")}
+                />
+              </div>
+              <div className="mt-2 flex justify-between text-xs">
+                <span><span className="opacity-70">Debes</span> <b className="tabular-nums">{money(credit.currentBalance)}</b></span>
+                <span><span className="opacity-70">Límite</span> <b className="tabular-nums">{money(credit.creditLimit)}</b></span>
+              </div>
+            </div>
+          )}
+          {credit?.creditLimit == null && credit && <p className="relative mt-3 text-xs opacity-70">Tu crédito no tiene límite fijo.</p>}
+          {credit?.status === "suspended" && (
+            <div className="relative mt-4 flex items-center gap-2 rounded-xl bg-destructive/20 px-3 py-2 text-xs">
+              <AlertTriangle className="size-4" />
+              Tu cuenta de crédito está suspendida. Contacta a la tienda.
+            </div>
+          )}
+        </motion.div>}
 
       {/* Tabs — reutiliza componente Tabs */}
       <motion.div variants={STAGGER_FADE_UP.item}>

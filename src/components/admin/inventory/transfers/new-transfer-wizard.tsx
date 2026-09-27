@@ -1,5 +1,6 @@
 "use client"
 
+import { TransferFlow } from "./transfer-flow"
 import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowDownUp, ArrowLeft, ArrowRight, Building2, Package, Search, Send, Store, Trash2, Warehouse } from "lucide-react"
@@ -276,16 +277,8 @@ export function NewTransferWizard({
 
           {step === 2 && from && to && (
             <>
-              <div className="flex items-center gap-3 rounded-2xl border bg-muted/40 p-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">Sale de</p>
-                  <p className="truncate font-semibold">{from.name}</p>
-                </div>
-                <ArrowRight className="size-5 shrink-0 text-primary" />
-                <div className="min-w-0 flex-1 text-right">
-                  <p className="text-xs text-muted-foreground">Llega a</p>
-                  <p className="truncate font-semibold">{to.name}</p>
-                </div>
+              <div className="rounded-2xl border bg-muted/40 p-4">
+                <TransferFlow status="in_transit" from={{ name: from.name, type: from.type }} to={{ name: to.name, type: to.type }} sent={units} received={null} />
               </div>
               <ul className="divide-y rounded-xl border">
                 {lines.map(([id, qty]) => {

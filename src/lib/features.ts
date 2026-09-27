@@ -184,6 +184,7 @@ export const NAV_HREF_TO_FEATURE: Record<string, FeatureKey> = {
   "/admin/categories": "categories",
   "/admin/customers": "customers",
   "/admin/employees": "employees",
+  "/admin/payroll": "employees",
   "/admin/sales": "sales",
   "/admin/reports": "reports",
   "/admin/notifications": "notifications",

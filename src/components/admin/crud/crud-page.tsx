@@ -392,7 +392,7 @@ export function CrudPage({
         id: "productType",
         header: "Tipo",
         accessorKey: "productType",
-        cell: ({ row }) => <ProductTypeBadge type={row.original.productType} />,
+        cell: ({ row }) => <ProductTypeBadge type={row.original.productType} trackInventory={row.original.trackInventory} />,
       },
       {
         id: "price",
@@ -838,7 +838,7 @@ export function CrudPage({
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <ProductStatusPill row={row} />
-                        <ProductTypeBadge type={row.productType} />
+                        <ProductTypeBadge type={row.productType} trackInventory={row.trackInventory} />
                       </div>
                     </div>
                   )

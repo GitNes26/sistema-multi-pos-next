@@ -231,7 +231,8 @@ export async function getPosCatalog(
   for (const inv of inventoryRows) {
     const q = toNum(inv.quantity)
     if (inv.variantId) variantStock.set(inv.variantId, q)
-    if (inv.productId) productStock.set(inv.productId, q)
+    // La existencia a nivel producto (granel) es la fila sin variante.
+    if (inv.productId && !inv.variantId) productStock.set(inv.productId, q)
   }
 
   // Recetas que consumen un producto completo con varias variantes. Se
@@ -1056,6 +1057,7 @@ export async function createSale(
         : await tx.inventory.findFirst({
             where: {
               productId: item.productId,
+              variantId: null,
               locationId,
               locationType: "location",
             },

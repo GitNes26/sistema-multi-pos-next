@@ -21,6 +21,7 @@ import { transfersApi, type TransferDetail as Detail } from "@/lib/inventory/tra
 import { swalConfirm, swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
 import { TransferStatusPill, TransferStepper } from "./transfer-status"
+import { TransferFlow } from "./transfer-flow"
 
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null
@@ -112,7 +113,14 @@ export function TransferDetailView({ id, canManage }: { id: string; canManage: b
         <TransferStatusPill status={t.status} className="text-sm" />
       </div>
 
-      <div className="rounded-2xl border bg-card p-4 shadow-e1 sm:p-5">
+      <div className="space-y-5 rounded-2xl border bg-card p-4 shadow-e1 sm:p-5">
+        <TransferFlow
+          status={t.status}
+          from={{ name: t.from.name, type: t.from.type }}
+          to={{ name: t.to.name, type: t.to.type }}
+          sent={sent}
+          received={t.status === "received" ? received : null}
+        />
         <TransferStepper status={t.status} />
       </div>
 

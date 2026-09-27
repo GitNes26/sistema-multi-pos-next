@@ -113,7 +113,9 @@ function filterTree(nodes: MenuNode[], keep: (n: MenuNode) => boolean): MenuNode
   const result: MenuNode[] = [];
   for (const n of nodes) {
     const children = filterTree(n.children, keep);
-    if (keep(n) || children.length > 0) {
+    // Una sección sin hijos visibles no se muestra (p. ej. "Plataforma" para no superadmin).
+    const visible = n.type === "section" ? children.length > 0 : keep(n) || children.length > 0;
+    if (visible) {
       result.push({ ...n, children });
     }
   }
@@ -136,7 +138,7 @@ export async function getMenuTree(
   });
   const nodes = rows.map((r) => toNode(r as MenuRow));
   const keep = (n: MenuNode) =>
-    (n.href !== "/admin/settings/menus" || role === "admin" || role === "superadmin") &&
+    (n.href !== "/admin/settings/menus" || role === "superadmin") &&
     canSee(n.permissionKey, permissions, isAdmin, role ?? null);
   return filterTree(buildTree(nodes), keep);
 }

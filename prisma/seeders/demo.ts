@@ -1,6 +1,7 @@
 import { $Enums, Prisma } from "@prisma/client"
 import { prisma } from "../../src/lib/db/client"
 import { seedProduction, SYSTEM_UNITS } from "./production"
+import { isNessikTestEnabled, seedNessikTest } from "./nessik-test"
 import { emptySchedule } from "../../src/lib/schedule"
 import { placeholderImageUrl } from "../../src/lib/catalog/placeholder"
 
@@ -988,6 +989,10 @@ async function cleanupDemo(orgIds: string[], emails: string[]) {
   await d.saleItem.deleteMany()
   await d.sale.deleteMany()
   await d.employeeCommission.deleteMany()
+  // Nómina (depende de empleados)
+  await d.payrollEntry.deleteMany()
+  await d.payrollPeriod.deleteMany()
+  await d.payrollConcept.deleteMany()
   await d.coupon.deleteMany()
   await d.loyaltyTransaction.deleteMany()
   await d.promotionCustomerUse.deleteMany()
@@ -6298,6 +6303,10 @@ export async function seedDemo() {
   }
 
   await finalizeDemoAccess(demoOrganizationIds, demoEmails, ownerUser.id)
+
+  // La limpieza global de arriba vacía también la empresa de pruebas NESSIK
+  // (creada por seedProduction); se reconstruye para que siga lista.
+  if (isNessikTestEnabled()) await seedNessikTest()
 
   return {
     org,

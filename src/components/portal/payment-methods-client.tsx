@@ -13,6 +13,7 @@ import { InputGroupField } from "@/components/base/input-group-field"
 import { BottomSheet } from "@/components/portal/bottom-sheet"
 import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { cn } from "@/lib/utils"
+import { PortalHero } from "./portal-hero";
 
 const CARD_COLORS = [
   "#1a1a2e",
@@ -214,12 +215,17 @@ export function PaymentMethodsClient() {
 
   return (
     <div className="space-y-4 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">Métodos de pago</h1>
-        <Button size="sm" className="rounded-xl" onClick={() => { setShowForm(true); setErrors({}) }}>
-          <Plus className="size-4" /> Agregar
-        </Button>
-      </div>
+      <PortalHero
+        icon={Wallet}
+        tone="neutral"
+        title="Métodos de pago"
+        subtitle="Tus tarjetas guardadas para pagar más rápido. Nunca guardamos el número completo."
+        action={
+          <Button size="sm" className="rounded-xl" onClick={() => { setShowForm(true); setErrors({}) }}>
+            <Plus className="size-4" /> Agregar
+          </Button>
+        }
+      />
 
       {expiring.length > 0 && (
         <motion.div

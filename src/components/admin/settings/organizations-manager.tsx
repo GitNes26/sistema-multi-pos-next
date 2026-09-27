@@ -18,7 +18,10 @@ import {
   UserRound,
   Users,
   AlertCircle,
+  Layers,
+  Search,
 } from "lucide-react"
+import { EntityCell, RowActions, SegmentedFilter } from "@/components/base"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -158,8 +161,8 @@ export function OrganizationsManager() {
   return (
     <Tabs defaultValue="orgs">
       <TabsList>
-        <TabsTrigger value="orgs">Organizaciones</TabsTrigger>
-        <TabsTrigger value="users">Usuarios y admins</TabsTrigger>
+        <TabsTrigger value="orgs"><Building2 className="size-4" /> Organizaciones</TabsTrigger>
+        <TabsTrigger value="users"><Users className="size-4" /> Usuarios y admins</TabsTrigger>
       </TabsList>
       <TabsContent value="orgs" className="mt-4">
         <OrganizationsTab />
@@ -180,6 +183,8 @@ function OrganizationsTab() {
 
   const [createOpen, setCreateOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<OrgRow | null>(null)
+  const [modeFilter, setModeFilter] = React.useState<string>("all")
+  const [query, setQuery] = React.useState("")
 
   const load = React.useCallback(() => {
     api<{ organizations: OrgRow[] }>("/api/settings/organizations")
@@ -222,80 +227,110 @@ function OrganizationsTab() {
 
   if (!orgs) {
     return (
-      <div className="space-y-2">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full rounded-lg" />
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-2xl" />
         ))}
       </div>
     )
   }
 
+  const modes = [...new Set(orgs.map((o) => o.businessMode))]
+  const visible = orgs.filter(
+    (o) =>
+      (modeFilter === "all" || o.businessMode === modeFilter) &&
+      (!query || `${o.name} ${o.ownerName ?? ""} ${o.ownerEmail ?? ""}`.toLowerCase().includes(query.toLowerCase()))
+  )
+
   return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
-        <Button onClick={() => setCreateOpen(true)}>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          { label: "Empresas", value: orgs.length, icon: Building2 },
+          { label: "Miembros en total", value: orgs.reduce((s, o) => s + o.memberCount, 0), icon: Users },
+          { label: "Con administradores", value: orgs.filter((o) => o.adminCount > 0).length, icon: KeyRound },
+          { label: "Tipos de negocio", value: modes.length, icon: Layers },
+        ].map((k) => (
+          <div key={k.label} className="rounded-2xl border bg-card p-4 shadow-e1">
+            <k.icon className="size-5 text-primary" />
+            <p className="mt-2 font-heading text-2xl font-semibold tabular-nums">{k.value}</p>
+            <p className="text-xs text-muted-foreground">{k.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <SegmentedFilter
+          ariaLabel="Tipo de negocio"
+          value={modeFilter}
+          onChange={setModeFilter}
+          options={[
+            { value: "all", label: "Todas", count: orgs.length },
+            ...modes.map((m) => ({ value: m, label: businessModeInfo(m).label.split(" /")[0], count: orgs.filter((o) => o.businessMode === m).length })),
+          ]}
+        />
+        <InputGroupField
+          placeholder="Empresa, dueño o correo…"
+          leftIcon={<Search className="size-4" />}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full sm:w-64"
+        />
+        <Button className="ml-auto" onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" /> Nueva organización
         </Button>
       </div>
 
-      {orgs.length === 0 && (
-        <p className="py-10 text-center text-sm text-muted-foreground">
-          No hay organizaciones registradas. Crea la primera.
+      {visible.length === 0 && (
+        <p className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground">
+          {orgs.length === 0 ? "No hay organizaciones registradas. Crea la primera." : "Ninguna empresa coincide con el filtro."}
         </p>
       )}
 
-      <div className="grid gap-2 md:grid-cols-2">
-        {orgs.map((org) => (
-          <div key={org.id} className="rounded-lg border p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <Building2 className="size-4 text-muted-foreground" />
-                  <span className="truncate text-sm font-semibold">
-                    {org.name}
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {visible.map((org) => {
+          const info = businessModeInfo(org.businessMode)
+          return (
+            <div key={org.id} className="group flex flex-col overflow-hidden rounded-2xl border bg-card shadow-e1 transition-shadow hover:shadow-e2">
+              <div className={`h-1.5 bg-gradient-to-r ${info.gradient}`} />
+              <div className="flex flex-1 flex-col gap-3 p-4">
+                <div className="flex items-start gap-3">
+                  <span className={`grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-lg font-bold text-white ${info.gradient}`}>
+                    {org.name.charAt(0).toUpperCase()}
                   </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{org.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{info.label}</p>
+                  </div>
+                  <RowActions
+                    name={org.name}
+                    items={[
+                      { label: "Entrar a la empresa", icon: LogIn, onSelect: () => void enter(org) },
+                      { label: "Editar", icon: Pencil, onSelect: () => setEditing(org) },
+                      { label: "Eliminar", icon: Trash2, destructive: true, onSelect: () => void remove(org) },
+                    ]}
+                  />
                 </div>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {org.ownerName ?? "—"} · {org.ownerEmail ?? ""}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <BusinessModeBadge mode={org.businessMode} />
-                  <Badge variant="secondary">{org.currency}</Badge>
-                  <Badge variant="outline">{org.memberCount} miembros</Badge>
-                  {org.adminCount > 0 && (
-                    <Badge variant="outline">{org.adminCount} admins</Badge>
-                  )}
+                <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2 text-sm">
+                  <UserRound className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{org.ownerName ?? "Sin dueño asignado"}</p>
+                    {org.ownerEmail && <p className="truncate text-xs text-muted-foreground">{org.ownerEmail}</p>}
+                  </div>
                 </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="Entrar"
-                  onClick={() => enter(org)}
-                >
-                  <LogIn className="size-4" />
-                </Button>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="Editar"
-                  onClick={() => setEditing(org)}
-                >
-                  <Pencil className="size-4" />
-                </Button>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="Eliminar"
-                  onClick={() => void remove(org)}
-                >
-                  <Trash2 className="size-4 text-destructive" />
+                <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Users className="size-3.5" /> {org.memberCount} miembros</span>
+                  <span className="flex items-center gap-1"><KeyRound className="size-3.5" /> {org.adminCount} admins</span>
+                  <span>{org.currency}</span>
+                  <span className="ml-auto">Alta {new Date(org.createdAt).toLocaleDateString("es-MX", { month: "short", year: "numeric" })}</span>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => void enter(org)}>
+                  <LogIn className="size-4" /> Entrar
                 </Button>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <CreateOrgDialog
@@ -677,6 +712,8 @@ function UsersTab() {
   const [orgs, setOrgs] = React.useState<OrgRow[]>([])
   const [createOpen, setCreateOpen] = React.useState(false)
   const [assigning, setAssigning] = React.useState<UserRow | null>(null)
+  const [userFilter, setUserFilter] = React.useState<"all" | "unassigned" | "superadmin" | "inactive">("all")
+  const [query, setQuery] = React.useState("")
 
   const load = React.useCallback(() => {
     api<{ users: UserRow[] }>("/api/settings/organizations/users")
@@ -695,61 +732,86 @@ function UsersTab() {
     return (
       <div className="space-y-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full rounded-lg" />
+          <Skeleton key={i} className="h-20 w-full rounded-2xl" />
         ))}
       </div>
     )
   }
 
+  const counts = {
+    all: users.length,
+    unassigned: users.filter((u) => !u.isSuperadmin && u.memberships.length === 0).length,
+    superadmin: users.filter((u) => u.isSuperadmin).length,
+    inactive: users.filter((u) => !u.isActive).length,
+  }
+  const visible = users.filter(
+    (u) =>
+      (userFilter === "all" ||
+        (userFilter === "unassigned" && !u.isSuperadmin && u.memberships.length === 0) ||
+        (userFilter === "superadmin" && u.isSuperadmin) ||
+        (userFilter === "inactive" && !u.isActive)) &&
+      (!query || `${u.fullName} ${u.email} ${u.memberships.map((m) => m.organizationName).join(" ")}`.toLowerCase().includes(query.toLowerCase()))
+  )
+
   return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
-        <Button onClick={() => setCreateOpen(true)}>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <SegmentedFilter
+          ariaLabel="Usuarios"
+          value={userFilter}
+          onChange={setUserFilter}
+          options={[
+            { value: "all", label: "Todos", count: counts.all },
+            { value: "unassigned", label: "Sin empresa", count: counts.unassigned, countTone: counts.unassigned ? "warning" : undefined },
+            { value: "superadmin", label: "Super admins", count: counts.superadmin },
+            { value: "inactive", label: "Inactivos", count: counts.inactive },
+          ]}
+        />
+        <InputGroupField
+          placeholder="Nombre, correo o empresa…"
+          leftIcon={<Search className="size-4" />}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full sm:w-64"
+        />
+        <Button className="ml-auto" onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" /> Crear usuario
         </Button>
       </div>
 
-      <div className="space-y-2">
-        {users.map((u) => (
-          <div
-            key={u.id}
-            className="flex flex-wrap items-center gap-3 rounded-lg border p-3"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-medium">
-                  {u.fullName}
-                </span>
+      <div className="overflow-hidden rounded-2xl border bg-card">
+        {visible.length === 0 && <p className="py-12 text-center text-sm text-muted-foreground">Ningún usuario en esta vista.</p>}
+        <div className="divide-y">
+          {visible.map((u) => (
+            <div key={u.id} className={`flex flex-wrap items-center gap-3 px-4 py-3 ${u.isActive ? "" : "opacity-60"}`}>
+              <EntityCell
+                title={u.fullName}
+                subtitle={u.email}
+                icon={u.isSuperadmin ? <KeyRound className="size-4" /> : undefined}
+                className="min-w-56 flex-1"
+              />
+              <div className="flex min-w-0 flex-[2] flex-wrap items-center gap-1.5">
                 {u.isSuperadmin && <StatusPill tone="primary" dot={false}>Super admin</StatusPill>}
                 {!u.isActive && <ActiveStatusPill active={false} />}
-              </div>
-              <p className="truncate text-xs text-muted-foreground">
-                {u.email}
-              </p>
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {u.memberships.length === 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    Sin organizaciones asignadas
-                  </span>
-                )}
+                {!u.isSuperadmin && u.memberships.length === 0 && <StatusPill tone="warning">Sin empresa asignada</StatusPill>}
                 {u.memberships.map((m) => (
-                  <Badge
+                  <span
                     key={m.membershipId}
-                    variant="outline"
                     title={`${m.organizationName} (${businessModeInfo(m.businessMode).label})`}
-                    className="gap-1.5"
+                    className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-0.5 text-xs"
                   >
                     <ModeDot mode={m.businessMode} />
-                    {m.organizationName} · {displayRole(m)}
-                  </Badge>
+                    <span className="font-medium">{m.organizationName}</span>
+                    <span className="text-muted-foreground">· {displayRole(m)}</span>
+                  </span>
                 ))}
               </div>
+              <Button size="sm" variant="outline" onClick={() => setAssigning(u)}>
+                <Users className="size-4" /> Asignar empresa y rol
+              </Button>
             </div>
-            <Button size="sm" variant="outline" onClick={() => setAssigning(u)}>
-              <Users className="size-4" /> Asignar
-            </Button>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <CreateUserDialog

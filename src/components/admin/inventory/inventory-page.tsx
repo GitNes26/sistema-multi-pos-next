@@ -16,6 +16,7 @@ import {
   Save,
   ScanLine,
   Search,
+  ShoppingCart,
   TriangleAlert,
   Upload,
 } from "lucide-react";
@@ -46,6 +47,8 @@ import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TransfersBoard } from "./transfers/transfers-board";
 import { NewTransferWizard } from "./transfers/new-transfer-wizard";
+import { QuickCaptureDialog } from "./quick-capture-dialog";
+import { ReorderDialog } from "./reorder-dialog";
 
 type InventoryTab = "stock" | "movements" | "revisions" | "transfers";
 import { EntityCell, RowActions, SegmentedFilter, StatusPill, type StatusTone } from "@/components/base";
@@ -59,6 +62,7 @@ import {
 interface InventoryPageProps {
   canManage: boolean;
   canRevise?: boolean;
+  canPurchase?: boolean;
   icon?: React.ReactNode;
 }
 
@@ -477,7 +481,8 @@ function ThresholdDialog({
 }
 
 
-export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps) {
+export function InventoryPage({ canManage, canRevise, canPurchase, icon }: InventoryPageProps) {
+  const [reorderOpen, setReorderOpen] = useState(false);
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [cedis, setCedis] = useState<LocationOption[]>([]);
   const [locationType, setLocationType] = useState<"location" | "cedis">("location");
@@ -627,6 +632,8 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
     () => ({
       low: rows.filter((r) => r.status === "low").length,
       empty: rows.filter((r) => r.status === "empty").length,
+      // En su mínimo (lo que alimenta el pedido sugerido).
+      atMin: rows.filter((r) => r.minThreshold > 0 && r.quantity <= r.minThreshold).length,
     }),
     [rows]
   );
@@ -776,6 +783,22 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
         </TabsList>
 
         <TabsContent value="stock">
+          {canPurchase && stockCounts.atMin > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3">
+              <span className="grid size-9 place-items-center rounded-xl bg-warning/20 text-warning-ink">
+                <ShoppingCart className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">
+                  {stockCounts.atMin} {stockCounts.atMin === 1 ? "producto está" : "productos están"} en su mínimo
+                </p>
+                <p className="text-sm text-muted-foreground">Te preparamos el pedido por proveedor con cantidades y costos; solo revisa y acepta.</p>
+              </div>
+              <Button size="sm" onClick={() => setReorderOpen(true)}>
+                <ShoppingCart className="size-4" /> Ver pedido sugerido
+              </Button>
+            </div>
+          )}
           <Card>
             <CardContent className="pt-5">
                 <DataTable
@@ -1138,44 +1161,21 @@ export function InventoryPage({ canManage, canRevise, icon }: InventoryPageProps
           onDone={load}
         />
       )}
-      <BulkInventoryDialog open={bulkOpen} onOpenChange={setBulkOpen} rows={rows} onDone={() => void load()} />
+      <QuickCaptureDialog open={bulkOpen} onOpenChange={setBulkOpen} rows={rows} locationType={locationType} locationId={locationId} onDone={() => void load()} />
+      {canPurchase && (
+        <ReorderDialog
+          open={reorderOpen}
+          onOpenChange={setReorderOpen}
+          locationType={locationType}
+          locationId={locationId}
+          locationName={currentLocations.find((l) => l.id === locationId)?.name ?? "esta ubicación"}
+        />
+      )}
       <DialogComponent open={importPreview !== null} onOpenChange={(next) => { if (!next) { setImportPreview(null); setPendingImport(null); } }} title="Revisar importación de inventario" description={importPreview ? `${importPreview.imported} filas válidas · ${importPreview.errors.length} con errores` : ""} footer={<><Button variant="outline" onClick={() => { setImportPreview(null); setPendingImport(null); }}>Cancelar</Button><Button onClick={() => void confirmInventoryImport()} disabled={importing || !importPreview?.imported || Boolean(importPreview?.errors.length)}>{importing && <Loader2 className="size-4 animate-spin" />}Confirmar importación</Button></>}>
         {importPreview?.errors.length ? <div role="alert" className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><p className="font-medium">Corrige el archivo antes de importarlo:</p>{importPreview.errors.slice(0, 20).map((error) => <p key={`${error.row}-${error.message}`}>Fila {error.row}: {error.message}</p>)}</div> : <div className="rounded-xl border border-success/30 bg-success/5 p-3 text-sm text-success-ink">El archivo está listo. Las cantidades reemplazarán la existencia actual de la ubicación seleccionada.</div>}
       </DialogComponent>
     </>
   );
-}
-
-function BulkInventoryDialog({ open, onOpenChange, rows, onDone }: { open: boolean; onOpenChange: (open: boolean) => void; rows: InventoryRow[]; onDone: () => void }) {
-  const [query, setQuery] = useState("");
-  const [draft, setDraft] = useState<Record<string, { quantity: string; minThreshold: string }>>({});
-  const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    setQuery("");
-    setDraft(Object.fromEntries(rows.map((row) => [row.id, { quantity: String(row.quantity), minThreshold: String(row.minThreshold) }])));
-  }, [open, rows]);
-  const filtered = rows.filter((row) => `${row.productName} ${row.variantName ?? ""} ${row.sku ?? ""} ${row.barcode ?? ""}`.toLowerCase().includes(query.trim().toLowerCase()));
-  const changed = rows.filter((row) => {
-    const value = draft[row.id];
-    return value && (Number(value.quantity) !== row.quantity || Number(value.minThreshold) !== row.minThreshold);
-  });
-  const invalid = changed.some((row) => { const value = draft[row.id]; return !Number.isFinite(Number(value.quantity)) || Number(value.quantity) < 0 || !Number.isFinite(Number(value.minThreshold)) || Number(value.minThreshold) < 0; });
-  const save = async () => {
-    setSaving(true);
-    try {
-      await inventoryApi.bulkUpdate(changed.map((row) => ({ inventoryId: row.id, quantity: Number(draft[row.id].quantity), minThreshold: Number(draft[row.id].minThreshold) })));
-      swalToast(`${changed.length} productos actualizados`); onOpenChange(false); onDone();
-    } catch (error) { swalError("No se pudo guardar el lote", error instanceof Error ? error.message : undefined); }
-    finally { setSaving(false); }
-  };
-  return <DialogComponent open={open} onOpenChange={onOpenChange} icon={<ListChecks className="size-5" />} title="Captura rápida de inventario" description="Edita existencias y mínimos en una sola cuadrícula. Solo se guardarán las filas modificadas." size="full" bodyClassName="space-y-3" footer={<><span className="mr-auto text-sm text-muted-foreground">{changed.length} cambios</span><Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button><Button onClick={() => void save()} disabled={!changed.length || invalid || saving}>{saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}Guardar cambios</Button></>}>
-    <InputGroupField value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar producto, variante, SKU o código…" leftIcon={<Search className="size-4" />} />
-    <div className="max-h-[65vh] overflow-auto rounded-xl border">
-      <table className="w-full min-w-[680px] text-sm"><thead className="sticky top-0 z-10 bg-muted"><tr><th className="px-3 py-2 text-left">Producto</th><th className="w-36 px-3 py-2 text-left">Existencia</th><th className="w-36 px-3 py-2 text-left">Mínimo</th><th className="w-24 px-3 py-2 text-left">Unidad</th></tr></thead><tbody>{filtered.map((row) => { const value = draft[row.id] ?? { quantity: String(row.quantity), minThreshold: String(row.minThreshold) }; const rowChanged = changed.some((item) => item.id === row.id); return <tr key={row.id} className={cn("border-t", rowChanged && "bg-primary/5")}><td className="px-3 py-2"><p className="font-medium">{row.productName}</p><p className="text-xs text-muted-foreground">{row.variantName ?? row.sku ?? row.barcode ?? "Producto a granel"}</p></td><td className="px-3 py-2"><Input type="number" min="0" step="0.001" value={value.quantity} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { ...value, quantity: event.target.value } }))} aria-label={`Existencia de ${row.productName}`} className="tabular-nums" /></td><td className="px-3 py-2"><Input type="number" min="0" step="0.001" value={value.minThreshold} onChange={(event) => setDraft((current) => ({ ...current, [row.id]: { ...value, minThreshold: event.target.value } }))} aria-label={`Mínimo de ${row.productName}`} className="tabular-nums" /></td><td className="px-3 py-2 text-muted-foreground">{row.unit ?? "pza"}</td></tr> })}</tbody></table>
-    </div>
-    {invalid && <p role="alert" className="text-sm text-destructive">Corrige los campos vacíos, negativos o no numéricos antes de guardar.</p>}
-  </DialogComponent>;
 }
 
 function NewRevisionDialog({

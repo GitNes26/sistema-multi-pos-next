@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs"
 import { Prisma } from "@prisma/client"
 import { prisma } from "../../src/lib/db/client"
 import { PERMISSIONS } from "../../src/lib/auth/permission-keys"
+import { isNessikTestEnabled, seedNessikTest } from "./nessik-test"
 
 // FASE 1.3.1 + FASE 2.8 — Seed de producción (base mínima)
 // - SuperAdmin default
@@ -419,6 +420,16 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     sortOrder: 6,
   },
   {
+    id: "menu-nomina",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Nómina",
+    icon: "HandCoins",
+    href: "/admin/payroll",
+    permissionKey: "employees.manage",
+    sortOrder: 6,
+  },
+  {
     id: "menu-combos",
     parentId: "menu-catalogos",
     type: "item",
@@ -586,6 +597,15 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     icon: "Settings",
     sortOrder: 4,
   },
+  // Plataforma: páginas exclusivas del superadministrador (todas las empresas).
+  {
+    id: "menu-plataforma",
+    parentId: null,
+    type: "section",
+    label: "Plataforma",
+    icon: "ShieldCheck",
+    sortOrder: 5,
+  },
   {
     id: "menu-apariencia",
     parentId: "menu-ajustes",
@@ -669,17 +689,17 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   },
   {
     id: "menu-menus",
-    parentId: "menu-ajustes",
+    parentId: "menu-plataforma",
     type: "item",
     label: "Menú",
     icon: "Menu",
     href: "/admin/settings/menus",
-    permissionKey: "users.manage",
+    permissionKey: "organizations.manage",
     sortOrder: 7,
   },
   {
     id: "menu-organizations",
-    parentId: "menu-ajustes",
+    parentId: "menu-plataforma",
     type: "item",
     label: "Organizaciones y roles",
     icon: "Building2",
@@ -699,7 +719,7 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   },
   {
     id: "menu-subscriptions",
-    parentId: "menu-ajustes",
+    parentId: "menu-plataforma",
     type: "item",
     label: "Control de suscripciones",
     icon: "ShieldCheck",
@@ -709,7 +729,7 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
   },
   {
     id: "menu-plans",
-    parentId: "menu-ajustes",
+    parentId: "menu-plataforma",
     type: "item",
     label: "Planes del sistema",
     icon: "CreditCard",
@@ -887,6 +907,9 @@ export async function seedProduction() {
       update: plan,
       create: plan,
     })
+
+  // Empresa de pruebas NESSIK Test (apagar con SEED_NESSIK_TEST=false).
+  if (isNessikTestEnabled()) await seedNessikTest()
 }
 
 export { SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD, SUPERADMIN_NAME }

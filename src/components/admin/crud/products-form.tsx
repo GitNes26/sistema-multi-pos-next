@@ -1,5 +1,6 @@
 "use client"
 
+import { CustomProductGuide, ProductKindPicker } from "./product-kind-guide"
 import { useEffect, useId, useMemo, useState } from "react"
 import * as yup from "yup"
 import {
@@ -94,51 +95,6 @@ function InputField({
       containerClassName={full ? "sm:col-span-2" : undefined}
       {...props}
     />
-  )
-}
-
-function TypeToggle({
-  id,
-  value,
-  onChange,
-  disabled,
-  showCustom,
-}: {
-  id?: string
-  value: "standard" | "bulk" | "custom"
-  onChange: (v: "standard" | "bulk" | "custom") => void
-  disabled?: boolean
-  showCustom?: boolean
-}) {
-  const options = [
-    { value: "standard" as const, label: "Estándar" },
-    { value: "bulk" as const, label: "Granel / Medida" },
-    ...(showCustom
-      ? [{ value: "custom" as const, label: "Personalizado" }]
-      : []),
-  ]
-  return (
-    <div className="flex rounded-lg border bg-muted/40 p-1">
-      {options.map((opt) => (
-        <button
-          id={opt.value === options[0]?.value ? id : undefined}
-          key={opt.value}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(opt.value)}
-          aria-pressed={value === opt.value}
-          className={cn(
-            "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition hover:cursor-pointer",
-            value === opt.value
-              ? "bg-primary text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-            disabled && "cursor-not-allowed opacity-60"
-          )}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
   )
 }
 
@@ -685,18 +641,20 @@ export function ProductsForm({
         icon={<Boxes className="size-4" />}
         full
       >
-        <TypeToggle
-          id="product-productType"
-          value={productType}
-          onChange={setProductType}
-          showCustom={isFoodService}
+        <ProductKindPicker
+          value={productType === "standard" && !trackInventory ? "service" : productType}
+          onChange={(kind) => {
+            // «Servicio» = producto estándar sin control de inventario.
+            if (kind === "service") {
+              setProductType("standard")
+              setTrackInventory(false)
+            } else {
+              if (productType === "standard" && !trackInventory) setTrackInventory(true)
+              setProductType(kind)
+            }
+          }}
+          showCustom={isFoodService || businessMode === "services"}
         />
-        {!isFoodService && (
-          <p className="text-xs text-muted-foreground">
-            El tipo «Personalizado» (variantes + tópicos) está disponible en
-            restaurantes y negocios híbridos.
-          </p>
-        )}
       </FieldRow>
 
       <InputField
@@ -916,17 +874,8 @@ export function ProductsForm({
         </>
       ) : productType === "custom" ? (
         <>
-          <FieldRow label="Variantes y opciones" full>
-            <div className="rounded-xl border bg-muted/30 p-3 text-sm">
-              <p className="font-medium">Una variante puede cambiar el servicio y sus consumos.</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Ejemplo: «Aplicación de pestañas» y «Aplicación + juego de pestañas».
-                Guarda primero el producto, crea ambas desde el botón «Variantes» de la tabla
-                y, en «Receta e insumos», asigna el juego de pestañas solo a la variante que
-                lo incluye, con cantidad y merma. Así el inventario se descuenta únicamente
-                cuando se vende esa opción.
-              </p>
-            </div>
+          <FieldRow label="Cómo se arma" full>
+            <CustomProductGuide />
           </FieldRow>
           {/* Variante base — precio, costo, SKU, código de barras */}
           <FieldRow label="Precio y costo base" full>

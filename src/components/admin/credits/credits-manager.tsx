@@ -28,6 +28,7 @@ import { AnimatedNumber } from "@/components/base/animated-number"
 import { EmptyState } from "@/components/shared/empty-state"
 import { TooltipButton } from "@/components/shared/tooltip-button"
 import { Spinner } from "@/components/base/spinner"
+import { SegmentedFilter } from "@/components/base/segmented-filter"
 import { money } from "@/lib/pos/money"
 import { playSound } from "@/lib/sounds"
 import { swalToast, swalError } from "@/lib/swal"
@@ -65,6 +66,28 @@ interface CreditsManagerProps {
   isSuperadmin: boolean
 }
 
+type CreditFilter = "all" | "debt" | "overdue" | "near" | "blocked"
+
+/** Porción del límite usada (0–1+); 0 si no tiene límite. */
+const usage = (c: CreditAccount) => (c.creditLimit && c.creditLimit > 0 ? c.currentBalance / c.creditLimit : 0)
+
+function UsageBar({ credit }: { credit: CreditAccount }) {
+  if (credit.creditLimit == null) return <span className="text-xs text-muted-foreground">Sin límite</span>
+  const u = usage(credit)
+  return (
+    <div className="w-36">
+      <div className="flex justify-between text-xs">
+        <span className="tabular-nums text-muted-foreground">{money(credit.creditLimit)}</span>
+        <span className={cn("font-semibold tabular-nums", u >= 1 ? "text-destructive" : u >= 0.8 ? "text-warning-ink" : "text-muted-foreground")}>{Math.round(u * 100)}%</span>
+      </div>
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className={cn("h-full rounded-full", u >= 1 ? "bg-destructive" : u >= 0.8 ? "bg-warning" : "bg-primary")} style={{ width: `${Math.min(100, u * 100)}%` }} />
+      </div>
+      <p className="mt-0.5 text-xs text-muted-foreground">{credit.useDefaultLimit ? "Política general" : "Límite individual"}</p>
+    </div>
+  )
+}
+
 const TX_TYPE_LABELS: Record<string, string> = {
   charge: "Cargo",
   payment: "Abono",
@@ -86,6 +109,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
   const [actionDesc, setActionDesc] = useState("")
   const [actionSaving, setActionSaving] = useState(false)
   const [useDefaultLimit, setUseDefaultLimit] = useState(true)
+  const [filter, setFilter] = useState<CreditFilter>("debt")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -112,6 +136,16 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
   const debtors = credits.filter((credit) => credit.currentBalance > 0)
   const totalCustomers = debtors.length
   const overdueCount = credits.filter((c) => c.status === "overdue").length
+  const nearLimit = credits.filter((c) => usage(c) >= 0.8 && c.status !== "suspended")
+  const blockedCount = credits.filter((c) => c.status === "suspended").length
+  const totalLimit = debtors.reduce((s, c) => s + (c.creditLimit ?? 0), 0)
+  const filtered = credits.filter((c) =>
+    filter === "all" ? true
+      : filter === "debt" ? c.currentBalance > 0
+        : filter === "overdue" ? c.status === "overdue"
+          : filter === "near" ? usage(c) >= 0.8 && c.status !== "suspended"
+            : c.status === "suspended"
+  )
 
   // DataTable columns
   const columns = useMemo<ColumnDef<CreditAccount>[]>(() => {
@@ -143,24 +177,9 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
       },
       {
         id: "creditLimit",
-        header: "Límite",
-        accessorKey: "creditLimit",
-        cell: ({ row }) => (
-          <div>
-            <span className="tabular-nums">
-              {row.original.creditLimit != null ? (
-                money(row.original.creditLimit)
-              ) : (
-                <span className="text-muted-foreground">Sin límite</span>
-              )}
-            </span>
-            <p className="text-xs text-muted-foreground">
-              {row.original.useDefaultLimit
-                ? "Política general"
-                : "Límite individual"}
-            </p>
-          </div>
-        ),
+        header: "Uso del límite",
+        accessorFn: (r) => usage(r),
+        cell: ({ row }) => <UsageBar credit={row.original} />,
       },
       {
         id: "currentBalance",
@@ -361,12 +380,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
             {money(row.currentBalance)}
           </span>
         </div>
-        {row.creditLimit != null && (
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Límite</span>
-            <span className="tabular-nums">{money(row.creditLimit)}</span>
-          </div>
-        )}
+        <UsageBar credit={row} />
       </div>
     ),
     [isSuperadmin]
@@ -374,68 +388,50 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
 
   return (
     <>
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-warning/10">
-              <DollarSign className="size-5 text-warning-ink" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Cartera total</p>
-              <AnimatedNumber
-                value={totalDebt}
-                format={money}
-                className="text-lg font-black tabular-nums"
-              />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-info/10">
-              <Users className="size-5 text-info-ink" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Clientes con deuda
+      {/* Resumen de cartera */}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
+        <div className="rounded-2xl border bg-card p-4 shadow-e1">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Cartera por cobrar</p>
+            <DollarSign className="size-5 text-warning-ink" />
+          </div>
+          <AnimatedNumber value={totalDebt} format={money} className="mt-1 block font-heading text-3xl font-semibold tabular-nums" />
+          {totalLimit > 0 && (
+            <>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-warning" style={{ width: `${Math.min(100, (totalDebt / totalLimit) * 100)}%` }} />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {Math.round((totalDebt / totalLimit) * 100)}% del crédito otorgado a deudores ({money(totalLimit)})
               </p>
-              <p className="text-lg font-black tabular-nums">
-                {totalCustomers}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10">
-              <AlertTriangle className="size-5 text-destructive" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Vencidos</p>
-              <p className="text-lg font-black tabular-nums">{overdueCount}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-success/10">
-              <Landmark className="size-5 text-success-ink" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Promedio deuda</p>
-              <p className="text-lg font-black tabular-nums">
-                {totalCustomers > 0 ? money(totalDebt / totalCustomers) : "$0"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+            </>
+          )}
+        </div>
+        {[
+          { label: "Clientes con deuda", value: String(totalCustomers), hint: totalCustomers ? `Promedio ${money(totalDebt / totalCustomers)}` : "Nadie debe", icon: Users, tone: "bg-info/10 text-info-ink", f: "debt" as const },
+          { label: "Vencidos", value: String(overdueCount), hint: overdueCount ? "Requieren seguimiento" : "Al corriente", icon: AlertTriangle, tone: "bg-destructive/10 text-destructive", f: "overdue" as const },
+          { label: "Cerca del límite", value: String(nearLimit.length), hint: blockedCount ? `${blockedCount} bloqueados` : "80% o más usado", icon: Clock, tone: "bg-warning/10 text-warning-ink", f: "near" as const },
+        ].map((k) => (
+          <button
+            key={k.label}
+            type="button"
+            onClick={() => setFilter(k.f)}
+            className={cn("press rounded-2xl border bg-card p-4 text-left shadow-e1 transition", filter === k.f && "ring-2 ring-primary/40")}
+          >
+            <span className={cn("grid size-9 place-items-center rounded-xl", k.tone)}>
+              <k.icon className="size-4" />
+            </span>
+            <p className="mt-2 font-heading text-2xl font-semibold tabular-nums">{k.value}</p>
+            <p className="text-xs font-medium">{k.label}</p>
+            <p className="text-xs text-muted-foreground">{k.hint}</p>
+          </button>
+        ))}
       </div>
 
       {/* DataTable — reutiliza search, paginación, sort, mobile cards */}
       <DataTable
         columns={columns}
-        data={credits}
+        data={filtered}
         loading={loading}
         searchable
         searchPlaceholder="Buscar por nombre, código, teléfono…"
@@ -443,10 +439,23 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
         showColumnVisibility={false}
         onRowClick={openDetail}
         renderCard={renderCard}
-        emptyMessage="No hay clientes activos"
+        emptyMessage={filter === "debt" ? "Nadie tiene saldo pendiente." : filter === "overdue" ? "No hay cuentas vencidas." : filter === "near" ? "Nadie está cerca de su límite." : filter === "blocked" ? "No hay créditos bloqueados." : "No hay clientes con crédito."}
         onRefresh={load}
         refreshing={loading}
         toolbarSlot={
+          <>
+          <SegmentedFilter
+            ariaLabel="Situación"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "debt", label: "Con deuda", count: totalCustomers },
+              { value: "overdue", label: "Vencidos", count: overdueCount, countTone: overdueCount ? "danger" : undefined },
+              { value: "near", label: "Cerca del límite", count: nearLimit.length, countTone: nearLimit.length ? "warning" : undefined },
+              { value: "blocked", label: "Bloqueados", count: blockedCount },
+              { value: "all", label: "Todos", count: credits.length },
+            ]}
+          />
           <TooltipButton
             label="Registrar nuevo movimiento de crédito"
             variant="default"
@@ -459,6 +468,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
           >
             <BadgeCheck className="size-4" /> Nuevo movimiento
           </TooltipButton>
+          </>
         }
       />
 

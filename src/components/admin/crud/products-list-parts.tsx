@@ -1,6 +1,6 @@
 "use client"
 
-import { CookingPot, Layers, Package, PackagePlus, Pencil, Scale, Sparkles, Trash2 } from "lucide-react"
+import { CalendarClock, CookingPot, Layers, Package, PackagePlus, Pencil, Scale, Sparkles, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -138,10 +138,13 @@ const TYPE_META: Record<string, { label: string; icon?: typeof Scale; className:
   bulk: { label: "Granel", icon: Scale, className: "bg-foreground/85 text-background" },
   custom: { label: "Personalizado", icon: Sparkles, className: "bg-primary/12 text-primary" },
   standard: { label: "Estándar", className: "bg-muted text-muted-foreground" },
+  service: { label: "Servicio", icon: CalendarClock, className: "bg-info/12 text-info-ink" },
 }
 
-export function ProductTypeBadge({ type }: { type: unknown }) {
-  const meta = TYPE_META[String(type)] ?? TYPE_META.standard
+/** Tipo visible; un producto estándar sin inventario se muestra como «Servicio». */
+export function ProductTypeBadge({ type, trackInventory }: { type: unknown; trackInventory?: unknown }) {
+  const key = String(type) === "standard" && trackInventory === false ? "service" : String(type)
+  const meta = TYPE_META[key] ?? TYPE_META.standard
   const Icon = meta.icon
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", meta.className)}>

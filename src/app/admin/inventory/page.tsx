@@ -14,11 +14,13 @@ export default async function AdminInventoryPage() {
   const authed = !!session?.user && session.user.scope !== "portal";
   const canManage = authed && hasPermission(session, "inventory.manage");
   const canRevise = authed && hasPermission(session, "inventory.revision");
+  const canPurchase = authed && hasPermission(session, "purchasing.manage");
 
   return (
     <InventoryPage
       canManage={canManage}
       canRevise={canRevise}
+      canPurchase={canPurchase}
       icon={<Boxes className="size-5" />}
     />
   );

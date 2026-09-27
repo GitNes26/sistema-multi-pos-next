@@ -1,4 +1,5 @@
 import { Prisma, type $Enums } from "@prisma/client";
+import { reconcileProductInventory } from "@/lib/inventory/reconcile";
 import ExcelJS from "exceljs";
 import { findOrCreate, prisma } from "@/lib/db";
 import { CrudError } from "@/lib/crud/types";
@@ -68,9 +69,12 @@ export async function ensureInventoryRows(
   locationId: string
 ) {
   await assertInventoryLocation(organizationId, locationType, locationId);
+  // Solo lo que se puede vender y lleva existencias: los productos
+  // desactivados o sin control de inventario no se capturan aquí (su
+  // historial de movimientos se conserva).
   const products = await prisma.product.findMany({
-    where: { organizationId, isActive: true },
-    select: { id: true, productType: true, trackInventory: true, bulkUnitId: true, variants: { select: { id: true } } },
+    where: { organizationId, isActive: true, trackInventory: true },
+    select: { id: true, productType: true, trackInventory: true, bulkUnitId: true, variants: { where: { isActive: true }, select: { id: true } } },
   });
   const targets: { productId: string; variantId: string | null; unitId: string | null }[] = [];
   for (const p of products) {
@@ -84,6 +88,22 @@ export async function ensureInventoryRows(
       targets.push({ productId: p.id, variantId: null, unitId: p.bulkUnitId });
     }
   }
+
+  // Filas que ya no corresponden a la forma del producto (p. ej. cambió de
+  // estándar a granel): se concilian antes de continuar.
+  const targetSet = new Set(targets.map((t) => `${t.productId}__${t.variantId ?? "__NULL__"}`));
+  const activeIds = new Set(products.map((p) => p.id));
+  const current = await prisma.inventory.findMany({
+    where: { organizationId, locationId, locationType },
+    select: { productId: true, variantId: true, variant: { select: { productId: true } } },
+  });
+  const staleProducts = new Set<string>();
+  for (const row of current) {
+    const pid = row.productId ?? row.variant?.productId ?? null;
+    if (!pid || !activeIds.has(pid)) continue;
+    if (!targetSet.has(`${pid}__${row.variantId ?? "__NULL__"}`)) staleProducts.add(pid);
+  }
+  for (const pid of staleProducts) await reconcileProductInventory(organizationId, pid);
 
   const existing = await prisma.inventory.findMany({
     where: { organizationId, locationId, locationType },
@@ -133,20 +153,31 @@ export async function inventorySnapshot(
     organizationId,
     locationId,
     locationType,
-    ...(q
-      ? {
-          OR: [
-            { product: { name: { contains: q } } },
-            { variant: { product: { name: { contains: q } } } },
-            { variant: { name: { contains: q } } },
-            { variant: { sku: { contains: q } } },
-            { variant: { barcode: { contains: q } } },
-          ],
-        }
-      : {}),
-    ...(productType === "standard" || productType === "bulk" || productType === "custom"
-      ? { AND: [{ OR: [{ product: { productType } }, { variant: { product: { productType } } }] }] }
-      : {}),
+    AND: [
+      // Productos desactivados o sin control de existencias no se muestran.
+      {
+        OR: [
+          { product: { isActive: true, trackInventory: true } },
+          { productId: null, variant: { isActive: true, product: { isActive: true, trackInventory: true } } },
+        ],
+      },
+      ...(q
+        ? [
+            {
+              OR: [
+                { product: { name: { contains: q } } },
+                { variant: { product: { name: { contains: q } } } },
+                { variant: { name: { contains: q } } },
+                { variant: { sku: { contains: q } } },
+                { variant: { barcode: { contains: q } } },
+              ],
+            },
+          ]
+        : []),
+      ...(productType === "standard" || productType === "bulk" || productType === "custom"
+        ? [{ OR: [{ product: { productType: productType as $Enums.ProductType } }, { variant: { product: { productType: productType as $Enums.ProductType } } }] }]
+        : []),
+    ],
   };
 
   const rows = await prisma.inventory.findMany({
