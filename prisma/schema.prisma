@@ -257,6 +257,12 @@ model Organization {
   name                String
   ownerId             String
   businessMode        BusinessMode @default(retail)
+  /// Cierre temporal (imprevistos): mientras esté activo el portal no acepta pedidos.
+  closedManually      Boolean      @default(false)
+  /// Reapertura automática; null = hasta abrir manualmente.
+  closedUntil         DateTime?
+  closedReason        String?      @db.VarChar(200)
+  closedAt            DateTime?
   currency            String       @default("MXN")
   pointsPerCurrency   Decimal      @default(1) @db.Decimal(12, 4)
   pointValue          Decimal      @default(1) @db.Decimal(12, 4)

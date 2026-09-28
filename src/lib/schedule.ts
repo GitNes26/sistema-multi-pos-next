@@ -105,3 +105,71 @@ export function isScheduleOpenNow(schedule: DaySchedule[] | null, timezone = "Am
   if (nextSlot) return { open: false, message: `Abre a las ${nextSlot.open}` };
   return { open: false, message: `Ya cerró. Abre a las ${todaySchedule.slots[0]?.open ?? "09:00"}` };
 }
+
+// ── Fechas en la zona horaria del negocio ──────────────────────────────────
+
+/** Fecha/hora de pared (año, mes 0-11, día, día de semana, minutos) en la zona dada. */
+export function zonedParts(date: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "0";
+  const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    year: Number(get("year")),
+    month: Number(get("month")) - 1,
+    day: Number(get("day")),
+    weekday: dayMap[get("weekday")] ?? 0,
+    minutes: (Number(get("hour")) % 24) * 60 + Number(get("minute")),
+  };
+}
+
+/** Convierte una hora de pared en la zona dada al instante UTC real. */
+export function zonedToDate(year: number, month: number, day: number, minutes: number, timezone: string): Date {
+  const guess = Date.UTC(year, month, day, Math.floor(minutes / 60), minutes % 60);
+  const seen = zonedParts(new Date(guess), timezone);
+  const seenUtc = Date.UTC(seen.year, seen.month, seen.day, Math.floor(seen.minutes / 60), seen.minutes % 60);
+  return new Date(guess - (seenUtc - guess));
+}
+
+const toMinutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+
+/**
+ * Próxima apertura según el horario, a partir de `from`.
+ * `fromNextDay`: ignora lo que quede de hoy (siguiente día hábil).
+ * Devuelve null si el horario no tiene días habilitados.
+ */
+export function nextOpening(schedule: DaySchedule[], timezone: string, from = new Date(), fromNextDay = false): Date | null {
+  const now = zonedParts(from, timezone);
+  for (let offset = fromNextDay ? 1 : 0; offset <= 14; offset++) {
+    const weekday = (now.weekday + offset) % 7;
+    const entry = schedule.find((d) => d.day === weekday);
+    if (!entry?.enabled || !entry.slots.length) continue;
+    const opens = entry.slots.map((s) => toMinutes(s.open)).sort((a, b) => a - b);
+    const candidate = offset === 0 ? opens.find((m) => m > now.minutes) : opens[0];
+    if (candidate == null) continue;
+    // Día calendario local + offset (Date.UTC normaliza fin de mes).
+    const d = new Date(Date.UTC(now.year, now.month, now.day + offset));
+    return zonedToDate(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), candidate, timezone);
+  }
+  return null;
+}
+
+/** Mañana a la hora en que abre (o a las 00:00 si mañana no hay servicio). */
+export function tomorrowOpening(schedule: DaySchedule[] | null, timezone: string, from = new Date()): Date {
+  const now = zonedParts(from, timezone);
+  const d = new Date(Date.UTC(now.year, now.month, now.day + 1));
+  const entry = schedule?.find((s) => s.day === d.getUTCDay());
+  const first = entry?.enabled && entry.slots.length ? Math.min(...entry.slots.map((s) => toMinutes(s.open))) : 0;
+  return zonedToDate(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), first, timezone);
+}

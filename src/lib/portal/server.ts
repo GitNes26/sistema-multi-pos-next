@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { getStoreStatus } from "@/lib/store-status"
 import { Prisma, type $Enums } from "@prisma/client"
 import { notifyOrderEvent } from "@/lib/notifications/events"
 import { notifyStaff } from "@/lib/notifications/staff"
@@ -967,6 +968,11 @@ export async function createPortalOrder(
   input: PortalOrderInput
 ): Promise<PortalOrderDetail> {
   if (!input.items.length) throw new PortalError("El carrito está vacío")
+  // Cierre temporal del negocio: no se reciben pedidos hasta que reabra.
+  const storeState = await getStoreStatus(organizationId)
+  if (!storeState.open && storeState.source === "manual") {
+    throw new PortalError(`${storeState.reason ?? "Cerramos temporalmente"}${storeState.label.includes("abre") ? ` (${storeState.label.replace("Cerrado · ", "")})` : ""}`, 409)
+  }
   if (
     input.deliveryMethod !== "pickup" &&
     input.deliveryMethod !== "delivery"

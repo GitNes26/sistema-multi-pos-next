@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.26.0.0] — 2026-09-28
+- **Tipo:** `feat` (Minor)
+- feat:se agrego switch para abirir y cerrar negocio de imprevisto y se ve reflejado en el portal
+
 ### [0.25.0.0] — 2026-09-28
 - **Tipo:** `feat` (Minor)
 - feat: los pedidos del portal ahora son ventas (folio PED-, ticket, descuento de inventario con movimientos, caja de la sucursal y puntos) al cobrarse en tienda o entregarse, con opcion de registrar la venta de pedidos anteriores; detalle del pedido rediseñado con recorrido animado, que sigue y contacto; Pedidos y Monitoreo unidos en una sola pagina con tablero en vivo y lista; inventario selecciona la primera sucursal o CEDIS al cambiar de tipo; reglas por tamaño y precios de topicos desde la creacion del producto; constructor del POS con eleccion de tamaño como en el portal

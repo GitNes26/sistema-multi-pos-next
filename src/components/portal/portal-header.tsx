@@ -14,6 +14,8 @@ import { OrgSwitcher } from "@/components/layout/org-switcher"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
+import { StoreStatusBadge } from "@/components/shared/store-status"
+import type { StoreStatus } from "@/lib/store-status"
 
 const PAGE_TITLES: Record<string, string> = {
   "/portal": "",
@@ -44,10 +46,12 @@ export function PortalHeader({
   storeName,
   logoUrl,
   user,
+  storeStatus = null,
 }: {
   storeName: string
   logoUrl?: string | null
   user: { name?: string | null; image?: string | null }
+  storeStatus?: StoreStatus | null
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -132,12 +136,14 @@ export function PortalHeader({
                   {pageTitle}
                 </h1>
               )}
+              <StoreStatusBadge status={storeStatus} />
             </>
           ) : (
             <Link href="/portal" className="flex min-w-0 items-center gap-2.5">
               <Logo size={24} logoUrl={logoUrl} className="rounded-xl" />
-              <span className="truncate text-sm font-bold tracking-tight">
-                {storeName}
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-bold leading-tight tracking-tight">{storeName}</span>
+                <StoreStatusBadge status={storeStatus} />
               </span>
             </Link>
           )}

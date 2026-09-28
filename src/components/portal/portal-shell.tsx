@@ -25,6 +25,7 @@ import { NavDrawer } from "@/components/portal/nav-drawer";
 import { motion } from "framer-motion";
 import { TapScale } from "@/components/shared/tap-scale";
 import { haptic } from "@/lib/haptics";
+import { StoreClosedBanner, useStoreStatus } from "@/components/shared/store-status";
 
 export const ALL_NAV_ITEMS = [
   { id: "home", href: "/portal", label: "Inicio", icon: Home, match: /^\/portal$/ },
@@ -97,6 +98,9 @@ export function PortalShell({
   // Vistas fuera de la barra (ocultas por diseño o que no alcanzaron cupo).
   const hiddenSet = new Set(orderedIds.filter((id) => HIDDEN_FROM_BAR.includes(id)));
   const capacity = NAV_LAYOUT - 1; // 1 slot reservado para "Menú"
+  // Abierto/Cerrado: badge siempre visible y aviso cuando está cerrado.
+  const { status: storeStatus } = useStoreStatus(60_000);
+
   const barItems = orderedIds
     .filter((id) => !HIDDEN_FROM_BAR.includes(id))
     .slice(0, capacity)
@@ -117,7 +121,8 @@ export function PortalShell({
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col">
-      <PortalHeader storeName={storeName} logoUrl={logoUrl} user={user} />
+      <PortalHeader storeName={storeName} logoUrl={logoUrl} user={user} storeStatus={storeStatus} />
+      <StoreClosedBanner status={storeStatus} />
 
       <main className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
 

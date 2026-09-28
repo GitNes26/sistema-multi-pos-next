@@ -18,6 +18,7 @@ import { NotificationsBell } from "@/components/layout/notifications-bell";
 import type { BusinessMode } from "@/lib/auth/options";
 import packageJson from "../../../package.json";
 import { ScaleStatusButton } from "./scale-panel";
+import { StoreStatusSwitch } from "@/components/shared/store-status";
 
 interface PosHeaderProps {
   /** true si la sesión puede abrir/cerrar caja (cash.open/cash.close). */
@@ -101,6 +102,7 @@ export function PosHeader({
       <span className="hidden shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground 2xl:inline">v{packageJson.version}</span>
 
       <div className="scrollbar-none ml-auto flex min-w-0 items-center gap-1.5 overflow-x-auto">
+        <StoreStatusSwitch compact className="h-11 rounded-xl" />
         <ScaleStatusButton />
         {canOperateCash && (
         <button

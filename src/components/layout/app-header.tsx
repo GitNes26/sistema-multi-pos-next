@@ -17,6 +17,7 @@ import { UserMenu, type UserMenuUser } from "@/components/layout/user-menu";
 import { OrgSwitcher } from "@/components/layout/org-switcher";
 import { useUiStore } from "@/stores/ui-store";
 import { usePushSound } from "@/hooks/use-push-sound";
+import { StoreStatusSwitch } from "@/components/shared/store-status";
 
 export interface AppHeaderProps {
   sections: NavSection[];
@@ -83,6 +84,7 @@ export function AppHeader({ sections, user, logoUrl }: AppHeaderProps) {
             role={user.role}
             className="hidden lg:inline-flex"
           />
+          {user.activeOrganizationId ? <StoreStatusSwitch className="mx-1" /> : null}
           <ThemeToggle />
           <NotificationsBell />
           <PushSubscriber />
