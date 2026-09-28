@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.27.0.0] — 2026-09-28
+- **Tipo:** `feat` (Minor)
+- feat: switch Abierto/Cerrado del negocio con reapertura al siguiente dia habil, mañana, fecha u hora o manual, aviso y badge siempre visibles en el portal y pedidos bloqueados durante el cierre; filtro de productos tipo Servicio; el constructor usa el nombre de la opcion de variantes; Guardar cambios del producto tambien guarda variantes, topicos y reglas; corregido el cobro de productos personalizados con topicos opcionales o solo indicaciones en POS y portal, el portal ya no exige existencia a productos sin control de inventario ni valida las opciones de tamaño como topicos; editar productos personalizados desde el carrito del portal y la tarjeta respeta el tamaño elegido
+
 ### [0.26.0.0] — 2026-09-28
 - **Tipo:** `feat` (Minor)
 - feat:se agrego switch para abirir y cerrar negocio de imprevisto y se ve reflejado en el portal

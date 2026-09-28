@@ -376,7 +376,8 @@ export function ProductCard({
           open={builderOpen}
           onClose={() => setBuilderOpen(false)}
           onAdd={(config) => {
-            const variant = product.variants[0]
+            // Tamaño elegido en el constructor (o el primero si no hay tamaños).
+            const variant = (config.variant && product.variants.find((v) => v.id === config.variant!.id)) || product.variants[0]
             if (!variant) return
             // Agregar la variante base + los extras elegidos (opciones/notas)
             // como una configuración propia, para que el precio y la línea

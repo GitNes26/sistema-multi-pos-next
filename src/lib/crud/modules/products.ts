@@ -282,7 +282,16 @@ export const productsModule: CrudModule<ProductDto> = {
     const pageSize = Math.min(200, params.pageSize ?? 20);
     const q = params.q?.trim() ?? "";
     const categoryId = (params.categoryId as string) || undefined;
-    const productType = (params.productType as "standard" | "bulk" | "custom") || undefined;
+    // "service" = estándar sin control de inventario; "standard" excluye los servicios.
+    const typeParam = (params.productType as "standard" | "bulk" | "custom" | "service") || undefined;
+    const typeWhere: Prisma.ProductWhereInput =
+      typeParam === "service"
+        ? { productType: "standard", trackInventory: false }
+        : typeParam === "standard"
+          ? { productType: "standard", trackInventory: true }
+          : typeParam
+            ? { productType: typeParam }
+            : {};
     // Filtro rápido del listado: en venta, agotado (activo pero sin venta) o inactivo.
     const status = params.status as "active" | "unavailable" | "inactive" | undefined;
     const statusWhere: Prisma.ProductWhereInput =
@@ -298,7 +307,7 @@ export const productsModule: CrudModule<ProductDto> = {
       organizationId,
       ...statusWhere,
       ...(categoryId ? { categoryId } : {}),
-      ...(productType ? { productType } : {}),
+      ...typeWhere,
       ...(q
         ? {
             OR: [

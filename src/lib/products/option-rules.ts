@@ -57,3 +57,19 @@ export function calculateOptionValueCharges<T extends { id: string; extraPrice: 
       : 0,
   ]))
 }
+
+/**
+ * ¿La cantidad elegida en un tópico es válida?
+ * Obligatorio: al menos max(1, mínimo). Opcional: puede quedar vacío; si se
+ * elige algo, aplican el mínimo y el máximo.
+ */
+export function isValidOptionCount(count: number, required: boolean, minSelect: number, maxSelect: number): boolean {
+  if (count > maxSelect) return false
+  if (count === 0) return !required
+  return count >= Math.max(1, minSelect)
+}
+
+/** Mínimo que el constructor debe pedir antes de poder agregar. */
+export function requiredOptionCount(required: boolean, minSelect: number): number {
+  return required ? Math.max(1, minSelect) : 0
+}

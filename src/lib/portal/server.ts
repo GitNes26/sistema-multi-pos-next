@@ -19,7 +19,7 @@ import {
   consumeRecipeIngredients,
   restoreRecipeIngredients,
 } from "@/lib/inventory/recipes"
-import { calculateOptionExtra, optionRuleForVariant, parseOptionVariantRules, type OptionVariantRule } from "@/lib/products/option-rules"
+import { calculateOptionExtra, isValidOptionCount, optionRuleForVariant, parseOptionVariantRules, type OptionVariantRule } from "@/lib/products/option-rules"
 import { categoryBranchIds } from "@/lib/catalog/categories"
 
 // FASE 13 — Servidor del portal de clientes: catálogo, pedidos, lealtad,
@@ -165,6 +165,8 @@ export interface PortalProduct {
   /** Granel: precio por unidad + badge + split. */
   bulk: PortalBulkInfo | null
   /** Opciones configurables del producto (sabores, toppings, etc.). */
+  /** Nombre de la opción que distingue las variantes ("Tamaño", "Presentación"…). */
+  variantLabel?: string | null
   options: PortalProductOption[]
   /** Descripción del producto (opcional). */
   description: string | null
@@ -283,6 +285,7 @@ export async function getStorefront(
         stock: 0,
         variants: [],
         bulk: null,
+        variantLabel: (p.options ?? []).filter((o) => o.kind === "variant").map((o) => o.name).join(" / ") || null,
         options: optionsEnabled(p.productType)
           ? (p.options ?? []).filter((o) => o.kind === "topic").map((o) => ({
               id: o.id,
@@ -1259,8 +1262,9 @@ export async function createPortalOrder(
         throw new PortalError("Las opciones del combo no se pueden modificar")
       optionsExtra = trustedComboExtra
     } else if (product.productType === "custom") {
+      // Solo tópicos: las opciones de tamaño (variantes) se eligen con la variante.
       const configuredOptions = await prisma.productOption.findMany({
-        where: { productId: item.productId },
+        where: { productId: item.productId, kind: "topic" },
         include: { values: { where: { isActive: true } } },
       })
       const submittedOptions = Array.isArray(item.selectedOptions)
@@ -1289,13 +1293,9 @@ export async function createPortalOrder(
         const submittedValues = submitted?.values ?? []
         const uniqueIds = new Set(submittedValues.map((value) => value.id))
         const rule = optionRuleForVariant(option.variantRules, item.variantId)
-        const minimum = option.required
-          ? Math.max(1, option.minSelect)
-          : option.minSelect
         if (
           uniqueIds.size !== submittedValues.length ||
-          uniqueIds.size < minimum ||
-          uniqueIds.size > (rule?.maxSelect ?? option.maxSelect)
+          !isValidOptionCount(uniqueIds.size, option.required, option.minSelect, rule?.maxSelect ?? option.maxSelect)
         ) {
           throw new PortalError(
             `Completa correctamente la opción "${option.name}"`
@@ -1421,8 +1421,19 @@ export async function createPortalOrder(
     if (!key) continue
     available.set(key, (available.get(key) ?? 0) + toNum(inv.quantity))
   }
+  // Productos sin control de inventario (servicios, preparados) no se validan
+  // contra existencias aunque tengan filas de inventario en cero.
+  const untracked = new Set(
+    (
+      await prisma.product.findMany({
+        where: { organizationId, id: { in: [...new Set(trustedItems.map((i) => i.productId))] }, trackInventory: false },
+        select: { id: true },
+      })
+    ).map((p) => p.id)
+  )
   const requested = new Map<string, number>()
   for (const item of trustedItems) {
+    if (untracked.has(item.productId)) continue
     const key = item.variantId ?? item.productId
     requested.set(key, round3((requested.get(key) ?? 0) + item.quantity))
   }

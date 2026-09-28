@@ -1,7 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Minus, Package, Plus, ShoppingBag, Trash2 } from "lucide-react"
+import { ArrowRight, Minus, Package, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-react"
+import { ProductBuilder, selectedOptionsKey } from "@/components/pos/product-builder"
+import { portalApi } from "@/lib/portal/client"
+import { swalError, swalToast } from "@/lib/swal"
 import { usePortalStore, cartSubtotal, cartTax, cartTotal, type PortalCartItem } from "@/stores/portal-store"
 import { money, round3, snapToStep } from "@/lib/pos/money"
 import { Button } from "@/components/ui/button"
@@ -10,7 +14,7 @@ import { CartEmptyIllustration } from "@/components/shared/animated-illustration
 import { ThumbImage } from "@/components/base/thumb-image"
 import { haptic } from "@/lib/haptics"
 
-function CartLine({ item }: { item: PortalCartItem }) {
+function CartLine({ item, onEdit }: { item: PortalCartItem; onEdit?: () => void }) {
   const setQty = usePortalStore((s) => s.setQty)
   const removeItem = usePortalStore((s) => s.removeItem)
   const step = item.step > 0 ? item.step : 1
@@ -29,7 +33,17 @@ function CartLine({ item }: { item: PortalCartItem }) {
           <div className="min-w-0 flex-1">
             <h3 className="line-clamp-2 text-sm font-semibold leading-snug">{item.name}</h3>
             {((item.variantName && item.variantName !== "Default") || item.kind === "bulk") && <p className="mt-0.5 text-xs text-muted-foreground">{item.variantName && item.variantName !== "Default" ? item.variantName : `A granel · ${item.unitAbbrev}`}</p>}
+            {item.selectedOptions?.length ? (
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                {item.selectedOptions.flatMap((o) => o.values.map((v) => v.value)).join(", ")}
+              </p>
+            ) : null}
             {item.comment && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.comment}</p>}
+            {onEdit && (
+              <button type="button" onClick={onEdit} className="mt-1 inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                <Pencil className="size-3.5" /> Editar
+              </button>
+            )}
           </div>
           <button type="button" onClick={() => removeItem(item.key)} aria-label={`Quitar ${item.name}`} className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive focus-visible:outline-2 focus-visible:outline-primary"><Trash2 className="size-4" /></button>
         </div>
@@ -58,8 +72,28 @@ export function CartSheet() {
   const tax = cartTax(items)
   const total = cartTotal(items)
   const count = items.length
+  // Editar una línea personalizada: reabre el constructor con sus elecciones.
+  const products = usePortalStore((s) => s.products)
+  const removeItem = usePortalStore((s) => s.removeItem)
+  const addStandard = usePortalStore((s) => s.addStandard)
+  const [editing, setEditing] = useState<PortalCartItem | null>(null)
+  const editingProduct = editing ? products.find((p) => p.productId === editing.productId) ?? null : null
+  const startEdit = async (item: PortalCartItem) => {
+    if (!usePortalStore.getState().products.some((p) => p.productId === item.productId)) {
+      try {
+        const storefront = await portalApi.storefront()
+        usePortalStore.getState().setStorefront(storefront.categories, storefront.products)
+      } catch {
+        swalError("No se pudo abrir el producto", "Revisa tu conexión e intenta de nuevo.")
+        return
+      }
+    }
+    setCartOpen(false)
+    setEditing(item)
+  }
 
   return (
+    <>
     <BottomSheet
       open={open}
       onOpenChange={setCartOpen}
@@ -86,8 +120,34 @@ export function CartSheet() {
         <Button variant="outline" className="mt-2 h-11" onClick={() => { setCartOpen(false); router.push("/portal/store") }}><ShoppingBag className="size-4" /> Ir a la tienda</Button>
       </div> : <>
         <div className="flex items-center justify-between gap-2 pb-1"><p className="text-xs text-muted-foreground">Revisa cantidades y productos</p><button type="button" className="text-xs font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setCartOpen(false)}>Seguir comprando</button></div>
-        {items.map((item) => <CartLine key={item.key} item={item} />)}
+        {items.map((item) => (
+          <CartLine key={item.key} item={item} onEdit={item.kind === "custom" ? () => void startEdit(item) : undefined} />
+        ))}
       </>}
     </BottomSheet>
+    {editing && editingProduct && (
+      <ProductBuilder
+        portalProduct={editingProduct}
+        open
+        initial={{ variantId: editing.variantId, selectedOptions: editing.selectedOptions, notes: editing.comment, quantity: editing.qty }}
+        submitLabel="Actualizar"
+        onClose={() => {
+          setEditing(null)
+          setCartOpen(true)
+        }}
+        onAdd={(config) => {
+          const variant = (config.variant && editingProduct.variants.find((v) => v.id === config.variant!.id)) || editingProduct.variants[0]
+          if (!variant) return
+          // Reemplaza la línea: se quita la anterior y se agrega la nueva configuración.
+          removeItem(editing.key)
+          const res = addStandard(editingProduct, variant, config.quantity, config.totalExtraPrice, selectedOptionsKey(config.selectedOptions), config.notes, config.selectedOptions)
+          if (res.added <= 0) swalToast("Sin stock disponible", "info")
+          else swalToast("Producto actualizado")
+          setEditing(null)
+          setCartOpen(true)
+        }}
+      />
+    )}
+    </>
   )
 }

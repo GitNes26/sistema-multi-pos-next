@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils"
 // componentes compartidos de @/components/base.
 
 export type ProductStatusFilter = "" | "active" | "unavailable" | "inactive"
-export type ProductTypeFilter = "" | "standard" | "bulk" | "custom"
+export type ProductTypeFilter = "" | "standard" | "bulk" | "custom" | "service"
 
 export interface ProductFilterState {
   status: ProductStatusFilter
@@ -36,6 +36,7 @@ const TYPE_OPTIONS: { value: ProductTypeFilter; label: string }[] = [
   { value: "standard", label: "Estándar" },
   { value: "bulk", label: "Granel" },
   { value: "custom", label: "Personalizado" },
+  { value: "service", label: "Servicio" },
 ]
 
 /* ─── Filtros ─── */

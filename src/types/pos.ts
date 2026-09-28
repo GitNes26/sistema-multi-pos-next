@@ -103,6 +103,8 @@ export interface PosProduct {
   bulk: PosBulkInfo | null
   variantCount: number
   variants: PosVariant[]
+  /** Nombre de la opción que distingue las variantes ("Tamaño", "Presentación"…). */
+  variantLabel?: string | null
   options: PosProductOption[]
   hasOptions: boolean
 }

@@ -11,7 +11,7 @@ import type {
   PosProductOption,
   PosProductOptionValue,
 } from "@/types/pos"
-import { calculateOptionExtra, calculateOptionValueCharges, optionRuleForVariant, type OptionVariantRule } from "@/lib/products/option-rules"
+import { calculateOptionExtra, calculateOptionValueCharges, isValidOptionCount, optionRuleForVariant, requiredOptionCount, type OptionVariantRule } from "@/lib/products/option-rules"
 import { ThumbImage } from "@/components/base/thumb-image"
 import { QuantityStepper } from "@/components/base/quantity-stepper"
 
@@ -42,6 +42,7 @@ interface PortalProductLike {
   name: string
   imageUrl?: string | null
   trackInventory?: boolean
+  variantLabel?: string | null
   variants: { id: string; price: number; name?: string; stock?: number; isAvailable?: boolean }[]
   options: {
     id: string
@@ -63,9 +64,21 @@ interface PortalProductLike {
   }[]
 }
 
+/** Configuración previa para reabrir el constructor (editar desde el carrito). */
+export interface ProductBuilderInitial {
+  variantId?: string | null
+  selectedOptions?: SelectedOption[]
+  notes?: string
+  quantity?: number
+}
+
 interface ProductBuilderProps {
   product?: PosProduct | null
   portalProduct?: PortalProductLike | null
+  /** Si viene, el constructor abre con estas elecciones (editar una línea). */
+  initial?: ProductBuilderInitial | null
+  /** Texto del botón principal (p. ej. «Actualizar»). */
+  submitLabel?: string
   open: boolean
   onClose: () => void
   onAdd: (config: {
@@ -99,12 +112,15 @@ function AnimatedPrice({ value, className }: { value: number; className?: string
 
 /** Regla de selección en palabras simples. */
 function ruleText(option: PosProductOption): string {
-  const min = option.required ? Math.max(1, option.minSelect) : option.minSelect
+  const min = Math.max(1, option.minSelect)
   const max = option.maxSelect
-  if (max <= 1) return option.required ? "Elige 1" : "Opcional · elige 1"
-  if (min > 1 && min === max) return `Elige ${max}`
-  if (min >= 1) return `Elige de ${min} a ${max}`
-  return `Opcional · hasta ${max}`
+  if (!option.required) {
+    if (max <= 1) return "Opcional · elige 1"
+    return min > 1 ? `Opcional · si eliges, de ${min} a ${max}` : `Opcional · hasta ${max}`
+  }
+  if (max <= 1) return "Elige 1"
+  if (min === max) return `Elige ${max}`
+  return `Elige de ${min} a ${max}`
 }
 
 /* ------------------------------------------------------------------ */
@@ -206,8 +222,8 @@ function OptionSection({
   shake: number
   sectionRef: (el: HTMLElement | null) => void
 }) {
-  const need = option.required ? Math.max(1, option.minSelect) : 0
-  const isValid = selected.size >= need
+  const need = requiredOptionCount(option.required, option.minSelect)
+  const isValid = isValidOptionCount(selected.size, option.required, option.minSelect, option.maxSelect)
   const withImage = option.values.some((v) => v.imageUrl)
   const multi = option.maxSelect > 1
 
@@ -336,7 +352,7 @@ function NotesInput({ value, onChange }: { value: string; onChange: (v: string) 
 /*  Main ProductBuilder                                                */
 /* ------------------------------------------------------------------ */
 
-export function ProductBuilder({ product, portalProduct, open, onClose, onAdd }: ProductBuilderProps) {
+export function ProductBuilder({ product, portalProduct, initial, submitLabel, open, onClose, onAdd }: ProductBuilderProps) {
   // Normalize: use portalProduct if provided, else POS product
   const activeProduct = portalProduct ?? product ?? null
   const [selections, setSelections] = useState<Map<string, Set<string>>>(new Map())
@@ -399,9 +415,18 @@ export function ProductBuilder({ product, portalProduct, open, onClose, onAdd }:
     resetSelections()
   }, [activeProduct?.id, resetSelections])
 
-  const needOf = (option: PosProductOption) => (option.required ? Math.max(1, option.minSelect) : 0)
+  // Editar desde el carrito: cargar las elecciones previas al abrir.
+  useEffect(() => {
+    if (!open || !initial) return
+    setVariantId(initial.variantId ?? null)
+    setSelections(new Map((initial.selectedOptions ?? []).map((o) => [o.optionId, new Set(o.values.map((v) => v.id))])))
+    setNotes(initial.notes ?? "")
+    setQuantity(Math.max(1, initial.quantity ?? 1))
+  }, [open, initial])
+
+  const needOf = (option: PosProductOption) => requiredOptionCount(option.required, option.minSelect)
   const isSatisfied = useCallback(
-    (option: PosProductOption, sel = selections) => (sel.get(option.id)?.size ?? 0) >= (option.required ? Math.max(1, option.minSelect) : 0),
+    (option: PosProductOption, sel = selections) => isValidOptionCount(sel.get(option.id)?.size ?? 0, option.required, option.minSelect, option.maxSelect),
     [selections]
   )
 
@@ -602,7 +627,7 @@ export function ProductBuilder({ product, portalProduct, open, onClose, onAdd }:
             {variantChoices.length > 1 && (
               <section className="space-y-3 rounded-2xl border p-4">
                 <header>
-                  <h3 className="font-semibold">Tamaño</h3>
+                  <h3 className="font-semibold">{activeProduct.variantLabel || "Presentación"}</h3>
                   <p className="text-xs text-muted-foreground">Elige 1</p>
                 </header>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -700,7 +725,7 @@ export function ProductBuilder({ product, portalProduct, open, onClose, onAdd }:
             >
               {isValid ? (
                 <>
-                  <ShoppingCart className="size-5" /> Agregar · <AnimatedPrice value={finalPrice * quantity} />
+                  <ShoppingCart className="size-5" /> {submitLabel ?? "Agregar"} · <AnimatedPrice value={finalPrice * quantity} />
                 </>
               ) : (
                 <>Elige {missing[0]?.name.toLowerCase() ?? "las opciones"}</>

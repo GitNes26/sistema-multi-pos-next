@@ -18,7 +18,7 @@ import { customerMayUsePromotion, reservePromotionCustomerUse } from "@/lib/prom
 import { isFeatureEnabled } from "@/lib/features"
 import type { BusinessMode } from "@/lib/auth/options"
 import { maybeNotifyLowStock } from "@/lib/inventory/server"
-import { calculateOptionExtra, optionRuleForVariant, parseOptionVariantRules } from "@/lib/products/option-rules"
+import { calculateOptionExtra, optionRuleForVariant, isValidOptionCount, parseOptionVariantRules } from "@/lib/products/option-rules"
 import { consumeRecipeIngredients } from "@/lib/inventory/recipes"
 import { notifySaleCompleted } from "@/lib/notifications/events"
 import { notifyStaff } from "@/lib/notifications/staff"
@@ -430,6 +430,7 @@ export async function getPosCatalog(
       raw?.product?.productType === "custom" &&
       raw?.product?.options
     ) {
+      p.variantLabel = raw.product.options.filter((o) => o.kind === "variant").map((o) => o.name).join(" / ") || null
       p.options = raw.product.options.filter((o) => o.kind === "topic").map((o) => ({
         id: o.id,
         name: o.name,
@@ -861,11 +862,8 @@ async function validateSaleAmounts(
       const valueIds = submittedOptions.flatMap(
         (option) => option.valueIds ?? []
       )
-      if (!valueIds.length)
-        throw new PosError(
-          "Las opciones del producto deben volver a seleccionarse",
-          400
-        )
+      // Sin elecciones es válido si ningún tópico es obligatorio (solo notas):
+      // cada tópico se valida abajo con su propia regla.
       const recipeValueIds = valueIds.filter((id) => id.startsWith("recipevar:"))
       const regularValueIds = valueIds.filter((id) => !id.startsWith("recipevar:"))
       const configuredOptions = await prisma.productOption.findMany({
@@ -883,8 +881,7 @@ async function validateSaleAmounts(
         const selectedIds = [...new Set(submittedByOption.get(option.id) ?? [])]
         const rule = optionRuleForVariant(option.variantRules, item.variantId)
         const maximum = rule?.maxSelect ?? option.maxSelect
-        const minimum = option.required ? Math.max(1, option.minSelect) : option.minSelect
-        if (selectedIds.length < minimum || selectedIds.length > maximum)
+        if (!isValidOptionCount(selectedIds.length, option.required, option.minSelect, maximum))
           throw new PosError(`Completa correctamente la opción "${option.name}"`, 400)
         const selectedValues = selectedIds.map((id) => option.values.find((value) => value.id === id))
         if (selectedValues.some((value) => !value))

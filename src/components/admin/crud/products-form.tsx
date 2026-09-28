@@ -1,7 +1,7 @@
 "use client"
 
 import { CustomProductGuide, ProductKindPicker } from "./product-kind-guide"
-import { useEffect, useId, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import * as yup from "yup"
 import {
   Barcode,
@@ -393,9 +393,9 @@ export function ProductsForm({
         splitPricePerUnit: allowSplit ? numOrEmpty(splitPricePerUnit) : 0,
       })
     } else if (productType === "custom") {
-      // Personalizado: la variante base (precio/costo) se crea aquí; los
-      // tópicos se guardan con el botón «Guardar tópicos» y nunca generan
-      // combinaciones de variantes (cada tamaño/sabor se agrega en Variantes).
+      // Personalizado: variante base (precio/costo), opciones de variante y
+      // tópicos completos. Al editar, «Guardar cambios» también guarda los
+      // tópicos y variantes pendientes (persistPendingOptions).
       payload.initialVariant = {
         name: "Default",
         sku: variantSku.trim() || null,
@@ -450,6 +450,13 @@ export function ProductsForm({
     setServerError(undefined)
     setOptionsError(undefined)
     try {
+      if (isEdit) {
+        try {
+          await persistPendingOptions()
+        } catch (err) {
+          throw new Error(`No se pudieron guardar variantes/tópicos: ${err instanceof Error ? err.message : "error"}`)
+        }
+      }
       await onSubmit(payload)
     } catch (err) {
       setServerError(
@@ -460,41 +467,62 @@ export function ProductsForm({
     }
   }
 
+  // Payloads de tópicos y de opciones de variante (mismos para los botones
+  // de cada sección y para «Guardar cambios» del producto).
+  const topicPayload = (list: ProductOption[]) =>
+    list
+      .filter((o) => o.name.trim())
+      .map((o) => ({
+        id: o.id,
+        name: o.name.trim(),
+        required: o.required !== false,
+        minSelect: Math.max(0, Number(o.minSelect) || 0),
+        maxSelect: Math.max(Math.max(0, Number(o.minSelect) || 0), Number(o.maxSelect) || 1),
+        variantRules: o.variantRules ?? [],
+        values: o.values
+          .filter((v) => v.value.trim())
+          .map((v) => ({ id: v.id, value: v.value.trim(), extraPrice: Math.max(0, Number(v.extraPrice) || 0), isActive: v.isActive !== false })),
+      }))
+  const variantPayload = (list: ProductOption[]) =>
+    list
+      .filter((o) => o.name.trim())
+      .map((o) => ({ id: o.id, name: o.name.trim(), values: o.values.filter((v) => v.value.trim()).map((v) => ({ id: v.id, value: v.value.trim() })) }))
+
+  // Última versión guardada de cada sección: si cambió, «Guardar cambios» la guarda también.
+  const savedTopicsRef = useRef(JSON.stringify(topicPayload(options)))
+  const savedVariantsRef = useRef(JSON.stringify(variantPayload(variantOptions)))
+
+  const persistTopics = async () => {
+    const cleaned = topicPayload(options)
+    const res = await optionsApi.save(String(initial!.id), cleaned, "topic")
+    const saved = res.rows.filter((option) => option.kind === "topic")
+    setOptions(saved)
+    savedTopicsRef.current = JSON.stringify(topicPayload(saved))
+  }
+  const persistVariants = async () => {
+    const cleaned = variantPayload(variantOptions)
+    const res = await optionsApi.save(String(initial!.id), cleaned, "variant")
+    const saved = res.rows.filter((option) => option.kind === "variant")
+    setVariantOptions(saved)
+    savedVariantsRef.current = JSON.stringify(variantPayload(saved))
+  }
+
+  /** Guarda variantes y tópicos pendientes (se llama al guardar el producto). */
+  const persistPendingOptions = async () => {
+    if (!initial?.id) return
+    if (productType === "custom" && JSON.stringify(variantPayload(variantOptions)) !== savedVariantsRef.current) await persistVariants()
+    if ((productType === "custom" || productType === "standard") && JSON.stringify(topicPayload(options)) !== savedTopicsRef.current) await persistTopics()
+  }
+
   const saveOptions = async () => {
     if (!initial?.id) return
     setOptionsBusy(true)
     setOptionsError(undefined)
     try {
-      const cleaned = options
-        .filter((o) => o.name.trim())
-        .map((o) => ({
-          id: o.id,
-          name: o.name.trim(),
-          required: o.required !== false,
-          minSelect: Math.max(0, Number(o.minSelect) || 0),
-          maxSelect: Math.max(
-            Math.max(0, Number(o.minSelect) || 0),
-            Number(o.maxSelect) || 1
-          ),
-          variantRules: o.variantRules ?? [],
-          values: o.values
-            .filter((v) => v.value.trim())
-            .map((v) => ({
-              id: v.id,
-              value: v.value.trim(),
-              extraPrice: Math.max(0, Number(v.extraPrice) || 0),
-              isActive: v.isActive !== false,
-            })),
-        }))
-      const res = await optionsApi.save(String(initial.id), cleaned, "topic")
-      setOptions(res.rows.filter((option) => option.kind === "topic"))
-      swalToast("Tópicos guardados")
+      await persistTopics()
+      swalToast(productType === "custom" ? "Tópicos guardados" : "Opciones guardadas")
     } catch (err) {
-      setOptionsError(
-        err instanceof Error
-          ? err.message
-          : "No se pudieron guardar los tópicos"
-      )
+      setOptionsError(err instanceof Error ? err.message : "No se pudieron guardar los tópicos")
     } finally {
       setOptionsBusy(false)
     }
@@ -505,15 +533,7 @@ export function ProductsForm({
     setOptionsBusy(true)
     setOptionsError(undefined)
     try {
-      const cleaned = variantOptions
-        .filter((o) => o.name.trim())
-        .map((o) => ({
-          id: o.id,
-          name: o.name.trim(),
-          values: o.values.filter((v) => v.value.trim()).map((v) => ({ id: v.id, value: v.value.trim() })),
-        }))
-      const res = await optionsApi.save(String(initial.id), cleaned, "variant")
-      setVariantOptions(res.rows.filter((option) => option.kind === "variant"))
+      await persistVariants()
       swalToast("Opciones y variantes guardadas")
     } catch (err) {
       setOptionsError(err instanceof Error ? err.message : "No se pudieron guardar las variantes")
