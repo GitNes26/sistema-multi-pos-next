@@ -65,9 +65,12 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 export function OrdersMonitor({
   canManage,
   icon,
+  embedded = false,
 }: {
   canManage: boolean
   icon?: React.ReactNode
+  /** Dentro de la página de Pedidos (vista "Tablero"): sin encabezado propio. */
+  embedded?: boolean
 }) {
   const router = useRouter()
   const [byStatus, setByStatus] = useState<Record<string, OrderRow[]>>({
@@ -81,7 +84,7 @@ export function OrdersMonitor({
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
-  const [lastUpdate, setLastUpdate] = useState<Date>(() => new Date())
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
@@ -127,16 +130,10 @@ export function OrdersMonitor({
     0
   )
 
-  return (
-    <>
-      <PageHeader
-        icon={icon ?? <Truck className="size-5" />}
-        title="Monitoreo de pedidos"
-        description="Semáforo de estados en tiempo real."
-        actions={
+  const toolbar = (
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              {activeTotal} activo(s) · {lastUpdate.toLocaleTimeString("es-MX")}
+              {activeTotal} activo(s) · {lastUpdate ? lastUpdate.toLocaleTimeString("es-MX") : "—"}
             </span>
             <Button
               size="sm"
@@ -150,8 +147,20 @@ export function OrdersMonitor({
               Refrescar
             </Button>
           </div>
-        }
-      />
+  )
+
+  return (
+    <>
+      {embedded ? (
+        <div className="mb-3 flex justify-end">{toolbar}</div>
+      ) : (
+        <PageHeader
+          icon={icon ?? <Truck className="size-5" />}
+          title="Monitoreo de pedidos"
+          description="Semáforo de estados en tiempo real."
+          actions={toolbar}
+        />
+      )}
 
       {loading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -206,8 +215,17 @@ export function OrdersMonitor({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                     >
-                      <button
+                      {/* div con rol de botón: la tarjeta contiene otro botón (Preparar). */}
+                      <div
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setDetailId(o.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            setDetailId(o.id)
+                          }
+                        }}
                         className={cn(
                           "w-full cursor-pointer rounded-xl border px-3 py-2.5 text-left transition-all hover:shadow-md active:scale-[0.98]",
                           o.status === "at_destination"
@@ -255,7 +273,7 @@ export function OrdersMonitor({
                             <PackageCheck className="size-3.5" /> Preparar
                           </Button>
                         )}
-                      </button>
+                      </div>
                     </motion.div>
                   ))}
                 </AnimatePresence>

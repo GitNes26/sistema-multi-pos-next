@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { recordOrderSale } from "@/lib/orders/sale";
 import type { $Enums, Prisma } from "@prisma/client";
 import crypto from "crypto";
 import { notifyOrderEvent } from "@/lib/notifications/events";
@@ -137,6 +138,8 @@ export interface OrderDetail {
   subtotal: number;
   discount: number;
   deliveryFee: number;
+  tip: number;
+  pointsValue: number;
   total: number;
   notes: string | null;
   customerName: string | null;
@@ -145,6 +148,8 @@ export interface OrderDetail {
   /** Número de mesa (food_service/hybrid) para el panel de cocina en el POS. */
   tableNumber: number | null;
   saleId: string | null;
+  /** Mesa: se cobra en el POS, no genera venta por pedido. */
+  isTableOrder: boolean;
   isPaid: boolean;
   paymentMethod: string | null;
   paymentReference: string | null;
@@ -198,6 +203,8 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
     subtotal: toNum(order.subtotal),
     discount: toNum(order.discount),
     deliveryFee: toNum(order.deliveryFee),
+    tip: toNum(order.tip),
+    pointsValue: toNum(order.pointsValue),
     total: toNum(order.total),
     notes: order.notes,
     customerName: order.customer?.fullName ?? null,
@@ -205,6 +212,7 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
     locationName: order.location?.name ?? null,
     tableNumber: order.table?.number ?? null,
     saleId: order.saleId,
+    isTableOrder: order.tableId != null,
     isPaid: order.paidAt != null || order.saleId != null,
     paymentMethod: order.paymentMethod,
     paymentReference: order.paymentReference,
@@ -287,6 +295,9 @@ export async function updateOrderStatus(
     });
     return current;
   });
+
+  // Entregado: el pedido se vuelve venta (inventario, caja, ticket).
+  if (status === "delivered") await recordOrderSaleSafe(organizationId, id, ctx);
 
   // Notificación SSE (12.5) + tracking del portal (13.7).
   // Enviar notificación al cliente (userId del customer), no al admin
@@ -430,7 +441,8 @@ export interface ConfirmDeliveryResult {
 export async function confirmDelivery(
   organizationId: string,
   orderId: string,
-  input: { pin?: string; qrToken?: string }
+  input: { pin?: string; qrToken?: string },
+  ctx: StatusCtx = {}
 ): Promise<ConfirmDeliveryResult> {
   const order = await prisma.order.findFirst({
     where: { id: orderId, organizationId },
@@ -478,6 +490,7 @@ export async function confirmDelivery(
       },
     });
   });
+  await recordOrderSaleSafe(organizationId, orderId, ctx);
 
   const detail = await getOrderDetail(organizationId, orderId);
   if (detail) {
@@ -519,7 +532,8 @@ export interface PayOrderInStoreInput {
 export async function payOrderInStore(
   organizationId: string,
   orderId: string,
-  input: PayOrderInStoreInput
+  input: PayOrderInStoreInput,
+  ctx: StatusCtx = {}
 ): Promise<OrderDetail | null> {
   const order = await prisma.order.findFirst({ where: { id: orderId, organizationId } });
   if (!order) throw new Error("Pedido no encontrado");
@@ -530,6 +544,15 @@ export async function payOrderInStore(
     throw new Error("El pedido ya está pagado");
   }
 
+  // El dinero entra a una caja: debe haber una abierta en la sucursal del
+  // pedido (de preferencia la de quien cobra) para que cuadre el corte.
+  const session =
+    (ctx.userId
+      ? await prisma.cashSession.findFirst({ where: { organizationId, status: "open", userId: ctx.userId, ...(order.locationId ? { locationId: order.locationId } : {}) }, select: { id: true } })
+      : null) ??
+    (await prisma.cashSession.findFirst({ where: { organizationId, status: "open", ...(order.locationId ? { locationId: order.locationId } : {}) }, select: { id: true } }))
+  if (!session) throw new Error("Abre la caja de la sucursal del pedido para registrar el cobro");
+
   await prisma.order.update({
     where: { id: orderId },
     data: {
@@ -538,6 +561,8 @@ export async function payOrderInStore(
       paymentReference: input.reference ?? null,
     },
   });
+  // Cobrado en tienda = venta en esa caja (ticket PED-, inventario y corte).
+  await recordOrderSale(organizationId, orderId, { ...ctx, cashSessionId: session.id });
 
   return getOrderDetail(organizationId, orderId);
 }
@@ -999,4 +1024,16 @@ export function isScheduleOpen(
     return currentMinutes < openH * 60 + openM;
   });
   return { open: false, nextOpen: `Abre a las ${nextSlot?.open ?? todaySchedule.slots[0]?.open ?? "09:00"}` };
+}
+
+/**
+ * Registra la venta del pedido sin interrumpir la entrega si algo falla: el
+ * pedido queda marcado "sin venta" y desde su detalle se puede reintentar.
+ */
+async function recordOrderSaleSafe(organizationId: string, orderId: string, ctx: StatusCtx) {
+  try {
+    await recordOrderSale(organizationId, orderId, ctx);
+  } catch (err) {
+    console.error("[orders] no se pudo registrar la venta del pedido", orderId, err);
+  }
 }

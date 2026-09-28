@@ -231,15 +231,10 @@ export function PosApp({
       setBulkTarget({ product });
       return;
     }
-    // Producto personalizado: el constructor (tópicos) es obligatorio. Si tiene
-    // varios tamaños, primero se elige la variante y luego se abre el constructor
-    // con el precio de ese tamaño.
+    // Producto personalizado: el constructor es obligatorio y ahí mismo se
+    // elige el tamaño (variante), igual que en el portal.
     if (product.hasOptions && product.options.length > 0) {
-      if (product.variantCount > 1) {
-        setVariantTarget(product);
-      } else {
-        setBuilderTarget(product);
-      }
+      setBuilderTarget(product);
       return;
     }
     if (product.variantCount > 1) {

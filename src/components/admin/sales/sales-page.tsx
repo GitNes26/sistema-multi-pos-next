@@ -20,7 +20,7 @@ import { InputGroupField } from "@/components/base/input-group-field"
 import { DatePicker } from "@/components/base/date-picker"
 import { FormCombobox } from "@/components/base/form-combobox"
 import { DataTable } from "@/components/base/data-table"
-import { crudApi, salesApi, type SaleRow, type SaleDetail } from "@/lib/api"
+import { crudApi, salesApi, saleFolio, type SaleRow, type SaleDetail } from "@/lib/api"
 import { swalError, swalToast } from "@/lib/swal"
 import { money, qty } from "@/lib/pos/money"
 import { PAYMENT_METHOD_LABELS } from "@/lib/pos/config"
@@ -187,8 +187,11 @@ export function SalesPage({
         id: "folio",
         header: "Folio",
         cell: ({ row }: { row: { original: SaleRow } }) => (
-          <span className="font-medium tabular-nums">
-            #{row.original.locationSaleNumber ?? row.original.saleNumber}
+          <span className="flex flex-col">
+            <span className="font-medium tabular-nums">{saleFolio(row.original)}</span>
+            {row.original.orderNumber != null && (
+              <span className="text-xs text-muted-foreground tabular-nums">Pedido · #{row.original.locationSaleNumber ?? row.original.saleNumber}</span>
+            )}
           </span>
         ),
       },
@@ -499,9 +502,8 @@ function SaleCard({ row, onOpen }: { row: SaleRow; onOpen: () => void }) {
     <div className="flex items-center justify-between gap-2" onClick={onOpen}>
       <div className="min-w-0 space-y-0.5">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold">
-            #{row.locationSaleNumber ?? row.saleNumber}
-          </span>
+          <span className="font-semibold">{saleFolio(row)}</span>
+          {row.orderNumber != null && <Badge variant="outline">Pedido</Badge>}
           <Badge variant="secondary">{row.locationName}</Badge>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -542,7 +544,9 @@ function SaleDetailDialog({
       title={
         printing
           ? undefined
-          : `Venta #${sale.locationSaleNumber ?? sale.saleNumber}`
+          : sale.orderNumber != null
+            ? `Venta por pedido ${saleFolio(sale)}`
+            : `Venta ${saleFolio(sale)}`
       }
       description={
         printing
@@ -714,7 +718,10 @@ function PrintReceipt({ sale }: { sale: SaleDetail }) {
         <p className="text-sm font-bold uppercase leading-tight">
           {sale.locationName}
         </p>
-        <p>Ticket: #{sale.locationSaleNumber ?? sale.saleNumber}</p>
+        <p>Ticket: {saleFolio(sale)}{sale.orderNumber != null ? ` (#${sale.locationSaleNumber ?? sale.saleNumber})` : ""}</p>
+        {sale.orderNumber != null && (
+          <p>Venta por pedido · {sale.deliveryMethod === "delivery" ? "A domicilio" : "Recoger en sucursal"}</p>
+        )}
         <p>
           {new Date(sale.createdAt).toLocaleString("es-MX", {
             dateStyle: "short",

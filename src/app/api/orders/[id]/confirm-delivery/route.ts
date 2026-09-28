@@ -13,7 +13,7 @@ export async function POST(
 
   try {
     const body = (await req.json()) as { pin?: string; qrToken?: string };
-    const result = await confirmDelivery(guard.organizationId, id, body);
+    const result = await confirmDelivery(guard.organizationId, id, body, { userId: guard.userId });
     if (!result.ok) {
       return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
     }

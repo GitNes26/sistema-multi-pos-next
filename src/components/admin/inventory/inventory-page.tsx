@@ -757,7 +757,8 @@ export function InventoryPage({ canManage, canRevise, canPurchase, icon }: Inven
           onChange={(value) => {
             if (value === locationType) return;
             setLocationType(value);
-            setLocationId("");
+            // Selecciona la primera ubicación del tipo para mostrar sus datos de inmediato.
+            setLocationId((value === "location" ? locations : cedis)[0]?.id ?? "");
           }}
           options={[
             { value: "location", label: "Sucursal" },

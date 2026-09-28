@@ -520,16 +520,6 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     sortOrder: 4,
   },
   {
-    id: "menu-pedidos-monitoreo",
-    parentId: "menu-pedidos",
-    type: "item",
-    label: "Monitoreo",
-    icon: "Activity",
-    href: "/admin/orders/monitoring",
-    permissionKey: "orders.view",
-    sortOrder: 1,
-  },
-  {
     id: "menu-cedis",
     parentId: "menu-operacion",
     type: "item",
@@ -833,6 +823,8 @@ export async function seedProduction() {
   }
 
   // Menú dinámico (FASE 14.4)
+  // Entradas retiradas: Monitoreo ahora es la vista "Tablero" de Pedidos.
+  await prisma.menu.deleteMany({ where: { id: { in: ["menu-pedidos-monitoreo"] } } })
   for (const m of SYSTEM_MENUS) {
     await prisma.menu.upsert({
       where: { id: m.id },

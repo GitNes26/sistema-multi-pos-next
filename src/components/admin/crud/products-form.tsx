@@ -222,8 +222,22 @@ export function ProductsForm({
   const [variantOptions, setVariantOptions] = useState<ProductOption[]>(
     initialOptions.filter((option) => option.kind === "variant")
   )
-  const saleVariants = ((initial?.variants as { id?: string; name?: string }[]) ?? [])
+  const persistedVariants = ((initial?.variants as { id?: string; name?: string }[]) ?? [])
     .filter((variant): variant is { id: string; name?: string } => Boolean(variant.id))
+  // Al crear aún no hay variantes: se usan las que se van a generar (una por
+  // combinación de tamaños/presentaciones, o la base) con un id provisional
+  // "name:<nombre>" que el servidor traduce al guardar.
+  const plannedVariants = (() => {
+    const lists = variantOptions
+      .map((o) => o.values.map((v) => v.value.trim()).filter(Boolean))
+      .filter((values, index) => variantOptions[index].name.trim() && values.length > 0)
+    const combos = lists.length ? lists.reduce<string[][]>((acc, values) => acc.flatMap((a) => values.map((v) => [...a, v])), [[]]) : [["Default"]]
+    return combos.map((combo) => {
+      const name = combo.join(" · ")
+      return { id: `name:${name}`, name: name === "Default" ? "Presentación única" : name }
+    })
+  })()
+  const saleVariants = isEdit ? persistedVariants : plannedVariants
   const [optionsBusy, setOptionsBusy] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState<string>()
@@ -392,9 +406,20 @@ export function ProductsForm({
       payload.variantOptions = variantOptions
         .filter((o) => o.name.trim() && o.values.some((v) => v.value.trim()))
         .map((o) => ({ name: o.name.trim(), values: o.values.map((v) => v.value.trim()).filter(Boolean) }))
+      // Tópicos completos (obligatorio, mín/máx, precio de cada opción y reglas
+      // por presentación); el servidor los guarda al crear las variantes.
       payload.topicOptions = options
         .filter((o) => o.name.trim() && o.values.some((v) => v.value.trim()))
-        .map((o) => ({ name: o.name.trim(), values: o.values.map((v) => v.value.trim()).filter(Boolean) }))
+        .map((o) => ({
+          name: o.name.trim(),
+          required: o.required !== false,
+          minSelect: Math.max(0, Number(o.minSelect) || 0),
+          maxSelect: Math.max(Math.max(0, Number(o.minSelect) || 0), Number(o.maxSelect) || 1),
+          variantRules: o.variantRules ?? [],
+          values: o.values
+            .filter((v) => v.value.trim())
+            .map((v) => ({ value: v.value.trim(), extraPrice: Math.max(0, Number(v.extraPrice) || 0) })),
+        }))
     } else {
       const hasOptions = options.some(
         (o) => o.name.trim() && o.values.some((v) => v.value.trim())

@@ -413,6 +413,7 @@ export interface SaleRow {
   changeGiven: number;
   status: string;
   createdAt: string;
+  orderNumber: number | null;
 }
 
 export interface SaleItemDetail {
@@ -451,6 +452,8 @@ export interface SaleDetail {
   status: string;
   notes: string | null;
   createdAt: string;
+  orderNumber: number | null;
+  deliveryMethod: string | null;
   items: SaleItemDetail[];
   payments: { method: string; amount: number; reference: string | null }[];
   discounts: { label: string; amount: number }[];
@@ -867,3 +870,8 @@ export const optionsApi = {
       body: JSON.stringify({ options, kind }),
     }),
 };
+
+/** Folio visible de una venta: "PED-<nº>" si nació de un pedido del portal. */
+export function saleFolio(sale: { orderNumber?: number | null; locationSaleNumber: number | null; saleNumber: number }): string {
+  return sale.orderNumber != null ? `PED-${sale.orderNumber}` : `#${sale.locationSaleNumber ?? sale.saleNumber}`;
+}

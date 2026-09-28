@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Eye, Radio, Search } from "lucide-react"
+import { Eye, Search } from "lucide-react"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,6 +21,7 @@ import {
 } from "@/lib/orders/client"
 import type { OrderRow } from "@/lib/orders/server"
 import { OrderDetailDialog } from "./order-detail-dialog"
+import { OrdersMonitor } from "./orders-monitor"
 import { OrderStatusPill } from "@/components/shared/order-status-pill"
 import { SegmentedFilter } from "@/components/base/segmented-filter"
 
@@ -42,7 +43,28 @@ export function OrdersPage({
   icon?: React.ReactNode
 }) {
   const router = useRouter()
-  // Mismo patrón de persistencia que el POS: reparto por sucursal y eje.
+  // Una sola página con dos vistas: tablero en vivo (operación) y lista
+  // (búsqueda e historial). La elección se recuerda en este navegador.
+  const [view, setView] = useState<"board" | "list">("board")
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("vista")
+    if (fromUrl === "tablero" || fromUrl === "lista") return setView(fromUrl === "tablero" ? "board" : "list")
+    if (new URLSearchParams(window.location.search).get("q")) return setView("list")
+    try {
+      const saved = localStorage.getItem("multi-pos.orders-view")
+      if (saved === "board" || saved === "list") setView(saved)
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, [])
+  const changeView = (v: "board" | "list") => {
+    setView(v)
+    try {
+      localStorage.setItem("multi-pos.orders-view", v)
+    } catch {
+      /* sin almacenamiento */
+    }
+  }
 
   const [status, setStatus] = useState("all")
   const [method, setMethod] = useState("all")
@@ -187,17 +209,24 @@ export function OrdersPage({
       <PageHeader
         icon={icon}
         title="Pedidos"
-        description="Gestiona pedidos en línea: estados, preparación y monitoreo."
+        description="Pedidos en línea: tablero en vivo para operar y lista para buscar e historial."
         actions={
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => router.push("/admin/orders/monitoring")}
-          >
-            <Radio className="size-4" /> Monitoreo
-          </Button>
+          <SegmentedFilter
+            ariaLabel="Vista"
+            value={view}
+            onChange={changeView}
+            options={[
+              { value: "board", label: "Tablero en vivo" },
+              { value: "list", label: "Lista" },
+            ]}
+          />
         }
       />
+
+      {view === "board" ? (
+        <OrdersMonitor canManage={canManage} embedded />
+      ) : (
+      <>
 
       {/* <ResizableSplit
         prefix="orders"
@@ -292,6 +321,8 @@ export function OrdersPage({
           </Card>
          {/* }
        /> */}
+      </>
+      )}
 
       {detailId && (
         <OrderDetailDialog

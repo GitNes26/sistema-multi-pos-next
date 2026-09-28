@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.25.0.0] — 2026-09-28
+- **Tipo:** `feat` (Minor)
+- feat: los pedidos del portal ahora son ventas (folio PED-, ticket, descuento de inventario con movimientos, caja de la sucursal y puntos) al cobrarse en tienda o entregarse, con opcion de registrar la venta de pedidos anteriores; detalle del pedido rediseñado con recorrido animado, que sigue y contacto; Pedidos y Monitoreo unidos en una sola pagina con tablero en vivo y lista; inventario selecciona la primera sucursal o CEDIS al cambiar de tipo; reglas por tamaño y precios de topicos desde la creacion del producto; constructor del POS con eleccion de tamaño como en el portal
+
 ### [0.24.0.0] — 2026-09-27
 - **Tipo:** `feat` (Minor)
 - feat: inicio de sesion con correo, telefono o numero de nomina/cliente; los planes definen los permisos incluidos y limitan a todos los roles de la empresa (propietario incluido) con candados en el editor de roles, menu y pantallas bloqueadas que llevan a Mi plan, y editor de planes con permisos por modulo; CEDIS con existencias en la empresa de pruebas NESSIK Test para probar traslados

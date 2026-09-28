@@ -340,8 +340,7 @@ export function ProductBuilder({ product, portalProduct, open, onClose, onAdd }:
   // Normalize: use portalProduct if provided, else POS product
   const activeProduct = portalProduct ?? product ?? null
   const [selections, setSelections] = useState<Map<string, Set<string>>>(new Map())
-  // Tamaño (variante) elegido — solo relevante en el portal, donde el builder
-  // es la única pantalla y la variante no se eligió antes de abrir el panel.
+  // Tamaño (variante) elegido dentro del constructor, igual en POS y portal.
   const [variantId, setVariantId] = useState<string | null>(null)
   const [notes, setNotes] = useState("")
   const [quantity, setQuantity] = useState(1)
@@ -351,9 +350,13 @@ export function ProductBuilder({ product, portalProduct, open, onClose, onAdd }:
   const sectionRefs = useRef(new Map<string, HTMLElement>())
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const portalVariants = portalProduct?.variants ?? []
-  const selectedVariant = portalVariants.find((v) => v.id === variantId) ?? portalVariants[0] ?? null
-  const effectiveVariantId = portalProduct ? selectedVariant?.id : product?.variantId
+  const variantChoices: PortalProductLike["variants"] = portalProduct
+    ? portalProduct.variants
+    : product && product.variants.length > 1
+      ? product.variants.filter((v) => v.isActive).map((v) => ({ id: v.id, price: v.price, name: v.name, stock: v.stock, isAvailable: v.isAvailable }))
+      : []
+  const selectedVariant = variantChoices.find((v) => v.id === variantId) ?? variantChoices[0] ?? null
+  const effectiveVariantId = selectedVariant?.id ?? product?.variantId
   const activeOptions = useMemo(
     () =>
       (activeProduct?.options ?? [])
@@ -490,8 +493,12 @@ export function ProductBuilder({ product, portalProduct, open, onClose, onAdd }:
         return
       }
       onAdd({
-        product: activeProduct,
-        variant: portalProduct ? selectedVariant : null,
+        // En el POS la línea del ticket lleva el tamaño elegido (id, precio y nombre).
+        product:
+          !portalProduct && product && selectedVariant && variantChoices.length > 1
+            ? { ...product, variantId: selectedVariant.id, price: selectedVariant.price, name: `${product.name} · ${selectedVariant.name}` }
+            : activeProduct,
+        variant: selectedVariant,
         selectedOptions: buildSelectedOptions(),
         totalExtraPrice,
         notes,
@@ -499,13 +506,13 @@ export function ProductBuilder({ product, portalProduct, open, onClose, onAdd }:
       })
       handleClose()
     },
-    [activeProduct, isValid, missing, scrollToSection, onAdd, buildSelectedOptions, totalExtraPrice, notes, quantity, handleClose, portalProduct, selectedVariant]
+    [activeProduct, isValid, missing, scrollToSection, onAdd, buildSelectedOptions, totalExtraPrice, notes, quantity, handleClose, portalProduct, product, selectedVariant, variantChoices.length]
   )
 
   if (!activeProduct || activeProduct.options.length === 0) return null
 
-  // Base price: portal usa la variante elegida; POS ya trae su precio propio
-  const basePrice = portalProduct ? (selectedVariant?.price ?? portalProduct.variants[0]?.price ?? 0) : (product?.price ?? 0)
+  // Precio base: el del tamaño elegido; si no hay tamaños, el del producto.
+  const basePrice = selectedVariant?.price ?? product?.price ?? 0
   const finalPrice = basePrice + totalExtraPrice
   const requiredCount = activeOptions.filter((o) => needOf(o) > 0).length
   const doneCount = requiredCount - missing.length
@@ -592,16 +599,16 @@ export function ProductBuilder({ product, portalProduct, open, onClose, onAdd }:
 
           <div className="space-y-4 px-4 py-4 sm:px-5">
             {/* Tamaño primero: las opciones pueden depender de él */}
-            {portalProduct && portalVariants.length > 1 && (
+            {variantChoices.length > 1 && (
               <section className="space-y-3 rounded-2xl border p-4">
                 <header>
                   <h3 className="font-semibold">Tamaño</h3>
                   <p className="text-xs text-muted-foreground">Elige 1</p>
                 </header>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {portalVariants.map((v) => {
+                  {variantChoices.map((v) => {
                     const active = selectedVariant?.id === v.id
-                    const unavailable = v.isAvailable === false || (portalProduct.trackInventory && (v.stock ?? 0) <= 0)
+                    const unavailable = v.isAvailable === false || (activeProduct.trackInventory && (v.stock ?? 0) <= 0)
                     return (
                       <button
                         key={v.id}

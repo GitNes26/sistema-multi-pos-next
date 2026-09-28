@@ -382,7 +382,7 @@ export const productsModule: CrudModule<ProductDto> = {
     if (productType === "standard" || productType === "custom") {
       const options = parseOptions(data.options);
       const variantOptions = parseOptions(data.variantOptions);
-      const topicOptions = parseOptions(data.topicOptions);
+      const topicOptions = parseTopicOptions(data.topicOptions);
       if ((productType === "standard" && options.length > 0) || (productType === "custom" && variantOptions.length > 0)) {
         // Opciones definidas → generar combinaciones de variantes automáticamente.
         const base = data.initialVariant as Record<string, unknown> | undefined;
@@ -407,7 +407,21 @@ export const productsModule: CrudModule<ProductDto> = {
         await syncVariantInventory(organizationId, product.id, variant.id);
       }
       if (productType === "custom" && topicOptions.length > 0) {
-        await createTopics(product.id, topicOptions);
+        // Las reglas por presentación llegan con id provisional "name:<variante>":
+        // se traducen a las variantes recién creadas.
+        const created = await prisma.productVariant.findMany({ where: { productId: product.id }, select: { id: true, name: true } });
+        const byName = new Map(created.map((v) => [v.name, v.id]));
+        await saveProductOptions(
+          organizationId,
+          product.id,
+          topicOptions.map((o) => ({
+            ...o,
+            variantRules: (o.variantRules ?? [])
+              .map((rule) => ({ ...rule, variantId: rule.variantId.startsWith("name:") ? byName.get(rule.variantId.slice(5)) ?? "" : rule.variantId }))
+              .filter((rule) => rule.variantId),
+          })),
+          "topic"
+        );
       }
     }
 
@@ -637,22 +651,32 @@ async function createOptionsWithVariants(
   }
 }
 
-async function createTopics(productId: string, options: OptionInput[]) {
-  let pos = 0;
-  for (const opt of options) {
-    pos += 1;
-    await prisma.productOption.create({
-      data: {
-        productId,
-        name: opt.name,
-        position: pos,
-        kind: "topic",
-        values: {
-          create: opt.values.map((value, index) => ({ value, position: index + 1 })),
-        },
-      },
-    });
-  }
+/** Tópicos completos enviados al crear un producto personalizado. */
+function parseTopicOptions(raw: unknown): SaveOptionInput[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((o): SaveOptionInput | null => {
+      if (!o || typeof o !== "object") return null;
+      const r = o as Record<string, unknown>;
+      const name = String(r.name ?? "").trim();
+      const values = (Array.isArray(r.values) ? r.values : [])
+        .map((v) =>
+          typeof v === "string"
+            ? { value: v.trim(), extraPrice: 0 }
+            : { value: String((v as Record<string, unknown>)?.value ?? "").trim(), extraPrice: Math.max(0, Number((v as Record<string, unknown>)?.extraPrice) || 0) }
+        )
+        .filter((v) => v.value);
+      if (!name || !values.length) return null;
+      return {
+        name,
+        required: r.required !== false,
+        minSelect: Number(r.minSelect) || 0,
+        maxSelect: Number(r.maxSelect) || 1,
+        variantRules: Array.isArray(r.variantRules) ? (r.variantRules as ProductOptionVariantRuleDto[]) : [],
+        values,
+      };
+    })
+    .filter((o): o is SaveOptionInput => o !== null);
 }
 
 async function syncVariantInventory(organizationId: string, productId: string, variantId: string) {
