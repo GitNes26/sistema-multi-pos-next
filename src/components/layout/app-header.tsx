@@ -42,7 +42,7 @@ export function AppHeader({ sections, user, logoUrl }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 border-b bg-background/92 supports-backdrop-filter:bg-background/75 supports-backdrop-filter:backdrop-blur-lg">
-      <div className="flex h-14 items-center gap-2 px-3 pt-[env(safe-area-inset-top)] sm:px-4">
+      <div className="flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center gap-2 pt-[env(safe-area-inset-top)] pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(0.75rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] sm:pl-[max(1rem,env(safe-area-inset-left))]">
         <Button
           type="button"
           variant="ghost"

@@ -1,10 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   AlertTriangle, ArrowRight, CheckCircle2, CircleDot, ClipboardCheck, Loader2, LocateFixed, MapPin, Navigation,
-  Package, PackageCheck, PackageOpen, Radio, Truck, User, X,
+  FileText, Package, PackageCheck, PackageOpen, Printer, Radio, Truck, User, X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +15,9 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DateTimePicker } from "@/components/base/date-time-picker"
 import { QuantityStepper } from "@/components/base/quantity-stepper"
+import { FormCombobox } from "@/components/base/form-combobox"
+import { DialogComponent } from "@/components/ui/dialog"
+import { crudApi } from "@/lib/api"
 import { ThumbImage } from "@/components/base/thumb-image"
 import { BackButton } from "@/components/shared/back-button"
 import { DeliveryTrackingMap } from "@/components/portal/delivery-tracking-map-lazy"
@@ -22,6 +26,7 @@ import { swalConfirm, swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
 import { TransferStatusPill, TransferStepper } from "./transfer-status"
 import { TransferFlow } from "./transfer-flow"
+import { TransferDocument } from "./transfer-document"
 
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null
@@ -33,10 +38,18 @@ const ago = (iso: string) => {
   return m < 60 ? `hace ${m} min` : `hace ${Math.round(m / 60)} h`
 }
 
-export function TransferDetailView({ id, canManage }: { id: string; canManage: boolean }) {
+export interface TransferPerms {
+  dispatch: boolean
+  receive: boolean
+  cancel: boolean
+}
+
+export function TransferDetailView({ id, perms }: { id: string; perms: TransferPerms }) {
+  const canManage = perms.dispatch || perms.receive
   const [t, setT] = useState<Detail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [docOpen, setDocOpen] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -110,8 +123,30 @@ export function TransferDetailView({ id, canManage }: { id: string; canManage: b
             <span className="truncate">{t.to.name}</span>
           </h1>
         </div>
+        <Button variant="outline" size="sm" onClick={() => setDocOpen(true)}>
+          <FileText className="size-4" /> Documento
+        </Button>
         <TransferStatusPill status={t.status} className="text-sm" />
       </div>
+
+      <DialogComponent
+        open={docOpen}
+        onOpenChange={setDocOpen}
+        icon={<FileText className="size-4" />}
+        title={`Solicitud de traslado ${t.folio}`}
+        description="Documento listo para imprimir y firmar al entregar y recibir la mercancía."
+        size="3xl"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setDocOpen(false)}>Cerrar</Button>
+            <Button onClick={() => window.print()}>
+              <Printer className="size-4" /> Imprimir
+            </Button>
+          </>
+        }
+      >
+        <TransferDocument t={t} />
+      </DialogComponent>
 
       <div className="space-y-5 rounded-2xl border bg-card p-4 shadow-e1 sm:p-5">
         <TransferFlow
@@ -201,20 +236,20 @@ export function TransferDetailView({ id, canManage }: { id: string; canManage: b
           {canManage && (
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={t.status} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
-                {t.status === "pending" && (
+                {t.status === "pending" && perms.dispatch && (
                   <StageCard icon={ClipboardCheck} title="Siguiente paso: preparar" text="Avisa que ya se está juntando la mercancía. Podrás marcar cada producto al cargarlo.">
                     <Button className="w-full" onClick={() => void run({ action: "prepare" }, "Traslado en preparación")} disabled={busy}>
                       <PackageOpen className="size-4" /> Empezar a preparar
                     </Button>
                   </StageCard>
                 )}
-                {t.status === "preparing" && (
+                {t.status === "preparing" && perms.dispatch && (
                   <DispatchCard t={t} busy={busy} onDispatch={(body) => run({ action: "dispatch", ...body }, "¡Traslado en camino!")} />
                 )}
                 {t.status === "in_transit" && (
                   <div className="space-y-5">
-                    <DriverMode transferId={t.id} onSent={load} />
-                    <ReceiveCard t={t} busy={busy} onReceive={(body) => run({ action: "receive", ...body }, "Traslado recibido completo")} />
+                    {perms.dispatch && <DriverMode transferId={t.id} onSent={load} />}
+                    {perms.receive && <ReceiveCard t={t} busy={busy} onReceive={(body) => run({ action: "receive", ...body }, "Traslado recibido completo")} />}
                   </div>
                 )}
                 {t.status === "received" && (
@@ -224,7 +259,18 @@ export function TransferDetailView({ id, canManage }: { id: string; canManage: b
                     title={t.hasDiscrepancy ? "Recibido con diferencias" : "Recibido completo"}
                     text={t.hasDiscrepancy ? `Llegaron ${received} de ${sent} unidades. Las existencias del destino suman solo lo recibido.` : "Todo llegó. Las existencias del destino ya están actualizadas."}
                   >
+                    {t.receivedBy && <p className="text-sm">Recibió: <strong>{t.receivedBy}</strong></p>}
                     {t.receiveNotes && <p className="rounded-lg bg-muted p-3 text-sm">“{t.receiveNotes}”</p>}
+                    <div className="flex flex-wrap gap-2">
+                      <Button asChild className="flex-1">
+                        <Link href="/admin/inventory?tab=transfers">
+                          <CheckCircle2 className="size-4" /> Traslado finalizado
+                        </Link>
+                      </Button>
+                      <Button variant="outline" onClick={() => setDocOpen(true)}>
+                        <FileText className="size-4" /> Documento
+                      </Button>
+                    </div>
                   </StageCard>
                 )}
               </motion.div>
@@ -259,7 +305,7 @@ export function TransferDetailView({ id, canManage }: { id: string; canManage: b
             </ol>
           </section>
 
-          {canManage && t.status !== "received" && t.status !== "cancelled" && (
+          {perms.cancel && t.status !== "received" && t.status !== "cancelled" && (
             <Button variant="ghost" className="w-full text-destructive hover:text-destructive" onClick={cancel} disabled={busy}>
               <X className="size-4" /> {t.status === "in_transit" ? "Cancelar y regresar al origen" : "Cancelar traslado"}
             </Button>
@@ -382,6 +428,15 @@ function ReceiveCard({ t, busy, onReceive }: { t: Detail; busy: boolean; onRecei
   const [counts, setCounts] = useState<Record<string, number>>(() => Object.fromEntries(t.items.map((i) => [i.id, i.quantity])))
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [general, setGeneral] = useState("")
+  const [receiverEmployeeId, setReceiverEmployeeId] = useState("")
+  const [receiverName, setReceiverName] = useState("")
+  const [employees, setEmployees] = useState<{ value: string; label: string }[]>([])
+  useEffect(() => {
+    crudApi
+      .list("employees", { pageSize: 250 })
+      .then((r) => setEmployees(r.rows.filter((e) => e.isActive !== false).map((e) => ({ value: String(e.id), label: String(e.fullName ?? e.name ?? "Empleado") }))))
+      .catch(() => setEmployees([]))
+  }, [])
   const missing = t.items.reduce((s, i) => s + Math.max(0, i.quantity - (counts[i.id] ?? 0)), 0)
 
   return (
@@ -420,6 +475,21 @@ function ReceiveCard({ t, busy, onReceive }: { t: Detail; busy: boolean; onRecei
           <CheckCircle2 className="size-4 shrink-0" /> Todo coincide con lo enviado.
         </p>
       )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FormCombobox
+          id="receiver-employee"
+          label="¿Quién recibe? (empleado)"
+          options={employees}
+          value={receiverEmployeeId}
+          onChange={setReceiverEmployeeId}
+          placeholder="Elegir empleado…"
+          searchable
+        />
+        <div className="space-y-1.5">
+          <Label htmlFor="receiver-name">O escribe su nombre</Label>
+          <Input id="receiver-name" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Ej. persona externa que recibió" />
+        </div>
+      </div>
       <Textarea rows={2} value={general} onChange={(e) => setGeneral(e.target.value)} placeholder="Comentario general (opcional)" />
       <Button
         className="w-full"
@@ -429,6 +499,8 @@ function ReceiveCard({ t, busy, onReceive }: { t: Detail; busy: boolean; onRecei
           onReceive({
             items: t.items.map((i) => ({ itemId: i.id, receivedQty: counts[i.id] ?? 0, note: notes[i.id] })),
             notes: general,
+            receiverEmployeeId: receiverEmployeeId || undefined,
+            receiverName: receiverName.trim() || undefined,
           })
         }
       >

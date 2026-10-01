@@ -11,7 +11,7 @@ import {
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
-  const guard = await inventoryGuard("inventory.view");
+  const guard = await inventoryGuard("transfers.view");
   if (guard instanceof NextResponse) return guard;
   try {
     const { id } = await params;
@@ -23,12 +23,15 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
 // POST { action: "prepare" | "dispatch" | "receive" | "cancel", ... }
 export async function POST(req: NextRequest, { params }: Ctx) {
-  const guard = await inventoryGuard("inventory.manage");
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  // Cada etapa del flujo tiene su propio permiso.
+  const permission =
+    body.action === "receive" ? "transfers.receive" : body.action === "cancel" ? "transfers.cancel" : "transfers.dispatch";
+  const guard = await inventoryGuard(permission);
   if (guard instanceof NextResponse) return guard;
   const { organizationId, userId } = guard;
   try {
     const { id } = await params;
-    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
     switch (body.action) {
       case "prepare":
         return NextResponse.json(await startPreparing(organizationId, id));
@@ -46,6 +49,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
           await receiveTransfer(organizationId, id, userId, {
             items: Array.isArray(body.items) ? (body.items as { itemId: string; receivedQty: number; note?: string }[]) : [],
             notes: typeof body.notes === "string" ? body.notes : null,
+            receiverEmployeeId: typeof body.receiverEmployeeId === "string" ? body.receiverEmployeeId : null,
+            receiverName: typeof body.receiverName === "string" ? body.receiverName : null,
           })
         );
       case "cancel":

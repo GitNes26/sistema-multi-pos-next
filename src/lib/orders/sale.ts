@@ -57,14 +57,16 @@ export async function recordOrderSale(organizationId: string, orderId: string, c
     ? await prisma.cashSession.findFirst({ where: { id: ctx.cashSessionId, organizationId, status: "open" }, select: { id: true, cashRegisterId: true } })
     : await prisma.cashSession.findFirst({ where: { organizationId, locationId, status: "open" }, orderBy: { openedAt: "desc" }, select: { id: true, cashRegisterId: true } })
 
-  const total = num(order.total)
+  const orderTotal = num(order.total) // lo que pagó el cliente (incluye propina)
+  const tip = num(order.tip)
+  // La propina no es venta: se guarda aparte (como en el POS) y no entra a ventas ni reportes.
+  const total = round2(orderTotal - tip)
   const subtotal = num(order.subtotal)
   const discount = num(order.discount)
   const deliveryFee = num(order.deliveryFee)
-  const tip = num(order.tip)
   const pointsValue = num(order.pointsValue)
   // El impuesto no se guarda aparte en el pedido: es lo que resta del total.
-  const tax = round2(Math.max(0, total + pointsValue - subtotal + discount - deliveryFee - tip))
+  const tax = round2(Math.max(0, total + pointsValue - subtotal + discount - deliveryFee))
   const method = (order.paymentMethod ?? "cash") as $Enums.PaymentMethod
   const isCredit = method === "credit"
   const pointsEarned =
@@ -133,7 +135,8 @@ export async function recordOrderSale(organizationId: string, orderId: string, c
         })),
       })
 
-      await tx.salePayment.create({ data: { saleId: sale.id, method, amount: total, reference: order.paymentReference } })
+      // El pago registra todo lo cobrado (venta + propina), como en el POS.
+      await tx.salePayment.create({ data: { saleId: sale.id, method, amount: orderTotal, reference: order.paymentReference } })
 
       // Inventario: la mercancía ya salió, así que se descuenta aunque quede en
       // negativo (el faltante se ve en inventario en lugar de ocultarse).

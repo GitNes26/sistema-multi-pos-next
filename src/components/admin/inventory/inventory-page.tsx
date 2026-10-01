@@ -63,6 +63,8 @@ interface InventoryPageProps {
   canManage: boolean;
   canRevise?: boolean;
   canPurchase?: boolean;
+  /** Permisos del flujo de traslados (ver / solicitar). */
+  transfers?: { view: boolean; request: boolean };
   icon?: React.ReactNode;
 }
 
@@ -481,7 +483,7 @@ function ThresholdDialog({
 }
 
 
-export function InventoryPage({ canManage, canRevise, canPurchase, icon }: InventoryPageProps) {
+export function InventoryPage({ canManage, canRevise, canPurchase, transfers = { view: true, request: true }, icon }: InventoryPageProps) {
   const [reorderOpen, setReorderOpen] = useState(false);
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [cedis, setCedis] = useState<LocationOption[]>([]);
@@ -780,7 +782,7 @@ export function InventoryPage({ canManage, canRevise, canPurchase, icon }: Inven
           <TabsTrigger value="stock">Existencias</TabsTrigger>
           <TabsTrigger value="movements">Historial de movimientos</TabsTrigger>
           <TabsTrigger value="revisions">Revisiones físicas</TabsTrigger>
-          <TabsTrigger value="transfers">Traslados</TabsTrigger>
+          {transfers.view && <TabsTrigger value="transfers">Traslados</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="stock">
@@ -822,7 +824,7 @@ export function InventoryPage({ canManage, canRevise, canPurchase, icon }: Inven
                                   primary={{ label: "Movimiento", icon: ArrowLeftRight, onSelect: () => open("movement"), "data-guide": "inv-movement" }}
                                   items={[
                                     { label: "Ajustar mínimo", icon: TriangleAlert, onSelect: () => open("threshold"), "data-guide": "inv-threshold" },
-                                    { label: "Trasladar a otra ubicación", icon: Truck, onSelect: () => open("transfer"), "data-guide": "inv-transfer" },
+                                    { label: "Trasladar a otra ubicación", icon: Truck, hidden: !transfers.request, onSelect: () => open("transfer"), "data-guide": "inv-transfer" },
                                   ]}
                                 />
                               );
@@ -894,16 +896,18 @@ export function InventoryPage({ canManage, canRevise, canPurchase, icon }: Inven
                         <span className="text-xs text-muted-foreground tabular-nums">Mín. {fmtMin(r.minThreshold, r.unit)}</span>
                       </div>
                       {canManage && (
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className={cn("grid gap-2", transfers.request ? "grid-cols-3" : "grid-cols-2")}>
                           <Button variant="outline" size="sm" data-guide="inv-movement" onClick={() => { setActive(r); setDialog("movement"); }}>
                             <ArrowLeftRight className="size-4" /> Movimiento
                           </Button>
                           <Button variant="outline" size="sm" data-guide="inv-threshold" onClick={() => { setActive(r); setDialog("threshold"); }}>
                             <TriangleAlert className="size-4" /> Mínimo
                           </Button>
-                          <Button variant="outline" size="sm" data-guide="inv-transfer" onClick={() => { setActive(r); setDialog("transfer"); }}>
-                            <Truck className="size-4" /> Transferir
-                          </Button>
+                          {transfers.request && (
+                            <Button variant="outline" size="sm" data-guide="inv-transfer" onClick={() => { setActive(r); setDialog("transfer"); }}>
+                              <Truck className="size-4" /> Transferir
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1024,7 +1028,7 @@ export function InventoryPage({ canManage, canRevise, canPurchase, icon }: Inven
         </TabsContent>
 
         <TabsContent value="transfers">
-          <TransfersBoard canManage={canManage} locationId={locationId || undefined} />
+          <TransfersBoard canManage={transfers.request} locationId={locationId || undefined} />
         </TabsContent>
 
         <TabsContent value="revisions">

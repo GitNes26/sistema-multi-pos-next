@@ -96,6 +96,8 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
       "pos.use",
       "products.view",
       "inventory.view",
+      "transfers.view",
+      "transfers.receive",
       "customers.view",
       "customers.manage",
       "promotions.view",
@@ -756,6 +758,9 @@ export async function seedProduction() {
     },
   })
 
+  // ¿Es la primera vez que existen los permisos de traslados? (para respaldar lo ya configurado)
+  const hadTransferPermissions = !!(await prisma.permission.findUnique({ where: { key: "transfers.view" } }))
+
   // Permisos
   for (const p of PERMISSIONS) {
     await prisma.permission.upsert({
@@ -788,6 +793,8 @@ export async function seedProduction() {
         businessMode: def.businessMode ?? null,
       },
     })
+    // Si el SuperAdmin ya ajustó los permisos de este rol, se respetan.
+    if (role.permissionsEdited) continue
     await prisma.rolePermission.deleteMany({
       where: { roleId: role.id, organizationId: null },
     })
@@ -799,6 +806,32 @@ export async function seedProduction() {
           allowed: true,
         })),
       })
+    }
+  }
+
+  // Respaldo único: los traslados antes colgaban de inventory.view/manage. Quien ya tenía
+  // esos permisos conserva su acceso (roles propios de cada empresa y planes ya guardados).
+  if (!hadTransferPermissions) {
+    const MAP: [string, string[]][] = [
+      ["inventory.view", ["transfers.view"]],
+      ["inventory.manage", ["transfers.request", "transfers.dispatch", "transfers.receive", "transfers.cancel"]],
+    ]
+    const existing = await prisma.rolePermission.findMany({
+      where: { permissionKey: { in: MAP.map(([k]) => k) }, role: { isSystem: false } },
+      select: { organizationId: true, roleId: true, permissionKey: true, allowed: true },
+    })
+    for (const rp of existing) {
+      for (const key of MAP.find(([k]) => k === rp.permissionKey)?.[1] ?? []) {
+        const dup = await prisma.rolePermission.findFirst({ where: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: key } })
+        if (!dup) await prisma.rolePermission.create({ data: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: key, allowed: rp.allowed } })
+      }
+    }
+    const savedPlans = await prisma.subscriptionPlan.findMany({ select: { id: true, permissions: true } })
+    for (const plan of savedPlans) {
+      if (!Array.isArray(plan.permissions)) continue
+      const keys = plan.permissions.map(String)
+      const next = [...new Set([...keys, ...MAP.filter(([k]) => keys.includes(k)).flatMap(([, add]) => add)])]
+      if (next.length !== keys.length) await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: next } })
     }
   }
 

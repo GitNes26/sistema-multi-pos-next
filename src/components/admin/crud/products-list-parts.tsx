@@ -1,6 +1,6 @@
 "use client"
 
-import { CalendarClock, CookingPot, Layers, Package, PackagePlus, Pencil, Scale, Sparkles, Trash2 } from "lucide-react"
+import { CalendarClock, CookingPot, Copy, Layers, Package, PackagePlus, Pencil, Scale, Sparkles, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -21,13 +21,17 @@ import { cn } from "@/lib/utils"
 export type ProductStatusFilter = "" | "active" | "unavailable" | "inactive"
 export type ProductTypeFilter = "" | "standard" | "bulk" | "custom" | "service"
 
+export type ProductVariantsFilter = "" | "with" | "without"
+
 export interface ProductFilterState {
   status: ProductStatusFilter
   productType: ProductTypeFilter
   categoryId: string
+  /** «with» = más de una variante activa; «without» = una sola. */
+  variants: ProductVariantsFilter
 }
 
-export const EMPTY_PRODUCT_FILTERS: ProductFilterState = { status: "", productType: "", categoryId: "" }
+export const EMPTY_PRODUCT_FILTERS: ProductFilterState = { status: "", productType: "", categoryId: "", variants: "" }
 
 type Row = Record<string, unknown>
 
@@ -49,7 +53,7 @@ export function ProductFilters({
   onChange: (next: ProductFilterState) => void
   categories: { id: string; name: string }[]
 }) {
-  const hasFilters = value.status || value.productType || value.categoryId
+  const hasFilters = value.status || value.productType || value.categoryId || value.variants
   return (
     <div className="flex flex-wrap items-center gap-2">
       <SegmentedFilter
@@ -77,6 +81,20 @@ export function ProductFilters({
               {opt.label}
             </SelectItem>
           ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={value.variants || "all"}
+        onValueChange={(v) => onChange({ ...value, variants: (v === "all" ? "" : v) as ProductVariantsFilter })}
+      >
+        <SelectTrigger className="w-auto min-w-40" aria-label="Variantes">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Con y sin variantes</SelectItem>
+          <SelectItem value="with">Con variantes</SelectItem>
+          <SelectItem value="without">Sin variantes</SelectItem>
         </SelectContent>
       </Select>
 
@@ -155,6 +173,21 @@ export function ProductTypeBadge({ type, trackInventory }: { type: unknown; trac
   )
 }
 
+/** Cantidad de variantes (tamaños/presentaciones) del producto. */
+export function ProductVariantsCell({ row }: { row: Row }) {
+  const variants = (row.variants as { name?: string }[] | undefined) ?? []
+  if (variants.length <= 1) return <span className="text-muted-foreground">—</span>
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-foreground"
+      title={variants.map((v) => v.name).join(" · ")}
+    >
+      <Layers className="size-3" />
+      {variants.length} variantes
+    </span>
+  )
+}
+
 export function productPrice(row: Row): number | undefined {
   const variants = (row.variants as { price: number }[] | undefined) ?? []
   const prices = variants.map((v) => Number(v.price)).filter((n) => Number.isFinite(n))
@@ -191,6 +224,7 @@ export function ProductRowActions({
   onVariants,
   onInventory,
   onRecipe,
+  onDuplicate,
   onDelete,
 }: {
   row: Row
@@ -200,6 +234,7 @@ export function ProductRowActions({
   onVariants: () => void
   onInventory: () => void
   onRecipe: () => void
+  onDuplicate: () => void
   onDelete: () => void
 }) {
   const type = row.productType
@@ -218,6 +253,7 @@ export function ProductRowActions({
         },
         { label: "Ver y llenar inventario", icon: PackagePlus, onSelect: onInventory },
         { label: "Receta e insumos", icon: CookingPot, hidden: type !== "custom", onSelect: onRecipe },
+        { label: "Duplicar producto", icon: Copy, onSelect: onDuplicate },
         { label: "Eliminar", icon: Trash2, destructive: true, hidden: !canDelete, disabled: deleting, onSelect: onDelete },
       ]}
     />

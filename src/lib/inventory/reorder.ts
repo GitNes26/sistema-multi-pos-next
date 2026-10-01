@@ -27,6 +27,8 @@ export interface ReorderLine {
   unitCost: number
   minimumOrder: number
   supplierSku: string | null
+  /** Todos los proveedores que surten el producto, para elegir con su precio. */
+  options: { supplierId: string; supplierName: string; unitCost: number; minimumOrder: number; leadTimeDays: number; isPreferred: boolean }[];
 }
 
 export interface ReorderGroup {
@@ -103,6 +105,20 @@ export async function getReorderSuggestions(organizationId: string, locationType
       unitCost: link ? num(link.unitCost) : num(r.variant?.cost),
       minimumOrder: num(link?.minimumOrder),
       supplierSku: link?.supplierSku ?? null,
+      options: links
+        .filter((l) => l.productId === product.id && (l.variantId === r.variantId || !l.variantId))
+        // Si hay precio específico de la variante, manda sobre el general del mismo proveedor.
+        .sort((a, b) => Number(!!b.variantId) - Number(!!a.variantId))
+        .filter((l, i, all) => all.findIndex((x) => x.supplierId === l.supplierId) === i)
+        .map((l) => ({
+          supplierId: l.supplierId,
+          supplierName: l.supplier.businessName,
+          unitCost: num(l.unitCost),
+          minimumOrder: num(l.minimumOrder),
+          leadTimeDays: l.leadTimeDays ?? l.supplier.leadTimeDays ?? 0,
+          isPreferred: l.isPreferred,
+        }))
+        .sort((a, b) => Number(b.isPreferred) - Number(a.isPreferred) || a.unitCost - b.unitCost),
     })
     groups.set(key, group)
   }

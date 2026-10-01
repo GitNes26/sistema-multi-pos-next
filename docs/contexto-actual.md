@@ -1,5 +1,9 @@
 # Contexto vigente de Multi-POS
 
+> Resumen conservado con revisión del 22 de septiembre de 2026. La fuente de verdad
+> completa y más reciente es [`../CONTEXTO_SISTEMA.md`](../CONTEXTO_SISTEMA.md);
+> las reglas operativas para agentes están en [`../AGENTS.md`](../AGENTS.md).
+
 Revisión: 22 de septiembre de 2026.
 
 Multi-POS es una aplicación web multiempresa y multisucursal construida con Next.js 15,

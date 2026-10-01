@@ -8,7 +8,7 @@ import { DialogComponent } from "@/components/ui/dialog";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { SegmentedFilter } from "@/components/base";
 import { inventoryApi, type InventoryRow } from "@/lib/api";
-import { swalError, swalToast } from "@/lib/swal";
+import { swalConfirm, swalError, swalToast } from "@/lib/swal";
 import { playSound } from "@/lib/sounds";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +107,22 @@ export function QuickCaptureDialog({
 
   /** Navegación tipo hoja de cálculo. */
   const onCellKey = (e: React.KeyboardEvent<HTMLInputElement>, col: "q" | "m", index: number) => {
+    // Ctrl/⌘ + Enter guarda sin soltar el teclado.
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      if (changed.length && !invalid && !saving) void save();
+      return;
+    }
+    // ← / → saltan entre «cantidad» y «mínimo» de la misma fila.
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      const target = col === "q" ? (e.key === "ArrowRight" ? "m" : null) : e.key === "ArrowLeft" ? "q" : null;
+      if (!target) return;
+      e.preventDefault();
+      const next = tableRef.current?.querySelector<HTMLInputElement>(`[data-cell="${target}-${index}"]`);
+      next?.focus();
+      next?.select();
+      return;
+    }
     const move = e.key === "Enter" || e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
     if (!move) return;
     e.preventDefault();
@@ -180,6 +196,15 @@ export function QuickCaptureDialog({
     setBulkMin("");
   };
 
+  /** Cerrar con cambios sin guardar pide confirmación. */
+  const requestClose = async (next: boolean) => {
+    if (!next && changed.length > 0) {
+      const ok = await swalConfirm("¿Descartar los cambios?", `Tienes ${changed.length} productos modificados sin guardar.`, { danger: true, confirmText: "Descartar" });
+      if (!ok) return;
+    }
+    onOpenChange(next);
+  };
+
   const save = async () => {
     setSaving(true);
     try {
@@ -200,7 +225,7 @@ export function QuickCaptureDialog({
   return (
     <DialogComponent
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(v) => void requestClose(v)}
       icon={<ListChecks className="size-5" />}
       title="Captura rápida de inventario"
       description="Escanea, escribe y avanza con Enter. Solo se guardan las filas que cambian."
@@ -211,7 +236,10 @@ export function QuickCaptureDialog({
           <span className="mr-auto text-sm text-muted-foreground">
             <b className="text-foreground tabular-nums">{changed.length}</b> cambios
           </span>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          {changed.length > 0 && (
+            <Button variant="ghost" onClick={() => setDraft(initial(mode))}>Deshacer cambios</Button>
+          )}
+          <Button variant="outline" onClick={() => void requestClose(false)}>Cancelar</Button>
           <Button onClick={() => void save()} disabled={!changed.length || invalid || saving}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Guardar cambios
@@ -274,7 +302,7 @@ export function QuickCaptureDialog({
           ]}
         />
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Keyboard className="size-3.5" /> Enter o ↓ baja a la siguiente fila · ↑ sube
+          <Keyboard className="size-3.5" /> Enter o ↓ siguiente fila · ↑ anterior · ←/→ cantidad↔mínimo · Ctrl+Enter guarda
         </p>
       </div>
 

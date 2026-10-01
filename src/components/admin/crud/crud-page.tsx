@@ -60,6 +60,7 @@ import {
   ProductFilters,
   ProductNameCell,
   ProductPriceCell,
+  ProductVariantsCell,
   ProductRowActions,
   ProductStatusPill,
   ProductTypeBadge,
@@ -395,6 +396,11 @@ export function CrudPage({
         cell: ({ row }) => <ProductTypeBadge type={row.original.productType} trackInventory={row.original.trackInventory} />,
       },
       {
+        id: "variants",
+        header: "Variantes",
+        cell: ({ row }) => <ProductVariantsCell row={row.original} />,
+      },
+      {
         id: "price",
         header: () => <span className="ml-auto">Precio</span>,
         cell: ({ row }) => (
@@ -611,6 +617,25 @@ export function CrudPage({
     }
   }
 
+  const handleDuplicate = async (row: Record<string, unknown>) => {
+    const ok = await swalConfirm(
+      `¿Duplicar "${String(row.name ?? "producto")}"?`,
+      "Se crea una copia con sus variantes, tópicos y receta. El SKU, el código de barras y las existencias quedan vacíos.",
+      { confirmText: "Duplicar" }
+    )
+    if (!ok) return
+    try {
+      const res = await fetch(`/api/crud/products/${String(row.id)}/duplicate`, { method: "POST" })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.error ?? "No se pudo duplicar")
+      swalToast("Producto duplicado")
+      await load()
+      openEdit(json.row as Record<string, unknown>)
+    } catch (e) {
+      swalError(e instanceof Error ? e.message : "No se pudo duplicar")
+    }
+  }
+
   const actionColumns = useMemo<
     ColumnDef<Record<string, unknown>, unknown>[]
   >(() => {
@@ -635,6 +660,7 @@ export function CrudPage({
                 )
               }
               onRecipe={() => setRecipeProduct(row.original)}
+              onDuplicate={() => void handleDuplicate(row.original)}
               onDelete={() => void handleDelete(row.original)}
             />
           ),
@@ -822,7 +848,7 @@ export function CrudPage({
             showPagination={false}
             loading={loading}
             emptyMessage={
-              isProducts(moduleKey) && (productFilters.status || productFilters.productType || productFilters.categoryId || q)
+              isProducts(moduleKey) && (productFilters.status || productFilters.productType || productFilters.categoryId || productFilters.variants || q)
                 ? "Ningún producto coincide con los filtros"
                 : "Sin resultados"
             }
@@ -839,6 +865,7 @@ export function CrudPage({
                       <div className="flex flex-wrap items-center gap-1.5">
                         <ProductStatusPill row={row} />
                         <ProductTypeBadge type={row.productType} trackInventory={row.trackInventory} />
+                        <ProductVariantsCell row={row} />
                       </div>
                     </div>
                   )

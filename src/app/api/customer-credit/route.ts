@@ -52,7 +52,6 @@ export async function GET(req: Request) {
     if (allOrgs) {
       // Superadmin: list all credits across all orgs
       const rows = await prisma.customerCredit.findMany({
-        where: { currentBalance: { gt: 0 } },
         include: {
           customer: {
             select: {

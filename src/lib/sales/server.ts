@@ -38,6 +38,8 @@ export interface SaleRow {
   createdAt: string;
   /** Pedido del portal que originó la venta (folio PED-<nº>). */
   orderNumber: number | null;
+  /** Devolución vigente (no rechazada) de la venta: tras ella no se admite otra. */
+  returnInfo: { id: string; returnNumber: number; returnType: string; status: string } | null;
 }
 
 export interface SaleItemDetail {
@@ -78,6 +80,8 @@ export interface SaleDetail {
   createdAt: string;
   orderNumber: number | null;
   deliveryMethod: string | null;
+  /** Devolución vigente (no rechazada) de la venta: tras ella no se admite otra. */
+  returnInfo: { id: string; returnNumber: number; returnType: string; status: string } | null;
   items: SaleItemDetail[];
   payments: { method: string; amount: number; reference: string | null }[];
   discounts: { label: string; amount: number }[];
@@ -139,6 +143,7 @@ export async function listSales(
         customer: { select: { fullName: true } },
         _count: { select: { items: true } },
         orders: { select: { orderNumber: true }, take: 1 },
+        returns: { where: { status: { not: "rejected" } }, select: { id: true, returnNumber: true, returnType: true, status: true }, orderBy: { createdAt: "desc" }, take: 1 },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
@@ -168,6 +173,7 @@ export async function listSales(
       status: s.status,
       createdAt: s.createdAt.toISOString(),
       orderNumber: s.orders[0] ? Number(s.orders[0].orderNumber) : null,
+      returnInfo: s.returns[0] ? { ...s.returns[0], returnNumber: Number(s.returns[0].returnNumber) } : null,
     })),
     total,
   };
@@ -187,6 +193,7 @@ export async function getSaleDetail(organizationId: string, saleId: string): Pro
         payments: true,
         discounts: true,
         orders: { select: { orderNumber: true, deliveryMethod: true }, take: 1 },
+        returns: { where: { status: { not: "rejected" } }, select: { id: true, returnNumber: true, returnType: true, status: true }, orderBy: { createdAt: "desc" }, take: 1 },
       },
     }),
     prisma.organization.findUnique({
@@ -222,6 +229,7 @@ export async function getSaleDetail(organizationId: string, saleId: string): Pro
     createdAt: sale.createdAt.toISOString(),
     orderNumber: sale.orders[0] ? Number(sale.orders[0].orderNumber) : null,
     deliveryMethod: sale.orders[0]?.deliveryMethod ?? null,
+    returnInfo: sale.returns[0] ? { ...sale.returns[0], returnNumber: Number(sale.returns[0].returnNumber) } : null,
     items: sale.items.map((i) => ({
       id: i.id,
       productName: i.productName,

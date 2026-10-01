@@ -113,6 +113,8 @@ export interface ReorderLine {
   unitCost: number;
   minimumOrder: number;
   supplierSku: string | null;
+  /** Todos los proveedores que surten el producto, para elegir con su precio. */
+  options: { supplierId: string; supplierName: string; unitCost: number; minimumOrder: number; leadTimeDays: number; isPreferred: boolean }[];
 }
 
 export interface ReorderGroup {
@@ -150,6 +152,8 @@ export interface SaleReturnItem {
 
 export interface SaleReturn {
   id: string;
+  returnNumber: number;
+  exchangeItems?: { productId: string; variantId: string | null; name: string; quantity: number; unitPrice: number }[] | null;
   saleId: string;
   returnType: "exchange" | "refund" | "coupon" | "points";
   status: "pending" | "approved" | "completed" | "rejected";
@@ -414,6 +418,8 @@ export interface SaleRow {
   status: string;
   createdAt: string;
   orderNumber: number | null;
+  /** Devolución vigente (no rechazada) de la venta: tras ella no se admite otra. */
+  returnInfo: { id: string; returnNumber: number; returnType: string; status: string } | null;
 }
 
 export interface SaleItemDetail {
@@ -454,6 +460,8 @@ export interface SaleDetail {
   createdAt: string;
   orderNumber: number | null;
   deliveryMethod: string | null;
+  /** Devolución vigente (no rechazada) de la venta: tras ella no se admite otra. */
+  returnInfo: { id: string; returnNumber: number; returnType: string; status: string } | null;
   items: SaleItemDetail[];
   payments: { method: string; amount: number; reference: string | null }[];
   discounts: { label: string; amount: number }[];
@@ -484,7 +492,7 @@ export const salesApi = {
     reason?: string;
     notes?: string;
     items: { saleItemId: string; quantity: number; reason?: string; restockable?: boolean }[];
-    exchangeVariantId?: string;
+    exchangeItems?: { productId: string; variantId?: string | null; quantity: number }[];
   }) => request<{ ok: boolean; return: SaleReturn }>(`/api/sales/${saleId}/return`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -509,7 +517,7 @@ export const salesApi = {
       method: "POST",
       body: JSON.stringify({ refundPayments, cashSessionId }),
     }),
-  returnTicketUrl: (returnId: string) => `/api/sales/returns/${returnId}/ticket`,
+  returnTicketUrl: (returnId: string) => `/api/sales/returns/${returnId}/ticket?reprint=1`,
 };
 
 async function download(url: string, fallbackName?: string) {

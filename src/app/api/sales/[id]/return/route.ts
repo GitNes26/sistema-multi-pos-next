@@ -1,3 +1,4 @@
+import { jsonResponse } from "@/lib/api-helpers";
 import { NextRequest, NextResponse } from "next/server";
 import { salesGuard, salesErrorResponse } from "../../guard";
 import { createReturn } from "@/lib/returns/server";
@@ -16,9 +17,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       reason: body.reason,
       notes: body.notes,
       items: body.items,
-      exchangeVariantId: body.exchangeVariantId,
+      exchangeItems: body.exchangeItems,
     });
-    return NextResponse.json({ ok: true, return: ret });
+    return jsonResponse({ ok: true, return: ret });
   } catch (err) {
     return salesErrorResponse(err);
   }

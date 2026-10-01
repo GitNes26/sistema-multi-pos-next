@@ -5,7 +5,7 @@ import { recordTransferLocation } from "@/lib/inventory/transfers";
 // POST { lat, lng, accuracy? } — el teléfono del chofer reporta su posición
 // mientras el traslado va en camino.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await inventoryGuard("inventory.manage");
+  const guard = await inventoryGuard("transfers.dispatch");
   if (guard instanceof NextResponse) return guard;
   try {
     const { id } = await params;

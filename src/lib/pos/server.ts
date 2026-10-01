@@ -59,6 +59,27 @@ function computeFeatures(mode: BusinessMode): PosFeatures {
   }
 }
 
+// Más vendidos: se recalculan con las ventas reales cada pocos minutos.
+const TOP_SELLERS_TTL_MS = 5 * 60_000
+const topSellersCache = new Map<string, { at: number; ids: string[] }>()
+
+/** Productos con más ventas de la empresa en los últimos 90 días. */
+async function topSellingProductIds(organizationId: string, limit = 24): Promise<string[]> {
+  const cached = topSellersCache.get(organizationId)
+  if (cached && Date.now() - cached.at < TOP_SELLERS_TTL_MS) return cached.ids
+  const since = new Date(Date.now() - 90 * 86_400_000)
+  const rows = await prisma.saleItem.groupBy({
+    by: ["productId"],
+    where: { productId: { not: null }, sale: { organizationId, status: "completed", createdAt: { gte: since } } },
+    _count: { _all: true },
+    orderBy: { _count: { productId: "desc" } },
+    take: limit,
+  })
+  const ids = rows.map((r) => r.productId).filter((id): id is string => !!id)
+  topSellersCache.set(organizationId, { at: Date.now(), ids })
+  return ids
+}
+
 /**
  * Catálogo completo del POS para una organización/sucursal. Se serializan los
  * Decimal a number para poder pasar los datos a componentes client sin romper
@@ -170,6 +191,13 @@ export async function getPosCatalog(
         city: true,
         phone: true,
         ticketFooter: true,
+        transferEnabled: true,
+        transferBank: true,
+        transferHolder: true,
+        transferClabe: true,
+        transferAccount: true,
+        transferCard: true,
+        transferNote: true,
       },
     }),
     prisma.organization.findUnique({
@@ -512,6 +540,16 @@ export async function getPosCatalog(
       city: companyProfile?.city ?? null,
       phone: companyProfile?.phone ?? null,
       ticketFooter: companyProfile?.ticketFooter ?? null,
+      transfer: companyProfile?.transferEnabled
+        ? {
+            bank: companyProfile.transferBank,
+            holder: companyProfile.transferHolder,
+            clabe: companyProfile.transferClabe,
+            account: companyProfile.transferAccount,
+            card: companyProfile.transferCard,
+            note: companyProfile.transferNote,
+          }
+        : null,
     },
     products,
     categories: categoriesWithCount,
@@ -560,6 +598,7 @@ export async function getPosCatalog(
       name: userData?.fullName ?? "",
     },
     combos,
+    topSellers: await topSellingProductIds(organizationId),
     loyalty: {
       pointValue: toNum(orgLoyalty?.pointValue ?? null),
       pointsPerCurrency: toNum(orgLoyalty?.pointsPerCurrency ?? null),

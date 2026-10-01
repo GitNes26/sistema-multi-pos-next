@@ -285,7 +285,9 @@ async function assertManageableRole(roleId: string, organizationId: string, isSu
     const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { businessMode: true } });
     if (!organization || !roleAllowedInOrg(role, organization.businessMode, organizationId)) throw new Error("Rol no disponible para este giro");
   }
-  if (role.isSystem && !allowSystemRead) throw new Error("Los roles del sistema son de solo lectura");
+  // Solo el SuperAdmin modifica los permisos de un rol de sistema (afecta a todas las empresas).
+  if (role.isSystem && !allowSystemRead && !isSuperadmin) throw new Error("Los roles del sistema solo los modifica el SuperAdmin");
+  if (role.isSystem && !allowSystemRead && role.id === "system-superadmin") throw new Error("El rol superadmin conserva siempre acceso total");
   return role;
 }
 
@@ -299,7 +301,7 @@ export async function getRolePermissions(roleId: string, organizationId: string,
 }
 
 export async function setRolePermissions(roleId: string, keys: string[], organizationId: string, isSuperadmin: boolean): Promise<{ ok: boolean }> {
-  await assertManageableRole(roleId, organizationId, isSuperadmin);
+  const role = await assertManageableRole(roleId, organizationId, isSuperadmin);
   const valid = new Set(PERMISSIONS.map((p) => p.key));
   const filtered = keys.filter((k) => valid.has(k as never));
   if (!isSuperadmin && filtered.includes("organizations.manage")) throw new Error("Ese permiso está reservado al SuperAdmin");
@@ -308,6 +310,8 @@ export async function setRolePermissions(roleId: string, keys: string[], organiz
     prisma.rolePermission.createMany({
       data: filtered.map((k) => ({ roleId, permissionKey: k, allowed: true })),
     }),
+    // El seeder respeta lo que el SuperAdmin dejó en los roles de sistema.
+    ...(role.isSystem ? [prisma.role.update({ where: { id: roleId }, data: { permissionsEdited: true } })] : []),
   ]);
   return { ok: true };
 }

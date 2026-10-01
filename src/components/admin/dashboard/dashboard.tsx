@@ -47,6 +47,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   card: "Tarjeta",
   wallet: "Monedero",
   points: "Puntos",
+  credit: "Crédito",
   other: "Otro",
 };
 

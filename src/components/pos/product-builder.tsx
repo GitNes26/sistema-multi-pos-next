@@ -77,6 +77,8 @@ interface ProductBuilderProps {
   portalProduct?: PortalProductLike | null
   /** Si viene, el constructor abre con estas elecciones (editar una línea). */
   initial?: ProductBuilderInitial | null
+  /** Tamaño ya elegido antes de abrir el constructor (si no, el primero). */
+  defaultVariantId?: string | null
   /** Texto del botón principal (p. ej. «Actualizar»). */
   submitLabel?: string
   open: boolean
@@ -352,7 +354,7 @@ function NotesInput({ value, onChange }: { value: string; onChange: (v: string) 
 /*  Main ProductBuilder                                                */
 /* ------------------------------------------------------------------ */
 
-export function ProductBuilder({ product, portalProduct, initial, submitLabel, open, onClose, onAdd }: ProductBuilderProps) {
+export function ProductBuilder({ product, portalProduct, initial, defaultVariantId, submitLabel, open, onClose, onAdd }: ProductBuilderProps) {
   // Normalize: use portalProduct if provided, else POS product
   const activeProduct = portalProduct ?? product ?? null
   const [selections, setSelections] = useState<Map<string, Set<string>>>(new Map())
@@ -414,6 +416,11 @@ export function ProductBuilder({ product, portalProduct, initial, submitLabel, o
   useEffect(() => {
     resetSelections()
   }, [activeProduct?.id, resetSelections])
+
+  // Abrir con el tamaño que el cliente ya tenía elegido.
+  useEffect(() => {
+    if (open && !initial && defaultVariantId) setVariantId(defaultVariantId)
+  }, [open, initial, defaultVariantId])
 
   // Editar desde el carrito: cargar las elecciones previas al abrir.
   useEffect(() => {

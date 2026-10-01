@@ -107,7 +107,7 @@ function PosSplit({
           withHandle
           className="h-2 w-full shrink-0 items-center justify-center bg-border/70"
         />
-        <ResizablePanel id="catalog" defaultSize="60" minSize="32" className="min-h-0">
+        <ResizablePanel id="catalog" defaultSize="60" minSize="32" className="min-h-0 pb-[env(safe-area-inset-bottom)]">
           <CatalogPanel
             onSelect={handlers.onSelect}
             onSelectCombo={handlers.onSelectCombo}
@@ -127,7 +127,7 @@ function PosSplit({
       onLayoutChanged={onLayoutChanged}
       className="gap-0"
     >
-      <ResizablePanel id="catalog" defaultSize="65" minSize="35" className="min-w-0">
+      <ResizablePanel id="catalog" defaultSize="65" minSize="35" className="min-w-0 pb-[env(safe-area-inset-bottom)]">
         <CatalogPanel
           onSelect={handlers.onSelect}
           onSelectCombo={handlers.onSelectCombo}
@@ -332,7 +332,7 @@ export function PosApp({
   return (
     <SupervisorProvider>
       {/* Safe areas: tablet en PWA/standalone con notch e home indicator. */}
-      <div className="flex h-svh flex-col bg-background pt-[env(safe-area-inset-top)] text-foreground">
+      <div className="flex h-dvh flex-col bg-background pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] text-foreground">
         <PosHeader
           canOperateCash={canOperateCash}
           canViewAgenda={canViewAgenda}
@@ -355,7 +355,8 @@ export function PosApp({
           />
         )}
 
-        <main className="flex min-h-0 flex-1 pb-[env(safe-area-inset-bottom)]">
+        {/* El inset inferior lo aplica cada panel que toca el borde (ticket y catálogo): así no se suma dos veces. */}
+        <main className="flex min-h-0 flex-1">
           {/* key: al girar la tablet se remonta la instancia del eje correcto
               y restaura el reparto guardado de esta sucursal en ese eje. */}
           <PosSplit

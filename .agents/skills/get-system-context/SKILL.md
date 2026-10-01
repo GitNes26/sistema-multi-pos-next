@@ -96,6 +96,15 @@ Genera un documento estructurado que sirva como **"fuente de verdad"** para el p
 - APIs de terceros, servicios externos, hardware necesario.
 - Restricciones de rendimiento, seguridad, escalabilidad.
 
+### G. Contexto operativo para agentes
+
+Después de completar y validar la fuente de verdad, crea o actualiza en la raíz del proyecto:
+
+- `AGENTS.md`: instrucciones operativas concisas que afecten decisiones de implementación. Incluye arquitectura, invariantes de dominio, seguridad, convenciones del repositorio, verificaciones y límites por ambiente. Respeta instrucciones existentes de mayor prioridad y conserva reglas válidas que el usuario ya haya definido.
+- `MEMORY.md`: índice breve de hechos duraderos y comprobados: identidad del producto, decisiones confirmadas, estado implementado y pendientes reales. No copies todo el documento de contexto ni incluyas secretos, credenciales, tokens o datos personales.
+
+Trata el documento completo de contexto como fuente extensa y `MEMORY.md` como resumen de recuperación rápida. No permitas contradicciones silenciosas: cuando cambie una decisión, actualiza los tres artefactos y elimina información obsoleta. Si ya existe un `AGENTS.md`, edítalo con cuidado porque puede contener instrucciones humanas vinculantes; no lo reemplaces de forma destructiva.
+
 ---
 
 ## Condiciones de Ejecución
@@ -103,6 +112,8 @@ Genera un documento estructurado que sirva como **"fuente de verdad"** para el p
 1. **No comiences a redactar ningún manual, propuesta de migración o plan de trabajo** hasta que este contexto esté completo y validado.
 2. Si durante el análisis encuentras ambigüedades o información faltante, **pregunta al usuario** para resolverlas antes de continuar.
 3. El resumen debe ser **claro, conciso y estructurado**, listo para ser usado como base para cualquier tarea posterior (documentación, estimaciones, planificación de sprints, etc.).
+4. Guarda la fuente de verdad como `CONTEXTO_SISTEMA.md` salvo que el proyecto ya establezca otro nombre canónico.
+5. Finaliza verificando que `CONTEXTO_SISTEMA.md`, `AGENTS.md` y `MEMORY.md` coincidan en decisiones, estado y pendientes, sin duplicar secretos ni instrucciones temporales.
 
 ---
 

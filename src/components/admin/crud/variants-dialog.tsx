@@ -1,11 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Barcode,
   Copy,
   CircleDollarSign,
   DollarSign,
+  ArrowDown,
+  ArrowUp,
   Hash,
   ImageIcon,
   Loader2,
@@ -182,6 +184,7 @@ function VariantRowEditor({
       </td>
       <td className="px-1 py-1.5">
         <Input
+          data-col="name"
           defaultValue={variant.name}
           onBlur={(e) => {
             const v = e.target.value.trim()
@@ -189,10 +192,20 @@ function VariantRowEditor({
           }}
           className="h-8 w-full min-w-[250px] text-sm"
         />
+        {variant.optionValues && variant.optionValues.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {variant.optionValues.map((o) => (
+              <span key={o.valueId} className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                {o.optionName}: <span className="font-medium text-foreground">{o.value}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </td>
       <td className="px-1 py-1.5">
         <div className="flex items-center gap-1">
           <Input
+            data-col="sku"
             defaultValue={variant.sku ?? ""}
             onBlur={(e) => saveField("sku", e.target.value || null)}
             className="h-8 w-full min-w-[100px] font-mono text-xs"
@@ -223,6 +236,7 @@ function VariantRowEditor({
       <td className="px-1 py-1.5">
         <div className="flex items-center gap-1">
           <Input
+            data-col="barcode"
             defaultValue={variant.barcode ?? ""}
             onBlur={(e) => saveField("barcode", e.target.value || null)}
             className="h-8 w-full min-w-[150px] font-mono text-xs"
@@ -254,6 +268,7 @@ function VariantRowEditor({
         <Input
           type="number"
           step="0.01"
+          data-col="price"
           defaultValue={variant.price}
           onBlur={(e) => saveField("price", Number(e.target.value) || 0)}
           className="h-8 w-full min-w-[100px] text-right tabular-nums text-sm"
@@ -263,6 +278,7 @@ function VariantRowEditor({
         <Input
           type="number"
           step="0.01"
+          data-col="cost"
           defaultValue={variant.cost}
           onBlur={(e) => saveField("cost", Number(e.target.value) || 0)}
           className="h-8 w-full min-w-[100px] text-right tabular-nums text-sm"
@@ -467,6 +483,66 @@ export function VariantsDialog({
   const [autoBarcode, setAutoBarcode] = useState(false)
   const [autoBusy, setAutoBusy] = useState(false)
   const [formError, setFormError] = useState<string>()
+  // Orden de la tabla: por columna o por el valor de una opción (Tamaño, Sabor…)
+  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null)
+
+  const optionNames = useMemo(
+    () => [...new Set(variants.flatMap((v) => v.optionValues?.map((o) => o.optionName) ?? []))],
+    [variants]
+  )
+  const sortedVariants = useMemo(() => {
+    if (!sort) return variants
+    const dir = sort.dir
+    const value = (v: VariantRow): string | number => {
+      if (sort.key === "price") return v.price
+      if (sort.key === "cost") return v.cost
+      if (sort.key === "sku") return v.sku ?? ""
+      if (sort.key.startsWith("opt:")) return v.optionValues?.find((o) => o.optionName === sort.key.slice(4))?.value ?? ""
+      return v.name
+    }
+    return [...variants].sort((a, b) => {
+      const x = value(a)
+      const y = value(b)
+      return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "es", { numeric: true })) * dir
+    })
+  }, [variants, sort])
+  const toggleSort = (key: string) =>
+    setSort((prev) => (prev?.key === key ? (prev.dir === 1 ? { key, dir: -1 } : null) : { key, dir: 1 }))
+  const sortHeader = (key: string, label: string, align = "") => (
+    <button
+      type="button"
+      onClick={() => toggleSort(key)}
+      className={cn("inline-flex items-center gap-1 font-medium hover:text-foreground", align)}
+      aria-label={`Ordenar por ${label}`}
+    >
+      {label}
+      {sort?.key === key && (sort.dir === 1 ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
+    </button>
+  )
+
+  // Navegación tipo hoja de cálculo: ↑/↓/Enter cambian de fila, ←/→ de columna
+  const onGridKeyDown = (e: React.KeyboardEvent<HTMLTableSectionElement>) => {
+    const t = e.target as HTMLInputElement
+    if (!(t instanceof HTMLInputElement) || !t.dataset.col) return
+    const row = t.closest("tr")
+    if (!row) return
+    let next: HTMLInputElement | null = null
+    if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter") {
+      const sibling = e.key === "ArrowUp" ? row.previousElementSibling : row.nextElementSibling
+      next = sibling?.querySelector<HTMLInputElement>(`input[data-col="${t.dataset.col}"]`) ?? null
+    } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      const textual = t.type === "text"
+      const atEnd = !textual || (t.selectionStart === t.value.length && t.selectionEnd === t.value.length)
+      const atStart = !textual || (t.selectionStart === 0 && t.selectionEnd === 0)
+      if ((e.key === "ArrowRight" && !atEnd) || (e.key === "ArrowLeft" && !atStart)) return
+      const cells = [...row.querySelectorAll<HTMLInputElement>("input[data-col]")]
+      next = cells[cells.indexOf(t) + (e.key === "ArrowRight" ? 1 : -1)] ?? null
+    } else return
+    if (!next) return
+    e.preventDefault()
+    next.focus()
+    next.select()
+  }
 
   const refresh = useCallback(async () => {
     try {
@@ -764,17 +840,24 @@ export function VariantsDialog({
             <thead>
               <tr className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
                 <th className="w-14 px-2 py-2">Imagen</th>
-                <th className="px-2 py-2">Variante</th>
-                <th className="px-2 py-2">SKU</th>
+                <th className="px-2 py-2">
+                  <span className="flex flex-wrap items-center gap-x-2">
+                    {sortHeader("name", "Variante")}
+                    {optionNames.map((n) => (
+                      <span key={n}>{sortHeader(`opt:${n}`, n, "rounded bg-muted px-1.5 text-[11px]")}</span>
+                    ))}
+                  </span>
+                </th>
+                <th className="px-2 py-2">{sortHeader("sku", "SKU")}</th>
                 <th className="px-2 py-2">Cód. barras</th>
-                <th className="px-2 py-2 text-right">Precio</th>
-                <th className="px-2 py-2 text-right">Costo</th>
+                <th className="px-2 py-2 text-right">{sortHeader("price", "Precio", "ml-auto")}</th>
+                <th className="px-2 py-2 text-right">{sortHeader("cost", "Costo", "ml-auto")}</th>
                 <th className="w-14 px-2 py-2">Activa</th>
                 <th className="px-2 py-2">Venta</th>
                 <th className="w-14 px-2 py-2"></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody onKeyDown={onGridKeyDown}>
               {variants.length === 0 && (
                 <tr>
                   <td
@@ -785,7 +868,7 @@ export function VariantsDialog({
                   </td>
                 </tr>
               )}
-              {variants.map((v) => (
+              {sortedVariants.map((v) => (
                 <VariantRowEditor
                   key={v.id}
                   variant={v}

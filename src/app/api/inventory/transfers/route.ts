@@ -10,7 +10,7 @@ import { createTransfer, listTransfers, type CreateTransferInput } from "@/lib/i
 //        (fromInventoryId) sigue funcionando como transferencia inmediata.
 
 export async function GET(req: NextRequest) {
-  const guard = await inventoryGuard("inventory.view");
+  const guard = await inventoryGuard("transfers.view");
   if (guard instanceof NextResponse) return guard;
   try {
     const sp = req.nextUrl.searchParams;
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = await inventoryGuard("inventory.manage");
+  const guard = await inventoryGuard("transfers.request");
   if (guard instanceof NextResponse) return guard;
   const { organizationId, userId } = guard;
 

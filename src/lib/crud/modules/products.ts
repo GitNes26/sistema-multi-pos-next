@@ -303,9 +303,24 @@ export const productsModule: CrudModule<ProductDto> = {
             ? { isActive: false }
             : {};
 
+    // Con / sin variantes: más de una variante activa frente a una sola.
+    const variantsParam = params.variants as "with" | "without" | undefined;
+    let variantsWhere: Prisma.ProductWhereInput = {};
+    if (variantsParam === "with" || variantsParam === "without") {
+      const multi = await prisma.productVariant.groupBy({
+        by: ["productId"],
+        where: { isActive: true, product: { organizationId } },
+        _count: { _all: true },
+        having: { productId: { _count: { gt: 1 } } },
+      });
+      const ids = multi.map((m) => m.productId);
+      variantsWhere = variantsParam === "with" ? { id: { in: ids } } : { id: { notIn: ids } };
+    }
+
     const where: Prisma.ProductWhereInput = {
       organizationId,
       ...statusWhere,
+      ...variantsWhere,
       ...(categoryId ? { categoryId } : {}),
       ...typeWhere,
       ...(q
@@ -1177,4 +1192,127 @@ export async function saveProductOptions(
   }
 
   return getProductOptions(organizationId, productId);
+}
+
+/**
+ * Duplica un producto de cualquier tipo: datos, variantes (sin SKU ni código de
+ * barras, que deben ser únicos), opciones/tópicos con sus valores y reglas por
+ * variante, y receta. La copia nace activa y con existencias en cero.
+ */
+export async function duplicateProduct(organizationId: string, id: string): Promise<ProductDto> {
+  const src = await prisma.product.findFirst({
+    where: { id, organizationId },
+    include: {
+      variants: { include: { optionValues: true }, orderBy: { createdAt: "asc" } },
+      options: { include: { values: { orderBy: { position: "asc" } } }, orderBy: { position: "asc" } },
+    },
+  });
+  if (!src) throw new CrudError("Producto no encontrado", 404);
+
+  let name = `${src.name} (copia)`;
+  for (let n = 2; await prisma.product.findFirst({ where: { organizationId, name }, select: { id: true } }); n++) {
+    name = `${src.name} (copia ${n})`;
+  }
+  const recipe = await prisma.productRecipeItem.findMany({ where: { organizationId, productId: id } });
+
+  const created = await prisma.$transaction(async (tx) => {
+    const copy = await tx.product.create({
+      data: {
+        organizationId,
+        categoryId: src.categoryId,
+        name,
+        description: src.description,
+        imageUrl: src.imageUrl,
+        taxRate: src.taxRate,
+        isActive: true,
+        trackInventory: src.trackInventory,
+        isAvailable: src.isAvailable,
+        availabilityNote: src.availabilityNote,
+        isNew: false,
+        productType: src.productType,
+        bulkUnitId: src.bulkUnitId,
+        bulkPricePerUnit: src.bulkPricePerUnit,
+        bulkMinQuantity: src.bulkMinQuantity,
+        bulkStep: src.bulkStep,
+        bulkMaxQuantity: src.bulkMaxQuantity,
+        allowSplit: src.allowSplit,
+        splitUnitId: src.splitUnitId,
+        splitPricePerUnit: src.splitPricePerUnit,
+      },
+    });
+
+    // Opciones y valores (pares id anterior → id nuevo)
+    const valueMap = new Map<string, string>();
+    const optionMap = new Map<string, string>();
+    for (const o of src.options) {
+      const newOpt = await tx.productOption.create({
+        data: { productId: copy.id, name: o.name, position: o.position, required: o.required, minSelect: o.minSelect, maxSelect: o.maxSelect, kind: o.kind },
+      });
+      optionMap.set(o.id, newOpt.id);
+      for (const v of o.values) {
+        const nv = await tx.productOptionValue.create({
+          data: { optionId: newOpt.id, value: v.value, extraPrice: v.extraPrice, imageUrl: v.imageUrl, isActive: v.isActive, position: v.position },
+        });
+        valueMap.set(v.id, nv.id);
+      }
+    }
+
+    // Variantes
+    const variantMap = new Map<string, string>();
+    for (const v of src.variants) {
+      const nv = await tx.productVariant.create({
+        data: {
+          productId: copy.id,
+          organizationId,
+          name: v.name,
+          sku: null,
+          barcode: null,
+          price: v.price,
+          cost: v.cost,
+          imageUrl: v.imageUrl,
+          isActive: v.isActive,
+          isAvailable: v.isAvailable,
+          optionValues: {
+            create: v.optionValues.filter((ov) => valueMap.has(ov.optionValueId)).map((ov) => ({ optionValueId: valueMap.get(ov.optionValueId)! })),
+          },
+        },
+      });
+      variantMap.set(v.id, nv.id);
+    }
+
+    // Reglas por variante (JSON con ids de variante)
+    for (const o of src.options) {
+      const rules = normalizeVariantRules(o.variantRules)
+        .filter((r) => variantMap.has(r.variantId))
+        .map((r) => ({ ...r, variantId: variantMap.get(r.variantId)! }));
+      if (rules.length) {
+        await tx.productOption.update({ where: { id: optionMap.get(o.id)! }, data: { variantRules: rules as unknown as Prisma.InputJsonValue } });
+      }
+    }
+
+    if (recipe.length) {
+      await tx.productRecipeItem.createMany({
+        data: recipe.map((r) => ({
+          organizationId,
+          productId: copy.id,
+          variantId: r.variantId ? variantMap.get(r.variantId) ?? null : null,
+          optionValueId: r.optionValueId ? valueMap.get(r.optionValueId) ?? null : null,
+          ingredientProductId: r.ingredientProductId,
+          ingredientVariantId: r.ingredientVariantId,
+          quantity: r.quantity,
+          wastePercent: r.wastePercent,
+        })),
+      });
+    }
+    return { id: copy.id, variantIds: [...variantMap.values()] };
+  });
+
+  // Existencias en cero en cada sucursal para que aparezca en inventario
+  if (src.productType !== "bulk") {
+    for (const variantId of created.variantIds) await syncVariantInventory(organizationId, created.id, variantId);
+  }
+
+  return serialize(
+    (await prisma.product.findFirstOrThrow({ where: { id: created.id }, include })) as unknown as ProductRow
+  );
 }

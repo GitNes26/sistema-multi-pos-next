@@ -1,4 +1,4 @@
-import type { $Enums } from "@prisma/client";
+import type { $Enums, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { CrudError } from "@/lib/crud/types";
 import { persistNotification } from "@/lib/notifications/helpers";
@@ -34,8 +34,107 @@ export interface CreateReturnInput {
     reason?: string;
     restockable?: boolean;
   }[];
-  // Para exchange: id del producto variante de reemplazo
-  exchangeVariantId?: string;
+  // Para exchange: producto(s) que se entregan a cambio (el precio se toma del servidor)
+  exchangeItems?: { productId: string; variantId?: string | null; quantity: number }[];
+}
+
+interface ExchangeLine {
+  productId: string;
+  variantId: string | null;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+/** Existencia disponible en una sucursal para un producto estándar/variante. */
+async function stockAt(
+  db: Pick<typeof prisma, "inventory">,
+  organizationId: string,
+  locationId: string,
+  line: { productId: string; variantId: string | null }
+) {
+  const inv = await db.inventory.findFirst({
+    where: {
+      organizationId,
+      locationId,
+      locationType: "location",
+      ...(line.variantId ? { variantId: line.variantId } : { productId: line.productId, variantId: null }),
+    },
+    select: { id: true, quantity: true, unitId: true },
+  });
+  return inv ? { id: inv.id, quantity: num(inv.quantity), unitId: inv.unitId } : null;
+}
+
+/** Valida y precia el producto de reemplazo; avisa si no hay existencia. */
+async function resolveExchange(
+  db: typeof prisma,
+  organizationId: string,
+  locationId: string,
+  raw: CreateReturnInput["exchangeItems"]
+): Promise<ExchangeLine[]> {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new CrudError("Elige el producto que se entregará a cambio", 400, "exchangeItems");
+  }
+  const lines: ExchangeLine[] = [];
+  for (const item of raw) {
+    const quantity = Number(item?.quantity);
+    if (!item?.productId || !Number.isFinite(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
+      throw new CrudError("La cantidad del producto de cambio debe ser un entero mayor que cero", 400, "exchangeItems");
+    }
+    const product = await db.product.findFirst({
+      where: { id: item.productId, organizationId, isActive: true, productType: "standard" },
+      select: { id: true, name: true, trackInventory: true, variants: { where: { isActive: true }, select: { id: true, name: true, price: true } } },
+    });
+    if (!product) throw new CrudError("El producto de cambio no está disponible", 404, "exchangeItems");
+    const variant = item.variantId ? product.variants.find((v) => v.id === item.variantId) : product.variants[0];
+    if (!variant) throw new CrudError(`"${product.name}" no tiene una variante activa`, 400, "exchangeItems");
+    const name = product.variants.length > 1 ? `${product.name} · ${variant.name}` : product.name;
+    if (product.trackInventory) {
+      const inv = await stockAt(db, organizationId, locationId, { productId: product.id, variantId: variant.id });
+      const have = inv?.quantity ?? 0;
+      if (have < quantity) {
+        throw new CrudError(
+          `Sin existencia suficiente de "${name}" en la sucursal (hay ${have}, se necesitan ${quantity}). Elige otro producto o repón el inventario antes de continuar`,
+          409,
+          "exchangeItems"
+        );
+      }
+    }
+    lines.push({ productId: product.id, variantId: variant.id, name, quantity, unitPrice: num(variant.price) });
+  }
+  return lines;
+}
+
+/** Productos estándar con su existencia en la sucursal de la venta, para elegir el cambio. */
+export async function searchExchangeOptions(organizationId: string, saleId: string, q: string) {
+  const sale = await prisma.sale.findFirst({ where: { id: saleId, organizationId }, select: { locationId: true } });
+  if (!sale) throw new CrudError("Venta no encontrada", 404);
+  const term = q.trim();
+  const products = await prisma.product.findMany({
+    where: {
+      organizationId,
+      isActive: true,
+      productType: "standard",
+      ...(term ? { OR: [{ name: { contains: term } }, { variants: { some: { OR: [{ sku: { contains: term } }, { barcode: { contains: term } }] } } }] } : {}),
+    },
+    select: { id: true, name: true, trackInventory: true, variants: { where: { isActive: true }, select: { id: true, name: true, price: true } } },
+    orderBy: { name: "asc" },
+    take: 12,
+  });
+  const out: { productId: string; variantId: string; name: string; price: number; stock: number | null }[] = [];
+  for (const p of products) {
+    for (const v of p.variants) {
+      const inv = p.trackInventory ? await stockAt(prisma, organizationId, sale.locationId, { productId: p.id, variantId: v.id }) : null;
+      out.push({
+        productId: p.id,
+        variantId: v.id,
+        name: p.variants.length > 1 ? `${p.name} · ${v.name}` : p.name,
+        price: num(v.price),
+        stock: p.trackInventory ? inv?.quantity ?? 0 : null,
+      });
+    }
+  }
+  return out;
 }
 
 export async function createReturn(
@@ -86,6 +185,19 @@ export async function createReturn(
   });
   if (!sale) throw new CrudError("Venta no encontrada", 404);
   if (sale.status === "voided") throw new CrudError("No se puede devolver una venta anulada", 400);
+
+  // Una venta admite una sola devolución vigente (las rechazadas no cuentan).
+  const vigente = await tx.saleReturn.findFirst({
+    where: { saleId: input.saleId, organizationId, status: { not: "rejected" } },
+    select: { returnNumber: true },
+  });
+  if (vigente) {
+    throw new CrudError(`Esta venta ya tiene la devolución DEV-${Number(vigente.returnNumber)}. No se admite otra`, 409);
+  }
+
+  const exchangeLines = input.returnType === "exchange"
+    ? await resolveExchange(tx as unknown as typeof prisma, organizationId, sale.locationId, input.exchangeItems)
+    : null;
 
   // Validar que no tenga devoluciones pendientes/completadas que cubran los mismos items
   const existingReturns = await tx.saleReturn.findMany({
@@ -165,6 +277,7 @@ export async function createReturn(
       tax,
       total,
       notes: input.notes,
+      exchangeItems: (exchangeLines ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
       items: {
         create: returnItems,
       },
@@ -430,7 +543,36 @@ export async function completeReturn(
       break;
     }
     case "exchange": {
-      // Producto devuelto al stock (ya se hizo arriba). El empleado crea una nueva venta aparte.
+      // El producto devuelto ya volvió al stock (arriba); aquí sale el de reemplazo.
+      const lines = (ret.exchangeItems ?? []) as unknown as ExchangeLine[];
+      for (const line of lines) {
+        const product = await tx.product.findFirst({ where: { id: line.productId, organizationId }, select: { trackInventory: true } });
+        if (!product?.trackInventory) continue;
+        const inv = await stockAt(tx, organizationId, ret.locationId, line);
+        if (!inv || inv.quantity < line.quantity) {
+          throw new CrudError(
+            `Sin existencia suficiente de "${line.name}" para entregar el cambio (hay ${inv?.quantity ?? 0}). Repón el inventario y vuelve a procesar`,
+            409
+          );
+        }
+        await tx.inventory.update({ where: { id: inv.id }, data: { quantity: { decrement: line.quantity } } });
+        await tx.inventoryMovement.create({
+          data: {
+            organizationId,
+            productId: line.variantId ? null : line.productId,
+            variantId: line.variantId,
+            locationId: ret.locationId,
+            locationType: "location",
+            type: "sale",
+            quantity: -line.quantity,
+            unitId: inv.unitId,
+            reason: `Cambio DEV-${Number(ret.returnNumber)}: entrega de ${line.name}`,
+            referenceId: returnId,
+            employeeId: employee?.id ?? null,
+            userId,
+          },
+        });
+      }
       break;
     }
     }

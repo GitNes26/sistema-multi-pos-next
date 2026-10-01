@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { PortalCategory, PortalCombo, PortalProduct, PortalVariantOption } from "@/lib/portal/server";
 import { round2, round3 } from "@/lib/pos/money";
 import type { NavItemIdIncludingCombos } from "@/components/portal/portal-shell";
@@ -63,12 +64,16 @@ interface PortalState {
   activeCategory: string | null;
   search: string;
   items: PortalCartItem[];
+  /** Cliente + empresa dueños del carrito guardado (evita mezclar cuentas en un mismo navegador). */
+  cartOwner: string | null;
   favorites: Set<string>;
   cartOpen: boolean;
   bulkProduct: PortalProduct | null;
   navOpen: boolean;
   navOrder: NavItemIdIncludingCombos[];
 
+  /** Asocia el carrito guardado a una cuenta; si cambió de cuenta, lo vacía. */
+  bindCartOwner: (owner: string) => void;
   setStorefront: (categories: PortalCategory[], products: PortalProduct[]) => void;
   setActiveCategory: (id: string | null) => void;
   setSearch: (value: string) => void;
@@ -109,18 +114,29 @@ function bulkKey(productId: string, unitId: string): string {
   return `b::${productId}::${unitId}`;
 }
 
-export const usePortalStore = create<PortalState>()((set, get) => ({
+// El carrito se conserva en el navegador hasta que el cliente finaliza la
+// compra o lo vacía (clearCart / quitar productos). Se hidrata en el cliente
+// (skipHydration) para no desajustar el HTML del servidor.
+export const usePortalStore = create<PortalState>()(
+  persist(
+    (set, get) => ({
   categories: [],
   products: [],
   activeCategory: null,
   search: "",
   items: [],
+  cartOwner: null,
   favorites: new Set(),
   cartOpen: false,
   bulkProduct: null,
   navOpen: false,
   navOrder: ["home", "store", "reservations", "orders", "lists", "profile", "combos"],
 
+  bindCartOwner: (owner) => {
+    const current = get().cartOwner;
+    if (current === owner) return;
+    set({ cartOwner: owner, ...(current ? { items: [] } : {}) });
+  },
   setStorefront: (categories, products) => set({ categories, products }),
   setActiveCategory: (activeCategory) => set({ activeCategory }),
   setSearch: (search) => set({ search }),
@@ -319,7 +335,16 @@ export const usePortalStore = create<PortalState>()((set, get) => ({
       else next.add(variantId);
       return { favorites: next };
     }),
-}));
+    }),
+    {
+      name: "multi-pos.portal-cart",
+      version: 1,
+      storage: createJSONStorage(() => localStorage),
+      skipHydration: true,
+      partialize: (state) => ({ items: state.items, cartOwner: state.cartOwner }),
+    }
+  )
+);
 
 export function cartSubtotal(items: PortalCartItem[]): number {
   return round2(items.reduce((acc, i) => acc + i.unitPrice * i.qty, 0));

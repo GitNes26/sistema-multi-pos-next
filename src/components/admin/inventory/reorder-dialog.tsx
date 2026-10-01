@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Loader2, PackagePlus, ShoppingCart, Store, TriangleAlert } from "lucide-react";
+import { CalendarClock, Loader2, PackagePlus, ShoppingCart, Star, Store, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -186,6 +186,39 @@ export function ReorderDialog({
                           {l.minimumOrder > 1 ? ` · pedido mínimo ${l.minimumOrder}` : ""}
                           {l.supplierSku ? ` · clave prov. ${l.supplierSku}` : ""}
                         </p>
+                        {l.options.length > 1 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5" role="radiogroup" aria-label={`Proveedor de ${l.name}`}>
+                            {l.options.map((o) => {
+                              const selected = s.supplierId === o.supplierId;
+                              const lowest = Math.min(...l.options.map((x) => x.unitCost));
+                              return (
+                                <button
+                                  key={o.supplierId}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={selected}
+                                  onClick={() =>
+                                    patch(l.inventoryId, {
+                                      supplierId: o.supplierId,
+                                      unitCost: String(o.unitCost),
+                                      include: true,
+                                      quantity: String(Math.max(Number(s.quantity) || 0, o.minimumOrder)),
+                                    })
+                                  }
+                                  className={cn(
+                                    "flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-colors",
+                                    selected ? "border-primary bg-primary/10 font-medium text-foreground" : "text-muted-foreground hover:border-primary/40"
+                                  )}
+                                >
+                                  {o.isPreferred && <Star className="size-3 fill-warning text-warning" aria-label="Preferido" />}
+                                  <span className="max-w-32 truncate">{o.supplierName}</span>
+                                  <span className="font-semibold tabular-nums text-foreground">{formatCurrency(o.unitCost)}</span>
+                                  {o.unitCost === lowest && <span className="text-success-ink">· más bajo</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                         {unassigned && (
                           <FormCombobox
                             value={s.supplierId}

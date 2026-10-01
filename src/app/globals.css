@@ -459,8 +459,19 @@
     visibility: hidden;
   }
   #receipt-print,
-  #receipt-print * {
+  #receipt-print *,
+  #transfer-doc-print,
+  #transfer-doc-print * {
     visibility: visible;
+  }
+  /* Documento de traslado: hoja carta completa */
+  #transfer-doc-print {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    background: #fff;
+    color: #000;
+    padding: 12mm;
   }
   #receipt-print {
     position: fixed;

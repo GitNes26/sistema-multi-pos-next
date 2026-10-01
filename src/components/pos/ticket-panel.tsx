@@ -10,14 +10,14 @@ import {
   UserRound,
   Wallet,
   Sparkles,
-  Target,
-  Users,
   Split,
   Armchair,
   AlertTriangle,
   X,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { swalToast } from "@/lib/swal"
 import { usePosStore, selectCustomer } from "@/stores/pos-store"
 import { usePosTotals } from "@/hooks/use-pos-totals"
 import type { PosLineItem } from "@/types/pos"
@@ -89,15 +89,6 @@ export function TicketPanel({
       setCustomerDebt(null)
     }
   }, [customerId])
-
-  // Promociones casi logradas (50%-99%) — progreso por ticket actual
-  const nearPromos = promotions.filter((p) => {
-    if (p.minAmount <= 0 || p.couponCode) return false
-    if (p.startsAt && new Date(p.startsAt) > new Date()) return false
-    if (p.endsAt && new Date(p.endsAt) < new Date()) return false
-    const pct = t.subtotal > 0 ? (t.subtotal / p.minAmount) * 100 : 0
-    return pct >= 50 && pct < 100
-  })
 
   const listRef = useRef<HTMLDivElement>(null)
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -184,6 +175,19 @@ export function TicketPanel({
     notifyChange(key)
   }
 
+  /** Cantidad escrita a mano (p. ej. 50 piezas): respeta la existencia. */
+  const setItemQty = (key: string, qty: number) => {
+    const item = items.find((i) => i.key === key)
+    if (!item) return
+    let next = Math.max(1, Math.floor(qty))
+    if (item.trackInventory && next > Math.floor(item.stock)) {
+      next = Math.max(1, Math.floor(item.stock))
+      swalToast(`Solo hay ${next} en existencia`, "warning")
+    }
+    setQty(key, next)
+    notifyChange(key)
+  }
+
   const decrement = (key: string) => {
     const item = items.find((i) => i.key === key)
     if (!item) return
@@ -216,46 +220,6 @@ export function TicketPanel({
           Limpiar
         </Button>
       </div>
-
-      {/* Banner: promoción casi lograda */}
-      <AnimatePresence>
-        {nearPromos.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="border-b border-warning/30 bg-warning/5 px-4 py-2.5"
-          >
-            {nearPromos.map((p) => {
-              const pct = Math.round((t.subtotal / p.minAmount) * 100)
-              const remaining = Math.max(0, p.minAmount - t.subtotal)
-              return (
-                <div key={p.id} className="flex items-center gap-2">
-                  <Target className="size-4 shrink-0 text-warning-ink" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-warning-ink">
-                      ¡Casi! Te faltan{" "}
-                      <span className="font-bold">{money(remaining)}</span> para
-                      &ldquo;{p.name}&rdquo;
-                    </p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-warning/10">
-                        <div
-                          className="h-full rounded-full bg-warning transition-all duration-500"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-bold text-warning-ink">
-                        {pct}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Items list */}
       <div
@@ -300,6 +264,7 @@ export function TicketPanel({
                   onIncrement={increment}
                   onDecrement={decrement}
                   onRemove={removeItem}
+                  onSetQty={setItemQty}
                   onEdit={onEditBulk}
                 />
               </motion.div>
@@ -310,44 +275,6 @@ export function TicketPanel({
 
       {/* Totals + actions — fixed bottom */}
       <div className="space-y-3 border-t bg-card px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
-        {/* Customer */}
-        <AnimatePresence>
-          {customer && (
-            <motion.button
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              type="button"
-              onClick={onOpenCustomer}
-              className="flex w-full items-center gap-2.5 rounded-xl border border-accent/50 bg-accent/10 px-3 py-2.5 text-left transition hover:bg-accent/15 active:scale-[0.98]"
-            >
-              <UserRound className="size-4 shrink-0 text-accent-foreground" />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                {customer.fullName}
-              </span>
-              <CheckCircle2 className="size-4 shrink-0 text-accent-foreground" />
-              <span className="shrink-0 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-bold text-warning-ink">
-                {money(pointsToMoney(customer.points, loyalty.pointValue))} ·{" "}
-                {Math.floor(customer.points)} pts
-              </span>
-            </motion.button>
-          )}
-        </AnimatePresence>
-
-        {/* Credit debt alert */}
-        {customerDebt != null && customerDebt > 0 && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2">
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
-              <AlertTriangle className="size-3.5" />
-              Deuda pendiente: <span className="tabular">{money(customerDebt)}</span>
-            </p>
-          </motion.div>
-        )}
-
         {/* Discounts */}
         <AnimatePresence>
           {t.discounts.length > 0 && (
@@ -409,57 +336,9 @@ export function TicketPanel({
           </div>
         </div>
 
-        {/* Table selector (food_service) */}
+        {/* Mesa: selector, cocina y estado (la fila de acciones tiene su botón) */}
         {features.tables && (
           <>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={selectedTable ? "default" : "outline"}
-                size="sm"
-                data-guide="pos-table"
-                onClick={() => setTableDialogOpen(true)}
-                className="h-11 flex-1 text-sm"
-              >
-                <Armchair className="size-4" />
-                {selectedTable ? `Mesa ${selectedTable.number}` : "Mesa"}
-              </Button>
-              {selectedTable && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-11 min-w-11 px-3 text-destructive"
-                  aria-label="Liberar mesa"
-                  disabled={releasingTable}
-                  onClick={() => {
-                    const tableId = selectedTable.id
-                    if (!tableId.startsWith("manual-")) {
-                      setReleasingTable(true)
-                      fetch("/api/tables", {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: tableId, status: "free" }),
-                      })
-                        .then((res) => {
-                          if (!res.ok) throw new Error("No se pudo liberar la mesa");
-                          // Cerrar sesión activa si existe
-                          return fetch("/api/tables/session", {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ tableId }),
-                          });
-                        })
-                        .catch((err) => {
-                          console.error("[ticket-panel] Error liberando mesa:", err);
-                        })
-                        .finally(() => setReleasingTable(false))
-                    }
-                    setTable(null)
-                  }}
-                >
-                  <X className="size-4" />
-                </Button>
-              )}
-            </div>
             <TableSelector
               open={tableDialogOpen}
               onClose={() => setTableDialogOpen(false)}
@@ -517,52 +396,119 @@ export function TicketPanel({
           </>
         )}
 
-        {/* Action buttons */}
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            size="sm"
+        {/* Acciones en un solo renglón: Cliente (con sus datos) · Descuento · Mesa · Dividir */}
+        <div className="flex items-stretch gap-1.5">
+          <button
+            type="button"
             onClick={onOpenCustomer}
-            className="h-12 desk:h-10"
+            className={cn(
+              "flex h-12 min-w-0 flex-1 touch-manipulation items-center gap-2 rounded-xl border px-3 text-left text-sm font-medium transition hover:bg-muted active:scale-[0.98] desk:h-10",
+              customer && "border-accent/50 bg-accent/10 hover:bg-accent/15"
+            )}
+            aria-label={customer ? `Cliente: ${customer.fullName}. Cambiar` : "Seleccionar cliente"}
           >
-            <UserRound className="size-4" />
-            Cliente
-          </Button>
+            <UserRound className="size-4 shrink-0" />
+            {customer ? (
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block truncate">{customer.fullName}</span>
+                <span className="flex items-center gap-1.5 text-xs font-normal tabular-nums text-muted-foreground">
+                  <span className="text-warning-ink">
+                    {Math.floor(customer.points)} pts · {money(pointsToMoney(customer.points, loyalty.pointValue))}
+                  </span>
+                  {customerDebt != null && customerDebt > 0 && (
+                    <span className="inline-flex items-center gap-0.5 font-semibold text-destructive">
+                      <AlertTriangle className="size-3" /> Debe {money(customerDebt)}
+                    </span>
+                  )}
+                </span>
+              </span>
+            ) : (
+              <span>Cliente</span>
+            )}
+          </button>
+
           <Button
             variant="outline"
-            size="sm"
             onClick={onOpenDiscount}
             disabled={!items.length}
-            className="h-12 desk:h-10"
+            className="h-12 shrink-0 gap-1.5 px-3 desk:h-10"
+            aria-label="Aplicar descuento"
           >
             <TicketPercent className="size-4" />
-            Descuento
+            <span className="hidden min-[400px]:inline">Desc.</span>
           </Button>
-        </div>
 
-        {/* Split bill (food_service) */}
-        {features.splitBill && items.length > 0 && t.payable > 0 && onSplitBill && (
-          <div className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-2">
-            <Split className="size-4 shrink-0 text-muted-foreground" />
-            <span className="text-xs font-medium text-muted-foreground">
-              Dividir entre
-            </span>
-            <div className="ml-auto flex gap-1">
-              {[2, 3, 4, 5, 6].map((n) => (
+          {features.tables && (
+            <div className="flex shrink-0 items-stretch">
+              <Button
+                variant={selectedTable ? "default" : "outline"}
+                data-guide="pos-table"
+                onClick={() => setTableDialogOpen(true)}
+                className={cn("h-12 gap-1.5 px-3 desk:h-10", selectedTable && "rounded-r-none")}
+                aria-label={selectedTable ? `Mesa ${selectedTable.number}. Cambiar` : "Seleccionar mesa"}
+              >
+                <Armchair className="size-4" />
+                {selectedTable ? selectedTable.number : <span className="hidden min-[400px]:inline">Mesa</span>}
+              </Button>
+              {selectedTable && (
                 <Button
-                  key={n}
                   variant="outline"
-                  size="sm"
-                  className="size-11 p-0 text-sm tabular"
-                  aria-label={`Dividir entre ${n}`}
-                  onClick={() => onSplitBill(n)}
+                  className="h-12 w-10 rounded-l-none border-l-0 px-0 text-destructive desk:h-10"
+                  aria-label="Liberar mesa"
+                  disabled={releasingTable}
+                  onClick={() => {
+                    const tableId = selectedTable.id
+                    if (!tableId.startsWith("manual-")) {
+                      setReleasingTable(true)
+                      fetch("/api/tables", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: tableId, status: "free" }),
+                      })
+                        .then((res) => {
+                          if (!res.ok) throw new Error("No se pudo liberar la mesa");
+                          // Cerrar sesión activa si existe
+                          return fetch("/api/tables/session", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ tableId }),
+                          });
+                        })
+                        .catch((err) => {
+                          console.error("[ticket-panel] Error liberando mesa:", err);
+                        })
+                        .finally(() => setReleasingTable(false))
+                    }
+                    setTable(null)
+                  }}
                 >
-                  {n}
+                  <X className="size-4" />
                 </Button>
-              ))}
+              )}
             </div>
-          </div>
-        )}
+          )}
+
+          {features.splitBill && items.length > 0 && t.payable > 0 && onSplitBill && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-12 shrink-0 gap-1.5 px-3 desk:h-10" aria-label="Dividir la cuenta">
+                  <Split className="size-4" />
+                  <span className="hidden min-[400px]:inline">Dividir</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-auto p-2">
+                <p className="px-1 pb-1.5 text-xs font-medium text-muted-foreground">Dividir entre</p>
+                <div className="flex gap-1">
+                  {[2, 3, 4, 5, 6].map((n) => (
+                    <Button key={n} variant="outline" className="size-11 p-0 text-sm tabular" aria-label={`Dividir entre ${n}`} onClick={() => onSplitBill(n)}>
+                      {n}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
 
         {/* Checkout button */}
         <Button

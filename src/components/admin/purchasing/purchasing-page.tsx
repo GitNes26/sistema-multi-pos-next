@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils"
 import { useGuideStore } from "@/stores/guide-store"
 import { CrudForm } from "@/components/admin/crud/crud-form"
 import { SUPPLIER_FORM_CONFIG } from "@/components/admin/crud/crud-config"
+import { QuoteRequestWizard, type QuoteGroup } from "./quote-request-wizard"
 
 type Item = {
   id: string
@@ -55,6 +56,8 @@ type Item = {
   unitCost: number
   taxRate: number
 }
+export type PurchasingSupplier = Supplier
+export type PurchasingProduct = Product
 type Supplier = {
   id: string
   code: string
@@ -124,8 +127,11 @@ type Workspace = {
     id: string
     folio: string
     receivedAt: string
-    order: { folio: string; supplier: { businessName: string } }
-    items: { quantity: number }[]
+    notes?: string | null
+    receiverName?: string | null
+    destination?: string | null
+    order: { id: string; folio: string; status: string; supplier: { businessName: string } }
+    items: { id: string; quantity: number; unitCost: number; orderItem: { description: string; quantity: number; receivedQuantity: number } }[]
   }[]
 }
 
@@ -243,6 +249,26 @@ export function PurchasingPage({
       toast.error(message)
     } finally {
       setSaving(false)
+    }
+  }
+  const finishQuoteRequest = async (groups: QuoteGroup[]) => {
+    setSaving(true)
+    setOperationError(null)
+    let created = 0
+    try {
+      for (const g of groups) {
+        await request({ action: "quote.create", supplierId: g.supplierId, validUntil: g.validUntil, notes: g.notes, items: g.items })
+        created++
+      }
+      toast.success(created === 1 ? "Cotización creada" : `${created} cotizaciones creadas`)
+      close()
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "No fue posible completar la operación"
+      setOperationError(created ? `${message} (se crearon ${created} de ${groups.length} solicitudes)` : message)
+      toast.error(message)
+    } finally {
+      setSaving(false)
+      await load()
     }
   }
   const supplierOptions = (data?.suppliers ?? [])
@@ -664,26 +690,8 @@ export function PurchasingPage({
           </div>
         </TabsContent>
         <TabsContent value="receipts">
-          <SectionHeader title="Entradas confirmadas al inventario" />
-          <div className="space-y-2">
-            {(data?.receipts ?? []).map((r) => (
-              <div
-                key={r.id}
-                className="flex flex-col justify-between gap-2 rounded-xl border p-4 sm:flex-row sm:items-center"
-              >
-                <div>
-                  <strong>{r.folio}</strong>
-                  <p className="text-sm text-muted-foreground">
-                    {r.order.supplier.businessName} · Orden {r.order.folio}
-                  </p>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {r.items.reduce((a, i) => a + Number(i.quantity), 0)} unidades
-                  · {new Date(r.receivedAt).toLocaleString("es-MX")}
-                </div>
-              </div>
-            ))}
-          </div>
+          <SectionHeader title="Historial de recepciones" />
+          <ReceiptsHistory receipts={data?.receipts ?? []} />
         </TabsContent>
       </Tabs>
 
@@ -840,9 +848,18 @@ export function PurchasingPage({
         </div>
       </DialogComponent>
 
+      <QuoteRequestWizard
+        open={dialog === "quote" && !doc.quoteId}
+        close={close}
+        saving={saving}
+        error={operationError}
+        suppliers={data?.suppliers ?? []}
+        products={data?.products ?? []}
+        onFinish={(groups) => void finishQuoteRequest(groups)}
+      />
       <PurchaseDocumentDialog
         kind={dialog === "quote" ? "quote" : "order"}
-        open={dialog === "quote" || dialog === "order"}
+        open={dialog === "order" || (dialog === "quote" && Boolean(doc.quoteId))}
         close={close}
         saving={saving}
         error={operationError}
@@ -1386,5 +1403,101 @@ function PurchaseDocumentDialog({
         </div>
       )}
     </DialogComponent>
+  )
+}
+
+/** Recepciones confirmadas, cada una referida a su orden de compra y con el detalle de lo recibido. */
+function ReceiptsHistory({ receipts }: { receipts: Workspace["receipts"] }) {
+  const [q, setQ] = React.useState("")
+  const [open, setOpen] = React.useState<string | null>(null)
+  const term = q.trim().toLowerCase()
+  const rows = receipts.filter(
+    (r) =>
+      !term ||
+      `${r.folio} ${r.order.folio} ${r.order.supplier.businessName} ${r.receiverName ?? ""} ${r.items.map((i) => i.orderItem.description).join(" ")}`
+        .toLowerCase()
+        .includes(term)
+  )
+  const totalOf = (r: Workspace["receipts"][number]) => r.items.reduce((a, i) => a + Number(i.quantity) * Number(i.unitCost), 0)
+  return (
+    <div className="space-y-3">
+      <InputGroupField
+        id="receipt-search"
+        label="Buscar recepción"
+        leftIcon={<Search />}
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Folio, orden, proveedor, producto o quien recibió"
+      />
+      {rows.length === 0 && (
+        <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          {receipts.length ? "Ninguna recepción coincide con la búsqueda." : "Aún no hay recepciones. Se registran desde una orden aprobada o enviada."}
+        </p>
+      )}
+      <ul className="space-y-2">
+        {rows.map((r) => {
+          const expanded = open === r.id
+          const units = r.items.reduce((a, i) => a + Number(i.quantity), 0)
+          const complete = r.order.status === "received"
+          return (
+            <li key={r.id} className="overflow-hidden rounded-xl border bg-card">
+              <button
+                type="button"
+                onClick={() => setOpen(expanded ? null : r.id)}
+                aria-expanded={expanded}
+                className="flex w-full flex-col gap-2 p-4 text-left transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <strong>{r.folio}</strong>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      <ShoppingCart className="size-3" /> O.C. {r.order.folio}
+                    </span>
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", complete ? "bg-success/10 text-success-ink" : "bg-warning/10 text-warning-ink")}>
+                      {complete ? "Orden completa" : "Recepción parcial"}
+                    </span>
+                  </span>
+                  <span className="mt-1 block text-sm text-muted-foreground">
+                    {r.order.supplier.businessName}
+                    {r.destination ? ` · Destino: ${r.destination}` : ""}
+                  </span>
+                </span>
+                <span className="text-sm text-muted-foreground sm:text-right">
+                  <span className="block font-medium text-foreground tabular-nums">{units} unidades · {money.format(totalOf(r))}</span>
+                  <span className="block">{new Date(r.receivedAt).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })}{r.receiverName ? ` · ${r.receiverName}` : ""}</span>
+                </span>
+              </button>
+              {expanded && (
+                <div className="border-t bg-muted/20 px-4 py-3">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-muted-foreground">
+                        <th className="py-1 font-medium">Producto</th>
+                        <th className="py-1 text-right font-medium">Recibido</th>
+                        <th className="py-1 text-right font-medium">Pedido en la O.C.</th>
+                        <th className="py-1 text-right font-medium">Costo unit.</th>
+                        <th className="py-1 text-right font-medium">Importe</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {r.items.map((i) => (
+                        <tr key={i.id} className="border-t">
+                          <td className="py-1.5">{i.orderItem.description}</td>
+                          <td className="py-1.5 text-right tabular-nums">{Number(i.quantity)}</td>
+                          <td className="py-1.5 text-right tabular-nums text-muted-foreground">{Number(i.orderItem.receivedQuantity)} / {Number(i.orderItem.quantity)}</td>
+                          <td className="py-1.5 text-right tabular-nums">{money.format(Number(i.unitCost))}</td>
+                          <td className="py-1.5 text-right tabular-nums">{money.format(Number(i.quantity) * Number(i.unitCost))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {r.notes && <p className="mt-2 text-xs text-muted-foreground">Notas: {r.notes}</p>}
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }

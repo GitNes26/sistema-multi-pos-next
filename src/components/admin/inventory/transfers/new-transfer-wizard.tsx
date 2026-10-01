@@ -123,7 +123,12 @@ export function NewTransferWizard({
       .snapshot({ locationType: from.type, locationId: from.id })
       .then((r) => {
         setStock(r.rows)
-        if (preset?.inventoryId && r.rows.some((x) => x.id === preset.inventoryId)) setCart((c) => (Object.keys(c).length ? c : { [preset.inventoryId!]: 1 }))
+        const presetRow = preset?.inventoryId ? r.rows.find((x) => x.id === preset.inventoryId) : undefined
+        if (presetRow) {
+          setCart((c) => (Object.keys(c).length ? c : { [presetRow.id]: 1 }))
+          // Desde un producto: la búsqueda ya trae su nombre en vez de listar todo el inventario.
+          setQ((cur) => cur || presetRow.productName)
+        }
       })
       .catch(() => setStock([]))
       .finally(() => setLoadingStock(false))

@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Hash, Loader2, MessageSquare, Undo2 } from "lucide-react"
+import { AlertTriangle, Hash, Loader2, MessageSquare, Minus, Plus, Search, Trash2, Undo2 } from "lucide-react"
 import { InputGroupField } from "@/components/base/input-group-field"
 
 const RETURN_TYPES = [
@@ -35,6 +35,18 @@ const RETURN_TYPES = [
   },
 ] as const
 
+interface ExchangeOption {
+  productId: string
+  variantId: string
+  name: string
+  price: number
+  stock: number | null
+}
+
+interface ExchangeLine extends ExchangeOption {
+  quantity: number
+}
+
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -51,6 +63,10 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
   const [restockable, setRestockable] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(false)
   const [existingReturns, setExistingReturns] = useState<SaleReturn[]>([])
+  const [exchange, setExchange] = useState<ExchangeLine[]>([])
+  const [exchangeQuery, setExchangeQuery] = useState("")
+  const [exchangeOptions, setExchangeOptions] = useState<ExchangeOption[]>([])
+  const [searching, setSearching] = useState(false)
 
   // Cargar devoluciones existentes
   useEffect(() => {
@@ -60,6 +76,39 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
       })
     }
   }, [open, sale.id])
+
+  // Buscar productos para el cambio (con su existencia en la sucursal de la venta)
+  useEffect(() => {
+    if (!open || returnType !== "exchange") return
+    let cancelled = false
+    setSearching(true)
+    const timer = setTimeout(() => {
+      fetch(`/api/sales/${sale.id}/exchange-options?q=${encodeURIComponent(exchangeQuery)}`)
+        .then((r) => r.json())
+        .then((res) => {
+          if (!cancelled && res.ok) setExchangeOptions(res.options)
+        })
+        .catch(() => {})
+        .finally(() => !cancelled && setSearching(false))
+    }, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [open, returnType, exchangeQuery, sale.id])
+
+  const addExchange = (o: ExchangeOption) =>
+    setExchange((prev) =>
+      prev.some((l) => l.variantId === o.variantId)
+        ? prev.map((l) => (l.variantId === o.variantId ? { ...l, quantity: l.quantity + 1 } : l))
+        : [...prev, { ...o, quantity: 1 }]
+    )
+  const setExchangeQty = (variantId: string, quantity: number) =>
+    setExchange((prev) =>
+      quantity < 1 ? prev.filter((l) => l.variantId !== variantId) : prev.map((l) => (l.variantId === variantId ? { ...l, quantity } : l))
+    )
+  const exchangeTotal = exchange.reduce((acc, l) => acc + l.quantity * l.price, 0)
+  const exchangeNoStock = exchange.filter((l) => l.stock != null && l.stock < l.quantity)
 
   // Calcular cuánto se ha devuelto de cada item
   const getReturnedQty = useCallback(
@@ -118,9 +167,26 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
       return
     }
 
+    if (returnType === "exchange") {
+      if (exchange.length === 0) {
+        toast.error("Elige el producto que se entregará a cambio")
+        return
+      }
+      if (exchangeNoStock.length > 0) {
+        toast.error(`Sin existencia suficiente: ${exchangeNoStock.map((l) => l.name).join(", ")}`, {
+          description: "Elige otro producto o repón el inventario antes de continuar.",
+        })
+        return
+      }
+    }
+
     setLoading(true)
     try {
       const res = await salesApi.createReturn(sale.id, {
+        exchangeItems:
+          returnType === "exchange"
+            ? exchange.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity }))
+            : undefined,
         returnType: returnType as "exchange" | "refund" | "coupon" | "points",
         reason: reason || undefined,
         notes: notes || undefined,
@@ -142,6 +208,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
         })
         onOpenChange(false)
         setSelectedItems({})
+        setExchange([])
         setReason("")
         setNotes("")
         onCreated?.()
@@ -177,6 +244,14 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
                   {money(selectedTotal)}
                 </span>
               </div>
+              {returnType === "exchange" && exchange.length > 0 && (
+                <div className="mt-1 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {exchangeTotal - selectedTotal > 0 ? "Cliente paga la diferencia" : "A favor del cliente"}
+                  </span>
+                  <span className="font-semibold tabular-nums">{money(Math.abs(exchangeTotal - selectedTotal))}</span>
+                </div>
+              )}
             </div>
           )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -184,7 +259,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || Object.keys(selectedItems).length === 0}
+            disabled={loading || Object.keys(selectedItems).length === 0 || (returnType === "exchange" && exchangeNoStock.length > 0)}
           >
             {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
             Crear devolución
@@ -328,6 +403,67 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
           })}
         </div>
       </div>
+
+      {returnType === "exchange" && (
+        <div className="space-y-2">
+          <Label className="font-semibold">Producto que se entrega a cambio</Label>
+          <InputGroupField
+            placeholder="Buscar producto, SKU o código..."
+            value={exchangeQuery}
+            onChange={(e) => setExchangeQuery(e.target.value)}
+            leftIcon={searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+          />
+          <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border p-1">
+            {exchangeOptions.length === 0 && (
+              <p className="p-3 text-center text-xs text-muted-foreground">{searching ? "Buscando…" : "Sin resultados"}</p>
+            )}
+            {exchangeOptions.map((o) => {
+              const out = o.stock != null && o.stock <= 0
+              return (
+                <button
+                  key={o.variantId}
+                  type="button"
+                  onClick={() => addExchange(o)}
+                  className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                >
+                  <span className="min-w-0 truncate">{o.name}</span>
+                  <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
+                    <span className={out ? "font-semibold text-destructive" : "text-muted-foreground"}>
+                      {o.stock == null ? "Sin control" : out ? "Sin existencia" : `${o.stock} disp.`}
+                    </span>
+                    <span className="font-semibold">{money(o.price)}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          {exchange.map((l) => {
+            const short = l.stock != null && l.stock < l.quantity
+            return (
+              <div key={l.variantId} className={`rounded-lg border p-2 ${short ? "border-destructive/50 bg-destructive/5" : "border-primary bg-primary/5"}`}>
+                <div className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{l.name}</span>
+                  <div className="flex items-center rounded-lg bg-muted p-0.5">
+                    <button type="button" className="flex size-8 items-center justify-center rounded-md hover:bg-background" aria-label="Disminuir" onClick={() => setExchangeQty(l.variantId, l.quantity - 1)}>
+                      {l.quantity <= 1 ? <Trash2 className="size-4 text-destructive" /> : <Minus className="size-4" />}
+                    </button>
+                    <span className="w-8 text-center text-sm font-semibold tabular-nums">{l.quantity}</span>
+                    <button type="button" className="flex size-8 items-center justify-center rounded-md hover:bg-background" aria-label="Aumentar" onClick={() => setExchangeQty(l.variantId, l.quantity + 1)}>
+                      <Plus className="size-4" />
+                    </button>
+                  </div>
+                  <span className="w-20 text-right text-sm font-semibold tabular-nums">{money(l.quantity * l.price)}</span>
+                </div>
+                {short && (
+                  <p className="mt-1 flex items-center gap-1 text-xs font-medium text-destructive">
+                    <AlertTriangle className="size-3.5" /> Solo hay {l.stock} en existencia. No se podrá entregar el cambio.
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Motivo general */}
       <div className="space-y-2">

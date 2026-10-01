@@ -19,7 +19,9 @@ export async function GET(
   try {
     const requestedPaper = new URL(req.url).searchParams.get("paper");
     const paper = requestedPaper === "58" ? 58 : 80;
-    const buffer = await generateTicketPdf(organizationId, id, paper);
+    // ?reprint=1: copia reimpresa (marca de agua «REIMPRESIÓN»).
+    const reprint = new URL(req.url).searchParams.get("reprint") === "1";
+    const buffer = await generateTicketPdf(organizationId, id, paper, { reprint });
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",

@@ -192,6 +192,7 @@ export function SalesPage({
             {row.original.orderNumber != null && (
               <span className="text-xs text-muted-foreground tabular-nums">Pedido · #{row.original.locationSaleNumber ?? row.original.saleNumber}</span>
             )}
+            {row.original.returnInfo && <ReturnBadge info={row.original.returnInfo} />}
           </span>
         ),
       },
@@ -504,6 +505,7 @@ function SaleCard({ row, onOpen }: { row: SaleRow; onOpen: () => void }) {
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold">{saleFolio(row)}</span>
           {row.orderNumber != null && <Badge variant="outline">Pedido</Badge>}
+          {row.returnInfo && <ReturnBadge info={row.returnInfo} />}
           <Badge variant="secondary">{row.locationName}</Badge>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -527,59 +529,43 @@ function SaleDetailDialog({
   onClose: () => void
   onReturnCreated?: () => void
 }) {
-  const [printing, setPrinting] = useState(false)
   const [showReturn, setShowReturn] = useState(false)
 
-  const print = () => {
-    setPrinting(true)
-    setTimeout(() => window.print(), 60)
-  }
+  // El ticket reimpreso es el PDF oficial con la marca «REIMPRESIÓN».
+  const print = () => window.open(`/api/pos/ticket/${sale.id}?reprint=1`, "_blank")
 
   return (
     <DialogComponent
       open={open}
       onOpenChange={(o) => !o && onClose()}
       className="sm:max-w-md"
-      icon={printing ? undefined : <ReceiptText className="size-5" />}
-      title={
-        printing
-          ? undefined
-          : sale.orderNumber != null
-            ? `Venta por pedido ${saleFolio(sale)}`
-            : `Venta ${saleFolio(sale)}`
-      }
-      description={
-        printing
-          ? undefined
-          : `${sale.locationName} · ${new Date(sale.createdAt).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}`
-      }
+      icon={<ReceiptText className="size-5" />}
+      title={sale.orderNumber != null ? `Venta por pedido ${saleFolio(sale)}` : `Venta ${saleFolio(sale)}`}
+      description={`${sale.locationName} · ${new Date(sale.createdAt).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}`}
       footer={
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowReturn(true)}
-            className="flex-1"
-          >
-            <Undo2 className="size-4" /> Devolución
-          </Button>
+          {!sale.returnInfo && sale.status === "completed" && (
+            <Button
+              variant="outline"
+              onClick={() => setShowReturn(true)}
+              className="flex-1"
+            >
+              <Undo2 className="size-4" /> Devolución
+            </Button>
+          )}
           <Button onClick={print} className="flex-1">
             <Printer className="size-4" /> Imprimir
           </Button>
         </div>
       }
     >
-      {printing ? (
-        <>
-          <PrintReceipt sale={sale} />
-          <Button
-            variant="outline"
-            onClick={() => setPrinting(false)}
-            className="w-full sm:hidden"
-          >
-            Volver al detalle
-          </Button>
-        </>
-      ) : (
+      {sale.returnInfo && (
+        <div className="flex items-center justify-between rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+          <ReturnBadge info={sale.returnInfo} />
+          <span className="text-xs text-muted-foreground">Esta venta ya no admite otra devolución</span>
+        </div>
+      )}
+      {(
         <>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -708,114 +694,14 @@ function SaleDetailDialog({
   )
 }
 
-function PrintReceipt({ sale }: { sale: SaleDetail }) {
+const RETURN_TYPE_SHORT: Record<string, string> = { refund: "Reembolso", coupon: "Cupón", points: "Puntos", exchange: "Cambio" }
+
+function ReturnBadge({ info }: { info: { returnNumber: number; returnType: string; status: string } }) {
   return (
-    <div
-      id="receipt-print"
-      className="mx-auto w-[80mm] bg-white px-3 py-4 font-mono text-xs leading-snug text-black"
-    >
-      <div className="text-center">
-        <p className="text-sm font-bold uppercase leading-tight">
-          {sale.locationName}
-        </p>
-        <p>Ticket: {saleFolio(sale)}{sale.orderNumber != null ? ` (#${sale.locationSaleNumber ?? sale.saleNumber})` : ""}</p>
-        {sale.orderNumber != null && (
-          <p>Venta por pedido · {sale.deliveryMethod === "delivery" ? "A domicilio" : "Recoger en sucursal"}</p>
-        )}
-        <p>
-          {new Date(sale.createdAt).toLocaleString("es-MX", {
-            dateStyle: "short",
-            timeStyle: "short",
-          })}
-        </p>
-        <p>Cajero: {sale.employeeName ?? sale.cashierName ?? "—"}</p>
-      </div>
-
-      <div className="my-2 border-t border-dashed border-black/60" />
-
-      {sale.items.map((i) => (
-        <div key={i.id} className="mb-1">
-          <p className="font-semibold leading-tight">{i.productName}</p>
-          {i.bulkQuantityDisplay && (
-            <p className="text-xs text-black/70">{i.bulkQuantityDisplay}</p>
-          )}
-          <div className="flex justify-between">
-            <span className="text-xs">
-              {qty(i.quantity)} × {money(i.unitPrice)}
-            </span>
-            <span>{money(i.lineTotal ?? i.totalPrice ?? 0)}</span>
-          </div>
-        </div>
-      ))}
-
-      <div className="my-2 border-t border-dashed border-black/60" />
-
-      <div className="space-y-0.5">
-        <div className="flex justify-between">
-          <span>Subtotal</span>
-          <span>{money(sale.subtotal)}</span>
-        </div>
-        {sale.discounts.map((d, idx) => (
-          <div key={idx} className="flex justify-between">
-            <span className="truncate pr-2">{d.label}</span>
-            <span>-{money(d.amount)}</span>
-          </div>
-        ))}
-        <div className="flex justify-between">
-          <span>Impuestos</span>
-          <span>{money(sale.tax)}</span>
-        </div>
-        {sale.pointsRedeemedValue > 0 && (
-          <div className="flex justify-between">
-            <span>Puntos canjeados</span>
-            <span>-{money(sale.pointsRedeemedValue)}</span>
-          </div>
-        )}
-        <div className="flex justify-between font-bold text-sm">
-          <span>TOTAL</span>
-          <span>{money(sale.total)}</span>
-        </div>
-        {sale.changeGiven > 0 && (
-          <div className="flex justify-between">
-            <span>Cambio</span>
-            <span>{money(sale.changeGiven)}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="my-2 border-t border-dashed border-black/60" />
-
-      <div className="space-y-0.5">
-        {sale.payments.map((p, idx) => (
-          <div key={idx} className="flex justify-between">
-            <span>
-              {p.method in PAYMENT_METHOD_LABELS
-                ? PAYMENT_METHOD_LABELS[
-                    p.method as keyof typeof PAYMENT_METHOD_LABELS
-                  ]
-                : p.method}
-            </span>
-            <span>{money(p.amount)}</span>
-          </div>
-        ))}
-      </div>
-
-      {sale.pointsEarned > 0 && (
-        <p className="mt-1">
-          Puntos por esta compra:{" "}
-          <span className="font-bold">{Math.floor(sale.pointsEarned)}</span>
-        </p>
-      )}
-
-      <div className="mt-3 text-center">
-        <p>¡Gracias por su compra!</p>
-        <img
-          src={`/api/pos/ticket/${sale.id}/barcode`}
-          alt={`Código de barras del ticket ${sale.locationSaleNumber ?? sale.saleNumber}`}
-          className="mx-auto mt-3 h-10 max-w-full object-fill"
-        />
-        <p className="mt-1 text-[8px]">Escanea este código para consultar la venta</p>
-      </div>
-    </div>
+    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning-ink">
+      <Undo2 className="size-3" />
+      Devuelta · DEV-{info.returnNumber}
+      <span className="font-normal">({RETURN_TYPE_SHORT[info.returnType] ?? info.returnType})</span>
+    </span>
   )
 }

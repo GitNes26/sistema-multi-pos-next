@@ -214,6 +214,15 @@ export interface PosFeatures {
   splitBill: boolean
 }
 
+export interface PosTransferInfo {
+  bank: string | null
+  holder: string | null
+  clabe: string | null
+  account: string | null
+  card: string | null
+  note: string | null
+}
+
 export interface PosCatalog {
   location: PosLocation
   company: {
@@ -223,6 +232,8 @@ export interface PosCatalog {
     city: string | null
     phone: string | null
     ticketFooter: string | null
+    /** Datos para cobrar por transferencia (solo si la empresa los habilitó). */
+    transfer: PosTransferInfo | null
   }
   products: PosProduct[]
   categories: PosCategory[]
@@ -230,6 +241,8 @@ export interface PosCatalog {
   promotions: PosPromotion[]
   promotionUses: { promotionId: string; customerId: string; usesCount: number }[]
   combos: PosCombo[]
+  /** Productos más vendidos de la empresa (ids, del más al menos vendido): alimentan «Favoritos». */
+  topSellers: string[]
   registers: PosCashRegister[]
   session: PosCashSession | null
   cashier: { userId: string; employeeId: string | null; name: string }

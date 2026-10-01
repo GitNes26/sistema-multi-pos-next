@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { STAGGER_COMPACT, STAGGER } from "@/lib/animation-tokens"
-import { Keyboard, Package, Puzzle, ScanBarcode, Search } from "lucide-react"
+import { Keyboard, Package, Puzzle, ScanBarcode, Search, Star } from "lucide-react"
 import { usePosStore } from "@/stores/pos-store"
 import type { PosCombo, PosProduct } from "@/types/pos"
 import { ProductCard } from "./product-card"
 import { ComboCard } from "./combo-card"
+import { PromoProgress } from "./promo-progress"
 import { VirtualKeyboard } from "./virtual-keyboard"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -19,6 +20,7 @@ import { swalToast } from "@/lib/swal"
 import { haptic } from "@/lib/haptics"
 
 const COMBOS_CATEGORY_ID = "__combos__"
+const FAVORITES_CATEGORY_ID = "__favorites__"
 const UNCATEGORIZED_CATEGORY_ID = "__uncategorized__"
 
 interface CatalogPanelProps {
@@ -45,6 +47,7 @@ export function CatalogPanel({
   const keyboardOpen = usePosStore((s) => s.keyboardOpen)
   const setKeyboardOpen = usePosStore((s) => s.setKeyboardOpen)
   const customers = usePosStore((s) => s.customers)
+  const topSellers = usePosStore((s) => s.topSellers)
   const setCustomer = usePosStore((s) => s.setCustomer)
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -61,14 +64,28 @@ export function CatalogPanel({
   }, [scanRefocus])
 
   // 6.5 – Al coincidir exactamente con SKU o código de barras, se agrega directo.
+  // Favoritos = más vendidos, en orden de ventas (se actualiza con las ventas reales).
+  const favorites = useMemo(() => {
+    const byId = new Map(products.map((p) => [p.productId, p]))
+    const seen = new Set<string>()
+    return topSellers.flatMap((id) => {
+      const p = byId.get(id)
+      if (!p || seen.has(p.productId)) return []
+      seen.add(p.productId)
+      return [p]
+    })
+  }, [products, topSellers])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return products.filter((p) => {
+    const base = activeCategory === FAVORITES_CATEGORY_ID ? favorites : products
+    return base.filter((p) => {
       if (activeCategory === UNCATEGORIZED_CATEGORY_ID && p.categoryId) return false
       if (
         activeCategory &&
         activeCategory !== UNCATEGORIZED_CATEGORY_ID &&
         activeCategory !== COMBOS_CATEGORY_ID &&
+        activeCategory !== FAVORITES_CATEGORY_ID &&
         (!p.categoryId || !activeCategoryIds.has(p.categoryId))
       ) return false
       if (!q) return true
@@ -78,7 +95,7 @@ export function CatalogPanel({
         (p.barcode ?? "").includes(q)
       )
     })
-  }, [products, activeCategory, activeCategoryIds, search])
+  }, [products, favorites, activeCategory, activeCategoryIds, search])
 
   useEffect(() => {
     const q = search.trim()
@@ -143,7 +160,9 @@ export function CatalogPanel({
     )
   }
 
+  // «Favoritos» siempre va primero y fijo (solo si ya hay ventas que lo respalden).
   const withCount = [
+    ...(favorites.length > 0 ? [{ id: FAVORITES_CATEGORY_ID, name: "Favoritos", imageUrl: null, productCount: favorites.length }] : []),
     { id: "", name: "Todos", imageUrl: null, productCount: products.length },
     ...categories,
     ...(products.some((product) => !product.categoryId)
@@ -228,6 +247,7 @@ export function CatalogPanel({
                 : "border-border bg-card text-foreground/75 hover:bg-muted hover:text-foreground"
             )}
           >
+            {c.id === FAVORITES_CATEGORY_ID && <Star className="mr-1 inline-block size-3.5 fill-current align-[-2px]" />}
             {c.imageUrl && (
               <ThumbImage
                 src={c.imageUrl}
@@ -326,6 +346,8 @@ export function CatalogPanel({
           </motion.div>
         )}
       </div>
+
+      <PromoProgress />
     </div>
   )
 }

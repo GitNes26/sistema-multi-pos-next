@@ -600,6 +600,7 @@ export function ProductDetailClient({ productId }: { productId: string }) {
       {hasOptions && (
         <ProductBuilder
           portalProduct={p}
+          defaultVariantId={selectedVariant?.id ?? null}
           open={builderOpen}
           onClose={() => setBuilderOpen(false)}
           onAdd={(config) => {

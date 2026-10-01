@@ -109,7 +109,8 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
   const [actionDesc, setActionDesc] = useState("")
   const [actionSaving, setActionSaving] = useState(false)
   const [useDefaultLimit, setUseDefaultLimit] = useState(true)
-  const [filter, setFilter] = useState<CreditFilter>("debt")
+  // Arranca en «Todos»: la lista de clientes siempre se ve, aunque nadie deba.
+  const [filter, setFilter] = useState<CreditFilter>("all")
 
   const load = useCallback(async () => {
     setLoading(true)

@@ -211,6 +211,9 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
   }, [selectedId]);
 
   const selected = roles?.find((r) => r.id === selectedId);
+  // Los roles de sistema solo los edita el SuperAdmin (el rol superadmin nunca).
+  const systemEditable = isSuperadmin && selected?.id !== "system-superadmin";
+  const lockedRole = Boolean(selected?.isSystem) && !systemEditable;
 
   const toggle = (key: string) => {
     setPerms((prev) => {
@@ -335,6 +338,13 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
                     <Badge variant="secondary">Global</Badge>
                   )}
                 </div>
+                {selected.isSystem && (
+                  <p className="mt-1 text-xs text-warning-ink">
+                    {systemEditable
+                      ? "Rol de sistema: tus cambios aplican a todas las empresas que lo usan."
+                      : "Rol de sistema: solo el SuperAdmin puede modificar sus permisos."}
+                  </p>
+                )}
                 {selected.description && (
                   <p className="text-xs text-muted-foreground">{selected.description}</p>
                 )}
@@ -375,7 +385,7 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
                 return (
                   <div key={module} className={cn("rounded-lg border p-3", moduleLocked && "bg-muted/40")}>
                     <label htmlFor={`permission-module-${module}`} className="flex cursor-pointer items-center gap-2">
-                      <Checkbox id={`permission-module-${module}`} checked={all} disabled={selected.isSystem || moduleLocked} onCheckedChange={() => toggleModule(usable.map((p) => p.key))} />
+                      <Checkbox id={`permission-module-${module}`} checked={all} disabled={lockedRole || moduleLocked} onCheckedChange={() => toggleModule(usable.map((p) => p.key))} />
                       <span className="text-sm font-medium">{PERMISSION_MODULE_LABELS[module] ?? module}</span>
                       <span className="ml-auto text-xs text-muted-foreground">
                         {moduleLocked ? (
@@ -390,7 +400,7 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
                         const locked = planDenied.has(p.key);
                         return (
                           <label htmlFor={`permission-${p.key}`} key={p.key} className={cn("flex items-center gap-2 text-sm", locked ? "cursor-not-allowed opacity-60" : "cursor-pointer")}>
-                            <Checkbox id={`permission-${p.key}`} checked={perms.has(p.key) && !locked} disabled={selected.isSystem || locked} onCheckedChange={() => toggle(p.key)} />
+                            <Checkbox id={`permission-${p.key}`} checked={perms.has(p.key) && !locked} disabled={lockedRole || locked} onCheckedChange={() => toggle(p.key)} />
                             <span className="text-muted-foreground">{p.label}</span>
                             {locked && <Lock className="size-3 text-muted-foreground" aria-label="No incluido en el plan" />}
                           </label>
@@ -402,7 +412,7 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
               })}
             </div>
 
-            {!selected.isSystem && <Button onClick={savePerms} disabled={saving}>
+            {!lockedRole && <Button onClick={savePerms} disabled={saving}>
               <ShieldCheck className="size-4" /> {saving ? "Guardando…" : "Guardar permisos"}
             </Button>}
           </div>

@@ -15,12 +15,17 @@ export default async function AdminInventoryPage() {
   const canManage = authed && hasPermission(session, "inventory.manage");
   const canRevise = authed && hasPermission(session, "inventory.revision");
   const canPurchase = authed && hasPermission(session, "purchasing.manage");
+  const transfers = {
+    view: authed && hasPermission(session, "transfers.view"),
+    request: authed && hasPermission(session, "transfers.request"),
+  };
 
   return (
     <InventoryPage
       canManage={canManage}
       canRevise={canRevise}
       canPurchase={canPurchase}
+      transfers={transfers}
       icon={<Boxes className="size-5" />}
     />
   );

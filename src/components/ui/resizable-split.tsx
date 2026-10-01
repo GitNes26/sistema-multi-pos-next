@@ -94,6 +94,6 @@ export function ResizableSplit({
   // Modo vertical dentro de páginas con scroll: altura acotada para que el
   // separador sea arrastrable; cada panel scrollea internamente si hace falta.
   return (
-    <div className="h-[calc(100svh-13rem)] min-h-[20rem] w-full">{group}</div>
+    <div className="h-[calc(100dvh-13rem)] min-h-[20rem] w-full">{group}</div>
   );
 }

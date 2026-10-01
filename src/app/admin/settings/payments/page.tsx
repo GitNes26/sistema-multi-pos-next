@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/layout/page-header";
 import { PaymentsForm } from "@/components/admin/settings/payments-form";
+import { TransferInfoSection } from "@/components/admin/settings/transfer-info-section";
 
 export const metadata: Metadata = { title: "Pasarelas de pago" };
 
@@ -25,6 +26,7 @@ export default async function PaymentsSettingsPage() {
         description="Configura pagos en línea y cobros presenciales con Mercado Pago Point."
       />
       <PaymentsForm />
+      <TransferInfoSection />
     </div>
   );
 }

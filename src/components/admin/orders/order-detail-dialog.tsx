@@ -24,6 +24,7 @@ import {
   Wallet,
   X,
   type LucideIcon,
+  Printer,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { DialogComponent } from "@/components/ui/dialog";
@@ -233,9 +234,14 @@ export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: 
                 </span>
                 {order.isPaid ? <StatusPill tone="success">Pagado</StatusPill> : <StatusPill tone="warning">Por cobrar</StatusPill>}
                 {order.saleId && (
-                  <Link href={`/admin/sales?q=PED-${order.orderNumber}`} className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-                    <ReceiptText className="size-3.5" /> Ver venta PED-{order.orderNumber}
-                  </Link>
+                  <span className="ml-auto inline-flex items-center gap-3">
+                    <a href={`/api/pos/ticket/${order.saleId}?reprint=1`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                      <Printer className="size-3.5" /> Imprimir ticket
+                    </a>
+                    <Link href={`/admin/sales?q=PED-${order.orderNumber}`} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                      <ReceiptText className="size-3.5" /> Ver venta PED-{order.orderNumber}
+                    </Link>
+                  </span>
                 )}
               </div>
               {order.status === "cancelled" ? (

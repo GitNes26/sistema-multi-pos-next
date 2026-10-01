@@ -300,7 +300,7 @@ export function ReturnsTab({ canView, canManage }: Props) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">
-                      Dev. #{row.id.slice(-6).toUpperCase()}
+                      DEV-{row.returnNumber}
                     </span>
                     <ReturnStatusPill status={row.status} />
                     <ReturnTypePill type={row.returnType} />
@@ -433,7 +433,7 @@ function ReturnDetailContent({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-bold">
-            Dev. #{detail.id.slice(-6).toUpperCase()}
+            DEV-{detail.returnNumber}
           </h3>
           <p className="text-sm text-muted-foreground">
             Venta #{detail.sale?.locationSaleNumber ?? detail.sale?.saleNumber}

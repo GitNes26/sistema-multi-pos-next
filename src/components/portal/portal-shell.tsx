@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
   Home,
   Store,
@@ -79,6 +80,14 @@ export function PortalShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  // Carrito persistente: se recupera al abrir el portal y queda ligado a la
+  // cuenta + empresa (otra cuenta en el mismo navegador empieza vacía).
+  const { data: session } = useSession();
+  const cartOwner = session?.user ? `${session.user.id}:${session.user.organizationId ?? ""}` : null;
+  useEffect(() => {
+    if (!cartOwner) return;
+    void Promise.resolve(usePortalStore.persist.rehydrate()).then(() => usePortalStore.getState().bindCartOwner(cartOwner));
+  }, [cartOwner]);
   useEffect(() => {
     const keepCustomerInPortal = () => {
       if (window.location.pathname === "/" || window.location.pathname === "/portal/auth/login") {
@@ -128,7 +137,7 @@ export function PortalShell({
 
       <nav
         aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md border-t bg-background/92 safe-area-bottom supports-backdrop-filter:bg-background/80 supports-backdrop-filter:backdrop-blur-xl"
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md border-t bg-background/92 safe-area-bottom pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] supports-backdrop-filter:bg-background/80 supports-backdrop-filter:backdrop-blur-xl"
       >
         <div className={cn("grid", GRID_COLS[barItems.length + (hasMore ? 1 : 0)] ?? "grid-cols-5")}>
           {barItems.map((item) => {

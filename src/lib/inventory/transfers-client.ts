@@ -40,6 +40,8 @@ export interface TransferDetail {
   to: TransferPlace
   notes: string | null
   receiveNotes: string | null
+  receivedBy: string | null
+  requestedBy: string | null
   driverName: string | null
   vehicle: string | null
   expectedAt: string | null

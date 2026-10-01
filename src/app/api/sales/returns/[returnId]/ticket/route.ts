@@ -1,140 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { salesGuard, salesErrorResponse } from "../../../guard";
-import { getReturnDetail } from "@/lib/returns/server";
-import { prisma } from "@/lib/db";
-import PDFDocument from "pdfkit";
-import bwipjs from "bwip-js/node";
-import { buildTicketCode } from "@/lib/sales/ticket-code";
+import { generateReturnTicketPdf } from "@/lib/pos/ticket-pdf";
 
-// GET /api/sales/returns/[returnId]/ticket — Ticket de devolución PDF
+// GET /api/sales/returns/[returnId]/ticket — Ticket de devolución (mismo diseño que el de ventas).
+// ?reprint=1 agrega la marca de agua «REIMPRESIÓN»; ?paper=58|80 el ancho.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ returnId: string }> }) {
   const guard = await salesGuard("sales.view");
   if (guard instanceof NextResponse) return guard;
-
   try {
     const { returnId } = await params;
-    const ret = await getReturnDetail(guard.organizationId, returnId);
-    const org = await prisma.organization.findUnique({
-      where: { id: guard.organizationId },
-      select: { name: true },
-    });
-
-    const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
-    const TYPE_LABELS: Record<string, string> = {
-      exchange: "Cambio",
-      refund: "Devolución de dinero",
-      coupon: "Cupón",
-      points: "Bonificación en puntos",
-    };
-    const STATUS_LABELS: Record<string, string> = {
-      pending: "Pendiente",
-      approved: "Aprobada",
-      completed: "Procesada",
-      rejected: "Rechazada",
-    };
-    const PAYMENT_LABELS: Record<string, string> = {
-      cash: "Efectivo",
-      card: "Tarjeta",
-      wallet: "Wallet",
-      other: "Otro medio",
-    };
-
-    const originalTicketCode = buildTicketCode({ saleId: ret.sale.id });
-    const barcode = await bwipjs.toBuffer({ bcid: "code128", text: originalTicketCode, height: 10, scale: 2, includetext: false, padding: 0 });
-    const buffer = await new Promise<Buffer>((resolve, reject) => {
-      const doc = new PDFDocument({ size: [226, 470], margin: 20 }); // Thermal receipt 80mm
-      const chunks: Buffer[] = [];
-      doc.on("data", (c: Buffer) => chunks.push(Buffer.from(c)));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
-
-      const W = 186;
-      const cx = 20;
-
-      // Header
-      doc.font("Helvetica-Bold").fontSize(12).text(org?.name ?? "Mi negocio", cx, 20, { width: W, align: "center" });
-      doc.font("Helvetica").fontSize(8).text("TICKET DE DEVOLUCIÓN", cx, 36, { width: W, align: "center" });
-      doc.moveDown(0.5);
-      doc.text(`Folio: DEV-${ret.id.slice(-8).toUpperCase()}`, cx, 52, { width: W });
-      doc.text(`Fecha: ${new Date(ret.createdAt).toLocaleString("es-MX")}`, cx, 62, { width: W });
-      doc.text(`Tipo: ${TYPE_LABELS[ret.returnType] ?? ret.returnType}`, cx, 72, { width: W });
-      doc.text(`Estado: ${STATUS_LABELS[ret.status] ?? ret.status}`, cx, 82, { width: W });
-
-      // Venta original
-      doc.moveDown(0.5);
-      doc.font("Helvetica-Bold").fontSize(8).text(`Venta original: #${ret.sale.locationSaleNumber ?? ret.sale.saleNumber}`, cx, 96, { width: W });
-
-      // Items
-      let y = 112;
-      doc.font("Helvetica-Bold").fontSize(7);
-      doc.text("PRODUCTO", cx, y, { width: 100 });
-      doc.text("CANT", cx + 100, y, { width: 30, align: "right" });
-      doc.text("IMPORTE", cx + 130, y, { width: 56, align: "right" });
-      y += 10;
-      doc.font("Helvetica").fontSize(7);
-
-      for (const item of ret.items) {
-        doc.text(item.productName, cx, y, { width: 100 });
-        doc.text(String(Number(item.quantity)), cx + 100, y, { width: 30, align: "right" });
-        doc.text(money(Number(item.lineTotal)), cx + 130, y, { width: 56, align: "right" });
-        y += 10;
-        if (item.reason) {
-          doc.font("Helvetica-Oblique").fontSize(6).text(`  ${item.reason}`, cx, y, { width: W });
-          doc.font("Helvetica").fontSize(7);
-          y += 8;
-        }
-      }
-
-      // Totals
-      y += 4;
-      doc.font("Helvetica-Bold").fontSize(8);
-      doc.text("Subtotal:", cx, y, { width: 100 });
-      doc.text(money(Number(ret.subtotal)), cx + 100, y, { width: 86, align: "right" });
-      y += 10;
-      doc.text("IVA:", cx, y, { width: 100 });
-      doc.text(money(Number(ret.tax)), cx + 100, y, { width: 86, align: "right" });
-      y += 10;
-      doc.fontSize(10).text("TOTAL:", cx, y, { width: 100 });
-      doc.text(money(Number(ret.total)), cx + 100, y, { width: 86, align: "right" });
-
-      // Resolution details
-      y += 20;
-      doc.font("Helvetica").fontSize(7);
-      if (ret.couponCode) {
-        doc.text(`Cupón: ${ret.couponCode}`, cx, y, { width: W });
-        y += 10;
-        doc.text(`Monto: ${money(Number(ret.couponAmount))}`, cx, y, { width: W });
-        y += 10;
-        doc.text(`Vence: ${new Date(ret.couponExpiresAt!).toLocaleDateString("es-MX")}`, cx, y, { width: W });
-      } else if (ret.pointsAwarded) {
-        doc.text(`Puntos bonificados: ${Number(ret.pointsAwarded)}`, cx, y, { width: W });
-      } else if (ret.returnType === "refund") {
-        for (const payment of ret.refundPayments) {
-          doc.text(
-            `${PAYMENT_LABELS[payment.method] ?? payment.method}: ${money(Number(payment.amount))}${payment.reference ? ` · Ref. ${payment.reference}` : ""}`,
-            cx,
-            y,
-            { width: W }
-          );
-          y += 10;
-        }
-      }
-
-      // Footer
-      y += 20;
-      doc.fontSize(6).fillColor("666666").text("Gracias por su preferencia", cx, y, { width: W, align: "center" });
-      y += 16;
-      doc.image(barcode, cx + 4, y, { fit: [W - 8, 34], align: "center" });
-      y += 38;
-      doc.fontSize(6).text("Escanea para consultar la venta original", cx, y, { width: W, align: "center" });
-
-      doc.end();
-    });
-
+    const sp = new URL(req.url).searchParams;
+    const buffer = await generateReturnTicketPdf(guard.organizationId, returnId, sp.get("paper") === "58" ? 58 : 80, { reprint: sp.get("reprint") === "1" });
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="devolucion-${ret.id.slice(-8)}.pdf"`,
+        "Content-Disposition": `inline; filename="devolucion-${returnId.slice(-8)}.pdf"`,
       },
     });
   } catch (err) {

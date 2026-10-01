@@ -7,6 +7,7 @@ import {
   Banknote,
   BadgeCheck,
   Check,
+  Copy,
   CreditCard,
   Landmark,
   MoreHorizontal,
@@ -35,6 +36,8 @@ import { buildSalePayload, type PaymentEntry } from "@/lib/pos/checkout"
 import { CASH_DENOMINATIONS, PAYMENT_METHOD_LABELS } from "@/lib/pos/config"
 import { Numpad, type NumpadKey } from "./numpad"
 import { cn } from "@/lib/utils"
+import { swalToast } from "@/lib/swal"
+import type { PosTransferInfo } from "@/types/pos"
 
 interface PaymentDialogProps {
   open: boolean
@@ -315,6 +318,9 @@ export function PaymentDialog({
   const TIP_PRESETS = [10, 15, 20, 25]
 
   // Tip selector block
+  const transferInfo = usePosStore((s) => s.company.transfer)
+  const transferBlock = transferInfo && <TransferInfoCard info={transferInfo} />
+
   const tipBlock = features.tips && (
     <div className="space-y-2 rounded-xl border border-dashed border-success/40 bg-success/5 p-3">
       <p className="flex items-center gap-1.5 text-xs font-semibold text-success-ink">
@@ -564,6 +570,7 @@ export function PaymentDialog({
                 )}
 
                 {tipBlock}
+                {transferBlock}
                 {denominationsBlock}
               </motion.div>
             ) : (
@@ -621,6 +628,7 @@ export function PaymentDialog({
                 </div>
 
                 {tipBlock}
+                {transferBlock}
                 {denominationsBlock}
               </motion.div>
             )}
@@ -812,5 +820,58 @@ export function PaymentDialog({
 
       {error && <p className="text-center text-xs text-destructive">{error}</p>}
     </DialogComponent>
+  )
+}
+
+/** Datos bancarios para que el cliente haga su transferencia (copiables con un toque). */
+function TransferInfoCard({ info }: { info: PosTransferInfo }) {
+  const [open, setOpen] = useState(false)
+  const rows: [string, string | null][] = [
+    ["Banco", info.bank],
+    ["Titular", info.holder],
+    ["CLABE", info.clabe],
+    ["Cuenta", info.account],
+    ["Tarjeta", info.card],
+  ]
+  const copy = (value: string) => {
+    void navigator.clipboard?.writeText(value).then(() => swalToast("Copiado"), () => undefined)
+  }
+  return (
+    <div className="rounded-2xl border bg-card">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex min-h-12 w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold"
+      >
+        <Landmark className="size-4 text-primary" />
+        Datos para transferencia
+        <span className="ml-auto text-xs font-normal text-muted-foreground">{open ? "Ocultar" : "Mostrar"}</span>
+      </button>
+      {open && (
+        <dl className="space-y-1.5 border-t px-4 py-3 text-sm">
+          {rows
+            .filter(([, v]) => v)
+            .map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="flex items-center gap-1.5 font-medium tabular-nums">
+                  {value}
+                  <button
+                    type="button"
+                    onClick={() => copy(value!)}
+                    className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
+                    aria-label={`Copiar ${label}`}
+                  >
+                    <Copy className="size-3.5" />
+                  </button>
+                </dd>
+              </div>
+            ))}
+          {info.note && <p className="pt-1 text-xs text-muted-foreground">{info.note}</p>}
+          <p className="pt-1 text-xs text-muted-foreground">Registra el cobro como «Tarjeta» u «Otro» con la referencia de la transferencia.</p>
+        </dl>
+      )}
+    </div>
   )
 }

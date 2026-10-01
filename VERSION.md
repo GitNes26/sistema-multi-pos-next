@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.28.0.0] — 2026-10-01
+- **Tipo:** `feat` (Minor)
+- feat: carrito del portal persistente y variante preseleccionada en el constructor; ticket POS compacto con cantidad editable, Favoritos mas vendidos, promociones al pie del catalogo y cliente/descuento/mesa/dividir en una fila; propina visible en el ticket y venta de pedidos sin contarla como ingreso; devoluciones con folio DEV, una por venta, cambio que descuenta inventario con aviso de existencia y tickets de venta y devolucion unificados con marca de reimpresion; productos con filtro y columna de variantes, tabla de variantes con flechas y orden por opcion y duplicar producto; proveedor preferido unico, cotizacion en 3 pasos con resumen y pedido sugerido con precio por proveedor, historial de recepciones ligado a su orden; traslados con documento imprimible, quien recibio y boton de traslado finalizado, permisos por etapa y roles de sistema editables solo por el superAdmin; datos de transferencia bancaria en el cobro del POS; lista de clientes en Credito; panel con pulso operativo, logo de fondo y accesos rapidos; captura de inventario con flechas y guardado rapido; safe areas del POS y cabeceras
+
 ### [0.27.0.0] — 2026-09-28
 - **Tipo:** `feat` (Minor)
 - feat: switch Abierto/Cerrado del negocio con reapertura al siguiente dia habil, mañana, fecha u hora o manual, aviso y badge siempre visibles en el portal y pedidos bloqueados durante el cierre; filtro de productos tipo Servicio; el constructor usa el nombre de la opcion de variantes; Guardar cambios del producto tambien guarda variantes, topicos y reglas; corregido el cobro de productos personalizados con topicos opcionales o solo indicaciones en POS y portal, el portal ya no exige existencia a productos sin control de inventario ni valida las opciones de tamaño como topicos; editar productos personalizados desde el carrito del portal y la tarjeta respeta el tamaño elegido

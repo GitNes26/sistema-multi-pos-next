@@ -65,16 +65,35 @@ export async function purchasingWorkspace(organizationId: string) {
         include: {
           order: {
             select: {
+              id: true,
               folio: true,
+              status: true,
+              locationType: true,
+              locationId: true,
               supplier: { select: { businessName: true } },
             },
           },
-          items: true,
+          items: { include: { orderItem: { select: { description: true, quantity: true, receivedQuantity: true } } } },
         },
         orderBy: { receivedAt: "desc" },
         take: 100,
       }),
     ])
+  // Quién recibió (usuario) para mostrarlo en el historial
+  const receiverIds = [...new Set(receipts.map((r) => r.receivedBy).filter((x): x is string => !!x))]
+  const receivers = receiverIds.length
+    ? await prisma.user.findMany({ where: { id: { in: receiverIds } }, select: { id: true, fullName: true } })
+    : []
+  const receiverName = new Map(receivers.map((u) => [u.id, u.fullName]))
+  const placeName = new Map<string, string>([
+    ...locations.map((l) => [l.id, l.name] as [string, string]),
+    ...cedis.map((l) => [l.id, l.name] as [string, string]),
+  ])
+  const receiptsView = receipts.map((r) => ({
+    ...r,
+    receiverName: r.receivedBy ? receiverName.get(r.receivedBy) ?? null : null,
+    destination: placeName.get(r.order.locationId) ?? null,
+  }))
   const serialize = <T>(value: T): T =>
     JSON.parse(
       JSON.stringify(value, (_key, item) =>
@@ -92,7 +111,7 @@ export async function purchasingWorkspace(organizationId: string) {
     cedis,
     quotes,
     orders,
-    receipts,
+    receipts: receiptsView,
   })
 }
 
@@ -201,14 +220,23 @@ export async function linkSupplierProduct(
     isPreferred: input.isPreferred === true,
     isActive: true,
   }
-  return existing
-    ? prisma.supplierProduct.update({
+  // Un producto (o variante) tiene un solo proveedor preferido: al marcar uno se desmarcan los demás.
+  const demoteOthers = values.isPreferred
+    ? prisma.supplierProduct.updateMany({
+        where: { organizationId, productId, variantId, supplierId: { not: supplierId }, isPreferred: true },
+        data: { isPreferred: false },
+      })
+    : null
+  const saved = existing
+    ? await prisma.supplierProduct.update({
         where: { id: existing.id },
         data: values,
       })
-    : prisma.supplierProduct.create({
+    : await prisma.supplierProduct.create({
         data: { organizationId, supplierId, productId, variantId, ...values },
       })
+  if (demoteOthers) await demoteOthers
+  return saved
 }
 
 type PurchaseItemInput = {

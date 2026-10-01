@@ -150,6 +150,9 @@ export interface TransferDetail {
   to: TransferPlace;
   notes: string | null;
   receiveNotes: string | null;
+  /** Quien recibió físicamente (empleado y/o nombre escrito). */
+  receivedBy: string | null;
+  requestedBy: string | null;
   driverName: string | null;
   vehicle: string | null;
   expectedAt: string | null;
@@ -180,6 +183,9 @@ export async function getTransfer(organizationId: string, id: string): Promise<T
   });
   if (!t) throw new CrudError("Traslado no encontrado", 404);
 
+  const receiverEmployee = t.receivedByEmployeeId
+    ? await prisma.employee.findFirst({ where: { id: t.receivedByEmployeeId, organizationId }, select: { fullName: true } })
+    : null;
   const [places, variants, inventories, users] = await Promise.all([
     placeNames(organizationId),
     prisma.productVariant.findMany({ where: { id: { in: t.items.map((i) => i.variantId).filter((v): v is string => !!v) } }, select: { id: true, name: true } }),
@@ -219,6 +225,8 @@ export async function getTransfer(organizationId: string, id: string): Promise<T
     to: place(t.toLocationId, t.toLocationType),
     notes: t.notes,
     receiveNotes: t.receiveNotes,
+    receivedBy: [receiverEmployee?.fullName, t.receivedByName].filter(Boolean).join(" · ") || null,
+    requestedBy: userName(t.requestedById),
     driverName: t.driverName,
     vehicle: t.vehicle,
     expectedAt: t.expectedAt?.toISOString() ?? null,
@@ -416,10 +424,22 @@ export async function receiveTransfer(
   organizationId: string,
   id: string,
   userId: string,
-  input: { items: { itemId: string; receivedQty: number; note?: string | null }[]; notes?: string | null }
+  input: {
+    items: { itemId: string; receivedQty: number; note?: string | null }[]
+    notes?: string | null
+    /** Empleado que recibió (de la lista) y/o su nombre escrito a mano. */
+    receiverEmployeeId?: string | null
+    receiverName?: string | null
+  }
 ) {
   const t = await findTransfer(organizationId, id);
   if (t.status !== "in_transit") throw new CrudError("Solo se puede recibir un traslado en camino", 409);
+  const receiverEmployeeId = input.receiverEmployeeId?.trim() || null;
+  if (receiverEmployeeId) {
+    const ok = await prisma.employee.findFirst({ where: { id: receiverEmployeeId, organizationId }, select: { id: true } });
+    if (!ok) throw new CrudError("El empleado que recibe no existe", 400, "receiverEmployeeId");
+  }
+  const receiverName = input.receiverName?.trim().slice(0, 120) || null;
   const employee = await employeeFor(userId);
   const folio = transferFolio(t.number);
   const byItem = new Map(input.items.map((i) => [i.itemId, i]));
@@ -491,6 +511,8 @@ export async function receiveTransfer(
         receivedAt: new Date(),
         completedAt: new Date(),
         receivedById: userId,
+        receivedByEmployeeId: receiverEmployeeId,
+        receivedByName: receiverName,
         receiveNotes: input.notes?.trim() || null,
         hasDiscrepancy: discrepancy,
       },
