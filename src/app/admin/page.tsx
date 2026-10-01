@@ -19,7 +19,7 @@ export default async function AdminDashboardPage() {
   const logoUrl = organizationId
     ? (await prisma.companyProfile.findUnique({ where: { organizationId }, select: { logoUrl: true } }))?.logoUrl ?? null
     : null;
-  const canReports = hasPermission(session, "reports.view");
+  const canReports = hasPermission(session, "panel.stats");
 
   return (
     <div className="relative isolate min-h-[70dvh]">

@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.29.0.0] — 2026-10-01
+- **Tipo:** `feat` (Minor)
+- feat: permiso para ver estadisticos del Panel (panel.stats) con respaldo para roles y planes existentes; seeder de NESSIK Test cargado con los ids de produccion (productos con variantes y topicos, inventario, ventas, pedidos, traslados, compras y promociones) de forma idempotente y sin devoluciones
+
 ### [0.28.0.0] — 2026-10-01
 - **Tipo:** `feat` (Minor)
 - feat: carrito del portal persistente y variante preseleccionada en el constructor; ticket POS compacto con cantidad editable, Favoritos mas vendidos, promociones al pie del catalogo y cliente/descuento/mesa/dividir en una fila; propina visible en el ticket y venta de pedidos sin contarla como ingreso; devoluciones con folio DEV, una por venta, cambio que descuenta inventario con aviso de existencia y tickets de venta y devolucion unificados con marca de reimpresion; productos con filtro y columna de variantes, tabla de variantes con flechas y orden por opcion y duplicar producto; proveedor preferido unico, cotizacion en 3 pasos con resumen y pedido sugerido con precio por proveedor, historial de recepciones ligado a su orden; traslados con documento imprimible, quien recibio y boton de traslado finalizado, permisos por etapa y roles de sistema editables solo por el superAdmin; datos de transferencia bancaria en el cobro del POS; lista de clientes en Credito; panel con pulso operativo, logo de fondo y accesos rapidos; captura de inventario con flechas y guardado rapido; safe areas del POS y cabeceras

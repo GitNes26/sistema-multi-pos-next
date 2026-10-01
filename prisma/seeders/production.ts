@@ -760,6 +760,7 @@ export async function seedProduction() {
 
   // ¿Es la primera vez que existen los permisos de traslados? (para respaldar lo ya configurado)
   const hadTransferPermissions = !!(await prisma.permission.findUnique({ where: { key: "transfers.view" } }))
+  const hadPanelStats = !!(await prisma.permission.findUnique({ where: { key: "panel.stats" } }))
 
   // Permisos
   for (const p of PERMISSIONS) {
@@ -811,6 +812,24 @@ export async function seedProduction() {
 
   // Respaldo único: los traslados antes colgaban de inventory.view/manage. Quien ya tenía
   // esos permisos conserva su acceso (roles propios de cada empresa y planes ya guardados).
+  // Respaldo único de panel.stats: quien ya podía ver reportes conserva los estadísticos del Panel.
+  if (!hadPanelStats) {
+    const withReports = await prisma.rolePermission.findMany({
+      where: { permissionKey: "reports.view", role: { isSystem: false } },
+      select: { organizationId: true, roleId: true, allowed: true },
+    })
+    for (const rp of withReports) {
+      const dup = await prisma.rolePermission.findFirst({ where: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: "panel.stats" } })
+      if (!dup) await prisma.rolePermission.create({ data: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: "panel.stats", allowed: rp.allowed } })
+    }
+    for (const plan of await prisma.subscriptionPlan.findMany({ select: { id: true, permissions: true } })) {
+      if (!Array.isArray(plan.permissions)) continue
+      const keys = plan.permissions.map(String)
+      if (keys.includes("reports.view") && !keys.includes("panel.stats")) {
+        await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: [...keys, "panel.stats"] } })
+      }
+    }
+  }
   if (!hadTransferPermissions) {
     const MAP: [string, string[]][] = [
       ["inventory.view", ["transfers.view"]],

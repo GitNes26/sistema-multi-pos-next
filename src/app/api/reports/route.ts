@@ -25,10 +25,10 @@ function parseFilters(sp: URLSearchParams): ReportFilters {
 }
 
 export async function GET(req: NextRequest) {
-  const guard = await reportsGuard("reports.view");
-  if (guard instanceof NextResponse) return guard;
-
   const type = req.nextUrl.searchParams.get("type") ?? "sales";
+  // Los estadísticos del Panel tienen su propio permiso.
+  const guard = await reportsGuard(type === "dashboard" ? "panel.stats" : "reports.view");
+  if (guard instanceof NextResponse) return guard;
   const filters = parseFilters(req.nextUrl.searchParams);
 
   try {
