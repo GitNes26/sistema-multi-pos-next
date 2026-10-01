@@ -243,12 +243,8 @@ export const usePosStore = create<PosState>()((set, get) => ({
   addConfiguredItem: (product, config) => {
     set((s) => {
       const key = `${product.id}-${Date.now()}`
-      const optionLabel = config.selectedOptions
-        .flatMap((o) => o.values.map((v) => v.value))
-        .join(", ")
-      const displayName = optionLabel
-        ? `${product.name} (${optionLabel})`
-        : product.name
+      // Los tópicos se muestran en su propia leyenda; el nombre queda limpio.
+      const displayName = product.name
       const line: PosLineItem = {
         key,
         productId: product.productId,

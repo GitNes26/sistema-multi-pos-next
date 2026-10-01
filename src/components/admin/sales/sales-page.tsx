@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   FileDown,
   FileSpreadsheet,
@@ -22,6 +23,7 @@ import { FormCombobox } from "@/components/base/form-combobox"
 import { DataTable } from "@/components/base/data-table"
 import { crudApi, salesApi, saleFolio, type SaleRow, type SaleDetail } from "@/lib/api"
 import { swalError, swalToast } from "@/lib/swal"
+import { cleanItemName } from "@/lib/pos/item-name"
 import { money, qty } from "@/lib/pos/money"
 import { PAYMENT_METHOD_LABELS } from "@/lib/pos/config"
 import { ReturnDialog } from "./return-dialog"
@@ -75,8 +77,10 @@ export function SalesPage({
   const [page, setPage] = useState(1)
   const [pageSize] = useState(20)
   const [loading, setLoading] = useState(false)
-  const [q, setQ] = useState("")
-  const [debouncedQ, setDebouncedQ] = useState("")
+  // ?q=… (enlaces desde el POS y los pedidos) llega ya escrito en el buscador.
+  const initialQ = useSearchParams().get("q") ?? ""
+  const [q, setQ] = useState(initialQ)
+  const [debouncedQ, setDebouncedQ] = useState(initialQ)
   const [options, setOptions] = useState<{
     locations: FilterOption[]
     employees: FilterOption[]
@@ -593,7 +597,7 @@ function SaleDetailDialog({
               {sale.items.map((i) => (
                 <div key={i.id} className="flex flex-col text-sm">
                   <div className="flex justify-between">
-                    <span className="font-medium">{i.productName}</span>
+                    <span className="font-medium">{cleanItemName(i.productName, i.productType)}</span>
                     <span className="font-semibold tabular-nums">
                       {money(i.lineTotal ?? i.totalPrice ?? 0)}
                     </span>

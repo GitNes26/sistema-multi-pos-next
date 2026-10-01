@@ -139,6 +139,18 @@ export function Receipt({
           <span>TOTAL</span>
           <span>{money(payload.total)}</span>
         </div>
+        {payload.tip != null && payload.tip > 0 && (
+          <>
+            <div className="flex justify-between">
+              <span>Propina</span>
+              <span>{money(payload.tip)}</span>
+            </div>
+            <div className="flex justify-between font-bold">
+              <span>TOTAL PAGADO</span>
+              <span>{money(payload.total + payload.tip)}</span>
+            </div>
+          </>
+        )}
         {payload.changeGiven > 0 && (
           <div className="flex justify-between">
             <span>Cambio</span>

@@ -697,6 +697,7 @@ model Employee {
   inventoryMovements InventoryMovement[]
   inventoryRevisions InventoryRevision[]
   orderStatusHistory OrderStatusHistory[]
+  driverOrders       Order[]             @relation("OrderDriver")
   orderPreparation   OrderPreparation[]
   notifications      Notification[]
   commissions        EmployeeCommission[]
@@ -1757,6 +1758,10 @@ model Order {
   deliveryQrToken  String?        @unique
   // FASE — cobro en tienda (cuando el cliente paga al recoger/recibir)
   paidAt           DateTime?
+  // Reparto: quién lleva el pedido a domicilio y cuándo lo asignaron/aceptó.
+  driverEmployeeId String?
+  driverAssignedAt DateTime?
+  driverAcceptedAt DateTime?
   // FASE — redención de puntos en el portal
   pointsRedeemed   Decimal?       @default(0) @db.Decimal(12, 2)
   pointsValue      Decimal?       @default(0) @db.Decimal(12, 2)
@@ -1769,6 +1774,7 @@ model Order {
   promotion     Promotion?           @relation(fields: [promotionId], references: [id])
   table         Table?               @relation(fields: [tableId], references: [id])
   sale          Sale?                @relation(fields: [saleId], references: [id])
+  driver        Employee?            @relation("OrderDriver", fields: [driverEmployeeId], references: [id])
   items         OrderItem[]
   statusHistory OrderStatusHistory[]
   preparation   OrderPreparation?

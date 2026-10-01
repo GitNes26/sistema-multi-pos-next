@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.30.0.0] — 2026-10-01
+- **Tipo:** `feat` (Minor)
+- feat: lineas de articulos expandibles y sin topicos en el nombre (ticket POS, carrito y resumen del portal, tickets y ventas), variantes del POS en cuadricula, Favoritos resaltado, Monedero oculto en cobro personalizado, propina y total pagado en el ticket, PWA que abre los enlaces internos en la misma ventana y busqueda de ventas desde el enlace, texto largo contenido en devoluciones, guia paso a paso de nomina y asignacion/aceptacion de repartidor con seguimiento en pedidos a domicilio
+
 ### [0.29.0.0] — 2026-10-01
 - **Tipo:** `feat` (Minor)
 - feat: permiso para ver estadisticos del Panel (panel.stats) con respaldo para roles y planes existentes; seeder de NESSIK Test cargado con los ids de produccion (productos con variantes y topicos, inventario, ventas, pedidos, traslados, compras y promociones) de forma idempotente y sin devoluciones

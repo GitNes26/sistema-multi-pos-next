@@ -45,6 +45,9 @@ interface DeliveryRow {
   address: string | null;
   total: number;
   createdAt: string;
+  driverEmployeeId: string | null;
+  driverName: string | null;
+  driverAccepted: boolean;
 }
 
 const STALE_MIN = 5;
@@ -79,6 +82,7 @@ export function DeliveriesBoard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<{ id: string; orderNumber: number; mode: "delivery" | "pickup" } | null>(null);
 
   // Estado SSE reportado al badge "En vivo" del encabezado de la página.
@@ -140,8 +144,9 @@ export function DeliveriesBoard() {
     }
   };
 
+  // El GPS de este dispositivo solo se comparte para las entregas que lleva su dueño.
   const inTransitKey = rows
-    .filter((r) => r.deliveryMethod === "delivery" && r.status === "in_transit")
+    .filter((r) => r.deliveryMethod === "delivery" && r.status === "in_transit" && (!r.driverEmployeeId || r.driverEmployeeId === myEmployeeId))
     .map((r) => r.id)
     .sort()
     .join(",");
@@ -218,6 +223,7 @@ export function DeliveriesBoard() {
       const res = await fetch("/api/orders?active=1&pageSize=100", { cache: "no-store" });
       const data = await res.json();
       if (data.ok) {
+        setMyEmployeeId(data.myEmployeeId ?? null);
         setRows(data.rows ?? []);
         alertNewReady(data.rows ?? []);
         markFresh();
@@ -289,6 +295,25 @@ export function DeliveriesBoard() {
     }
   };
 
+  const acceptDelivery = async (row: DeliveryRow) => {
+    setActingId(row.id);
+    try {
+      const res = await fetch(`/api/orders/${row.id}/driver`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "accept" }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      swalToast(`Pedido #${row.orderNumber}: la entrega es tuya`);
+      await load();
+    } catch (err) {
+      swalError("No se pudo aceptar la entrega", err instanceof Error ? err.message : undefined);
+    } finally {
+      setActingId(null);
+    }
+  };
+
   const confirmArrival = async (row: DeliveryRow) => {
     setActingId(row.id);
     try {
@@ -341,6 +366,19 @@ export function DeliveriesBoard() {
         <div className="mt-1 flex items-center gap-1.5 text-xs">
           <span className="truncate font-medium">{row.customerName ?? "Cliente"}</span>
         </div>
+        {kind === "delivery" && (
+          <div className="mt-1 flex items-center gap-1.5 text-xs">
+            <Bike className="size-3.5 shrink-0 text-muted-foreground" />
+            {row.driverName ? (
+              <span className={cn("truncate", row.driverEmployeeId === myEmployeeId && "font-semibold text-primary")}>
+                {row.driverEmployeeId === myEmployeeId ? "Tú" : row.driverName}
+                {!row.driverAccepted && <span className="font-normal text-warning-ink"> · por aceptar</span>}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Sin repartidor</span>
+            )}
+          </div>
+        )}
         {row.address && (
           <div className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
             <MapPin className="mt-0.5 size-3.5 shrink-0" />
@@ -349,8 +387,19 @@ export function DeliveriesBoard() {
         )}
 
         <div className="mt-2 flex gap-1.5">
+          {kind === "delivery" && row.status === "ready" && !row.driverAccepted && (!row.driverEmployeeId || row.driverEmployeeId === myEmployeeId) && (
+            <Button size="sm" variant="outline" className="h-8 flex-1" disabled={busy} onClick={() => acceptDelivery(row)}>
+              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <PackageCheck className="size-3.5" />}
+              {row.driverEmployeeId ? "Aceptar entrega" : "Tomar entrega"}
+            </Button>
+          )}
           {kind === "delivery" && row.status === "ready" && (
-            <Button size="sm" className="h-8 flex-1" disabled={busy} onClick={() => startDelivery(row)}>
+            <Button
+              size="sm"
+              className="h-8 flex-1"
+              disabled={busy || (row.driverAccepted && row.driverEmployeeId !== myEmployeeId)}
+              onClick={() => startDelivery(row)}
+            >
               {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Bike className="size-3.5" />}
               Salir en camino
             </Button>

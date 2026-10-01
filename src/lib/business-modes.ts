@@ -131,6 +131,7 @@ export type WizardActionKind =
   | "combos"
   | "inventory"
   | "purchasing"
+  | "payroll"
   | "tables"
   | "kds"
   | "agenda"
@@ -178,6 +179,14 @@ export const WIZARD_ACTIONS: Record<WizardActionKind, WizardActionDef> = {
     href: "/admin/inventory",
     permission: "inventory.manage",
     modes: ["retail", "food_service", "hybrid"],
+  },
+  payroll: {
+    kind: "payroll",
+    title: "Calcula tu primera nómina",
+    description: "Sueldos, horas extra, comisiones y recibos en Catálogos → Nómina",
+    href: "/admin/payroll",
+    permission: "employees.manage",
+    modes: ["retail", "food_service", "services", "rental", "hybrid"],
   },
   purchasing: {
     kind: "purchasing",
@@ -275,6 +284,7 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "product",
     "inventory",
     "purchasing",
+    "payroll",
     "promotion",
     "delivery",
     "credit",
@@ -285,6 +295,7 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
   food_service: [
     "product",
     "purchasing",
+    "payroll",
     "combos",
     "tables",
     "kds",
@@ -298,6 +309,7 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
   services: [
     "product",
     "purchasing",
+    "payroll",
     "agenda",
     "promotion",
     "payments",
@@ -307,6 +319,7 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
   rental: [
     "product",
     "purchasing",
+    "payroll",
     "reservation",
     "promotion",
     "payments",
@@ -320,6 +333,7 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "kds",
     "inventory",
     "purchasing",
+    "payroll",
     "delivery",
     "promotion",
     "credit",

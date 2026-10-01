@@ -1,3 +1,4 @@
+import { cleanItemName } from "@/lib/pos/item-name";
 import PDFDocument from "pdfkit";
 import { prisma } from "@/lib/db";
 import type { $Enums } from "@prisma/client";
@@ -323,7 +324,7 @@ export async function generateTicketPdf(
         }
       }
       return {
-        title: [i.productName, i.variantName && i.variantName !== "Default" ? i.variantName : null].filter(Boolean).join(" · "),
+        title: [cleanItemName(i.productName, i.productType), i.variantName && i.variantName !== "Default" ? i.variantName : null].filter(Boolean).join(" · "),
         details,
         qty: `${Number(i.quantity)} x ${MXN(Number(i.unitPrice))}`,
         amount: MXN(Number(i.lineTotal ?? 0)),

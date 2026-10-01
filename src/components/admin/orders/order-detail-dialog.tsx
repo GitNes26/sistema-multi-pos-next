@@ -36,6 +36,7 @@ import { ORDER_STATUS_LABELS, ordersApi, type OrderDetail, type OrderStatusKey }
 import { cn } from "@/lib/utils";
 import { DeliveryConfirmDialog } from "./delivery-confirm-dialog";
 import { OrderPaymentDialog } from "./order-payment-dialog";
+import { DriverPanel } from "./driver-panel";
 import { OrderStatusPill } from "@/components/shared/order-status-pill";
 
 // Detalle del pedido, pensado para guiar: muestra el recorrido con la hora de
@@ -225,6 +226,9 @@ export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: 
         ) : (
           <>
             {/* Recorrido */}
+            {delivery && order.status !== "cancelled" && order.status !== "delivered" && (
+              <DriverPanel order={order} canAssign={canManage} onChanged={() => void load()} />
+            )}
             <section className="rounded-2xl border bg-card p-4">
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 <OrderStatusPill status={order.status} />

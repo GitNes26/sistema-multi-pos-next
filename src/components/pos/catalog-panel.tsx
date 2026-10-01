@@ -243,8 +243,12 @@ export function CatalogPanel({
             className={cn(
               "h-11 shrink-0 touch-manipulation rounded-full border px-4 text-sm font-medium transition-colors duration-200",
               activeCategory === (c.id || null)
-                ? "border-primary bg-primary text-primary-foreground shadow-e1"
-                : "border-border bg-card text-foreground/75 hover:bg-muted hover:text-foreground"
+                ? c.id === FAVORITES_CATEGORY_ID
+                  ? "border-warning bg-warning text-warning-foreground shadow-e1"
+                  : "border-primary bg-primary text-primary-foreground shadow-e1"
+                : c.id === FAVORITES_CATEGORY_ID
+                  ? "border-warning/60 bg-warning/15 font-semibold text-warning-ink hover:bg-warning/25"
+                  : "border-border bg-card text-foreground/75 hover:bg-muted hover:text-foreground"
             )}
           >
             {c.id === FAVORITES_CATEGORY_ID && <Star className="mr-1 inline-block size-3.5 fill-current align-[-2px]" />}
@@ -262,7 +266,7 @@ export function CatalogPanel({
             <span
               className={cn(
                 "ml-1.5 tabular opacity-60",
-                activeCategory === (c.id || null) && "text-primary-foreground"
+                activeCategory === (c.id || null) && (c.id === FAVORITES_CATEGORY_ID ? "text-warning-foreground" : "text-primary-foreground")
               )}
             >
               {c.productCount}

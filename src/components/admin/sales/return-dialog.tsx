@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { AlertTriangle, Hash, Loader2, MessageSquare, Minus, Plus, Search, Trash2, Undo2 } from "lucide-react"
+import { cleanItemName } from "@/lib/pos/item-name"
 import { InputGroupField } from "@/components/base/input-group-field"
 
 const RETURN_TYPES = [
@@ -322,22 +323,22 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
                     }
                   />
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <Label
                       htmlFor={`item-${item.id}`}
-                      className="flex items-center justify-between cursor-pointer"
+                      className="flex items-start justify-between gap-2 cursor-pointer"
                     >
-                      <div>
-                        <p className="text-sm font-medium truncate">
-                          {item.productName}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium break-words">
+                          {cleanItemName(item.productName, item.productType)}
                         </p>
                         {item.variantName && (
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground break-words">
                             {item.variantName}
                           </p>
                         )}
                       </div>
-                      <span className="text-sm font-medium tabular-nums">
+                      <span className="shrink-0 text-sm font-medium tabular-nums">
                         {money(Number(item.unitPrice))}
                       </span>
                     </Label>

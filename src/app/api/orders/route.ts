@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { listOrders, type OrderListFilters } from "@/lib/orders/server";
 import { ordersGuard, ordersErrorResponse } from "./guard";
 import { jsonResponse } from "@/lib/api-helpers";
+import { prisma } from "@/lib/db";
 
 // FASE 12.1 — Listado de pedidos con filtros (estado, método, sucursal, rango, búsqueda).
 
@@ -25,8 +26,11 @@ export async function GET(req: Request) {
   };
 
   try {
-    const data = await listOrders(guard.organizationId, filters);
-    return jsonResponse({ ok: true, ...data });
+    const [data, me] = await Promise.all([
+      listOrders(guard.organizationId, filters),
+      prisma.employee.findFirst({ where: { userId: guard.userId, organizationId: guard.organizationId }, select: { id: true } }),
+    ]);
+    return jsonResponse({ ok: true, ...data, myEmployeeId: me?.id ?? null });
   } catch (err) {
     return ordersErrorResponse(err);
   }

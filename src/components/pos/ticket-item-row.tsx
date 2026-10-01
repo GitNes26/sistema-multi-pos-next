@@ -40,6 +40,9 @@ export const TicketItemRow = memo(function TicketItemRow({
   const [flashing, setFlashing] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editing, setEditing] = useState(false);
+  // Toque en foto/descripción: muestra u oculta el texto completo.
+  const [expanded, setExpanded] = useState(false);
+  const toggle = () => setExpanded((v) => !v);
   const [draft, setDraft] = useState("");
   const isBulk = item.kind === "bulk";
 
@@ -80,6 +83,20 @@ export const TicketItemRow = memo(function TicketItemRow({
         }}
         className={cn("relative flex items-center gap-2 rounded-xl border bg-card py-1.5 pl-1.5 pr-2", flashing && "ticket-flash")}
       >
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-label={expanded ? `Contraer ${item.name}` : `Ver detalle completo de ${item.name}`}
+          onClick={toggle}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggle();
+            }
+          }}
+          className="flex min-w-0 flex-1 cursor-pointer items-start gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
         {item.imageUrl ? (
           <ThumbImage src={item.imageUrl} alt="" className="size-10 shrink-0 rounded-lg border object-cover" />
         ) : (
@@ -90,7 +107,7 @@ export const TicketItemRow = memo(function TicketItemRow({
 
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 text-sm font-semibold leading-tight">
-            <span className="line-clamp-2">{item.name}</span>
+            <span className={expanded ? "" : "line-clamp-2"}>{item.name}</span>
             {sent > 0 && (
               <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold tabular", sent >= item.qty ? "bg-success/10 text-success-ink" : "bg-warning/10 text-warning-ink")}>
                 <Check className="mr-0.5 inline size-3 align-[-1px]" strokeWidth={3} />
@@ -100,15 +117,15 @@ export const TicketItemRow = memo(function TicketItemRow({
           </p>
           {/* Tópicos y notas en una sola línea para no crecer la fila */}
           {item.selectedOptions && item.selectedOptions.length > 0 && (
-            <p className="truncate text-xs text-primary" title={item.selectedOptions.map((o) => `${o.optionName}: ${o.value}`).join(" · ")}>
+            <p className={cn("text-xs text-primary", !expanded && "truncate")}>
               {item.selectedOptions.map((o) => o.value).join(" · ")}
               {item.extraPrice ? <span className="font-medium"> +{money(item.extraPrice)}</span> : null}
             </p>
           )}
           {item.notes && (
-            <p className="flex items-center gap-1 truncate text-xs text-warning-ink">
-              <StickyNote className="size-3 shrink-0" />
-              <span className="truncate">{item.notes}</span>
+            <p className="flex items-start gap-1 text-xs text-warning-ink">
+              <StickyNote className="mt-0.5 size-3 shrink-0" />
+              <span className={expanded ? "" : "truncate"}>{item.notes}</span>
             </p>
           )}
           <p className="flex items-center gap-1 text-xs leading-tight text-muted-foreground tabular">
@@ -120,6 +137,7 @@ export const TicketItemRow = memo(function TicketItemRow({
               <>{money(item.unitPrice)} c/u</>
             )}
           </p>
+        </div>
         </div>
 
         {isBulk ? (

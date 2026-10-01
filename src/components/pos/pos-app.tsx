@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Printer } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -166,6 +167,7 @@ export function PosApp({
   const editItem = usePosStore((s) => s.editItem);
   const clearTicket = usePosStore((s) => s.clearTicket);
   const refresh = usePosRefresh();
+  const router = useRouter();
 
   // Layout sensible a la pantalla: en pantallas anchas el POS es de dos
   // columnas (catálogo | ticket). En vertical/estrecho (tablet en vertical,
@@ -439,7 +441,8 @@ export function PosApp({
               size="sm"
               className="text-xs text-muted-foreground"
               onClick={() => {
-                if (lastSale) window.open(`/admin/sales?q=${lastSale.sale.saleNumber}`, "_blank");
+                // Misma ventana (en la PWA un enlace nuevo abriría el navegador).
+                if (lastSale) router.push(`/admin/sales?q=${encodeURIComponent(lastSale.sale.saleNumber)}`);
               }}
             >
               Devolución

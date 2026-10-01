@@ -25,6 +25,7 @@ import {
   Car,
   Layers,
   RefreshCcw,
+  Wallet,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -57,6 +58,7 @@ const ACTION_ICONS: Record<WizardActionKind, LucideIcon> = {
   combos: Puzzle,
   inventory: Boxes,
   purchasing: Truck,
+  payroll: Wallet,
   tables: Armchair,
   kds: ChefHat,
   agenda: CalendarDays,
@@ -137,6 +139,7 @@ export function WizardLauncher({
   const canProduct = usePermission("products.manage")
   const canInventory = usePermission("inventory.manage")
   const canPurchasing = usePermission("purchasing.manage")
+  const canPayroll = usePermission("employees.manage")
   const canTables = usePermission("locations.view")
   const canKds = usePermission("orders.view")
   const canPromotion = usePermission("promotions.manage")
@@ -151,6 +154,8 @@ export function WizardLauncher({
         return canInventory
       case "purchasing":
         return canPurchasing
+      case "payroll":
+        return canPayroll
       case "tables":
         return canTables
       case "kds":

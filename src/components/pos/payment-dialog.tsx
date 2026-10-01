@@ -49,7 +49,8 @@ interface PaymentDialogProps {
   splitParts?: number | null
 }
 
-const METHODS: $Enums.PaymentMethod[] = ["cash", "card", "wallet", "credit", "other"]
+// «Monedero» (wallet) queda desactivado por ahora: se retoma al definir su flujo.
+const METHODS: $Enums.PaymentMethod[] = ["cash", "card", /* "wallet", */ "credit", "other"]
 
 const METHOD_ICONS: Partial<Record<$Enums.PaymentMethod, React.ReactNode>> = {
   cash: <Banknote className="size-5" />,

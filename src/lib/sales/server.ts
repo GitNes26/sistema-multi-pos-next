@@ -110,7 +110,8 @@ export async function listSales(
   }
 
   if (query.q) {
-    const term = query.q.trim();
+    // «#10» (folio con almohadilla) se busca como 10.
+    const term = query.q.trim().replace(/^#/, "");
     const ticket = parseTicketCode(term);
     if (ticket) {
       const ticketSale = await prisma.sale.findUnique({ where: { id: ticket.saleId }, include: { location: { select: { name: true } } } });

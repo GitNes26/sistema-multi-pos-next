@@ -49,10 +49,20 @@ export function VariantDialog({
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    // Cuadrícula de 3 columnas: ↑/↓ saltan una fila, ←/→ una tarjeta.
+    const last = Math.max(0, filtered.length - 1);
+    // Con texto en el buscador, ←/→ mueven el cursor.
+    const typing = e.target instanceof HTMLInputElement && e.target.value !== "";
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlighted((h) => Math.min(h + 1, Math.max(0, filtered.length - 1)));
+      setHighlighted((h) => Math.min(h + 3, last));
     } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlighted((h) => Math.max(h - 3, 0));
+    } else if (e.key === "ArrowRight" && !typing) {
+      e.preventDefault();
+      setHighlighted((h) => Math.min(h + 1, last));
+    } else if (e.key === "ArrowLeft" && !typing) {
       e.preventDefault();
       setHighlighted((h) => Math.max(h - 1, 0));
     } else if (e.key === "Enter") {
@@ -73,13 +83,13 @@ export function VariantDialog({
       icon={<Layers className="size-5 text-primary" />}
       title={product?.name}
       description="Elige una variante para agregar al ticket."
-      className="sm:max-w-md"
+      className="sm:max-w-2xl"
       bodyClassName="space-y-3"
       footerClassName="flex items-center justify-between gap-2"
       footer={
         <>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CornerDownLeft className="size-3.5" /> Enter para agregar · flechas para navegar
+            <CornerDownLeft className="size-3.5" /> Enter para agregar · flechas para moverte
           </p>
           <Button variant="outline" size="sm" onClick={onClose}>
             Cancelar
@@ -100,7 +110,7 @@ export function VariantDialog({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {filtered.map((v, i) => {
               const out = isOut(v);
               return (
@@ -111,14 +121,14 @@ export function VariantDialog({
                   onClick={() => pick(v)}
                   onMouseEnter={() => setHighlighted(i)}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition",
+                    "flex w-full min-w-0 flex-col items-start gap-2 rounded-xl border p-3 text-left transition",
                     out
                       ? "cursor-not-allowed opacity-50"
                       : "hover:bg-muted",
                     highlighted === i && "border-primary bg-muted ring-1 ring-primary"
                   )}
                 >
-                  <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/60">
+                  <span className="flex aspect-[4/3] w-full shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/60">
                     {v.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={v.imageUrl} alt={v.name} className="size-full object-cover" />
@@ -126,8 +136,8 @@ export function VariantDialog({
                       <Layers className="size-5 text-muted-foreground" />
                     )}
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
+                  <span className="min-w-0 w-full flex-1">
+                    <span className="line-clamp-2 text-sm font-medium">
                       {v.name === "Default" ? "Estándar" : v.name}
                     </span>
                     {out && (
@@ -136,7 +146,7 @@ export function VariantDialog({
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-sm font-bold tabular-nums">{money(v.price)}</span>
+                  <span className="shrink-0 text-base font-bold tabular-nums">{money(v.price)}</span>
                 </button>
               );
             })}

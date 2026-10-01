@@ -858,6 +858,8 @@ export interface PortalOrderDetail {
   paymentReference: string | null
   deliveryPin: string | null
   deliveryQrToken: string | null
+  /** Nombre de pila de quien reparte (cuando ya aceptó la entrega). */
+  driverName: string | null
   /** Destino del pedido a domicilio. */
   latitude: number | null
   longitude: number | null
@@ -897,6 +899,7 @@ export async function getPortalOrder(
     where: { id: orderId, organizationId, customerId },
     include: {
       location: { select: { name: true, latitude: true, longitude: true, phone: true } },
+      driver: { select: { fullName: true } },
       items: {
         include: { unit: { select: { name: true } } },
         orderBy: { createdAt: "asc" },
@@ -924,6 +927,7 @@ export async function getPortalOrder(
     locationName: order.location?.name ?? null,
     paymentMethod: order.paymentMethod,
     paymentReference: order.paymentReference,
+    driverName: order.driverAcceptedAt ? order.driver?.fullName.split(" ")[0] ?? null : null,
     deliveryPin:
       order.status === "at_destination" ||
       (order.status === "ready" && order.deliveryMethod === "pickup")

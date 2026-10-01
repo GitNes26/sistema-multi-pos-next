@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { notifyOrderEvent } from "@/lib/notifications/events";
 import { broadcastOrderStatus } from "@/lib/portal/live";
 import { broadcastKdsUpdate } from "@/lib/kds/live";
+import { persistNotification } from "@/lib/notifications/helpers";
 
 // FASE 12 — Servidor de pedidos (admin): listado, detalle, estados, preparación.
 
@@ -54,6 +55,10 @@ export interface OrderRow {
   itemsCount: number;
   total: number;
   createdAt: string;
+  /** Repartidor asignado (pedidos a domicilio). */
+  driverEmployeeId: string | null;
+  driverName: string | null;
+  driverAccepted: boolean;
 }
 
 export async function getOrderReportCounts(organizationId: string) {
@@ -98,6 +103,7 @@ export async function listOrders(
       include: {
         customer: { select: { fullName: true } },
         location: { select: { name: true } },
+        driver: { select: { fullName: true } },
         _count: { select: { items: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -119,6 +125,9 @@ export async function listOrders(
         itemsCount: o._count.items,
         total: toNum(o.total),
         createdAt: o.createdAt.toISOString(),
+        driverEmployeeId: o.driverEmployeeId,
+        driverName: o.driver?.fullName ?? null,
+        driverAccepted: o.driverAcceptedAt != null,
       })),
     total,
     counts,
@@ -155,6 +164,8 @@ export interface OrderDetail {
   paymentReference: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Repartidor: quien lleva el pedido a domicilio (null = sin asignar). */
+  driver: { employeeId: string; name: string; assignedAt: string | null; acceptedAt: string | null } | null;
   items: {
     id: string;
     productName: string;
@@ -182,6 +193,7 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
       customer: { select: { fullName: true, phone: true } },
       location: { select: { name: true } },
       table: { select: { number: true } },
+      driver: { select: { id: true, fullName: true } },
       items: {
         include: { unit: { select: { name: true } } },
         orderBy: { createdAt: "asc" },
@@ -218,6 +230,9 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
     paymentReference: order.paymentReference,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
+    driver: order.driver
+      ? { employeeId: order.driver.id, name: order.driver.fullName, assignedAt: order.driverAssignedAt?.toISOString() ?? null, acceptedAt: order.driverAcceptedAt?.toISOString() ?? null }
+      : null,
     items: order.items.map((i) => ({
       id: i.id,
       productName: i.productName,
@@ -270,6 +285,11 @@ export async function updateOrderStatus(
     const isValid = isValidTransition(current.status, status, current.deliveryMethod);
     if (!isValid) {
       throw new Error(`Transición inválida: ${current.status} → ${status}`);
+    }
+
+    // A domicilio: nadie sale sin un repartidor responsable (seguimiento del reparto).
+    if (status === "in_transit" && current.deliveryMethod === "delivery" && !current.driverEmployeeId) {
+      throw new Error("Asigna un repartidor (o acepta la entrega) antes de enviar el pedido");
     }
 
     // Para recoger en sucursal: generar PIN + QR al quedar listo el pedido.
@@ -667,6 +687,15 @@ export async function startDelivery(
   if (order.deliveryMethod !== "delivery") throw new Error("Este pedido no es a domicilio");
   if (order.status !== "ready") throw new Error("El pedido debe estar listo para iniciar entrega");
 
+  // Quien sale en camino sin asignación previa se queda como repartidor.
+  if (!order.driverEmployeeId) {
+    if (!ctx.employeeId) throw new Error("Asigna un repartidor antes de enviar el pedido");
+    await assignDriver(organizationId, id, ctx.employeeId, { ...ctx, accept: true });
+  } else if (order.driverEmployeeId !== ctx.employeeId && !order.driverAcceptedAt && ctx.employeeId) {
+    // Lo tenía otro sin aceptar: quien lo lleva ahora lo toma.
+    await assignDriver(organizationId, id, ctx.employeeId, { ...ctx, accept: true });
+  }
+
   await updateOrderStatus(organizationId, id, "in_transit", ctx, notes);
   return getOrderDetail(organizationId, id);
 }
@@ -1036,4 +1065,109 @@ async function recordOrderSaleSafe(organizationId: string, orderId: string, ctx:
   } catch (err) {
     console.error("[orders] no se pudo registrar la venta del pedido", orderId, err);
   }
+}
+
+// ── Reparto: asignación y aceptación ──────────────────────────────────────────
+
+export interface DriverOption {
+  employeeId: string;
+  name: string;
+  position: string | null;
+  /** Tiene el rol de repartidor (se ofrece primero). */
+  isCourier: boolean;
+  /** Pedidos a domicilio que lleva ahora. */
+  activeOrders: number;
+}
+
+/** Empleados que pueden repartir: los de rol Repartidor primero, luego cualquiera. */
+export async function listDriverOptions(organizationId: string): Promise<DriverOption[]> {
+  const [employees, courierMemberships, loads] = await Promise.all([
+    prisma.employee.findMany({
+      where: { organizationId, isActive: true },
+      select: { id: true, userId: true, fullName: true, position: { select: { name: true } } },
+      orderBy: { fullName: "asc" },
+    }),
+    prisma.membership.findMany({ where: { organizationId, roleId: "system-courier" }, select: { userId: true } }),
+    prisma.order.groupBy({
+      by: ["driverEmployeeId"],
+      where: { organizationId, driverEmployeeId: { not: null }, status: { in: ["ready", "in_transit", "at_destination"] } },
+      _count: { _all: true },
+    }),
+  ]);
+  const couriers = new Set(courierMemberships.map((m) => m.userId));
+  const load = new Map(loads.map((l) => [l.driverEmployeeId, l._count._all]));
+  return employees
+    .map((e) => ({
+      employeeId: e.id,
+      name: e.fullName,
+      position: e.position?.name ?? null,
+      isCourier: couriers.has(e.userId),
+      activeOrders: load.get(e.id) ?? 0,
+    }))
+    .sort((a, b) => Number(b.isCourier) - Number(a.isCourier) || a.activeOrders - b.activeOrders || a.name.localeCompare(b.name));
+}
+
+/**
+ * Asigna el pedido a un empleado (o lo toma quien lo lleva con `accept`).
+ * Queda en el historial y se avisa al repartidor asignado.
+ */
+export async function assignDriver(
+  organizationId: string,
+  id: string,
+  employeeId: string,
+  ctx: StatusCtx & { accept?: boolean }
+): Promise<OrderDetail | null> {
+  const [order, employee] = await Promise.all([
+    prisma.order.findFirst({ where: { id, organizationId }, select: { id: true, status: true, deliveryMethod: true, orderNumber: true, locationId: true } }),
+    prisma.employee.findFirst({ where: { id: employeeId, organizationId, isActive: true }, select: { id: true, userId: true, fullName: true } }),
+  ]);
+  if (!order) throw new Error("Pedido no encontrado");
+  if (!employee) throw new Error("El empleado no está disponible");
+  if (order.deliveryMethod !== "delivery") throw new Error("Solo los pedidos a domicilio llevan repartidor");
+  if (!["ready", "in_transit", "at_destination"].includes(order.status)) {
+    throw new Error("El repartidor se asigna cuando el pedido está listo o en camino");
+  }
+  const selfAssign = ctx.accept === true || ctx.employeeId === employee.id;
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.order.update({
+      where: { id },
+      data: { driverEmployeeId: employee.id, driverAssignedAt: now, driverAcceptedAt: selfAssign ? now : null },
+    }),
+    prisma.orderStatusHistory.create({
+      data: {
+        orderId: id,
+        status: order.status as $Enums.OrderStatus,
+        employeeId: ctx.employeeId ?? null,
+        userId: ctx.userId ?? null,
+        notes: selfAssign ? `${employee.fullName} tomó la entrega` : `Repartidor asignado: ${employee.fullName}`,
+      },
+    }),
+  ]);
+  if (!selfAssign) {
+    await persistNotification({
+      organizationId,
+      locationId: order.locationId,
+      kind: "info",
+      title: `Entrega asignada · Pedido #${Number(order.orderNumber)}`,
+      body: "Acéptala desde Entregas para salir en camino.",
+      severity: "info",
+      recipientUserId: employee.userId,
+      link: "/kds",
+      metadata: { orderId: id },
+    }).catch((err) => console.error("[orders] notificación de reparto:", err));
+  }
+  broadcastKdsUpdate(organizationId, { type: "order_updated", orderId: id, orderNumber: Number(order.orderNumber), status: order.status });
+  return getOrderDetail(organizationId, id);
+}
+
+/** El repartidor acepta la entrega que le asignaron (o toma una libre). */
+export async function acceptDelivery(organizationId: string, id: string, ctx: StatusCtx): Promise<OrderDetail | null> {
+  if (!ctx.employeeId) throw new Error("Tu usuario no tiene un empleado vinculado para repartir");
+  const order = await prisma.order.findFirst({ where: { id, organizationId }, select: { driverEmployeeId: true, driverAcceptedAt: true } });
+  if (!order) throw new Error("Pedido no encontrado");
+  if (order.driverEmployeeId && order.driverEmployeeId !== ctx.employeeId && order.driverAcceptedAt) {
+    throw new Error("Otro repartidor ya aceptó esta entrega");
+  }
+  return assignDriver(organizationId, id, ctx.employeeId, { ...ctx, accept: true });
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowRight, Minus, Package, Pencil, Plus, ShoppingBag, Trash2 } from "lucide-react"
+import { ArrowRight, Minus, Package, Pencil, Plus, ShoppingBag, StickyNote, Trash2 } from "lucide-react"
 import { ProductBuilder, selectedOptionsKey } from "@/components/pos/product-builder"
 import { portalApi } from "@/lib/portal/client"
 import { swalError, swalToast } from "@/lib/swal"
@@ -13,11 +13,14 @@ import { BottomSheet } from "@/components/portal/bottom-sheet"
 import { CartEmptyIllustration } from "@/components/shared/animated-illustrations"
 import { ThumbImage } from "@/components/base/thumb-image"
 import { haptic } from "@/lib/haptics"
+import { cn } from "@/lib/utils"
 
 function CartLine({ item, onEdit }: { item: PortalCartItem; onEdit?: () => void }) {
   const setQty = usePortalStore((s) => s.setQty)
   const removeItem = usePortalStore((s) => s.removeItem)
   const step = item.step > 0 ? item.step : 1
+  // Toque en la foto o la descripción: muestra el texto completo.
+  const [expanded, setExpanded] = useState(false)
   const change = (delta: number) => {
     haptic.light()
     setQty(item.key, snapToStep(Math.max(step, item.qty + delta), step))
@@ -25,20 +28,33 @@ function CartLine({ item, onEdit }: { item: PortalCartItem; onEdit?: () => void 
 
   return (
     <article className="grid grid-cols-[4rem_minmax(0,1fr)] gap-3 rounded-2xl border bg-card p-3">
-      <div className="size-16 overflow-hidden rounded-xl bg-surface-sunken">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-label={expanded ? `Contraer ${item.name}` : `Ver detalle completo de ${item.name}`}
+        onClick={() => setExpanded((v) => !v)}
+        className="size-16 self-start overflow-hidden rounded-xl bg-surface-sunken focus-visible:outline-2 focus-visible:outline-primary"
+      >
         {item.imageUrl ? <ThumbImage src={item.imageUrl} alt="" className="size-full object-cover" /> : <div className="flex size-full items-center justify-center"><Package className="size-6 text-muted-foreground" /></div>}
-      </div>
+      </button>
       <div className="min-w-0">
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-2 text-sm font-semibold leading-snug">{item.name}</h3>
+            <div role="button" tabIndex={0} aria-expanded={expanded} onClick={() => setExpanded((v) => !v)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded((v) => !v) } }} className="cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md">
+            <h3 className={expanded ? "text-sm font-semibold leading-snug" : "line-clamp-2 text-sm font-semibold leading-snug"}>{item.name}</h3>
             {((item.variantName && item.variantName !== "Default") || item.kind === "bulk") && <p className="mt-0.5 text-xs text-muted-foreground">{item.variantName && item.variantName !== "Default" ? item.variantName : `A granel · ${item.unitAbbrev}`}</p>}
             {item.selectedOptions?.length ? (
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+              <p className={cn("mt-0.5 text-xs text-primary", !expanded && "line-clamp-2")}>
                 {item.selectedOptions.flatMap((o) => o.values.map((v) => v.value)).join(", ")}
+                {item.extraPrice ? <span className="font-medium"> +{money(item.extraPrice)}</span> : null}
               </p>
             ) : null}
-            {item.comment && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.comment}</p>}
+            {item.comment && (
+              <p className={cn("mt-1 flex items-start gap-1 text-xs text-warning-ink", !expanded && "line-clamp-2")}>
+                <StickyNote className="mt-0.5 size-3 shrink-0" /> <span>{item.comment}</span>
+              </p>
+            )}
+            </div>
             {onEdit && (
               <button type="button" onClick={onEdit} className="mt-1 inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-primary hover:underline">
                 <Pencil className="size-3.5" /> Editar

@@ -377,7 +377,7 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
           {showMap && (
             <p className="mt-3 flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-2 text-xs">
               <Navigation className="size-4 text-primary" />
-              {driverLoc ? "Ubicación del repartidor en tiempo real" : "Esperando la señal del repartidor…"}
+              {order.driverName ? `${order.driverName} lleva tu pedido · ` : ""}{driverLoc ? "ubicación en tiempo real" : "esperando la señal del repartidor…"}
               {driverLoc && (
                 <span className="relative ml-auto flex size-2">
                   <span className="absolute inset-0 animate-ping rounded-full bg-success/60" />

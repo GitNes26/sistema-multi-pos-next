@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/providers";
 import { HttpErrorToast } from "@/components/api/http-error-toast";
 import { SplashScreen } from "@/components/shared/splash-screen"
+import { PwaLinkGuard } from "@/components/shared/pwa-link-guard"
 import { GuideProvider } from "@/components/shared/guide/guide-provider"
 
 const montserrat = localFont({
@@ -67,6 +68,7 @@ export default function RootLayout({
         />
         <Providers>
           <SplashScreen />
+          <PwaLinkGuard />
           <HttpErrorToast />
           {children}
           {/* La guía puede cruzar panel, POS, agenda, reservaciones, cocina y portal. */}

@@ -107,6 +107,9 @@ tests/                   unitarias, integración y E2E
 - Flujo base: `pending → confirmed → preparing → ready → in_transit/delivered`, con ramas por pickup/delivery y cancelación permitida según estado.
 - Un pedido que se cobra en tienda o concluye con pago debe crear o reutilizar una `Sale` vinculada. Esa venta genera folio con prefijo de pedido, ticket, pago/caja, movimientos, recetas, puntos y reportes.
 - La vinculación `Order.saleId` y la lógica de servidor evitan repetir efectos al cambiar nuevamente el estado.
+- Reparto a domicilio: un pedido no pasa a `in_transit` sin repartidor (`Order.driverEmployeeId`). Se asigna a cualquier empleado (los de rol Repartidor primero) desde el detalle del pedido, o lo toma/acepta quien lo lleva desde Entregas (KDS); queda en el historial y se avisa al asignado. El GPS del dispositivo solo se comparte para las entregas de su dueño y el cliente ve el nombre de pila de quien reparte.
+- Líneas de artículos (ticket POS, carrito y resumen del portal): el nombre no repite los tópicos (van en su propia leyenda) y tocar foto/descripción expande el texto cortado.
+- En la PWA instalada los enlaces internos con `target="_blank"` o `window.open` se abren en la misma ventana (`PwaLinkGuard`).
 
 ### Disponibilidad y comunicación
 

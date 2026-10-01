@@ -55,25 +55,27 @@ export function PayrollPage({ icon }: { icon?: React.ReactNode }) {
 
   return (
     <>
+      <div data-guide="payroll-header">
       <PageHeader
         icon={icon}
         title="Nómina"
         description="Calcula la paga de tu equipo por periodo: sueldo, horas extra, festivos, descansos, comisiones y propinas. Recibo impreso o por correo."
         actions={
-          <Button onClick={() => setCreating(true)} disabled={!data?.employees.length}>
+          <Button data-guide="payroll-new" onClick={() => setCreating(true)} disabled={!data?.employees.length}>
             <Plus className="size-4" /> Nueva nómina
           </Button>
         }
       />
+      </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="mb-3">
-          <TabsTrigger value="periods">Nóminas</TabsTrigger>
-          <TabsTrigger value="employees">
+          <TabsTrigger value="periods" data-guide="payroll-periods-tab">Nóminas</TabsTrigger>
+          <TabsTrigger value="employees" data-guide="payroll-employees-tab">
             Empleados y pago
             {unconfigured > 0 && <span className="ml-1.5 rounded-full bg-warning/20 px-1.5 text-xs text-warning-ink">{unconfigured}</span>}
           </TabsTrigger>
-          <TabsTrigger value="concepts">Percepciones y deducciones</TabsTrigger>
+          <TabsTrigger value="concepts" data-guide="payroll-concepts-tab">Percepciones y deducciones</TabsTrigger>
         </TabsList>
 
         <TabsContent value="periods">
@@ -175,7 +177,7 @@ export function PayrollPage({ icon }: { icon?: React.ReactNode }) {
                           {e.receivesTips ? " · Propinas" : ""}
                         </p>
                       </div>
-                      <Button variant={missing ? "default" : "outline"} size="sm" onClick={() => setEditing(e)}>
+                      <Button variant={missing ? "default" : "outline"} size="sm" data-guide="payroll-configure" onClick={() => setEditing(e)}>
                         <Settings2 className="size-4" /> Configurar
                       </Button>
                     </div>

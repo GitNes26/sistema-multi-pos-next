@@ -1215,6 +1215,74 @@ const purchasingGuide: GuideDef = {
   ],
 }
 
+// ── Guía: Nómina (de configurar el pago a entregar recibos) ──────────────────
+
+const payrollGuide: GuideDef = {
+  id: "payroll",
+  title: "Calcula tu primera nómina",
+  steps: [
+    {
+      route: "/admin/payroll",
+      selector: "[data-guide='payroll-header']",
+      title: "Nómina por periodo",
+      body: (
+        <p>
+          Aquí se calcula la paga del equipo: <strong>sueldo, horas extra, festivos, descansos, comisiones y propinas</strong>.
+          El flujo es: configurar cómo se paga a cada persona → crear la nómina del periodo → ajustar, cerrar y entregar recibos.
+        </p>
+      ),
+    },
+    {
+      route: "/admin/payroll",
+      selector: "[data-guide='payroll-employees-tab']",
+      title: "Primero, cómo se le paga a cada quien",
+      body: (
+        <p>
+          Abre <strong>Empleados y pago</strong>. Los empleados sin sueldo definido aparecen marcados con un número; sin eso no se puede calcular su nómina.
+        </p>
+      ),
+      advanceOnClick: true,
+    },
+    {
+      route: "/admin/payroll",
+      selector: "[data-guide='payroll-configure']",
+      title: "Configura el pago",
+      body: (
+        <p>
+          Con <strong>Configurar</strong> eliges el tipo de sueldo (mensual, por hora…), la frecuencia, el horario y los pagos especiales:
+          tarifa de horas extra, festivos, descanso, % de comisión sobre ventas y si recibe propinas.
+        </p>
+      ),
+    },
+    {
+      route: "/admin/payroll",
+      selector: "[data-guide='payroll-concepts-tab']",
+      title: "Percepciones y deducciones",
+      body: (
+        <p>
+          Define conceptos reutilizables (bonos, vales, préstamos, descuentos) para sumarlos o restarlos al capturar una nómina.
+        </p>
+      ),
+      advanceOnClick: true,
+    },
+    {
+      route: "/admin/payroll",
+      selector: "[data-guide='payroll-new']",
+      title: "Crea la nómina del periodo",
+      body: (
+        <p>
+          <strong>Nueva nómina</strong>: elige a quién incluir y las fechas del periodo. Se precargan días trabajados, ventas y propinas;
+          después puedes ajustar lo capturado, cerrar el periodo e imprimir o enviar los recibos.
+        </p>
+      ),
+      actions: [
+        { label: "Ver nómina", href: "/admin/payroll", primary: true },
+        { label: "Volver al panel", href: "/admin" },
+      ],
+    },
+  ],
+}
+
 export const GUIDES: Record<string, GuideDef> = {
   product: productGuide,
   combos: combosGuide,
@@ -1231,4 +1299,5 @@ export const GUIDES: Record<string, GuideDef> = {
   portal: portalGuide,
   "pos-food": posFoodGuide,
   purchasing: purchasingGuide,
+  payroll: payrollGuide,
 }

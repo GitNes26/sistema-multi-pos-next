@@ -860,13 +860,7 @@ export function CheckoutClient() {
             <div className="max-h-40 space-y-1 overflow-y-auto">
               {items.map((i) => (
                 <SwipeableRow key={i.key} onDelete={() => removeItem(i.key)}>
-                  <div className="flex justify-between py-1.5 text-sm">
-                    <span className="min-w-0 truncate pr-2">
-                      {i.qty}× {i.name}
-                      {i.variantName ? ` (${i.variantName})` : ""}
-                    </span>
-                    <span className="shrink-0 font-medium tabular-nums">{money(i.unitPrice * i.qty)}</span>
-                  </div>
+                  <SummaryLine item={i} />
                 </SwipeableRow>
               ))}
             </div>
@@ -968,6 +962,26 @@ export function CheckoutClient() {
         onGranted={() => setGeoPermissionOpen(false)}
         onDenied={() => setGeoPermissionOpen(false)}
       />
+    </div>
+  );
+}
+
+/** Línea del resumen: toca para ver el texto completo (tópicos y notas). */
+function SummaryLine({ item: i }: { item: ReturnType<typeof usePortalStore.getState>["items"][number] }) {
+  const [expanded, setExpanded] = useState(false);
+  const options = i.selectedOptions?.flatMap((o) => o.values.map((v) => v.value)).join(", ");
+  const variant = i.variantName && i.variantName !== "Default" ? i.variantName : null;
+  return (
+    <div className="flex items-start justify-between gap-2 py-1.5 text-sm">
+      <button type="button" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)} className="min-w-0 flex-1 text-left">
+        <span className={expanded ? "block" : "block truncate"}>
+          {i.qty}× {i.name}
+          {variant && !i.name.includes(variant) ? ` · ${variant}` : ""}
+        </span>
+        {options && <span className={cn("block text-xs text-primary", !expanded && "truncate")}>{options}{i.extraPrice ? ` +${money(i.extraPrice)}` : ""}</span>}
+        {i.comment && <span className={cn("block text-xs text-warning-ink", !expanded && "truncate")}>{i.comment}</span>}
+      </button>
+      <span className="shrink-0 font-medium tabular-nums">{money(i.unitPrice * i.qty)}</span>
     </div>
   );
 }
