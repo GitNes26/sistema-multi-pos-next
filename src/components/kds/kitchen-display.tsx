@@ -14,6 +14,7 @@ import {
   Flame,
   Loader2,
   MapPin,
+  ShoppingBag,
   StickyNote,
   Volume2,
   VolumeX,
@@ -36,8 +37,13 @@ interface KDSOrder {
   id: string;
   orderNumber: string | number;
   status: string;
+  /** «portal» (pedido) o «pos» (comanda de mesa / para llevar). */
+  source?: string;
+  serviceType?: string | null;
   createdAt: string;
   elapsedSeconds: number;
+  /** Reloj local (ms) desde el que corre el cronómetro de la tarjeta. */
+  startedAtMs?: number;
   table: {
     id: string;
     number: number;
@@ -81,6 +87,19 @@ interface UpcomingReservation {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
+/** Inicio del cronómetro: preparación iniciada o creación; con SSE, hoy menos lo transcurrido. */
+function withClock(order: KDSOrder): KDSOrder {
+  if (order.startedAtMs) return order;
+  const iso = order.preparation?.startedAt ?? order.createdAt;
+  const fromServer = iso ? new Date(iso).getTime() : NaN;
+  return { ...order, startedAtMs: Number.isFinite(fromServer) ? fromServer : Date.now() - (order.elapsedSeconds ?? 0) * 1000 };
+}
+
+/** ¿Se muestra en el tablero? Pedidos del portal solo mientras se preparan; comandas hasta servirse. */
+function isVisible(order: KDSOrder): boolean {
+  return order.status !== "ready" || order.source === "pos";
+}
+
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -97,10 +116,12 @@ function getOrderUrgency(seconds: number): "critical" | "warning" | "normal" {
 /*  OrderCard                                                          */
 /* ------------------------------------------------------------------ */
 
-function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void }) {
+function OrderCard({ order, now, onUpdate }: { order: KDSOrder; now: number; onUpdate: () => void }) {
   const [updating, setUpdating] = useState<string | null>(null);
 
-  const urgency = getOrderUrgency(order.elapsedSeconds);
+  // Cronómetro al segundo (se calcula con el reloj, no con el valor del servidor).
+  const elapsedSeconds = Math.max(0, Math.floor((now - (order.startedAtMs ?? now)) / 1000));
+  const urgency = getOrderUrgency(elapsedSeconds);
   const readyCount = order.items.filter((i) => i.itemStatus === "ready" || i.itemStatus === "served").length;
   const progress = order.items.length ? readyCount / order.items.length : 0;
   const URGENCY = {
@@ -149,6 +170,10 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
                 Mesa {order.table.number}
                 {order.table.name && <span className="font-normal text-muted-foreground">· {order.table.name}</span>}
               </p>
+            ) : order.source === "pos" && order.serviceType === "takeaway" ? (
+              <p className="mt-1.5 flex items-center gap-1.5 truncate text-base font-semibold">
+                <ShoppingBag className="size-4 shrink-0" /> Para llevar
+              </p>
             ) : order.location ? (
               <p className="mt-1.5 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
                 <MapPin className="size-3.5 shrink-0" /> {order.location.name}
@@ -158,7 +183,7 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
           <div className={cn("flex shrink-0 flex-col items-end rounded-xl px-2.5 py-1.5", URGENCY.chip)}>
             <span className="flex items-center gap-1 font-mono text-xl leading-none font-bold tabular">
               {urgency === "critical" ? <AlertTriangle className="size-4" /> : <Clock className="size-4" />}
-              {formatElapsed(order.elapsedSeconds)}
+              {formatElapsed(elapsedSeconds)}
             </span>
             <span className="mt-0.5 text-xs font-semibold opacity-90">{URGENCY.label}</span>
           </div>
@@ -285,7 +310,7 @@ function OrderCard({ order, onUpdate }: { order: KDSOrder; onUpdate: () => void 
             disabled={updating === "order"}
           >
             <BellRing className="size-5" />
-            Entregado
+            {order.source === "pos" ? (order.table ? "Servido en la mesa" : "Entregado al cliente") : "Entregado"}
           </Button>
         )}
       </footer>
@@ -308,6 +333,12 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
   const [stats, setStats] = useState<KDSStats | null>(null);
   const [upcomingReservations, setUpcomingReservations] = useState<UpcomingReservation[]>([]);
   const [loading, setLoading] = useState(true);
+  // Reloj de la pantalla: los cronómetros de todas las tarjetas avanzan cada segundo.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
   const [soundEnabled, setSoundEnabled] = useState(true);
   // Campana visual: banner efímero al confirmarse una reservación próxima.
   const [arrivalAlert, setArrivalAlert] = useState<{
@@ -344,7 +375,7 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
           playNotificationSound();
         }
         prevOrderCount.current = res.orders.length;
-        setOrders(res.orders);
+        setOrders((res.orders as KDSOrder[]).map(withClock));
         setStats(res.stats);
         setUpcomingReservations(res.upcomingReservations ?? []);
         markFresh();
@@ -386,6 +417,8 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
             orderId?: string;
             orderNumber?: string | number;
             status?: string;
+            source?: string;
+            serviceType?: string | null;
             items?: KDSOrder["items"];
             table?: KDSOrder["table"];
             elapsedSeconds?: number;
@@ -401,7 +434,7 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
               playNotificationSound();
             }
             prevOrderCount.current = data.orders.length;
-            setOrders(data.orders);
+            setOrders(data.orders.map(withClock));
             // Recalculate stats from orders
             setStats({
               pending: data.orders.filter((o: KDSOrder) => o.status === "pending").length,
@@ -445,24 +478,34 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
               if (data.type === "order_removed") {
                 next = prev.filter((o) => o.id !== data.orderId);
               } else {
-                const exists = prev.some((o) => o.id === data.orderId);
-                const updated: KDSOrder = {
+                const current = prev.find((o) => o.id === data.orderId);
+                const exists = Boolean(current);
+                // Se combina con lo que ya hay: el evento no trae tópicos, notas ni la hora de inicio.
+                const known = new Map((current?.items ?? []).map((i) => [i.id, i]));
+                const updated: KDSOrder = withClock({
                   id: data.orderId!,
-                  orderNumber: data.orderNumber ?? "",
-                  status: data.status ?? "pending",
-                  createdAt: new Date().toISOString(),
-                  elapsedSeconds: data.elapsedSeconds ?? 0,
-                  table: data.table ?? null,
-                  location: null,
-                  items: (data.items ?? []).map((i) => ({
-                    ...i,
-                    selectedOptions: null,
-                    comment: null,
-                  })),
-                  preparation: null,
-                };
+                  orderNumber: data.orderNumber ?? current?.orderNumber ?? "",
+                  status: data.status ?? current?.status ?? "pending",
+                  source: data.source ?? current?.source,
+                  serviceType: data.serviceType ?? current?.serviceType,
+                  createdAt: current?.createdAt ?? new Date().toISOString(),
+                  elapsedSeconds: data.elapsedSeconds ?? current?.elapsedSeconds ?? 0,
+                  startedAtMs: current?.startedAtMs,
+                  table: data.table ?? current?.table ?? null,
+                  location: current?.location ?? null,
+                  items: data.items
+                    ? data.items.map((i) => ({
+                        ...i,
+                        selectedOptions: known.get(i.id)?.selectedOptions ?? null,
+                        comment: known.get(i.id)?.comment ?? null,
+                      }))
+                    : current?.items ?? [],
+                  preparation: current?.preparation ?? null,
+                });
                 if (exists) {
                   next = prev.map((o) => (o.id === data.orderId ? updated : o));
+                } else if (!isVisible(updated)) {
+                  next = prev;
                 } else {
                   next = [...prev, updated];
                   // Play sound for new orders
@@ -644,8 +687,8 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] items-start gap-4">
-          {orders.map((order) => (
-            <OrderCard key={order.id} order={order} onUpdate={load} />
+          {orders.filter(isVisible).map((order) => (
+            <OrderCard key={order.id} order={order} now={now} onUpdate={load} />
           ))}
         </div>
       )}

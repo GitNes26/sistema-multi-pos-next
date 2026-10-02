@@ -95,6 +95,7 @@ async function nominatimSearch(query: string): Promise<Array<{ description: stri
       format: "json",
       addressdetails: "1",
       limit: "5",
+      countrycodes: "mx",
     })
     const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
       headers: { Accept: "application/json" },

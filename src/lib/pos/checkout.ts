@@ -70,7 +70,14 @@ export function buildSalePayload(
     cashRegisterId: state.registerId || undefined,
     couponCode: state.coupon.status === "applied" ? state.coupon.result?.code : undefined,
     nextPurchaseCoupon: totals.nextPurchaseCoupon ?? undefined,
-    tableId: state.selectedTable?.id,
+    tableId: state.serviceType === "takeaway" ? undefined : state.selectedTable?.id,
+    kitchenOrderId: state.serviceType === "takeaway" ? state.kitchenOrderId ?? undefined : undefined,
+    tableLabel:
+      state.serviceType === "takeaway" && state.kitchenOrderId
+        ? "Para llevar"
+        : state.selectedTable && state.serviceType !== "takeaway"
+          ? state.selectedTable.name?.trim() || `Mesa ${state.selectedTable.number}`
+          : undefined,
     tip: tip > 0 ? tip : undefined,
   };
 }

@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.31.0.0] — 2026-10-02
+- **Tipo:** `feat` (Minor)
+- feat: mapa de seguimiento contenido con ruta restante y boton de centrar al repartidor, PIN y QR visibles en modo oscuro, direccion de entrega con autocompletado, mi ubicacion, destinos guardados y mapa a pantalla completa con pin; mesa manual en el ticket; comandas separadas de pedidos (comer aqui o para llevar), cuenta abierta por mesa que se recarga y se cobra al final, comandas listas que permanecen en cocina hasta servirse y cronometros de cocina al segundo
+
 ### [0.30.0.0] — 2026-10-01
 - **Tipo:** `feat` (Minor)
 - feat: lineas de articulos expandibles y sin topicos en el nombre (ticket POS, carrito y resumen del portal, tickets y ventas), variantes del POS en cuadricula, Favoritos resaltado, Monedero oculto en cobro personalizado, propina y total pagado en el ticket, PWA que abre los enlaces internos en la misma ventana y busqueda de ventas desde el enlace, texto largo contenido en devoluciones, guia paso a paso de nomina y asignacion/aceptacion de repartidor con seguimiento en pedidos a domicilio

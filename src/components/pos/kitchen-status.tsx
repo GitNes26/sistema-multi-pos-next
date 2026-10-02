@@ -31,6 +31,7 @@ const STATUS_META: Record<string, { label: string; badge: string }> = {
   pending: { label: "Pendiente", badge: "bg-muted-foreground/15 text-muted-foreground" },
   confirmed: { label: "Enviada", badge: "bg-info/15 text-info-ink" },
   preparing: { label: "En preparación", badge: "bg-warning/15 text-warning-ink" },
+  ready: { label: "Lista · pendiente de cobro", badge: "bg-success/15 text-success-ink" },
 }
 
 const ITEM_STATUS_LABELS: Record<string, string> = {
@@ -48,11 +49,14 @@ function elapsed(from: string, now: number): string {
 
 export function KitchenStatus({
   tableId,
+  /** Comanda para llevar (sin mesa). */
+  orderId,
   /** Cambia al enviar a cocina (lastSent) para refrescar de inmediato. */
   refreshKey,
   onKitchenOrderCancelled,
 }: {
   tableId: string | null
+  orderId?: string | null
   refreshKey?: number
   /** Llamado al cancelar la orden: el ticket vuelve a "sin enviar". */
   onKitchenOrderCancelled?: () => void
@@ -63,13 +67,14 @@ export function KitchenStatus({
   const [tick, setTick] = useState(() => Date.now())
 
   const load = useCallback(async () => {
-    if (!tableId || tableId.startsWith("manual-")) {
+    const realTable = tableId && !tableId.startsWith("manual-") ? tableId : null
+    if (!realTable && !orderId) {
       setOrder(null)
       return
     }
     setLoading(true)
     try {
-      const res = await fetch(`/api/pos/kitchen?tableId=${tableId}`, { cache: "no-store" })
+      const res = await fetch(`/api/pos/kitchen?${realTable ? `tableId=${realTable}` : `orderId=${orderId}`}`, { cache: "no-store" })
       const data = await res.json().catch(() => ({}))
       if (data.ok) {
         setOrder(data.order ?? null)
@@ -80,7 +85,7 @@ export function KitchenStatus({
     } finally {
       setLoading(false)
     }
-  }, [tableId])
+  }, [tableId, orderId])
 
   useEffect(() => {
     void load()
@@ -94,7 +99,7 @@ export function KitchenStatus({
     return () => clearInterval(timer)
   }, [load])
 
-  if (!tableId || tableId.startsWith("manual-")) return null
+  if ((!tableId || tableId.startsWith("manual-")) && !orderId) return null
 
   const cancelOrder = async () => {
     if (!order || cancelling) return

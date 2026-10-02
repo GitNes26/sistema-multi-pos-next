@@ -622,7 +622,8 @@ export async function getRecentOrders(
   locationId: string
 ): Promise<PosOrder[]> {
   const orders = await prisma.order.findMany({
-    where: { organizationId, locationId },
+    // Pedidos del portal; las comandas de mesa / para llevar no son pedidos.
+    where: { organizationId, locationId, source: "portal" },
     include: {
       customer: { select: { fullName: true } },
       items: { select: { id: true } },
@@ -1132,6 +1133,7 @@ export async function createSale(
         changeGiven: payload.changeGiven,
         status: "completed",
         notes: payload.notes,
+        tableLabel: payload.tableLabel?.trim().slice(0, 80) || null,
       },
     })
 
@@ -1464,6 +1466,9 @@ export async function createSale(
         employeeId: ctx.employeeId,
       }
     )
+  } else if (payload.kitchenOrderId) {
+    // Comanda para llevar (sin mesa): se cierra por su id al cobrar.
+    await closeKitchenOrderOnSale(organizationId, null, result.sale.id, { userId: ctx.userId, employeeId: ctx.employeeId }, payload.kitchenOrderId)
   }
 
   // Notificar venta completada por SSE (11.6) — fuera de la transacción.

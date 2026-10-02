@@ -14,6 +14,9 @@ export interface KdsUpdatePayload {
   orderId?: string;
   orderNumber?: string | number;
   status?: string;
+  /** «portal» (pedido) o «pos» (comanda de mesa / para llevar). */
+  source?: string;
+  serviceType?: string | null;
   locationId?: string | null;
   table?: { id: string; number: number; name: string | null } | null;
   elapsedSeconds?: number;

@@ -30,6 +30,7 @@ import { TicketItemRow } from "./ticket-item-row"
 import { SPRING_LAYOUT } from "@/lib/animation-tokens"
 import { TableSelector } from "./table-selector"
 import { KitchenStatus } from "./kitchen-status"
+import { rebuildKitchenLines } from "@/lib/pos/kitchen-ticket"
 
 interface TicketPanelProps {
   onEditBulk: (item: PosLineItem) => void
@@ -57,6 +58,13 @@ export function TicketPanel({
   const setTable = usePosStore((s) => s.setTable)
   const markSent = usePosStore((s) => s.markSent)
   const resetSent = usePosStore((s) => s.resetSent)
+  const serviceType = usePosStore((s) => s.serviceType)
+  const setServiceType = usePosStore((s) => s.setServiceType)
+  const kitchenOrderId = usePosStore((s) => s.kitchenOrderId)
+  const setKitchenOrderId = usePosStore((s) => s.setKitchenOrderId)
+  const prependSentLines = usePosStore((s) => s.prependSentLines)
+  const takeaway = serviceType === "takeaway"
+  const canSend = takeaway || (selectedTable != null && !selectedTable.id.startsWith("manual-"))
 
   // Enviar a cocina: líneas del ticket aún no enviadas (qty > sentQty).
   const unsentLines = items.filter((i) => i.qty > (i.sentQty ?? 0))
@@ -101,8 +109,26 @@ export function TicketPanel({
   const [tableDialogOpen, setTableDialogOpen] = useState(false)
   const [releasingTable, setReleasingTable] = useState(false)
 
+  /** Cuenta abierta: al elegir una mesa con comanda sin cobrar se carga lo que ya lleva pedido. */
+  const loadOpenTab = async (tableId: string) => {
+    if (tableId.startsWith("manual-")) return
+    const state = usePosStore.getState()
+    if (state.items.some((i) => (i.sentQty ?? 0) > 0)) return // ya está cargada
+    try {
+      const res = await fetch(`/api/pos/kitchen?tableId=${tableId}&full=1`, { cache: "no-store" })
+      const data = await res.json().catch(() => ({}))
+      if (!data.ok || !data.order) return
+      const lines = rebuildKitchenLines(data.order.items, usePosStore.getState().products)
+      if (lines.length === 0) return
+      prependSentLines(lines)
+      swalToast(`Cuenta abierta de la mesa cargada (${lines.length} ${lines.length === 1 ? "artículo" : "artículos"})`, "info")
+    } catch {
+      /* sin conexión: la mesa queda como nueva */
+    }
+  }
+
   const sendToKitchen = async () => {
-    if (!selectedTable || sendingKitchen || unsentLines.length === 0) return
+    if (!canSend || sendingKitchen || unsentLines.length === 0) return
     setSendingKitchen(true)
     setKitchenError(null)
     try {
@@ -111,7 +137,9 @@ export function TicketPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tableId: selectedTable.id,
+          tableId: takeaway ? null : selectedTable?.id,
+          serviceType,
+          orderId: takeaway ? kitchenOrderId : null,
           locationId,
           customerId,
           items: unsentLines.map((i) => ({
@@ -134,6 +162,7 @@ export function TicketPanel({
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo enviar a cocina")
       unsentLines.forEach((i) => markSent(i.key, i.qty))
+      if (takeaway && data.orderId) setKitchenOrderId(data.orderId)
       setLastSent({ orderNumber: data.orderNumber, at: Date.now() })
     } catch (err) {
       setKitchenError(
@@ -342,19 +371,41 @@ export function TicketPanel({
             <TableSelector
               open={tableDialogOpen}
               onClose={() => setTableDialogOpen(false)}
-              onSelect={(t) => setTable(t)}
+              onSelect={(t) => {
+                setTable(t)
+                void loadOpenTab(t.id)
+              }}
             />
+
+            {/* Comer aquí / Para llevar */}
+            <div role="radiogroup" aria-label="Tipo de servicio" className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
+              {([["dine_in", "Comer aquí"], ["takeaway", "Para llevar"]] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={serviceType === value}
+                  onClick={() => setServiceType(value)}
+                  className={cn(
+                    "h-10 rounded-lg text-sm font-semibold transition",
+                    serviceType === value ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
             {/* Cocina: orden abierta de la mesa + estado KDS en vivo + cancelar */}
             <KitchenStatus
-              tableId={selectedTable && !selectedTable.id.startsWith("manual-") ? selectedTable.id : null}
+              tableId={!takeaway && selectedTable && !selectedTable.id.startsWith("manual-") ? selectedTable.id : null}
+              orderId={takeaway ? kitchenOrderId : null}
               refreshKey={lastSent?.at ?? 0}
               onKitchenOrderCancelled={resetSent}
             />
 
             {/* Enviar a cocina (solo mesas reales del mapa) */}
-            {selectedTable &&
-              !selectedTable.id.startsWith("manual-") &&
+            {canSend &&
               (anySent || unsentLines.length > 0) && (
                 <div className="space-y-1.5">
                   {unsentLines.length > 0 ? (
@@ -438,7 +489,7 @@ export function TicketPanel({
             <span className="hidden min-[400px]:inline">Desc.</span>
           </Button>
 
-          {features.tables && (
+          {features.tables && !takeaway && (
             <div className="flex shrink-0 items-stretch">
               <Button
                 variant={selectedTable ? "default" : "outline"}

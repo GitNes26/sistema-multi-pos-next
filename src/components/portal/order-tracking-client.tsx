@@ -259,9 +259,8 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
       {/* ── Héroe: mapa en vivo o ilustración ─────────────────────────── */}
       <div className="relative">
         {showMap ? (
-          <div className="relative">
-            <DeliveryTrackingMap driver={driverLoc} destination={destination} origin={origin} height="52dvh" labels={{ destination: "Tu dirección" }} />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
+          <div className="relative px-3 pt-3">
+            <DeliveryTrackingMap driver={driverLoc} destination={destination} origin={origin} height="52dvh" labels={{ destination: "Tu dirección" }} interactive />
           </div>
         ) : (
           <div

@@ -1500,6 +1500,8 @@ model Sale {
   tip                Decimal    @default(0) @db.Decimal(12, 2)
   status             SaleStatus @default(completed)
   notes              String?
+  /// Mesa donde se consumió («Mesa 5»); también las mesas escritas a mano.
+  tableLabel         String?    @db.VarChar(80)
   createdAt          DateTime   @default(now())
 
   organization        Organization         @relation(fields: [organizationId], references: [id])
@@ -1758,6 +1760,13 @@ model Order {
   deliveryQrToken  String?        @unique
   // FASE — cobro en tienda (cuando el cliente paga al recoger/recibir)
   paidAt           DateTime?
+  // Origen: «portal» = pedido del cliente; «pos» = comanda levantada en caja/mesa.
+  // Las comandas van a cocina pero no aparecen en Pedidos.
+  source           String         @default("portal") @db.VarChar(12)
+  /// Comanda del POS: «dine_in» (comer aquí) o «takeaway» (para llevar).
+  serviceType      String?        @db.VarChar(12)
+  /// Cocina ya entregó/sirvió la comanda (sigue abierta hasta cobrarse).
+  kitchenDoneAt    DateTime?
   // Reparto: quién lleva el pedido a domicilio y cuándo lo asignaron/aceptó.
   driverEmployeeId String?
   driverAssignedAt DateTime?
@@ -1782,6 +1791,7 @@ model Order {
 
   @@unique([organizationId, customerId, idempotencyKey])
   @@index([promotionId])
+  @@index([organizationId, source, status])
   @@map("orders")
 }
 

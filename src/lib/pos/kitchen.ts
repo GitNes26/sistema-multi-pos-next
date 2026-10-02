@@ -46,7 +46,12 @@ export interface KitchenLineInput {
 }
 
 export interface SendToKitchenInput {
-  tableId: string;
+  /** Mesa (comer aquí). Sin mesa = para llevar. */
+  tableId?: string | null;
+  /** «dine_in» (comer aquí) o «takeaway» (para llevar). */
+  serviceType?: "dine_in" | "takeaway";
+  /** Comanda para llevar ya abierta, para ampliarla. */
+  orderId?: string | null;
   customerId?: string | null;
   items: KitchenLineInput[];
 }
@@ -75,8 +80,9 @@ export async function sendTicketToKitchen(
   input: SendToKitchenInput,
   ctx: KitchenCtx
 ): Promise<SendToKitchenResult> {
-  if (!input.tableId || input.tableId.startsWith("manual-")) {
-    throw new KitchenError("Selecciona una mesa del mapa para enviar a cocina");
+  const serviceType = input.serviceType === "takeaway" ? "takeaway" : "dine_in";
+  if (serviceType === "dine_in" && (!input.tableId || input.tableId.startsWith("manual-"))) {
+    throw new KitchenError("Selecciona una mesa del mapa para enviar a cocina, o marca «Para llevar»");
   }
   if (!input.items.length) {
     throw new KitchenError("El ticket no tiene artículos para enviar a cocina");
@@ -102,18 +108,22 @@ export async function sendTicketToKitchen(
   const total = subtotal;
 
   const result = await prisma.$transaction(async (tx) => {
-    const table = await tx.table.findFirst({
-      where: { id: input.tableId, organizationId },
-      select: { id: true, number: true, name: true, status: true },
-    });
-    if (!table) throw new KitchenError("Mesa no encontrada", 404);
+    const table =
+      serviceType === "dine_in"
+        ? await tx.table.findFirst({
+            where: { id: input.tableId!, organizationId },
+            select: { id: true, number: true, name: true, status: true },
+          })
+        : null;
+    if (serviceType === "dine_in" && !table) throw new KitchenError("Mesa no encontrada", 404);
 
+    // La comanda sigue abierta (aunque cocina ya la sirviera) hasta que se cobra.
     const openOrder = await tx.order.findFirst({
       where: {
         organizationId,
-        tableId: table.id,
+        ...(table ? { tableId: table.id } : { id: input.orderId ?? "__none__", tableId: null }),
         deliveryMethod: "pickup",
-        status: { in: OPEN_KITCHEN_STATUSES },
+        status: { in: [...OPEN_KITCHEN_STATUSES, "ready"] },
         saleId: null,
       },
       orderBy: { createdAt: "desc" },
@@ -156,7 +166,9 @@ export async function sendTicketToKitchen(
         data: {
           organizationId,
           locationId,
-          tableId: table.id,
+          tableId: table?.id ?? null,
+          source: "pos",
+          serviceType,
           customerId: input.customerId ?? null,
           status: "pending",
           deliveryMethod: "pickup",
@@ -227,6 +239,11 @@ export async function sendTicketToKitchen(
       data: itemRows.map((r) => ({ preparationId: prep!.id, orderItemId: r.id })),
     });
 
+    // Nueva ronda en una comanda ya lista/servida: vuelve a cocina.
+    if (openOrder.status === "ready") {
+      await tx.order.update({ where: { id: openOrder.id }, data: { status: "preparing", kitchenDoneAt: null } });
+      await history(openOrder.id, "preparing", "Nueva ronda enviada a cocina desde POS");
+    }
     // Asegurar el estado de cocción (rondas previas pudieron dejarla pendiente).
     if (openOrder.status === "pending" || openOrder.status === "confirmed") {
       await tx.order.update({ where: { id: openOrder.id }, data: { status: "preparing" } });
@@ -254,6 +271,8 @@ export async function sendTicketToKitchen(
   if (fresh) {
     broadcastKdsUpdate(organizationId, {
       type: result.createdOrder ? "order_new" : "order_updated",
+      source: "pos",
+      serviceType: fresh.serviceType,
       orderId: fresh.id,
       orderNumber: Number(fresh.orderNumber),
       status: result.status,
@@ -272,7 +291,7 @@ export async function sendTicketToKitchen(
       id: fresh.id,
       orderNumber: Number(fresh.orderNumber),
       status: "preparing",
-      customerName: fresh.table ? `Mesa ${fresh.table.number}` : null,
+      customerName: fresh.table ? `Mesa ${fresh.table.number}` : "Para llevar",
       total: toNum(fresh.total),
     });
   }
@@ -352,14 +371,17 @@ export async function cancelKitchenOrder(
  */
 export async function closeKitchenOrderOnSale(
   organizationId: string,
-  tableId: string,
+  tableId: string | null,
   saleId: string,
-  ctx: KitchenCtx
+  ctx: KitchenCtx,
+  /** Comanda para llevar (sin mesa): se cierra por su id. */
+  orderId?: string | null
 ): Promise<{ orderId: string; orderNumber: number } | null> {
+  if (!tableId && !orderId) return null;
   const order = await prisma.order.findFirst({
     where: {
       organizationId,
-      tableId,
+      ...(tableId ? { tableId } : { id: orderId!, tableId: null }),
       deliveryMethod: "pickup",
       status: { in: [...OPEN_KITCHEN_STATUSES, "ready"] },
       saleId: null,

@@ -37,6 +37,10 @@ interface PosState extends PosCatalog {
   items: PosLineItem[]
   customerId: string | null
   selectedTable: { id: string; number: number; name?: string | null } | null
+  /** Comer aquí (con mesa) o para llevar; aplica a negocios con mesas/cocina. */
+  serviceType: "dine_in" | "takeaway"
+  /** Comanda para llevar ya enviada a cocina (se amplía y se cierra al cobrar). */
+  kitchenOrderId: string | null
   manualDiscount: { kind: "percent" | "amount"; value: number } | null
   coupon: {
     status: CouponStatus
@@ -81,6 +85,10 @@ interface PosState extends PosCatalog {
     table: { id: string; number: number; name?: string | null } | null
   ) => void
   /** Registra la cantidad de una línea que ya se envió a cocina. */
+  setServiceType: (type: "dine_in" | "takeaway") => void
+  setKitchenOrderId: (id: string | null) => void
+  /** Carga al inicio del ticket las líneas de la cuenta abierta de una mesa (ya enviadas a cocina). */
+  prependSentLines: (lines: PosLineItem[]) => void
   markSent: (key: string, qty: number) => void
   /** Devuelve el ticket a "sin enviar" (pull-back de la orden de cocina). */
   resetSent: () => void
@@ -149,6 +157,8 @@ export const usePosStore = create<PosState>()((set, get) => ({
   items: [],
   customerId: null,
   selectedTable: null,
+  serviceType: "dine_in",
+  kitchenOrderId: null,
   manualDiscount: null,
   coupon: { status: "none", code: "", result: null },
   pointsRedeemed: 0,
@@ -299,6 +309,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
       items: [],
       customerId: null,
       selectedTable: null,
+      kitchenOrderId: null,
       manualDiscount: null,
       coupon: { status: "none", code: "", result: null },
       pointsRedeemed: 0,
@@ -306,6 +317,9 @@ export const usePosStore = create<PosState>()((set, get) => ({
 
   setCustomer: (customerId) => set({ customerId }),
   setTable: (table) => set({ selectedTable: table }),
+  setServiceType: (serviceType) => set({ serviceType, ...(serviceType === "takeaway" ? {} : { kitchenOrderId: null }) }),
+  setKitchenOrderId: (kitchenOrderId) => set({ kitchenOrderId }),
+  prependSentLines: (lines) => set((s) => ({ items: [...lines, ...s.items] })),
   markSent: (key, qty) =>
     set((s) => ({
       items: s.items.map((i) =>

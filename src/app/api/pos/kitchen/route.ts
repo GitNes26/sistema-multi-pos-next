@@ -17,7 +17,7 @@ import { requirePosSession, resolveLocationId, getCashierContext } from "../help
 export const dynamic = "force-dynamic";
 
 /** Estados de una orden de cocina abierta (espejo de lib/pos/kitchen). */
-const OPEN_KITCHEN_STATUSES: $Enums.OrderStatus[] = ["pending", "confirmed", "preparing"];
+const OPEN_KITCHEN_STATUSES: $Enums.OrderStatus[] = ["pending", "confirmed", "preparing", "ready"];
 
 /**
  * GET /api/pos/kitchen?tableId=xxx — Orden de cocina abierta de la mesa
@@ -30,16 +30,19 @@ export async function GET(req: Request) {
   if ("response" in guard) return guard.response;
   const organizationId = effectiveOrgId(guard.session)!;
 
-  const tableId = new URL(req.url).searchParams.get("tableId");
-  if (!tableId) {
-    return NextResponse.json({ ok: false, error: "Falta tableId" }, { status: 400 });
+  const sp = new URL(req.url).searchParams;
+  const tableId = sp.get("tableId");
+  const orderId = sp.get("orderId");
+  const full = sp.get("full") === "1";
+  if (!tableId && !orderId) {
+    return NextResponse.json({ ok: false, error: "Falta tableId u orderId" }, { status: 400 });
   }
 
   try {
     const order = await prisma.order.findFirst({
       where: {
         organizationId,
-        tableId,
+        ...(tableId ? { tableId } : { id: orderId! }),
         deliveryMethod: "pickup",
         status: { in: OPEN_KITCHEN_STATUSES },
         saleId: null,
@@ -49,9 +52,24 @@ export async function GET(req: Request) {
         id: true,
         orderNumber: true,
         status: true,
+        serviceType: true,
         createdAt: true,
         items: {
-          select: { id: true, productName: true, variantName: true, quantity: true, itemStatus: true },
+          select: {
+            id: true,
+            productId: true,
+            variantId: true,
+            productName: true,
+            variantName: true,
+            quantity: true,
+            itemStatus: true,
+            unitPrice: true,
+            unitId: true,
+            comment: true,
+            selectedOptions: true,
+            extraPrice: true,
+            bulkQuantityDisplay: true,
+          },
           orderBy: { createdAt: "asc" },
         },
       },
@@ -63,6 +81,7 @@ export async function GET(req: Request) {
         id: order.id,
         orderNumber: Number(order.orderNumber),
         status: order.status,
+        serviceType: order.serviceType,
         createdAt: order.createdAt.toISOString(),
         items: order.items.map((i) => ({
           id: i.id,
@@ -70,6 +89,18 @@ export async function GET(req: Request) {
           variantName: i.variantName,
           quantity: Number(i.quantity),
           itemStatus: i.itemStatus,
+          ...(full
+            ? {
+                productId: i.productId,
+                variantId: i.variantId,
+                unitPrice: Number(i.unitPrice),
+                unitId: i.unitId,
+                comment: i.comment,
+                selectedOptions: i.selectedOptions,
+                extraPrice: Number(i.extraPrice ?? 0),
+                bulkQuantityDisplay: i.bulkQuantityDisplay,
+              }
+            : {}),
         })),
       },
     });
@@ -128,16 +159,15 @@ export async function POST(req: Request) {
   try {
     assertPermission(session, "orders.manage");
     const body = (await req.json()) as {
-      tableId?: string;
+      tableId?: string | null;
+      serviceType?: "dine_in" | "takeaway";
+      orderId?: string | null;
       locationId?: string;
       customerId?: string | null;
       items?: KitchenLineInput[];
     };
-    if (!body.tableId || !Array.isArray(body.items) || body.items.length === 0) {
-      return NextResponse.json(
-        { ok: false, error: "Faltan datos: mesa y artículos a enviar" },
-        { status: 400 }
-      );
+    if (!Array.isArray(body.items) || body.items.length === 0) {
+      return NextResponse.json({ ok: false, error: "Faltan los artículos a enviar" }, { status: 400 });
     }
     const locationId = await resolveLocationId(organizationId, body.locationId);
     const { employeeId } = await getCashierContext(session.user.id, organizationId);
@@ -146,7 +176,9 @@ export async function POST(req: Request) {
       organizationId,
       locationId,
       {
-        tableId: body.tableId,
+        tableId: body.tableId ?? null,
+        serviceType: body.serviceType,
+        orderId: body.orderId ?? null,
         customerId: body.customerId ?? null,
         items: body.items,
       },

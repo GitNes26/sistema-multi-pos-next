@@ -72,6 +72,7 @@ export function Receipt({
         <p className="mt-1">Ticket: {sale.saleNumber}</p>
         <p>{date}</p>
         {registerName && <p>Caja: {registerName}</p>}
+        {payload.tableLabel && <p className="font-semibold">{payload.tableLabel}</p>}
         <p>Cajero: {cashierName || "—"}</p>
       </div>
 

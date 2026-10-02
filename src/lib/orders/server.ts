@@ -64,7 +64,7 @@ export interface OrderRow {
 export async function getOrderReportCounts(organizationId: string) {
   const rows = await prisma.order.groupBy({
     by: ["status"],
-    where: { organizationId },
+    where: { organizationId, source: "portal" },
     _count: { _all: true },
   });
   const counts: Record<string, number> = {};
@@ -79,7 +79,8 @@ export async function listOrders(
   const page = Math.max(1, f.page ?? 1);
   const pageSize = Math.min(200, Math.max(1, f.pageSize ?? 25));
 
-  const where: Prisma.OrderWhereInput = { organizationId };
+  // Pedidos = lo que llega del portal. Las comandas del POS (mesa / para llevar) viven en cocina.
+  const where: Prisma.OrderWhereInput = { organizationId, source: "portal" };
   if (f.status) where.status = f.status as $Enums.OrderStatus;
   if (f.active) where.status = { in: ACTIVE_STATUSES as $Enums.OrderStatus[] };
   if (f.deliveryMethod) where.deliveryMethod = f.deliveryMethod as $Enums.DeliveryMethod;

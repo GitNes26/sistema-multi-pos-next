@@ -22,7 +22,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { SwipeableRow } from "@/components/shared/swipeable-row";
-import { GpsPicker, type GpsValue } from "@/components/base/gps-picker";
+import type { GpsValue } from "@/components/base/gps-picker";
+import { DeliveryAddressField } from "@/components/portal/delivery-address-field";
 import { PermissionSlider } from "@/components/shared/permission-slider";
 import { SlideToPay } from "@/components/shared/slide-to-pay";
 import { cn } from "@/lib/utils";
@@ -597,67 +598,31 @@ export function CheckoutClient() {
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-3 overflow-hidden pt-1"
                 >
-                  {/* Destinos guardados */}
-                  {addresses.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground">Destinos guardados</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {addresses.map((a) => (
-                          <button
-                            key={a.id}
-                            type="button"
-                            onClick={() => selectSavedAddress(a)}
-                            className={cn(
-                              "flex min-h-11 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
-                              selectedAddressId === a.id
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "text-muted-foreground hover:bg-muted"
-                            )}
-                          >
-                            <Home className="size-3" />
-                            {a.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mapa / ubicación */}
-                  <GpsPicker value={gps} onChange={handleGpsChange} onPermissionError={() => setGeoPermissionOpen(true)} />
-
-                  {/* Dirección manual */}
-                  <InputGroupField
-                    id="delivery-address"
-                    label="Dirección de entrega"
-                    required
-                    placeholder="Calle, número, colonia, ciudad…"
-                    leftIcon={<MapPin className="size-4" />}
-                    value={address}
-                    onChange={(e) => {
-                      setAddress(e.target.value);
-                      setSelectedAddressId(null);
-                      if (e.target.value.trim()) setFieldErrors((current) => ({ ...current, address: undefined }));
-                    }}
+                  <DeliveryAddressField
+                    address={address}
+                    coords={gps ? { lat: gps.lat, lon: gps.lon } : null}
                     error={fieldErrors.address}
+                    saved={addresses}
+                    selectedSavedId={selectedAddressId}
+                    fallbackCenter={(() => {
+                      const first = locations.find((l) => l.latitude != null && l.longitude != null);
+                      return first ? { lat: first.latitude!, lon: first.longitude! } : null;
+                    })()}
+                    onChange={(v) => {
+                      setGps({ lat: v.lat, lon: v.lon, ...v.parts });
+                      setSelectedAddressId(null);
+                      setAddress(v.address);
+                      if (v.address.trim()) setFieldErrors((current) => ({ ...current, address: undefined }));
+                    }}
+                    onTextChange={(text) => {
+                      setAddress(text);
+                      if (text.trim()) setFieldErrors((current) => ({ ...current, address: undefined }));
+                    }}
+                    onSelectSaved={selectSavedAddress}
+                    onSave={saveCurrentAddress}
+                    onRemoveSaved={removeSavedAddress}
+                    onPermissionError={() => setGeoPermissionOpen(true)}
                   />
-
-                  <div className="flex items-center gap-2">
-                    <Button type="button" variant="outline" size="sm" className="flex-1" onClick={saveCurrentAddress}>
-                      <Plus className="size-4" /> Guardar destino
-                    </Button>
-                    {selectedAddressId && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="min-h-11 min-w-11 text-destructive"
-                        aria-label="Eliminar destino seleccionado"
-                        onClick={() => removeSavedAddress(selectedAddressId)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
-                  </div>
 
                   {nearestDeliveryBranch && (
                     <div className="flex items-center gap-2 rounded-xl bg-primary/5 px-3 py-2">

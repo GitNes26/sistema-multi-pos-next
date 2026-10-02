@@ -21,7 +21,7 @@ export async function GET() {
   try {
     const [orders, stock, registers, transfers, returns] = await Promise.all([
       can("orders.view")
-        ? prisma.order.count({ where: { organizationId, tableId: null, status: { in: ["pending", "confirmed", "preparing", "ready", "in_transit", "at_destination"] } } })
+        ? prisma.order.count({ where: { organizationId, source: "portal", status: { in: ["pending", "confirmed", "preparing", "ready", "in_transit", "at_destination"] } } })
         : null,
       can("inventory.view")
         ? prisma.inventory

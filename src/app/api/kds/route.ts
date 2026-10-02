@@ -46,9 +46,14 @@ export async function GET(req: Request) {
 
     // Get orders that are in preparation or pending
     const kdsStatuses: $Enums.OrderStatus[] = ["pending", "confirmed", "preparing"];
+    // Pedidos del portal: mientras se preparan. Comandas del POS: también una vez listas,
+    // hasta que cocina las marque como entregadas/servidas.
     const where = {
       organizationId,
-      status: { in: kdsStatuses },
+      OR: [
+        { status: { in: kdsStatuses } },
+        { source: "pos", status: "ready" as const, kitchenDoneAt: null },
+      ],
       ...(locationId ? { locationId } : {}),
     };
 
@@ -148,18 +153,24 @@ export async function PUT(req: Request) {
       const item = await prisma.orderItem.update({
         where: { id: orderItemId },
         data: { itemStatus: status },
-        include: { order: { select: { id: true, status: true } } },
+        include: { order: { select: { id: true, status: true, source: true } } },
       });
 
-      // If all items are ready, mark order as ready
+      // Todos listos → la orden queda lista; si se deshace uno, vuelve a preparación.
       const allItems = await prisma.orderItem.findMany({
         where: { orderId: item.orderId },
       });
-      const allReady = allItems.every((i) => i.id === orderItemId || i.itemStatus === "ready");
+      const doneStatus = (s: string) => s === "ready" || s === "served";
+      const allReady = allItems.every((i) => doneStatus(i.id === orderItemId ? status : i.itemStatus));
       if (allReady && item.order.status !== "ready") {
         await prisma.order.update({
           where: { id: item.orderId },
           data: { status: "ready" },
+        });
+      } else if (!allReady && item.order.status === "ready") {
+        await prisma.order.update({
+          where: { id: item.orderId },
+          data: { status: "preparing", kitchenDoneAt: null },
         });
       }
 
@@ -185,6 +196,8 @@ export async function PUT(req: Request) {
           orderId: updatedOrder.id,
           orderNumber: Number(updatedOrder.orderNumber),
           status: updatedOrder.status,
+          source: updatedOrder.source,
+          serviceType: updatedOrder.serviceType,
           locationId: updatedOrder.locationId,
           table: updatedOrder.table,
           elapsedSeconds: Math.floor((now - updatedOrder.createdAt.getTime()) / 1000),
@@ -239,17 +252,23 @@ export async function PUT(req: Request) {
           });
           break;
         case "complete":
-          newStatus = "delivered";
           await prisma.orderPreparation.updateMany({
             where: { orderId },
             data: { completedAt: new Date() },
           });
+          if (order.source === "pos") {
+            // Comanda del POS: se sirvió, pero la cuenta sigue abierta hasta cobrarse.
+            await prisma.orderItem.updateMany({ where: { orderId }, data: { itemStatus: "served" } });
+            newStatus = "ready";
+          } else {
+            newStatus = "delivered";
+          }
           break;
       }
 
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
-        data: { status: newStatus },
+        data: { status: newStatus, ...(action === "complete" && order.source === "pos" ? { kitchenDoneAt: new Date() } : {}) },
         include: {
           table: {
             select: {
@@ -276,7 +295,9 @@ export async function PUT(req: Request) {
       const now = Date.now();
       const allItems = await prisma.orderItem.findMany({ where: { orderId } });
       broadcastKdsUpdate(organizationId, {
-        type: newStatus === "delivered" ? "order_removed" : "order_updated",
+        type: newStatus === "delivered" || (action === "complete" && order.source === "pos") ? "order_removed" : "order_updated",
+        source: order.source,
+        serviceType: order.serviceType,
         orderId: updatedOrder.id,
         orderNumber: Number(updatedOrder.orderNumber),
         status: newStatus,

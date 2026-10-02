@@ -78,7 +78,7 @@ export function DeliveryConfirmPanel({ pin, qrToken, orderNumber, mode }: Delive
           PIN de confirmación
         </p>
         <div className="flex items-center gap-2">
-          <div className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-3 font-mono text-2xl font-bold tracking-[0.3em] text-foreground shadow-inner">
+          <div className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border bg-white px-4 py-3 font-mono text-2xl font-bold tracking-[0.3em] text-slate-900 shadow-inner">
             {pin.split("").map((d, i) => (
               <span key={i} className="inline-block w-7 text-center">
                 {d}
@@ -101,9 +101,9 @@ export function DeliveryConfirmPanel({ pin, qrToken, orderNumber, mode }: Delive
           <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Código QR
           </p>
-          <div className="flex justify-center rounded-xl bg-white p-3 shadow-inner">
+          <div className="flex justify-center rounded-xl border bg-white p-3 text-slate-900 shadow-inner">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrDataUrl} alt="QR de confirmación" className="size-[180px]" />
+            <img src={qrDataUrl} alt="QR de confirmación" className="size-[180px] bg-white" />
           </div>
         </div>
       )}

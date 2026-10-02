@@ -326,5 +326,9 @@ export interface PosSalePayload {
   nextPurchaseCoupon?: { promotionId: string; amount: number }
   notes?: string
   tableId?: string
+  /** Texto de la mesa para el ticket («Mesa 5»). */
+  tableLabel?: string
+  /** Comanda para llevar enviada a cocina: se cierra al cobrar. */
+  kitchenOrderId?: string
   tip?: number
 }

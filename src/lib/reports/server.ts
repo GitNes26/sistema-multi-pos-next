@@ -420,7 +420,7 @@ export async function getOrdersReport(organizationId: string, f: ReportFilters) 
   }
 
   const orders = await prisma.order.findMany({
-    where,
+    where: { ...where, source: "portal" },
     include: {
       customer: { select: { fullName: true } },
       location: { select: { name: true } },

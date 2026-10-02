@@ -309,7 +309,7 @@ export async function generateTicketPdf(
     date: sale.createdAt,
     register: sale.cashRegister?.name,
     cashier: sale.cashier?.fullName,
-    meta: order ? [order.deliveryMethod === "delivery" ? "Entrega: a domicilio" : "Entrega: recoger en sucursal"] : [],
+    meta: order ? [order.deliveryMethod === "delivery" ? "Entrega: a domicilio" : "Entrega: recoger en sucursal"] : sale.tableLabel ? [sale.tableLabel] : [],
     customer: sale.customer ? { name: sale.customer.fullName, code: sale.customer.customerCode } : null,
     items: sale.items.map((i) => {
       const details: string[] = [];
