@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -108,6 +108,12 @@ export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const reduce = useReducedMotion();
+  const bottomRef = useRef<HTMLDivElement>(null);
+  // Tras asignar repartidor, baja hasta el aviso y el botón para continuar.
+  const afterAssign = async () => {
+    await load();
+    window.setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 200);
+  };
 
   const load = async () => {
     try {
@@ -227,7 +233,7 @@ export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: 
           <>
             {/* Recorrido */}
             {delivery && order.status !== "cancelled" && order.status !== "delivered" && (
-              <DriverPanel order={order} canAssign={canManage} onChanged={() => void load()} />
+              <DriverPanel order={order} canAssign={canManage} onChanged={() => void afterAssign()} />
             )}
             <section className="rounded-2xl border bg-card p-4">
               <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -440,6 +446,16 @@ export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: 
                 </ol>
               </section>
             )}
+            <div ref={bottomRef} aria-live="polite">
+              {delivery && order.driver && order.status === "ready" && (
+                <p className="flex items-start gap-2 rounded-2xl border border-success/30 bg-success/5 p-3 text-sm text-success-ink">
+                  <CircleCheckBig className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    <strong>{order.driver.name}</strong> {order.driver.acceptedAt ? "ya aceptó la entrega" : "tiene la entrega asignada"}. Continúa con «Enviar a domicilio» cuando salga.
+                  </span>
+                </p>
+              )}
+            </div>
           </>
         )}
       </DialogComponent>

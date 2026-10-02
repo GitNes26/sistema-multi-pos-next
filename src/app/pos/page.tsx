@@ -33,7 +33,8 @@ export default async function PosPage() {
   // Roles sin pos.use (cocina, repartidor) no operan el punto de venta;
   // se redirige a su superficie natural (KDS) — mismo criterio que el API.
   if (!hasPermission(session, "pos.use")) {
-    redirect("/kds");
+    // Repartidor puro → su interfaz; cocina y demás → KDS.
+    redirect(hasPermission(session, "delivery.manage") && !hasPermission(session, "kds.operate") ? "/repartidor" : "/kds");
   }
 
   let catalog: Awaited<ReturnType<typeof getPosCatalog>>;

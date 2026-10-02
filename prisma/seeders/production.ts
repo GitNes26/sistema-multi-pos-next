@@ -562,6 +562,16 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     sortOrder: 8,
   },
   {
+    id: "menu-repartidor",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Mis entregas (repartidor)",
+    icon: "Bike",
+    href: "/repartidor",
+    permissionKey: "delivery.manage",
+    sortOrder: 8,
+  },
+  {
     id: "menu-agenda",
     parentId: "menu-operacion",
     type: "item",

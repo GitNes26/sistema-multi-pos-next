@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { swalError, swalToast } from "@/lib/swal"
+import { swalConfirm, swalError, swalToast } from "@/lib/swal"
 import { playSound } from "@/lib/sounds"
 import { cn } from "@/lib/utils"
 import { ORDER_STATUS_LABELS, ordersApi } from "@/lib/orders/client"
@@ -184,6 +184,19 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
   }
 
   const complete = async () => {
+    // Se puede avanzar sin marcar todo, pero se confirma para que no sea un descuido.
+    const unchecked = prep ? prep.items.filter((i) => !i.scanned && !i.found).length : 0
+    if (prep && unchecked > 0) {
+      const none = unchecked === prep.items.length
+      const ok = await swalConfirm(
+        none ? "¿Completar sin marcar ningún artículo?" : `Faltan ${unchecked} artículo${unchecked === 1 ? "" : "s"} por marcar`,
+        none
+          ? "No marcaste ningún artículo como encontrado o surtido. Si continúas, la preparación se completa tal cual."
+          : "Si continúas, la preparación se completa con esos artículos sin marcar.",
+        { confirmText: "Sí, completar", icon: "warning" }
+      )
+      if (!ok) return
+    }
     setBusy(true)
     try {
       const r = await ordersApi.completePreparation(

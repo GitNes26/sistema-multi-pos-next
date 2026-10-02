@@ -155,6 +155,13 @@ export interface OrderDetail {
   customerName: string | null;
   customerPhone: string | null;
   locationName: string | null;
+  /** Destino de la entrega y sucursal de salida (mapa del repartidor). */
+  latitude: number | null;
+  longitude: number | null;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
+  locationAddress: string | null;
+  locationPhone: string | null;
   /** Número de mesa (food_service/hybrid) para el panel de cocina en el POS. */
   tableNumber: number | null;
   saleId: string | null;
@@ -192,7 +199,7 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
     where: { id, organizationId },
     include: {
       customer: { select: { fullName: true, phone: true } },
-      location: { select: { name: true } },
+      location: { select: { name: true, latitude: true, longitude: true, address: true, phone: true } },
       table: { select: { number: true } },
       driver: { select: { id: true, fullName: true } },
       items: {
@@ -223,6 +230,12 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
     customerName: order.customer?.fullName ?? null,
     customerPhone: order.customer?.phone ?? null,
     locationName: order.location?.name ?? null,
+    latitude: order.latitude != null ? Number(order.latitude) : null,
+    longitude: order.longitude != null ? Number(order.longitude) : null,
+    locationLatitude: order.location?.latitude != null ? Number(order.location.latitude) : null,
+    locationLongitude: order.location?.longitude != null ? Number(order.location.longitude) : null,
+    locationAddress: order.location?.address ?? null,
+    locationPhone: order.location?.phone ?? null,
     tableNumber: order.table?.number ?? null,
     saleId: order.saleId,
     isTableOrder: order.tableId != null,

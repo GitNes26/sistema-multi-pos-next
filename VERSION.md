@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.34.0.0] — 2026-10-02
+- **Tipo:** `feat` (Minor)
+- feat: confirmacion al completar una preparacion sin articulos marcados, el detalle del pedido baja al aviso de repartidor asignado con el boton para continuar e interfaz del repartidor (mis entregas y disponibles, aceptar, mapa con ruta, cliente, articulos, cobro, salir en camino, llegada y confirmacion con PIN o QR)
+
 ### [0.33.0.0] — 2026-10-02
 - **Tipo:** `feat` (Minor)
 - feat: segunda pasada responsive del panel administrativo: tablet sin desborde en la cabecera (nombre de usuario y buscador compactos), chips de apariencia, encabezados ordenables de reportes, iconos de notificaciones y campo de capacidad de mesas con area tactil

@@ -68,8 +68,8 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // KDS (pantalla de cocina) — misma auth que /pos
-  if (pathname.startsWith("/kds")) {
+  // KDS (pantalla de cocina) e interfaz del repartidor — misma auth que /pos
+  if (pathname.startsWith("/kds") || pathname.startsWith("/repartidor")) {
     if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
     if (token!.scope === "portal")
       return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
