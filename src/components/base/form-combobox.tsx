@@ -129,7 +129,7 @@ export function FormCombobox({
             disabled={disabled}
             data-slot="form-combobox-trigger"
             className={cn(
-              "h-8 w-full justify-between px-3 font-normal",
+              "h-11 w-full justify-between px-3 font-normal desk:h-8",
               error && "border-destructive ring-3 ring-destructive/20",
               !selected && "text-muted-foreground"
             )}
@@ -191,7 +191,7 @@ export function FormCombobox({
                     onValueChange={setSearch}
                     placeholder={searchPlaceholder}
                     autoFocus
-                    className="flex h-8 w-full items-center rounded-md bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-11 w-full items-center rounded-md bg-transparent px-3 text-base outline-none desk:h-8 desk:text-sm placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
               )}

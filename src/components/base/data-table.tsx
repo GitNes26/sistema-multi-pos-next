@@ -261,7 +261,7 @@ export function DataTable<TData, TValue>({
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8 shrink-0"
+                    className="size-11 shrink-0 desk:size-8"
                     onClick={onRefresh}
                     aria-label="Refrescar"
                   >
@@ -289,7 +289,7 @@ export function DataTable<TData, TValue>({
             {showColumnVisibility && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8">
+                  <Button variant="outline" size="sm" className="h-11 desk:h-8">
                     <EyeOff className="size-4" />
                     Columnas
                   </Button>
@@ -444,7 +444,7 @@ function PaginationFooter<TData>({
           value={String(table.getState().pagination.pageSize)}
           onValueChange={(v) => table.setPageSize(Number(v))}
         >
-          <SelectTrigger className="h-7 w-16 text-xs" size="sm">
+          <SelectTrigger className="h-11 w-16 text-xs desk:h-7" size="sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -472,7 +472,7 @@ function PaginationFooter<TData>({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="size-11 desk:size-7"
           disabled={!table.getCanPreviousPage()}
           onClick={() => table.previousPage()}
           aria-label="Página anterior"
@@ -485,7 +485,7 @@ function PaginationFooter<TData>({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="size-11 desk:size-7"
           disabled={!table.getCanNextPage()}
           onClick={() => table.nextPage()}
           aria-label="Página siguiente"

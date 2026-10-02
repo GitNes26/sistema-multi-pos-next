@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.32.0.0] — 2026-10-02
+- **Tipo:** `feat` (Minor)
+- feat: paginas administrativas adaptadas a telefono y tablet: cabecera sin desborde, pestañas desplazables con area tactil de 44 px, tablas con refrescar, columnas y paginacion tactiles, combobox tactil y editor de horarios que cabe en pantallas angostas
+
 ### [0.31.0.0] — 2026-10-02
 - **Tipo:** `feat` (Minor)
 - feat: mapa de seguimiento contenido con ruta restante y boton de centrar al repartidor, PIN y QR visibles en modo oscuro, direccion de entrega con autocompletado, mi ubicacion, destinos guardados y mapa a pantalla completa con pin; mesa manual en el ticket; comandas separadas de pedidos (comer aqui o para llevar), cuenta abierta por mesa que se recarga y se cobra al final, comandas listas que permanecen en cocina hasta servirse y cronometros de cocina al segundo

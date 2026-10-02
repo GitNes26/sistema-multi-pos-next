@@ -160,7 +160,7 @@ export function ScheduleEditor({
         </div>
         {hasSource && source && (
           <Popover open={replicateOpen} onOpenChange={setReplicateOpen}>
-            <PopoverTrigger asChild><Button type="button" variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 whitespace-nowrap" onClick={openReplicate} disabled={disabled}><Copy className="size-3.5" />Replicar {DAYS_LABELS[source.day]}</Button></PopoverTrigger>
+            <PopoverTrigger asChild><Button type="button" variant="outline" size="sm" className="h-11 shrink-0 gap-1.5 whitespace-nowrap desk:h-8" onClick={openReplicate} disabled={disabled}><Copy className="size-3.5" />Replicar {DAYS_LABELS[source.day]}</Button></PopoverTrigger>
             <PopoverContent align="end" className="w-72 space-y-3 p-3">
               <div><p className="flex items-center gap-2 text-sm font-semibold"><CalendarDays className="size-4 text-primary"/>Copiar horario</p><p className="mt-1 text-xs text-muted-foreground">El horario de {DAYS_LABELS[source.day]} se aplicará únicamente a los días elegidos.</p></div>
               <div className="flex flex-wrap gap-1.5">
@@ -190,9 +190,9 @@ export function ScheduleEditor({
             />
           </div>
           {s.enabled && (
-            <div className="ml-12 space-y-1.5">
+            <div className="ml-0 space-y-1.5 sm:ml-12">
               {s.slots.map((slot, slotIdx) => (
-                <div key={slotIdx} className="flex items-center gap-2">
+                <div key={slotIdx} className="flex flex-wrap items-center gap-2">
                   <TimePicker
                     value={slot.open}
                     onChange={(v) =>
@@ -217,7 +217,7 @@ export function ScheduleEditor({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-destructive"
+                      className="size-11 text-destructive desk:size-7"
                       onClick={() => removeSlot(dayIdx, slotIdx)}
                       disabled={disabled}
                     >

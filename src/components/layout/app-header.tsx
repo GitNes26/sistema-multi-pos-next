@@ -55,13 +55,13 @@ export function AppHeader({ sections, user, logoUrl }: AppHeaderProps) {
           <Menu className="size-4" />
         </Button>
 
-        <Logo size={18} logoUrl={logoUrl} className="lg:hidden rounded-lg" />
+        <Logo size={18} logoUrl={logoUrl} className="hidden rounded-lg sm:block lg:hidden" />
 
         <span className="hidden h-4 w-px bg-border lg:block" aria-hidden />
 
         <span
           className={cn(
-            "truncate text-sm font-semibold",
+            "min-w-0 truncate text-sm font-semibold",
             "flex-1 sm:flex-none lg:w-40"
           )}
         >
@@ -72,7 +72,7 @@ export function AppHeader({ sections, user, logoUrl }: AppHeaderProps) {
           <SearchTrigger />
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           {user.scope === "superadmin" || user.scope === "app" ? (
             <OrgSwitcher
               activeOrganizationId={user.activeOrganizationId ?? null}
