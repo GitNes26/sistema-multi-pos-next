@@ -242,7 +242,7 @@ function NotificationRow({
           type="button"
           variant="ghost"
           size="xs"
-          className="shrink-0"
+          className="size-10 shrink-0 desk:size-7"
           onClick={(e) => {
             e.stopPropagation();
             onMark();

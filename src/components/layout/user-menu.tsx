@@ -86,10 +86,10 @@ export function UserMenu({ user }: { user: UserMenuUser }) {
               {initials(user.name, user.email)}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden max-w-32 truncate text-sm font-medium md:block">
+          <span className="hidden max-w-32 truncate text-sm font-medium lg:block">
             {user.name ?? "Usuario"}
           </span>
-          <ChevronsUpDown className="hidden size-3.5 text-muted-foreground md:block" />
+          <ChevronsUpDown className="hidden size-3.5 text-muted-foreground lg:block" />
         </Button>
       </DropdownMenuTrigger>
 

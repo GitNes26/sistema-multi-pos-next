@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.33.0.0] — 2026-10-02
+- **Tipo:** `feat` (Minor)
+- feat: segunda pasada responsive del panel administrativo: tablet sin desborde en la cabecera (nombre de usuario y buscador compactos), chips de apariencia, encabezados ordenables de reportes, iconos de notificaciones y campo de capacidad de mesas con area tactil
+
 ### [0.32.0.0] — 2026-10-02
 - **Tipo:** `feat` (Minor)
 - feat: paginas administrativas adaptadas a telefono y tablet: cabecera sin desborde, pestañas desplazables con area tactil de 44 px, tablas con refrescar, columnas y paginacion tactiles, combobox tactil y editor de horarios que cabe en pantallas angostas

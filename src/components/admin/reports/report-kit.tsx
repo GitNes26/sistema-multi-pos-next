@@ -545,7 +545,7 @@ export function ReportTable<T>({
                     <button
                       type="button"
                       onClick={() => toggle(c.key)}
-                      className={cn("inline-flex items-center gap-1 rounded hover:text-foreground", active && "text-foreground")}
+                      className={cn("inline-flex min-h-10 items-center gap-1 rounded hover:text-foreground desk:min-h-0", active && "text-foreground")}
                     >
                       {c.label}
                       {active ? (

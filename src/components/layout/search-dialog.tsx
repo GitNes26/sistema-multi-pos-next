@@ -89,7 +89,7 @@ export function SearchTrigger() {
     <button
       type="button"
       onClick={() => setSearchOpen(true)}
-      className="flex h-8 w-full max-w-56 items-center gap-2 rounded-lg border border-input bg-muted/40 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/70"
+      className="flex h-10 w-full min-w-0 max-w-56 desk:h-8 items-center gap-2 rounded-lg border border-input bg-muted/40 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted/70"
     >
       <Search className="size-4" />
       <span className="flex-1 text-left">Buscar…</span>

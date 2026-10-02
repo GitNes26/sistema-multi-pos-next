@@ -360,7 +360,7 @@ export function AppearanceSettingsForm() {
                   key={preset.label}
                   type="button"
                   onClick={() => applyLocal({ primaryHue: preset.primary, accentHue: preset.accent })}
-                  className="group flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors hover:border-primary/40"
+                  className="group flex min-h-11 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium desk:min-h-0 desk:px-2.5 transition-colors hover:border-primary/40"
                   title={preset.label}
                 >
                   <span

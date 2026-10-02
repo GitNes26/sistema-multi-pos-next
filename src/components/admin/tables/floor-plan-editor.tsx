@@ -505,7 +505,7 @@ export function FloorPlanEditor({
               max={50}
               value={draft.capacity}
               onChange={(e) => setDraft({ ...draft, capacity: e.target.value })}
-              className="h-9 w-20 rounded-md border border-input bg-background px-2 text-sm"
+              className="h-11 w-20 rounded-md border border-input bg-background px-2 text-base desk:h-9 desk:text-sm"
             />
           </div>
           <div>
