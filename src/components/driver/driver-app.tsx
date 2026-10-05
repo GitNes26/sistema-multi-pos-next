@@ -17,6 +17,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { BackButton } from "@/components/shared/back-button"
 import { SegmentedFilter } from "@/components/base/segmented-filter"
 import { Spinner } from "@/components/base/spinner"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -218,9 +219,12 @@ export function DriverApp() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-4">
       <header className="flex items-center justify-between gap-2">
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <Bike className="size-7 text-primary" /> Mis entregas
-        </h1>
+        <div className="flex min-w-0 items-center gap-1">
+          <BackButton fallback="/admin" label="Regresar" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Bike className="size-7 text-primary" /> Mis entregas
+          </h1>
+        </div>
         <div className="flex items-center gap-2">
           {gpsChip}
           <Button variant="outline" size="icon" aria-label="Actualizar" onClick={() => void load()}>

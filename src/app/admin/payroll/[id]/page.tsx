@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Nómina" };
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
-  if (!hasPermission(session, "employees.manage")) redirect("/admin");
+  if (!hasPermission(session, "payroll.manage")) redirect("/admin");
   const { id } = await params;
   return <PayrollPeriodView id={id} />;
 }

@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { DialogComponent } from "@/components/ui/dialog"
 import { FormCombobox } from "@/components/base/form-combobox"
 import { InputGroupField } from "@/components/base/input-group-field"
+import { DatePicker } from "@/components/base/date-picker"
+import { ymdToDate, dateToYmd } from "@/lib/date-input"
 import { SwitchField } from "@/components/base/switch-field"
 import { SegmentedFilter, StatusPill, type StatusTone } from "@/components/base"
 import { money } from "@/lib/pos/money"
@@ -313,7 +315,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
           ))}
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <InputGroupField label="Vence el" type="date" leftIcon={<CalendarClock className="size-4" />} value={form.periodEndsAt} onChange={(e) => setForm({ ...form, periodEndsAt: e.target.value })} />
+          <DatePicker label="Vence el" value={ymdToDate(form.periodEndsAt)} onChange={(d) => setForm({ ...form, periodEndsAt: dateToYmd(d) })} clearable />
           <FormCombobox
             id="subscription-status"
             label="Estado"

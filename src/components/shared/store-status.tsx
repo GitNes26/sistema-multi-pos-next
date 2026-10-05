@@ -6,7 +6,8 @@ import { CalendarClock, Clock, Loader2, Lock, Megaphone, Store, Unlock } from "l
 import { useSession } from "next-auth/react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { DateTimePicker } from "@/components/base/date-time-picker"
+import { dateToLocal, localToDate } from "@/lib/date-input"
 import { Textarea } from "@/components/ui/textarea"
 import { hasPermission } from "@/lib/auth/permissions"
 import { swalError, swalToast } from "@/lib/swal"
@@ -168,12 +169,7 @@ export function StoreStatusSwitch({ className, compact = false }: { className?: 
               ))}
             </div>
             {mode === "until" && (
-              <label className="block space-y-1 text-xs font-medium">
-                <span className="flex items-center gap-1.5">
-                  <CalendarClock className="size-3.5" /> Reabre el
-                </span>
-                <Input type="datetime-local" value={until} onChange={(e) => setUntil(e.target.value)} />
-              </label>
+              <DateTimePicker label="Reabre el" value={localToDate(until)} onChange={(d) => setUntil(dateToLocal(d))} />
             )}
             <label className="block space-y-1 text-xs font-medium">
               Aviso para tus clientes (opcional)

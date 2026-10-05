@@ -459,19 +459,33 @@
     visibility: hidden;
   }
   #receipt-print,
-  #receipt-print *,
-  #transfer-doc-print,
-  #transfer-doc-print * {
+  #receipt-print * {
     visibility: visible;
   }
-  /* Documento de traslado: hoja carta completa */
+  /* Documento de traslado: hoja carta completa, fluye en varias páginas si hace falta.
+     Se ocultan los demás hijos del body (no solo se hacen invisibles) para que no ocupen hojas. */
+  html[data-printing="transfer"] body > *:not(#transfer-doc-print) {
+    display: none !important;
+  }
+  html[data-printing="transfer"] body {
+    visibility: visible;
+    overflow: visible !important;
+    height: auto !important;
+  }
   #transfer-doc-print {
-    position: fixed;
-    inset: 0;
+    visibility: visible;
+    display: block !important;
+    position: static !important;
     width: 100%;
     background: #fff;
     color: #000;
     padding: 12mm;
+  }
+  #transfer-doc-print * {
+    visibility: visible;
+  }
+  @page {
+    margin: 8mm;
   }
   #receipt-print {
     position: fixed;

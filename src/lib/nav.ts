@@ -131,7 +131,7 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/admin/payroll",
         label: "Nómina",
         icon: HandCoins,
-        permission: "employees.manage",
+        permission: "payroll.manage",
       },
       {
         href: "/admin/combos",

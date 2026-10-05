@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CalendarDays, ChevronRight, Clock, HandCoins, Loader2, Plus, Settings2, Trash2, Users, Wallet, X } from "lucide-react"
+import { CalendarDays, ChevronRight, Clock, HandCoins, Loader2, Pencil, Plus, Save, Settings2, Trash2, Users, Wallet, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { TimePicker } from "@/components/base/time-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -323,12 +324,10 @@ function EmployeePayDialog({ employee, onClose, onSaved }: { employee: PayEmploy
         <p className="text-xs text-muted-foreground">Los días sin marcar son de descanso. Si trabaja un descanso se paga aparte.</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1">
-            <Label className="text-xs">Entrada</Label>
-            <Input type="time" value={f.shiftStart ?? ""} onChange={(e) => set("shiftStart", e.target.value || null)} />
+            <TimePicker label="Entrada" value={f.shiftStart ?? null} onChange={(v) => set("shiftStart", v || null)} />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Salida</Label>
-            <Input type="time" value={f.shiftEnd ?? ""} onChange={(e) => set("shiftEnd", e.target.value || null)} />
+            <TimePicker label="Salida" value={f.shiftEnd ?? null} onChange={(v) => set("shiftEnd", v || null)} />
           </div>
           {numInput("dailyHours", "Horas por jornada", undefined, "0.5")}
         </div>
@@ -352,12 +351,24 @@ function EmployeePayDialog({ employee, onClose, onSaved }: { employee: PayEmploy
 
 function ConceptsPanel({ concepts, onChange }: { concepts: PayConcept[] | null; onChange: () => void }) {
   const [draft, setDraft] = useState({ name: "", kind: "perception", calc: "fixed", amount: "" })
+  // Concepto que se está editando (null = alta de uno nuevo).
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const startEdit = (c: PayConcept) => {
+    setEditingId(c.id)
+    setDraft({ name: c.name, kind: c.kind, calc: c.calc, amount: String(c.amount) })
+    window.requestAnimationFrame(() => document.getElementById("concept-name")?.focus())
+  }
+  const cancelEdit = () => {
+    setEditingId(null)
+    setDraft({ name: "", kind: "perception", calc: "fixed", amount: "" })
+  }
   const add = async () => {
     setSaving(true)
     try {
-      await payrollApi.action("concept.save", { ...draft, amount: Number(draft.amount) || 0 })
+      await payrollApi.action("concept.save", { ...draft, id: editingId ?? undefined, amount: Number(draft.amount) || 0 })
       setDraft({ name: "", kind: draft.kind, calc: "fixed", amount: "" })
+      setEditingId(null)
       onChange()
     } catch (err) {
       swalError("No se pudo guardar", err instanceof Error ? err.message : undefined)
@@ -386,7 +397,10 @@ function ConceptsPanel({ concepts, onChange }: { concepts: PayConcept[] | null; 
               <span className="font-medium">{c.name}</span>
               <span className="flex items-center gap-2 tabular-nums">
                 {c.calc === "percent" ? `${c.amount}%` : money(c.amount)}
-                <Button variant="ghost" size="icon" className="size-7 text-destructive" aria-label={`Quitar ${c.name}`} onClick={() => void remove(c)}>
+                <Button variant="ghost" size="icon" className="size-11 desk:size-7" aria-label={`Editar ${c.name}`} onClick={() => startEdit(c)}>
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="size-11 text-destructive desk:size-7" aria-label={`Quitar ${c.name}`} onClick={() => void remove(c)}>
                   <Trash2 className="size-3.5" />
                 </Button>
               </span>
@@ -400,14 +414,15 @@ function ConceptsPanel({ concepts, onChange }: { concepts: PayConcept[] | null; 
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2 rounded-2xl border bg-muted/30 p-4">
         <div className="min-w-48 flex-1 space-y-1">
-          <Label className="text-xs">Nuevo concepto</Label>
-          <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Ej. Bono de puntualidad" />
+          <Label htmlFor="concept-name" className="text-xs">{editingId ? "Editando concepto" : "Nuevo concepto"}</Label>
+          <Input id="concept-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Ej. Bono de puntualidad" />
         </div>
         <SegmentedFilter ariaLabel="Tipo" value={draft.kind} onChange={(v) => setDraft({ ...draft, kind: v })} options={[{ value: "perception", label: "Suma" }, { value: "deduction", label: "Resta" }]} />
         <SegmentedFilter ariaLabel="Cálculo" value={draft.calc} onChange={(v) => setDraft({ ...draft, calc: v })} options={[{ value: "fixed", label: "$ fijo" }, { value: "percent", label: "%" }]} />
-        <Input type="number" min="0" step="0.01" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} placeholder={draft.calc === "percent" ? "%" : "$"} className="w-24 tabular-nums" />
+        <Input type="number" inputMode="decimal" min="0" step="0.01" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} placeholder={draft.calc === "percent" ? "%" : "$"} className="w-24 tabular-nums" />
+        {editingId && <Button variant="ghost" onClick={cancelEdit} disabled={saving}>Cancelar</Button>}
         <Button onClick={() => void add()} disabled={!draft.name.trim() || saving}>
-          {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Agregar
+          {saving ? <Loader2 className="size-4 animate-spin" /> : editingId ? <Save className="size-4" /> : <Plus className="size-4" />} {editingId ? "Guardar cambios" : "Agregar"}
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">Los conceptos activos se agregan a cada nómina nueva; en cada empleado puedes quitarlos o cambiar el importe. No se calculan ISR ni IMSS.</p>

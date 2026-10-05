@@ -71,6 +71,11 @@ export const portalApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  updateAddress: (id: string, input: CustomerAddressInput) =>
+    json<{ ok: boolean; address: CustomerAddressView }>(`/api/portal/addresses/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
   removeAddress: (id: string) =>
     json<{ ok: boolean }>(`/api/portal/addresses/${id}`, { method: "DELETE" }),
 

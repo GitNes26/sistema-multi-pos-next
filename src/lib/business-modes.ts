@@ -185,7 +185,7 @@ export const WIZARD_ACTIONS: Record<WizardActionKind, WizardActionDef> = {
     title: "Calcula tu primera nómina",
     description: "Sueldos, horas extra, comisiones y recibos en Catálogos → Nómina",
     href: "/admin/payroll",
-    permission: "employees.manage",
+    permission: "payroll.manage",
     modes: ["retail", "food_service", "services", "rental", "hybrid"],
   },
   purchasing: {

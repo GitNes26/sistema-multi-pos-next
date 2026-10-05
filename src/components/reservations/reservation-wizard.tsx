@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Armchair,
   CalendarDays,
@@ -12,8 +13,14 @@ import {
   Loader2,
   MapPin,
   Minus,
+  Moon,
+  Phone,
   Plus,
   ScrollText,
+  Sun,
+  Sunset,
+  Ticket,
+  UserRound,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -75,6 +82,22 @@ export interface ReservationWizardProps {
 }
 
 const STEPS = ["Sucursal", "Fecha y hora", "Elegir sala", "Tus datos"] as const;
+const STEP_ICONS = [MapPin, CalendarDays, Armchair, UserRound] as const;
+const STEP_HEADLINES = [
+  "¿Dónde nos vemos?",
+  "¿Cuándo y cuántos?",
+  "Escoge tu lugar",
+  "Último paso: ¿a nombre de quién?",
+] as const;
+const QUICK_PARTY = [1, 2, 3, 4, 6, 8] as const;
+
+/** Franja del día para agrupar las horas (más fácil de escanear que una rejilla larga). */
+function daypart(time: string) {
+  const h = Number(time.slice(0, 2));
+  if (h < 12) return { key: "morning", label: "Mañana", Icon: Sun };
+  if (h < 19) return { key: "afternoon", label: "Tarde", Icon: Sunset };
+  return { key: "night", label: "Noche", Icon: Moon };
+}
 
 export function ReservationWizard({
   locations,
@@ -86,7 +109,15 @@ export function ReservationWizard({
   doneMessage,
   onDone,
 }: ReservationWizardProps) {
-  const [step, setStep] = useState(initialLocationId && locations.length <= 1 ? 1 : 0);
+  const reduceMotion = useReducedMotion();
+  const [step, setStepRaw] = useState(initialLocationId && locations.length <= 1 ? 1 : 0);
+  const dir = useRef(1);
+  const setStep = (next: number | ((s: number) => number)) =>
+    setStepRaw((s) => {
+      const n = typeof next === "function" ? next(s) : next;
+      dir.current = n >= s ? 1 : -1;
+      return n;
+    });
   const [locationId, setLocationId] = useState(initialLocationId ?? locations[0]?.id ?? "");
   const [date, setDate] = useState<string | null>(null);
   const [time, setTime] = useState<string | null>(null);
@@ -258,10 +289,20 @@ export function ReservationWizard({
 
   if (done) {
     return (
-      <div className="rounded-2xl border border-success/30 bg-success/10 p-6 text-center">
-        <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-success text-success-foreground">
-          <CalendarCheck2 className="size-6" />
-        </div>
+      <motion.div
+        initial={reduceMotion ? false : { opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 22 }}
+        className="rounded-2xl border border-success/30 bg-success/10 p-6 text-center"
+      >
+        <motion.div
+          initial={reduceMotion ? false : { scale: 0, rotate: -30 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 14, delay: 0.1 }}
+          className="mx-auto mb-2 flex size-14 items-center justify-center rounded-full bg-success text-success-foreground"
+        >
+          <CalendarCheck2 className="size-7" />
+        </motion.div>
         <p className="text-lg font-bold text-success-ink">
           {doneMessage ?? (policy?.requireConfirmation ? "Solicitud enviada" : "¡Reservación confirmada!")}
         </p>
@@ -279,7 +320,7 @@ export function ReservationWizard({
         <Button className="mt-4" variant="outline" onClick={() => setDone(null)}>
           Hacer otra reservación
         </Button>
-      </div>
+      </motion.div>
     );
   }
 
@@ -291,26 +332,47 @@ export function ReservationWizard({
 
   return (
     <div className="space-y-4">
-      {/* Indicador de pasos */}
-      <div className="flex items-center gap-1.5">
-        {STEPS.map((label, i) => (
-          <div key={label} className="flex flex-1 flex-col gap-1">
-            <div
-              className={cn(
-                "h-1.5 rounded-full transition-colors",
-                i < step ? "bg-primary" : i === step ? "bg-primary/60" : "bg-muted"
-              )}
-            />
-            <span
-              className={cn(
-                "text-xs font-medium",
-                i === step ? "text-foreground" : "text-muted-foreground"
-              )}
-            >
-              {i + 1}. {label}
-            </span>
-          </div>
-        ))}
+      {/* Indicador de pasos: iconos tocables hacia atrás + titular del paso */}
+      <div>
+        <ol className="flex items-center" aria-label="Progreso de la reservación">
+          {STEPS.map((label, i) => {
+            const Icon = STEP_ICONS[i];
+            const reached = i <= step;
+            return (
+              <li key={label} className="flex flex-1 items-center last:flex-none">
+                <button
+                  type="button"
+                  disabled={i >= step}
+                  onClick={() => setStep(i)}
+                  aria-label={`${i + 1}. ${label}`}
+                  aria-current={i === step ? "step" : undefined}
+                  className={cn(
+                    "grid size-10 shrink-0 place-items-center rounded-full border-2 transition-colors",
+                    i < step && "border-primary bg-primary text-primary-foreground",
+                    i === step && "border-primary bg-primary/10 text-primary",
+                    i > step && "border-border bg-muted text-muted-foreground"
+                  )}
+                >
+                  {i < step ? <Check className="size-4" /> : <Icon className="size-4" />}
+                </button>
+                {i < STEPS.length - 1 && (
+                  <span className="mx-1 h-0.5 flex-1 overflow-hidden rounded-full bg-muted">
+                    <motion.span
+                      className="block h-full bg-primary"
+                      initial={false}
+                      animate={{ width: reached && i < step ? "100%" : "0%" }}
+                      transition={{ duration: reduceMotion ? 0 : 0.35 }}
+                    />
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        <p className="mt-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          Paso {step + 1} de {STEPS.length}
+        </p>
+        <h2 className="text-xl font-bold leading-tight">{STEP_HEADLINES[step]}</h2>
       </div>
 
       {/* Chips de política (se recuerdan durante todo el flujo) */}
@@ -338,24 +400,37 @@ export function ReservationWizard({
         </p>
       )}
 
+      <AnimatePresence mode="wait" initial={false} custom={dir.current}>
+        <motion.div
+          key={step}
+          custom={dir.current}
+          initial={reduceMotion ? false : { opacity: 0, x: dir.current * 28 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: dir.current * -28 }}
+          transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
+          className="space-y-4"
+        >
       {/* PASO 0: Sucursal */}
       {step === 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-semibold">¿En qué sucursal reservas?</p>
+          <p className="text-sm text-muted-foreground">Toca una sucursal para continuar.</p>
           {locations.map((l) => (
             <button
               key={l.id}
               type="button"
-              onClick={() => setLocationId(l.id)}
+              onClick={() => {
+                setLocationId(l.id);
+                setTimeout(() => setStep(1), reduceMotion ? 0 : 180);
+              }}
               className={cn(
-                "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition",
+                "flex min-h-16 w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition active:scale-[0.98]",
                 locationId === l.id
                   ? "border-primary bg-primary/5 ring-1 ring-primary"
                   : "border-border hover:bg-muted/50"
               )}
             >
-              <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <MapPin className="size-4" />
+              <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <MapPin className="size-5" />
               </span>
               <span className="flex-1 text-sm font-medium">{l.name}</span>
               {locationId === l.id && <Check className="size-4 text-primary" />}
@@ -381,7 +456,8 @@ export function ReservationWizard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2"
+                aria-label="Mes anterior"
+                className="h-10 px-3"
                 onClick={() =>
                   setMonthCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))
                 }
@@ -394,7 +470,8 @@ export function ReservationWizard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2"
+                aria-label="Mes siguiente"
+                className="h-10 px-3"
                 onClick={() =>
                   setMonthCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))
                 }
@@ -436,6 +513,7 @@ export function ReservationWizard({
             <Button
               variant="outline"
               size="sm"
+              aria-label="Menos comensales"
               className="size-11 rounded-full p-0"
               onClick={() => setGuests(String(Math.max(1, party - 1)))}
               disabled={party <= 1}
@@ -446,12 +524,29 @@ export function ReservationWizard({
             <Button
               variant="outline"
               size="sm"
+              aria-label="Más comensales"
               className="size-11 rounded-full p-0"
               onClick={() => setGuests(String(party + 1))}
               disabled={!!policy && party >= policy.maxGuests}
             >
               <Plus className="size-3.5" />
             </Button>
+          </div>
+
+          <div className="-mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Número de comensales">
+            {QUICK_PARTY.filter((n) => !policy || n <= policy.maxGuests).map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setGuests(String(n))}
+                className={cn(
+                  "h-11 min-w-11 rounded-full border px-3 text-sm font-semibold tabular-nums transition active:scale-95",
+                  party === n ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-primary/5"
+                )}
+              >
+                {n}
+              </button>
+            ))}
           </div>
 
           {/* Horas del día */}
@@ -475,31 +570,45 @@ export function ReservationWizard({
                   No hay horarios disponibles ese día (revisa la anticipación mínima de la política).
                 </p>
               ) : (
-                <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
-                  {slots.map((s) => {
-                    const free = s.rooms.reduce((a, r) => a + r.free, 0);
-                    const disabled = free === 0;
+                <div className="space-y-3">
+                  {(["morning", "afternoon", "night"] as const).map((part) => {
+                    const group = slots.filter((x) => daypart(x.time).key === part);
+                    if (group.length === 0) return null;
+                    const { label, Icon } = daypart(group[0].time);
                     return (
-                      <button
-                        key={s.time}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => {
-                          setTime(s.time);
-                          setTableId(null);
-                        }}
-                        className={cn(
-                          "rounded-lg border px-1 py-1.5 text-xs font-medium transition",
-                          time === s.time
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : disabled
-                              ? "cursor-not-allowed border-border bg-muted/40 text-muted-foreground line-through"
-                              : "border-border hover:border-primary/50 hover:bg-primary/5"
-                        )}
-                        title={disabled ? "Sin mesas libres a esta hora" : `${free} mesas libres`}
-                      >
-                        {s.time}
-                      </button>
+                      <div key={part}>
+                        <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                          <Icon className="size-3.5" /> {label}
+                        </p>
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                          {group.map((sl) => {
+                            const free = sl.rooms.reduce((a, r) => a + r.free, 0);
+                            const disabled = free === 0;
+                            return (
+                              <button
+                                key={sl.time}
+                                type="button"
+                                disabled={disabled}
+                                onClick={() => {
+                                  setTime(sl.time);
+                                  setTableId(null);
+                                }}
+                                className={cn(
+                                  "h-12 rounded-xl border text-sm font-semibold tabular-nums transition active:scale-95",
+                                  time === sl.time
+                                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                                    : disabled
+                                      ? "cursor-not-allowed border-border bg-muted/40 text-muted-foreground line-through"
+                                      : "border-border hover:border-primary/50 hover:bg-primary/5"
+                                )}
+                                title={disabled ? "Sin mesas libres a esta hora" : `${free} mesas libres`}
+                              >
+                                {sl.time}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -588,8 +697,8 @@ export function ReservationWizard({
             label="Teléfono (opcional)"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            inputMode="tel"
-            leftIcon={<span className="text-xs">📞</span>}
+            type="tel"
+            leftIcon={<Phone className="size-4 text-muted-foreground" />}
           />
           <InputGroupField
             label="Notas (opcional)"
@@ -597,23 +706,40 @@ export function ReservationWizard({
             value={notes}
             onChange={(e) => setNotes(e.target.value.slice(0, 300))}
           />
-          <div className="rounded-xl border bg-muted/30 p-3 text-sm">
-            <p className="font-semibold">Resumen</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {locations.find((l) => l.id === locationId)?.name} ·{" "}
-              {date &&
-                new Date(`${date}T${time ?? "00:00"}:00`).toLocaleString("es-MX", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}{" "}
-              · {party} {party === 1 ? "persona" : "personas"}
-              {selectedTable ? ` · Mesa ${selectedTable.number}` : " · mesa por asignar"}
-            </p>
+          <div className="overflow-hidden rounded-2xl border bg-card">
+            <div className="flex items-center gap-2 bg-primary px-4 py-2.5 text-primary-foreground">
+              <Ticket className="size-4" />
+              <p className="text-sm font-semibold">Tu reservación</p>
+            </div>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 p-4 text-sm">
+              <div className="col-span-2">
+                <dt className="text-xs text-muted-foreground">Sucursal</dt>
+                <dd className="font-semibold">{locations.find((l) => l.id === locationId)?.name}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Día y hora</dt>
+                <dd className="font-semibold capitalize">
+                  {date &&
+                    new Date(`${date}T${time ?? "00:00"}:00`).toLocaleString("es-MX", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Comensales</dt>
+                <dd className="font-semibold">{party} {party === 1 ? "persona" : "personas"}</dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs text-muted-foreground">Mesa</dt>
+                <dd className="font-semibold">{selectedTable ? `Mesa ${selectedTable.number}${selectedTable.roomName ? ` · ${selectedTable.roomName}` : ""}` : "Se asigna al llegar"}</dd>
+              </div>
+            </dl>
             {policy?.requireConfirmation && (
-              <p className="mt-1 text-xs text-warning-ink">
+              <p className="border-t bg-warning/10 px-4 py-2 text-xs text-warning-ink">
                 El anfitrión confirmará la solicitud (política del local).
               </p>
             )}
@@ -621,11 +747,13 @@ export function ReservationWizard({
         </div>
       )}
 
-      {/* Navegación */}
-      <div className="flex items-center justify-between pt-1">
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Navegación (fija abajo en móvil para que siempre quede a la mano) */}
+      <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))] desk:static desk:mx-0 desk:border-0 desk:bg-transparent desk:px-0 desk:pt-1 desk:pb-0">
         <Button
           variant="ghost"
-          size="sm"
           onClick={() => setStep((s) => Math.max(0, s - 1))}
           disabled={step === 0}
         >
@@ -633,12 +761,12 @@ export function ReservationWizard({
           Atrás
         </Button>
         {step < STEPS.length - 1 ? (
-          <Button size="sm" onClick={() => setStep((s) => s + 1)} disabled={!canNext}>
+          <Button className="min-w-36" onClick={() => setStep((s) => s + 1)} disabled={!canNext}>
             Continuar
             <ChevronRight className="size-4" />
           </Button>
         ) : (
-          <Button size="sm" onClick={submit} disabled={submitting}>
+          <Button className="min-w-44" onClick={submit} disabled={submitting}>
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <CalendarCheck2 className="size-4" />}
             {policy?.requireConfirmation ? "Enviar solicitud" : "Confirmar reservación"}
           </Button>
@@ -692,7 +820,7 @@ function DayGrid({
               onClick={() => onSelect(ymd)}
               aria-label={selectable ? `Elige una fecha: ${ymd}` : `Fecha no disponible: ${ymd}`}
               className={cn(
-                "aspect-square rounded-lg text-xs font-medium transition",
+                "aspect-square min-h-10 rounded-xl text-sm font-medium transition active:scale-90",
                 isSelected
                   ? "bg-primary text-primary-foreground"
                   : selectable

@@ -25,6 +25,7 @@ export const PERMISSIONS = [
   { key: "customers.manage", module: "customers", action: "manage", label: "Crear/editar clientes y puntos" },
   { key: "employees.view", module: "employees", action: "view", label: "Ver empleados" },
   { key: "employees.manage", module: "employees", action: "manage", label: "Crear/editar empleados" },
+  { key: "payroll.manage", module: "employees", action: "payroll", label: "Gestionar nómina (periodos, percepciones y deducciones)" },
   { key: "promotions.view", module: "promotions", action: "view", label: "Ver promociones" },
   { key: "promotions.manage", module: "promotions", action: "manage", label: "Crear/editar promociones" },
   { key: "sales.view", module: "sales", action: "view", label: "Ver historial de ventas" },

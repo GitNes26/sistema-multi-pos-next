@@ -14,6 +14,7 @@ import {
   LayoutGrid,
   LogOut,
   Mail,
+  MapPin,
   Phone,
   Receipt,
   ScanLine,
@@ -236,6 +237,7 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
           <SettingsRow href="/portal/favorites" icon={Heart} label="Favoritos" value={stats.favorites ? String(stats.favorites) : undefined} />
           <SettingsRow href="/portal/loyalty" icon={Sparkles} label="Puntos y recompensas" />
           <SettingsRow href="/portal/credit" icon={Landmark} label="Mi crédito" description="Saldo, adeudos y abonos" />
+          <SettingsRow href="/portal/addresses" icon={MapPin} label="Mis direcciones" description="Destinos guardados para tus entregas" />
           <SettingsRow href="/portal/payment-methods" icon={CreditCard} label="Métodos de pago" />
         </SettingsGroup>
       </motion.div>

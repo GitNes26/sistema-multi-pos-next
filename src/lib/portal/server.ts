@@ -2005,6 +2005,36 @@ export async function createCustomerAddress(
   }
 }
 
+export async function updateCustomerAddress(
+  organizationId: string,
+  customerId: string,
+  addressId: string,
+  input: CustomerAddressInput
+): Promise<CustomerAddressView> {
+  if (!input.label.trim()) throw new PortalError("Ponle un nombre al destino")
+  if (!input.address.trim()) throw new PortalError("Ingresa una dirección")
+  const found = await prisma.customerAddress.findFirst({ where: { id: addressId, organizationId, customerId }, select: { id: true } })
+  if (!found) throw new PortalError("Dirección no encontrada", 404)
+  const row = await prisma.customerAddress.update({
+    where: { id: addressId },
+    data: {
+      label: input.label.trim(),
+      address: input.address.trim(),
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      notes: input.notes?.trim() || null,
+    },
+  })
+  return {
+    id: row.id,
+    label: row.label,
+    address: row.address,
+    latitude: row.latitude != null ? toNum(row.latitude) : null,
+    longitude: row.longitude != null ? toNum(row.longitude) : null,
+    notes: row.notes,
+  }
+}
+
 export async function deleteCustomerAddress(
   organizationId: string,
   customerId: string,

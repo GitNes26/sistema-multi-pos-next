@@ -7,7 +7,7 @@ const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"
 
 /** Formato de la solicitud de traslado: se imprime en carta y se firma al entregar y recibir. */
-export function TransferDocument({ t }: { t: TransferDetail }) {
+export function TransferDocument({ t, flat = false }: { t: TransferDetail; /** Versión para imprimir: sin marco ni límite de ancho. */ flat?: boolean }) {
   const units = t.items.reduce((s, i) => s + i.quantity, 0)
   const received = t.status === "received"
   const requestedAt = t.timeline.find((e) => e.key === "requested")?.at ?? null
@@ -15,7 +15,7 @@ export function TransferDocument({ t }: { t: TransferDetail }) {
   const receivedAt = t.timeline.find((e) => e.key === "received")?.at ?? null
 
   return (
-    <article id="transfer-doc-print" className="mx-auto w-full max-w-3xl space-y-5 rounded-lg border bg-white p-6 text-sm text-black">
+    <article className={flat ? "w-full space-y-5 bg-white text-sm text-black" : "mx-auto w-full max-w-3xl space-y-5 rounded-lg border bg-white p-6 text-sm text-black"}>
       <header className="flex items-start justify-between gap-4 border-b border-black/20 pb-3">
         <div>
           <p className="text-xs font-semibold tracking-widest uppercase text-black/60">Solicitud de traslado</p>

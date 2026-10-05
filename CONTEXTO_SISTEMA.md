@@ -206,6 +206,8 @@ Validación externa pendiente: impresora, escáner, báscula y terminal física;
 
 Implementado el 1 de octubre de 2026 (pendiente de validación en dispositivo): carrito del portal persistente (`multi-pos.portal-cart`, ligado a la cuenta), variante preseleccionada en el constructor, ticket POS compacto con cantidad editable, datos de transferencia bancaria en el cobro del POS (`CompanyProfile.transfer*`, configurados en Ajustes → Pasarelas), panel con pulso operativo (`/api/panel/live`), logo de fondo y accesos rápidos para quien no puede ver reportes, y roles de sistema editables solo por el superAdmin (`Role.permissionsEdited` evita que el seeder los reescriba). Safe areas: el inset inferior del POS lo aplican los paneles que tocan el borde, no el contenedor.
 
+Implementado el 5 de octubre de 2026 (pendiente de validación en dispositivo): «Mis direcciones» del portal (`/portal/addresses`, alta/edición/baja con pin en mapa; `PATCH /api/portal/addresses/[id]`), wizard de reservación inmersivo (pasos animados con retroceso, horas por franja, resumen tipo boleto, navegación fija en móvil), impresión completa de solicitudes de traslado y visor/impresión de cotizaciones y órdenes de compra (`document-view.tsx`), nómina con conceptos editables, captura rápida de inventario con «Entrada» por defecto, flecha de regreso en el repartidor, teclado por tipo de dato y selectores de fecha/hora en lugar de inputs nativos. Permisos: nuevo `payroll.manage` (módulo Empleados y nómina) separado de `employees.manage`; el seeder lo respalda una sola vez en roles propios y planes que ya tenían `employees.manage`; Propietario, Admin y Gerente lo reciben por catálogo.
+
 ## 10. Mantenimiento documental
 
 - `AGENTS.md`: reglas obligatorias y router.

@@ -33,6 +33,22 @@
 
 No uses `<select>` ni `<input type="date">`. Los campos de búsqueda usan `type="search"`. Labels y controles deben estar vinculados por `id`/`htmlFor`; helper explica para qué y cuándo usar el dato, no repite el label.
 
+## Teclado, fecha y hora (obligatorio en todo campo nuevo)
+
+El teclado móvil debe corresponder al dato. `ui/input.tsx` e `InputGroupField` lo derivan con `src/lib/input-kind.ts`; si el campo no se infiere por nombre/etiqueta, declara `type`/`inputMode` explícitos.
+
+| Dato | `type` / `inputMode` | Teclado |
+|---|---|---|
+| Texto libre (nombre, notas, dirección) | `text` | normal |
+| Teléfono / celular | `tel` | numérico telefónico |
+| Cantidades, enteros, montos | `inputMode="numeric"` (enteros) o `"decimal"` | numérico |
+| Correo | `email` | con `@` |
+| Sitio web / enlace | `url` | con `/` y `.com` |
+| Buscador o filtro | `search` | `Esc` limpia el campo |
+
+- Hora siempre con `TimePicker`; fecha con `DatePicker`; fecha+hora con `DateTimePicker`. Nunca `<input type="date|time|datetime-local">`. Convierte con `src/lib/date-input.ts` (`ymdToDate`, `dateToYmd`, `localToDate`, `dateToLocal`).
+- `CrudForm` mapea los tipos `phone` → `tel` y `email` → `email` por sí mismo.
+
 ## Combobox y creación anidada
 
 - `FormCombobox` siempre puede buscar; `clearable` depende de nulabilidad.

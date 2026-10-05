@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.37.0.0] — 2026-10-05
+- **Tipo:** `feat` (Minor)
+- feat: mis direcciones del portal con edicion y pin en mapa, reservacion inmersiva por pasos, impresion completa de traslados, ver e imprimir cotizaciones y ordenes de compra, nomina con conceptos editables, captura rapida en entrada por defecto, flecha de regreso del repartidor, teclado segun tipo de dato con selectores de fecha y hora, permiso payroll.manage y documentacion
+
 ### [0.36.0.0] — 2026-10-05
 - **Tipo:** `feat` (Minor)
 - feat: portal con tienda en modo lista para armar listas de compras, cantidad editable (tocar para escribir) en carrito, resumen del pedido y listas, resumen del pedido con foto y controles y avisos visibles de por que el pago esta bloqueado (tienda cerrada, fuera de horario, pedido minimo y zona de entrega)

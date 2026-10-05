@@ -41,7 +41,7 @@ export function QuickCaptureDialog({
   locationId: string;
   onDone: () => void;
 }) {
-  const [mode, setMode] = useState<Mode>("replace");
+  const [mode, setMode] = useState<Mode>("add");
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [scan, setScan] = useState("");
@@ -62,9 +62,9 @@ export function QuickCaptureDialog({
     setQuery("");
     setScan("");
     setFilter("all");
-    setMode("replace");
+    setMode("add");
     setVelocity({});
-    setDraft(initial("replace"));
+    setDraft(initial("add"));
     setTimeout(() => scanRef.current?.focus(), 150);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, rows]);

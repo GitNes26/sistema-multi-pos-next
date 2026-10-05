@@ -10,6 +10,6 @@ export const metadata: Metadata = { title: "Nómina" };
 
 export default async function Page() {
   const session = await getServerSession(authOptions);
-  if (!hasPermission(session, "employees.manage")) redirect("/admin");
+  if (!hasPermission(session, "payroll.manage")) redirect("/admin");
   return <PayrollPage icon={<HandCoins className="size-5" />} />;
 }

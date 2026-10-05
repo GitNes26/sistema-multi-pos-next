@@ -35,6 +35,8 @@ import { WizardSteps } from "@/components/base/wizard-steps"
 import { QuantityStepper } from "@/components/base/quantity-stepper"
 import { SegmentedFilter } from "@/components/base/segmented-filter"
 import { InputGroupField } from "@/components/base/input-group-field"
+import { DatePicker } from "@/components/base/date-picker"
+import { ymdToDate, dateToYmd } from "@/lib/date-input"
 import { FormCombobox } from "@/components/base/form-combobox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -45,6 +47,7 @@ import { useGuideStore } from "@/stores/guide-store"
 import { CrudForm } from "@/components/admin/crud/crud-form"
 import { SUPPLIER_FORM_CONFIG } from "@/components/admin/crud/crud-config"
 import { QuoteRequestWizard, type QuoteGroup } from "./quote-request-wizard"
+import { DocumentViewDialog, type ViewableDocument } from "./document-view"
 
 type Item = {
   id: string
@@ -194,6 +197,20 @@ export function PurchasingPage({
   const [selected, setSelected] = React.useState<Supplier | Order | null>(null),
     [saving, setSaving] = React.useState(false)
   const [operationError, setOperationError] = React.useState<string | null>(null)
+  const [viewDoc, setViewDoc] = React.useState<ViewableDocument | null>(null)
+  const supplierContact = (supplierId: string) => {
+    const s = data?.suppliers.find((x) => x.id === supplierId)
+    return s ? [s.contactName, s.phone, s.email].filter(Boolean).join(" · ") || null : null
+  }
+  const viewQuote = (q: Quote) => {
+    const linked = data?.orders.find((o) => o.quoteId === q.id && o.status !== "cancelled")
+    setViewDoc({ kind: "quote", folio: q.folio, status: q.status, supplierName: q.supplier.businessName, supplierContact: supplierContact(q.supplierId), createdAt: q.createdAt, dueAt: q.validUntil, notes: q.notes, linkedFolio: linked?.folio ?? null, items: q.items })
+  }
+  const viewOrder = (o: Order) => {
+    const quote = data?.quotes.find((q) => q.id === o.quoteId)
+    const dest = (o.locationType === "cedis" ? data?.cedis : data?.locations)?.find((d) => d.id === o.locationId)?.name ?? null
+    setViewDoc({ kind: "order", folio: o.folio, status: o.status, supplierName: o.supplier.businessName, supplierContact: supplierContact(o.supplierId), createdAt: o.createdAt, dueAt: o.expectedAt, destination: dest, linkedFolio: quote?.folio ?? null, items: o.items })
+  }
   const [doc, setDoc] = React.useState({
       supplierId: "",
       quoteId: "",
@@ -525,6 +542,7 @@ export function PurchasingPage({
           <DocumentList
             rows={data?.quotes ?? []}
             orders={data?.orders ?? []}
+            onView={viewQuote}
             onEdit={canManage ? (quote) => {
               if (data?.orders.some((order) => order.quoteId === quote.id)) { toast.error("La cotización ya está vinculada a una orden y no puede modificarse"); return }
               setDoc({ supplierId: quote.supplierId, quoteId: quote.id, locationType: "location", locationId: "", validUntil: quote.validUntil ? quote.validUntil.slice(0, 10) : "", expectedAt: "", notes: quote.notes ?? "" })
@@ -617,6 +635,7 @@ export function PurchasingPage({
                     {o.receipts.length > 0 && <p className="mt-1 text-xs text-muted-foreground">{o.receipts.length} recepción{o.receipts.length === 1 ? "" : "es"} registrada{o.receipts.length === 1 ? "" : "s"} · Última: {new Date(o.receipts[o.receipts.length - 1].receivedAt).toLocaleDateString("es-MX")}</p>}
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => viewOrder(o)}><FileText /> Ver orden</Button>
                     {canApprove && o.status === "draft" && (
                       <Button
                         size="sm"
@@ -848,6 +867,7 @@ export function PurchasingPage({
         </div>
       </DialogComponent>
 
+      <DocumentViewDialog doc={viewDoc} onClose={() => setViewDoc(null)} />
       <QuoteRequestWizard
         open={dialog === "quote" && !doc.quoteId}
         close={close}
@@ -1004,9 +1024,11 @@ function DocumentList({
   orders,
   onCreateOrder,
   onEdit,
+  onView,
 }: {
   rows: Quote[]
   orders: Order[]
+  onView?: (quote: Quote) => void
   onCreateOrder?: (quote: Quote) => void
   onEdit?: (quote: Quote) => void
 }) {
@@ -1035,6 +1057,9 @@ function DocumentList({
             <span className="text-sm text-muted-foreground">
               {new Date(r.createdAt).toLocaleDateString("es-MX")}
             </span>
+            {onView && (
+              <Button size="sm" variant="outline" onClick={() => onView(r)}><FileText /> Ver</Button>
+            )}
             {onEdit && !["cancelled"].includes(r.status) && !linkedOrder && (
               <Button size="sm" variant="outline" onClick={() => onEdit(r)}>Modificar</Button>
             )}
@@ -1238,25 +1263,25 @@ function PurchaseDocumentDialog({
                   )
                 })}
               </div>
-              <InputGroupField
+              <DatePicker
                 id="order-expected"
                 label="Entrega esperada"
-                type="date"
-                leftIcon={<CalendarDays />}
-                value={doc.expectedAt}
+                value={ymdToDate(doc.expectedAt)}
                 helper={supplier?.leadTimeDays ? `Sugerida según los ${supplier.leadTimeDays} días de entrega del proveedor.` : undefined}
-                onChange={(e) => setDoc((v) => ({ ...v, expectedAt: e.target.value }))}
+                onChange={(d) => setDoc((v) => ({ ...v, expectedAt: dateToYmd(d) }))}
+                disabledBefore={new Date()}
+                clearable
                 className="sm:max-w-xs"
               />
             </div>
           ) : (
-            <InputGroupField
+            <DatePicker
               id="quote-valid"
               label="¿Hasta cuándo necesitas la respuesta?"
-              type="date"
-              leftIcon={<CalendarDays />}
-              value={doc.validUntil}
-              onChange={(e) => setDoc((v) => ({ ...v, validUntil: e.target.value }))}
+              value={ymdToDate(doc.validUntil)}
+              onChange={(d) => setDoc((v) => ({ ...v, validUntil: dateToYmd(d) }))}
+              disabledBefore={new Date()}
+              clearable
               className="sm:max-w-xs"
             />
           )}

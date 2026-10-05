@@ -22,6 +22,7 @@ import { FormCombobox } from "@/components/base/form-combobox";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { DatePicker } from "@/components/base/date-picker";
 import { TimePicker } from "@/components/base/time-picker";
+import { ymdToDate, dateToYmd } from "@/lib/date-input";
 import { cn } from "@/lib/utils";
 import {
   type AgendaCita,
@@ -467,12 +468,10 @@ export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: D
           {rescheduling && (
             <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/30 p-3">
               <div>
-                <Label className="text-xs">Fecha</Label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <DatePicker label="Fecha" value={ymdToDate(date)} onChange={(d) => setDate(dateToYmd(d))} />
               </div>
               <div>
-                <Label className="text-xs">Hora</Label>
-                <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                <TimePicker label="Hora" value={time || null} onChange={(v) => setTime(v ?? "")} clearable={false} />
               </div>
               <div>
                 <Label className="text-xs">Min</Label>

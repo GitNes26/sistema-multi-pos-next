@@ -1,8 +1,11 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { inferInputKind, inputModeFor } from "@/lib/input-kind"
 
-function Input({ className, type, value, onChange, onFocus, onBlur, ...props }: React.ComponentProps<"input">) {
+function Input({ className, type: typeProp, value, onChange, onFocus, onBlur, ...props }: React.ComponentProps<"input">) {
+  // Sin `type`, el campo se reconoce por su texto («Buscar…», «Teléfono»…) para dar el teclado correcto.
+  const type = typeProp ?? (typeof props.placeholder === "string" ? (inferInputKind(props.placeholder) === "search" ? "search" : undefined) : undefined)
   const controlledNumber = type === "number" && value !== undefined
   const [numberDraft, setNumberDraft] = React.useState(() => controlledNumber ? String(value ?? "") : "")
   const [editingNumber, setEditingNumber] = React.useState(false)
@@ -14,6 +17,9 @@ function Input({ className, type, value, onChange, onFocus, onBlur, ...props }: 
   return (
     <input
       type={type}
+      inputMode={inputModeFor(type, props.step)}
+      enterKeyHint={type === "search" ? "search" : undefined}
+      autoComplete={type === "email" ? "email" : type === "tel" ? "tel" : undefined}
       value={controlledNumber ? numberDraft : value}
       onChange={(event) => {
         if (controlledNumber) setNumberDraft(event.target.value)

@@ -25,7 +25,7 @@ async function guard() {
   const session = await getServerSession(authOptions);
   const organizationId = effectiveOrgId(session);
   if (!session?.user || session.user.scope === "portal" || !organizationId) return { error: NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 }) };
-  if (!hasPermission(session, "employees.manage")) return { error: NextResponse.json({ ok: false, error: "No tienes permiso para la nómina" }, { status: 403 }) };
+  if (!hasPermission(session, "payroll.manage")) return { error: NextResponse.json({ ok: false, error: "No tienes permiso para la nómina" }, { status: 403 }) };
   return { organizationId, userId: session.user.id };
 }
 

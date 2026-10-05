@@ -429,7 +429,7 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     label: "Nómina",
     icon: "HandCoins",
     href: "/admin/payroll",
-    permissionKey: "employees.manage",
+    permissionKey: "payroll.manage",
     sortOrder: 6,
   },
   {
@@ -770,6 +770,7 @@ export async function seedProduction() {
 
   // ¿Es la primera vez que existen los permisos de traslados? (para respaldar lo ya configurado)
   const hadTransferPermissions = !!(await prisma.permission.findUnique({ where: { key: "transfers.view" } }))
+  const hadPayrollPermission = !!(await prisma.permission.findUnique({ where: { key: "payroll.manage" } }))
   const hadPanelStats = !!(await prisma.permission.findUnique({ where: { key: "panel.stats" } }))
 
   // Permisos
@@ -837,6 +838,24 @@ export async function seedProduction() {
       const keys = plan.permissions.map(String)
       if (keys.includes("reports.view") && !keys.includes("panel.stats")) {
         await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: [...keys, "panel.stats"] } })
+      }
+    }
+  }
+  // Respaldo único de payroll.manage: la nómina colgaba de employees.manage.
+  if (!hadPayrollPermission) {
+    const withEmployees = await prisma.rolePermission.findMany({
+      where: { permissionKey: "employees.manage", role: { isSystem: false } },
+      select: { organizationId: true, roleId: true, allowed: true },
+    })
+    for (const rp of withEmployees) {
+      const dup = await prisma.rolePermission.findFirst({ where: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: "payroll.manage" } })
+      if (!dup) await prisma.rolePermission.create({ data: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: "payroll.manage", allowed: rp.allowed } })
+    }
+    for (const plan of await prisma.subscriptionPlan.findMany({ select: { id: true, permissions: true } })) {
+      if (!Array.isArray(plan.permissions)) continue
+      const keys = plan.permissions.map(String)
+      if (keys.includes("employees.manage") && !keys.includes("payroll.manage")) {
+        await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: [...keys, "payroll.manage"] } })
       }
     }
   }

@@ -662,7 +662,11 @@ export function CrudForm({
               type={
                 field.type === "password"
                   ? "password"
-                  : field.type === "number" ||
+                  : field.type === "phone"
+                    ? "tel"
+                    : field.type === "email"
+                      ? "email"
+                      : field.type === "number" ||
                       field.type === "money" ||
                       field.type === "percent"
                     ? "number"

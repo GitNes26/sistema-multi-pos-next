@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormCombobox } from "@/components/base/form-combobox";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { DatePicker } from "@/components/base/date-picker";
+import { ymdToDate, dateToYmd } from "@/lib/date-input";
 import { cn } from "@/lib/utils";
 import {
   type RentUnit,
@@ -486,12 +487,10 @@ export function ReservationDetailDialog({ reservation, canManage, onOpenChange, 
           {rescheduling && (
             <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/30 p-3">
               <div>
-                <Label className="text-xs">Entrega</Label>
-                <Input type="date" value={startYmd} onChange={(e) => setStartYmd(e.target.value)} />
+                <DatePicker label="Entrega" value={ymdToDate(startYmd)} onChange={(d) => setStartYmd(dateToYmd(d))} />
               </div>
               <div>
-                <Label className="text-xs">Regreso</Label>
-                <Input type="date" value={endYmd} onChange={(e) => setEndYmd(e.target.value)} />
+                <DatePicker label="Regreso" value={ymdToDate(endYmd)} onChange={(d) => setEndYmd(dateToYmd(d))} />
               </div>
               <Button size="sm" onClick={() => void saveReschedule()} disabled={busy}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}

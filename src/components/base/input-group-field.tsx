@@ -4,6 +4,7 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
+import { inferInputKind } from "@/lib/input-kind"
 import { Label } from "@/components/ui/label"
 import { InfoTooltip } from "@/components/base/info-tooltip"
 import { AlertCircle, Eye, EyeOff, Hash, KeyRound, Mail, Phone, Type } from "lucide-react"
@@ -30,7 +31,7 @@ export const InputGroupField = React.forwardRef<
     label,
     helper,
     hint,
-    type,
+    type: typeProp,
     error,
     required,
     leftIcon,
@@ -44,6 +45,9 @@ export const InputGroupField = React.forwardRef<
   ref
 ) {
   const [hasError] = useForwardedError(error)
+  // Teléfono, correo y URL se reconocen por su etiqueta para dar el teclado correcto en celulares.
+  const guessed = inferInputKind(label)
+  const type = typeProp ?? (guessed && guessed !== "search" && guessed !== "number" ? guessed : undefined)
   const autoId = React.useId().replace(/:/g, "")
   const inputId = id ?? `field-${autoId}`
   const isPassword = type === "password"

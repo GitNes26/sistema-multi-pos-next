@@ -36,6 +36,7 @@ Actualizada: 1 de octubre de 2026.
 - Devolución: una vigente por venta, folio `DEV-n`, cambio descuenta inventario del reemplazo; reimpresión lleva marca.
 - Permisos de traslados por etapa (`transfers.*`); roles de sistema solo los edita el superAdmin.
 - Seeder: respaldo único de permisos nuevos de traslados para roles propios y planes ya guardados.
+- Permiso `payroll.manage` (nómina) separado de `employees.manage`; respaldo único en el seeder. Formularios: teclado según el dato y Date/Time pickers (ver `docs/agents/FORMULARIOS_Y_CRUD.md`).
 
 ## Recuperación rápida
 

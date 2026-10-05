@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   AlertTriangle, ArrowRight, CheckCircle2, CircleDot, ClipboardCheck, Loader2, LocateFixed, MapPin, Navigation,
@@ -50,6 +51,18 @@ export function TransferDetailView({ id, perms }: { id: string; perms: TransferP
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [docOpen, setDocOpen] = useState(false)
+
+  // Imprime solo el documento: una copia fuera del diálogo (que recorta y escala) en el <body>.
+  const printDocument = () => {
+    const root = document.documentElement
+    root.dataset.printing = "transfer"
+    const clear = () => {
+      delete root.dataset.printing
+      window.removeEventListener("afterprint", clear)
+    }
+    window.addEventListener("afterprint", clear)
+    window.print()
+  }
 
   const load = useCallback(async () => {
     try {
@@ -139,7 +152,7 @@ export function TransferDetailView({ id, perms }: { id: string; perms: TransferP
         footer={
           <>
             <Button variant="outline" onClick={() => setDocOpen(false)}>Cerrar</Button>
-            <Button onClick={() => window.print()}>
+            <Button onClick={printDocument}>
               <Printer className="size-4" /> Imprimir
             </Button>
           </>
@@ -147,6 +160,12 @@ export function TransferDetailView({ id, perms }: { id: string; perms: TransferP
       >
         <TransferDocument t={t} />
       </DialogComponent>
+      {docOpen && typeof document !== "undefined" && createPortal(
+        <div id="transfer-doc-print" className="hidden print:block">
+          <TransferDocument t={t} flat />
+        </div>,
+        document.body
+      )}
 
       <div className="space-y-5 rounded-2xl border bg-card p-4 shadow-e1 sm:p-5">
         <TransferFlow
