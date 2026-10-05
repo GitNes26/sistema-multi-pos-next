@@ -39,6 +39,7 @@ const ROLE_VISUALS: Record<string, RoleVisual> = {
   "Cocina (KDS)": { icon: ChefHat, accent: "bg-destructive/15 text-destructive" },
   Cocina: { icon: ChefHat, accent: "bg-destructive/15 text-destructive" },
   Repartidor: { icon: Bike, accent: "bg-info/15 text-info-ink" },
+  "Trabajador completo": { icon: BriefcaseBusiness, accent: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
   "Agente de atención": { icon: Headset, accent: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
   "Agente de renta": { icon: Headset, accent: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
   Admin: { icon: Shield, accent: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-400" },

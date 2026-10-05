@@ -6,6 +6,7 @@ import { SegmentedFilter } from "@/components/base/segmented-filter"
 import { DatePicker } from "@/components/base/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { crudApi } from "@/lib/api"
+import { ClearFiltersButton } from "@/components/base/clear-filters-button"
 import { fmt, type ReportFilters } from "./report-kit"
 
 // Barra de filtros común a los reportes: periodo (atajos o fechas) y sucursal.
@@ -47,7 +48,7 @@ export function useReportFiltersState(initial: Exclude<PeriodPreset, "custom"> =
   const [range, setRange] = useState(() => presetRange(initial))
   const [locationId, setLocationId] = useState("")
   const filters: ReportFilters = useMemo(() => ({ ...range, locationId }), [range, locationId])
-  return { preset, setPreset, range, setRange, locationId, setLocationId, filters }
+  return { preset, setPreset, range, setRange, locationId, setLocationId, filters, initial }
 }
 
 export function ReportFiltersBar({
@@ -116,6 +117,14 @@ export function ReportFiltersBar({
             </SelectContent>
           </Select>
         )}
+        <ClearFiltersButton
+          active={state.preset !== state.initial || Boolean(state.locationId)}
+          onClear={() => {
+            state.setPreset(state.initial)
+            state.setRange(presetRange(state.initial))
+            state.setLocationId("")
+          }}
+        />
         {extra && <div className="ml-auto flex flex-wrap items-center gap-2">{extra}</div>}
       </div>
     </div>

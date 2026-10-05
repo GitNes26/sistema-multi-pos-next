@@ -57,6 +57,14 @@ function amountDue(ret: { returnType: string; total: unknown; exchangeItems: unk
   return 0;
 }
 
+/** Cuánto debe pagar el cliente cuando el producto de cambio cuesta más que lo devuelto. */
+function exchangeExtra(ret: { returnType: string; total: unknown; exchangeItems: unknown }) {
+  if (ret.returnType !== "exchange") return 0;
+  const lines = (Array.isArray(ret.exchangeItems) ? ret.exchangeItems : []) as { quantity: number; unitPrice: number }[];
+  const exchangeTotal = lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0);
+  return Math.max(0, round2(exchangeTotal - num(ret.total)));
+}
+
 export interface RefundPaymentInput {
   method: $Enums.PaymentMethod;
   amount: number;
@@ -458,6 +466,8 @@ export async function completeReturn(
     creditAmount?: number;
     /** Cliente a quien se bonifica si la venta no lo tenía. */
     customerId?: string | null;
+    /** Cambio más caro: cómo pagó el cliente la diferencia (el efectivo entra a la caja). */
+    collectPayments?: RefundPaymentInput[];
   } = {}
 ) {
   const employee = await prisma.employee.findFirst({ where: { userId }, select: { id: true } });
@@ -482,6 +492,40 @@ export async function completeReturn(
     if (!ret) throw new CrudError("Devolución no encontrada", 404);
 
     const due = amountDue(ret);
+    const extra = exchangeExtra(ret);
+    if (extra > 0.009) {
+      const collected = input.collectPayments ?? [];
+      const allowedIn = new Set<$Enums.PaymentMethod>(["cash", "card", "wallet", "other"]);
+      let sum = 0;
+      for (const payment of collected) {
+        const amount = round2(Number(payment?.amount));
+        if (!allowedIn.has(payment?.method) || !Number.isFinite(amount) || amount <= 0) {
+          throw new CrudError("Medio o importe de cobro inválido", 400, "collectPayments");
+        }
+        if (payment.method !== "cash" && !payment.reference?.trim()) {
+          throw new CrudError("Agrega la referencia o comprobante del cobro", 400, "collectPayments");
+        }
+        sum = round2(sum + amount);
+      }
+      if (Math.abs(sum - extra) > 0.009) {
+        throw new CrudError(`Cobra exactamente la diferencia del cambio (${extra.toFixed(2)})`, 400, "collectPayments");
+      }
+      if (collected.some((p) => p.method === "cash")) {
+        if (!input.cashSessionId) throw new CrudError("Selecciona la caja abierta que recibirá el efectivo", 400, "cashSessionId");
+        const cashSession = await tx.cashSession.findFirst({
+          where: { id: input.cashSessionId, organizationId, locationId: ret.locationId, status: "open" },
+          select: { id: true },
+        });
+        if (!cashSession) throw new CrudError("La caja seleccionada no está abierta en la sucursal de la venta", 409, "cashSessionId");
+        await tx.saleReturn.update({ where: { id: returnId }, data: { cashSessionId: cashSession.id } });
+      }
+      // Importes negativos = dinero que entra (compensan los reembolsos en el corte de caja).
+      await tx.saleReturnPayment.createMany({
+        data: collected.map((p) => ({ returnId, method: p.method, amount: -round2(Number(p.amount)), reference: p.reference?.trim() || null })),
+      });
+    } else if (input.collectPayments?.length) {
+      throw new CrudError("Este cambio no tiene diferencia a cobrar", 400, "collectPayments");
+    }
     const bonusCustomerId = ret.customerId ?? ret.sale.customerId ?? input.customerId ?? null;
     const splits = (ret.returnType === "refund" || ret.returnType === "exchange") && due > 0;
     const pointsAmount = splits ? round2(Math.max(0, Number(input.pointsAmount) || 0)) : 0;
@@ -542,7 +586,7 @@ export async function completeReturn(
         },
         select: { method: true, amount: true },
       });
-      for (const payment of priorRefunds) {
+      for (const payment of priorRefunds.filter((p) => num(p.amount) > 0)) {
         available.set(payment.method, round2((available.get(payment.method) ?? 0) - num(payment.amount)));
       }
       for (const [method, payment] of allocations) {
@@ -786,7 +830,7 @@ export async function getReturnDetail(organizationId: string, returnId: string) 
   const settlement = await settlementContext(prisma, organizationId, ret.customerId ?? ret.sale.customerId);
   return {
     ...ret,
-    settlement: { ...settlement, due: amountDue(ret), customerAssigned: Boolean(ret.customerId ?? ret.sale.customerId) },
+    settlement: { ...settlement, due: amountDue(ret), extra: exchangeExtra(ret), customerAssigned: Boolean(ret.customerId ?? ret.sale.customerId) },
     refundAvailability: [...available]
       .filter(([method, amount]) => ["cash", "card", "wallet", "other"].includes(method) && amount > 0)
       .map(([method, amount]) => ({ method, amount })),

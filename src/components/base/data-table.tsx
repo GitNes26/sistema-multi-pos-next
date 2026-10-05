@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/table"
 import { Spinner } from "@/components/base/spinner"
 import { InputGroupField } from "./input-group-field"
+import { ClearFiltersButton } from "./clear-filters-button"
 
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -79,6 +80,10 @@ export interface DataTableProps<TData, TValue> {
   showPagination?: boolean
   showColumnVisibility?: boolean
   toolbarSlot?: React.ReactNode
+  /** Hay filtros externos (en `toolbarSlot`) distintos de su valor por defecto. */
+  filtersActive?: boolean
+  /** Regresa los filtros externos a su valor por defecto; la búsqueda interna se limpia sola. */
+  onClearFilters?: () => void
   onRefresh?: () => void
   refreshing?: boolean
   renderCard?: (row: TData) => React.ReactNode
@@ -102,6 +107,8 @@ export function DataTable<TData, TValue>({
   showPagination = true,
   showColumnVisibility = true,
   toolbarSlot,
+  filtersActive = false,
+  onClearFilters,
   onRefresh,
   refreshing = false,
   renderCard,
@@ -285,6 +292,14 @@ export function DataTable<TData, TValue>({
             />
           )}
           {toolbarSlot}
+          <ClearFiltersButton
+            active={Boolean(globalFilter) || columnFilters.length > 0 || filtersActive}
+            onClear={() => {
+              setGlobalFilter("")
+              setColumnFilters([])
+              onClearFilters?.()
+            }}
+          />
           <div className="ml-auto flex items-center gap-2">
             {showColumnVisibility && (
               <DropdownMenu>

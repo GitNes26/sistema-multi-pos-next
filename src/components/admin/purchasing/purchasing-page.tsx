@@ -35,6 +35,7 @@ import { WizardSteps } from "@/components/base/wizard-steps"
 import { QuantityStepper } from "@/components/base/quantity-stepper"
 import { SegmentedFilter } from "@/components/base/segmented-filter"
 import { InputGroupField } from "@/components/base/input-group-field"
+import { ClearFiltersButton } from "@/components/base/clear-filters-button"
 import { DatePicker } from "@/components/base/date-picker"
 import { ymdToDate, dateToYmd } from "@/lib/date-input"
 import { FormCombobox } from "@/components/base/form-combobox"
@@ -430,6 +431,7 @@ export function PurchasingPage({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Nombre, código o contacto"
             />
+            <ClearFiltersButton active={Boolean(query)} onClear={() => setQuery("")} className="self-end" />
             {canManage && (
               <Button
                 data-guide="supplier-link"
@@ -1454,6 +1456,7 @@ function ReceiptsHistory({ receipts }: { receipts: Workspace["receipts"] }) {
         onChange={(e) => setQ(e.target.value)}
         placeholder="Folio, orden, proveedor, producto o quien recibió"
       />
+      <ClearFiltersButton active={Boolean(q)} onClear={() => setQ("")} />
       {rows.length === 0 && (
         <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
           {receipts.length ? "Ninguna recepción coincide con la búsqueda." : "Aún no hay recepciones. Se registran desde una orden aprobada o enviada."}

@@ -1127,7 +1127,7 @@ export async function listDriverOptions(organizationId: string): Promise<DriverO
       select: { id: true, userId: true, fullName: true, position: { select: { name: true } } },
       orderBy: { fullName: "asc" },
     }),
-    prisma.membership.findMany({ where: { organizationId, roleId: "system-courier" }, select: { userId: true } }),
+    prisma.membership.findMany({ where: { organizationId, roleId: { in: ["system-courier", "system-all-rounder"] } }, select: { userId: true } }),
     prisma.order.groupBy({
       by: ["driverEmployeeId"],
       where: { organizationId, driverEmployeeId: { not: null }, status: { in: ["ready", "in_transit", "at_destination"] } },

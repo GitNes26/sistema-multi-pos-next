@@ -22,6 +22,7 @@ import {
   Search,
 } from "lucide-react"
 import { EntityCell, RowActions, SegmentedFilter } from "@/components/base"
+import { ClearFiltersButton } from "@/components/base/clear-filters-button"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -277,6 +278,7 @@ function OrganizationsTab() {
           onChange={(e) => setQuery(e.target.value)}
           className="w-full sm:w-64"
         />
+        <ClearFiltersButton active={Boolean(query) || modeFilter !== "all"} onClear={() => { setQuery(""); setModeFilter("all") }} />
         <Button className="ml-auto" onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" /> Nueva organización
         </Button>

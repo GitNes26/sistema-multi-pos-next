@@ -47,6 +47,7 @@ El teclado móvil debe corresponder al dato. `ui/input.tsx` e `InputGroupField` 
 | Buscador o filtro | `search` | `Esc` limpia el campo |
 
 - Hora siempre con `TimePicker`; fecha con `DatePicker`; fecha+hora con `DateTimePicker`. Nunca `<input type="date|time|datetime-local">`. Convierte con `src/lib/date-input.ts` (`ymdToDate`, `dateToYmd`, `localToDate`, `dateToLocal`).
+- Toda pantalla con filtros o búsqueda incluye `ClearFiltersButton` (`src/components/base/clear-filters-button.tsx`), que aparece solo si hay algún filtro distinto del predeterminado y los regresa a su valor por defecto. `DataTable` ya lo trae para su búsqueda interna; los filtros externos se conectan con `filtersActive` y `onClearFilters`.
 - `CrudForm` mapea los tipos `phone` → `tel` y `email` → `email` por sí mismo.
 
 ## Combobox y creación anidada

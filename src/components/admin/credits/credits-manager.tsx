@@ -443,6 +443,8 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
         emptyMessage={filter === "debt" ? "Nadie tiene saldo pendiente." : filter === "overdue" ? "No hay cuentas vencidas." : filter === "near" ? "Nadie está cerca de su límite." : filter === "blocked" ? "No hay créditos bloqueados." : "No hay clientes con crédito."}
         onRefresh={load}
         refreshing={loading}
+        filtersActive={filter !== "all"}
+        onClearFilters={() => setFilter("all")}
         toolbarSlot={
           <>
           <SegmentedFilter

@@ -23,6 +23,7 @@ import type { OrderRow } from "@/lib/orders/server"
 import { OrderDetailDialog } from "./order-detail-dialog"
 import { OrdersMonitor } from "./orders-monitor"
 import { useOrdersLive } from "@/hooks/use-orders-live"
+import { ClearFiltersButton } from "@/components/base/clear-filters-button"
 import { OrderStatusPill } from "@/components/shared/order-status-pill"
 import { SegmentedFilter } from "@/components/base/segmented-filter"
 
@@ -292,6 +293,18 @@ export function OrdersPage({
                   onCheckedChange={setActiveOnly}
                   border={false}
                   className="w-auto"
+                />
+                <ClearFiltersButton
+                  active={Boolean(search || from || to || status !== "all" || method !== "all" || locationId !== "all" || activeOnly)}
+                  onClear={() => {
+                    setSearch("")
+                    setFrom("")
+                    setTo("")
+                    setStatus("all")
+                    setMethod("all")
+                    setLocationId("all")
+                    setActiveOnly(false)
+                  }}
                 />
               </div>
 

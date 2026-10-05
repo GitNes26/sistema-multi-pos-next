@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { money, qty } from "@/lib/pos/money";
 import { RefundCompletionDialog } from "./refund-completion-dialog";
 import { SlideToPay } from "@/components/shared/slide-to-pay";
+import { ClearFiltersButton } from "@/components/base/clear-filters-button"
 
 const REFUND_METHOD_LABELS: Record<string, string> = {
   cash: "Efectivo",
@@ -179,7 +180,7 @@ export function ReturnsTab({ canView, canManage }: Props) {
       }
       setActionBusy(null);
     }
-    if (target.returnType === "refund" || (target.returnType === "exchange" && (target.settlement?.due ?? 0) > 0)) {
+    if (target.returnType === "refund" || (target.returnType === "exchange" && ((target.settlement?.due ?? 0) > 0 || (target.settlement?.extra ?? 0) > 0))) {
       setRefundDetail(target);
       setRefundOpen(true);
       return;
@@ -275,6 +276,13 @@ export function ReturnsTab({ canView, canManage }: Props) {
           label="Hasta"
           value={filters.to ? new Date(filters.to + "T00:00:00") : null}
           onChange={(d) => setFilters((f) => ({ ...f, to: d ? d.toISOString().slice(0, 10) : undefined }))}
+        />
+        <ClearFiltersButton
+          active={Boolean(q || filters.status || filters.returnType || filters.locationId || filters.from || filters.to)}
+          onClear={() => {
+            setQ("");
+            setFilters({ status: "", returnType: "", locationId: "", from: "", to: "" });
+          }}
         />
       </div>
 

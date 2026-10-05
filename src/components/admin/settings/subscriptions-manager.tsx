@@ -13,6 +13,7 @@ import { DatePicker } from "@/components/base/date-picker"
 import { ymdToDate, dateToYmd } from "@/lib/date-input"
 import { SwitchField } from "@/components/base/switch-field"
 import { SegmentedFilter, StatusPill, type StatusTone } from "@/components/base"
+import { ClearFiltersButton } from "@/components/base/clear-filters-button"
 import { money } from "@/lib/pos/money"
 import { cn } from "@/lib/utils"
 
@@ -166,6 +167,7 @@ export function SubscriptionsManager() {
           ]}
         />
         <InputGroupField placeholder="Buscar empresa…" leftIcon={<Search className="size-4" />} value={q} onChange={(e) => setQ(e.target.value)} className="w-full sm:w-64" />
+        <ClearFiltersButton active={Boolean(q) || filter !== "all"} onClear={() => { setQ(""); setFilter("all") }} />
       </div>
 
       {!orgs ? (

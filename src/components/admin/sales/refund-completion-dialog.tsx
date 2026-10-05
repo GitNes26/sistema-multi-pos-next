@@ -77,7 +77,12 @@ export function RefundCompletionDialog({
   const [creditMoney, setCreditMoney] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [settlement, setSettlement] = useState<ReturnSettlement | null>(null);
+  // Cambio más caro: el cliente paga la diferencia (el efectivo entra a la caja).
+  const [collectMethod, setCollectMethod] = useState<RefundMethod>("cash");
+  const [collectReference, setCollectReference] = useState("");
 
+  const extra = detail ? round2(detail.settlement?.extra ?? 0) : 0;
+  const collectMode = extra > 0;
   const due = detail ? round2(detail.settlement?.due ?? Number(detail.total)) : 0;
   const pointsValue = round2(Math.max(0, Number(pointsMoney) || 0));
   const creditValue = round2(Math.max(0, Number(creditMoney) || 0));
@@ -89,6 +94,8 @@ export function RefundCompletionDialog({
     setPointsMoney("");
     setCreditMoney("");
     setCustomerId("");
+    setCollectMethod("cash");
+    setCollectReference("");
     setPayments(initialAllocations(detail, round2(detail.settlement?.due ?? Number(detail.total))));
     setCashSessionId(detail.openCashSessions[0]?.id ?? null);
     setErrors({});
@@ -127,7 +134,34 @@ export function RefundCompletionDialog({
   const wantsBonus = pointsValue > 0 || creditValue > 0;
   const isExchange = detail.returnType === "exchange";
 
+  const submitCollect = async () => {
+    if (collectMethod !== "cash" && !collectReference.trim()) {
+      setErrors({ "collect-reference": "Agrega la referencia o comprobante" });
+      requestAnimationFrame(() => focusFirstInvalid({ "collect-reference": "x" }, formId));
+      return;
+    }
+    if (collectMethod === "cash" && !cashSessionId) {
+      setErrors({ "refund-cash-session": "Abre o selecciona una caja en esta sucursal" });
+      return;
+    }
+    setSubmitting(true);
+    setErrors({});
+    try {
+      const response = await salesApi.completeReturn(detail.id, undefined, collectMethod === "cash" ? cashSessionId ?? undefined : undefined, {
+        collectPayments: [{ method: collectMethod, amount: extra, reference: collectReference.trim() || undefined }],
+      });
+      if (!response.return) throw new Error("El servidor no devolvió la operación completada");
+      onCompleted();
+      onOpenChange(false);
+    } catch (error) {
+      setErrors({ form: error instanceof Error ? error.message : "No se pudo registrar el cobro" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const submit = async () => {
+    if (collectMode) return submitCollect();
     const fieldErrors: Record<string, string> = {};
     try {
       if (wantsBonus && !customer) {
@@ -197,9 +231,11 @@ export function RefundCompletionDialog({
       open={open}
       onOpenChange={(next) => !submitting && onOpenChange(next)}
       icon={<RotateCcw className="size-5" />}
-      title={isExchange ? "Entregar la diferencia del cambio" : "Registrar entrega del reembolso"}
+      title={collectMode ? "Cobrar la diferencia del cambio" : isExchange ? "Entregar la diferencia del cambio" : "Registrar entrega del reembolso"}
       description={
-        isExchange
+        collectMode
+          ? `El producto de cambio cuesta ${money(extra)} más: cóbralo al cliente para completar el cambio.`
+          : isExchange
           ? `El producto de cambio cuesta menos: ${money(due)} a favor del cliente. Entrégalo desde la caja o bonifícalo.`
           : "Distribuye el total entre los medios usados en la venta. Para tarjeta, wallet u otro medio, captura la referencia del comprobante."
       }
@@ -212,13 +248,41 @@ export function RefundCompletionDialog({
           </Button>
           <Button type="submit" form={formId} disabled={submitting}>
             {submitting && <Loader2 className="size-4 animate-spin" />}
-            {isExchange ? "Confirmar entrega" : "Confirmar reembolso"}
+            {collectMode ? "Confirmar cobro" : isExchange ? "Confirmar entrega" : "Confirmar reembolso"}
           </Button>
         </>
       }
     >
       <form id={formId} onSubmit={(event) => { event.preventDefault(); void submit(); }} className="space-y-3">
-        {(canPoints || canCredit) && (
+        {collectMode && (
+          <div className="space-y-3 rounded-xl border bg-muted/30 p-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">El cliente paga</span>
+              <span className="text-lg font-bold tabular-nums">{money(extra)}</span>
+            </div>
+            <FormCombobox
+              id="collect-method"
+              label="Medio de pago"
+              options={(Object.keys(METHOD_META) as RefundMethod[]).map((m) => ({ value: m, label: METHOD_META[m].label }))}
+              value={collectMethod}
+              onChange={(v) => setCollectMethod((v as RefundMethod) ?? "cash")}
+              searchable={false}
+              clearable={false}
+            />
+            {collectMethod !== "cash" && (
+              <InputGroupField
+                id="collect-reference"
+                label="Referencia o comprobante"
+                leftIcon={<ReceiptText className="size-4" />}
+                value={collectReference}
+                onChange={(event) => setCollectReference(event.target.value)}
+                error={errors["collect-reference"]}
+                required
+              />
+            )}
+          </div>
+        )}
+        {!collectMode && (canPoints || canCredit) && (
           <div className="space-y-3 rounded-xl border bg-card p-3">
             <p className="text-sm font-semibold">Bonificar una parte (opcional)</p>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -260,10 +324,10 @@ export function RefundCompletionDialog({
           </div>
         )}
 
-        {payments.some((payment) => payment.method === "cash" && Number(payment.amount) > 0) && (
+        {(collectMode ? collectMethod === "cash" : payments.some((payment) => payment.method === "cash" && Number(payment.amount) > 0)) && (
           <FormCombobox
             id="refund-cash-session"
-            label="Caja que entrega el efectivo"
+            label={collectMode ? "Caja que recibe el efectivo" : "Caja que entrega el efectivo"}
             icon={<Landmark className="size-4" />}
             options={detail.openCashSessions.map((session) => ({ value: session.id, label: session.label }))}
             value={cashSessionId}
@@ -276,7 +340,7 @@ export function RefundCompletionDialog({
             required
           />
         )}
-        {payments.map((payment, index) => {
+        {!collectMode && payments.map((payment, index) => {
           const meta = METHOD_META[payment.method];
           return (
             <div key={payment.method} className="grid gap-3 rounded-xl border bg-muted/30 p-3 sm:grid-cols-2">
@@ -308,16 +372,16 @@ export function RefundCompletionDialog({
             </div>
           );
         })}
-        {payments.length === 0 && toDeliver > 0.009 && (
+        {!collectMode && payments.length === 0 && toDeliver > 0.009 && (
           <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
             No hay un medio compatible para entregar {money(toDeliver)}. Bonifica una parte en puntos o crédito.
           </p>
         )}
 
-        <div data-form-field="refundTotal" className="flex items-center justify-between rounded-xl border p-3 text-sm">
+        {!collectMode && <div data-form-field="refundTotal" className="flex items-center justify-between rounded-xl border p-3 text-sm">
           <span className="text-muted-foreground">Entrega en caja o medio de pago</span>
           <span className="font-bold tabular-nums">{money(allocated)} / {money(Math.max(0, toDeliver))}</span>
-        </div>
+        </div>}
         {errors.refundTotal && <p className="text-sm text-destructive" role="alert">{errors.refundTotal}</p>}
         {errors.form && <p className="text-sm text-destructive" role="alert">{errors.form}</p>}
       </form>

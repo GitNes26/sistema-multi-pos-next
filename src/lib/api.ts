@@ -194,7 +194,7 @@ export interface SaleReturnDetail extends SaleReturn {
   user: { fullName: string } | null;
   refundAvailability: { method: "cash" | "card" | "wallet" | "other"; amount: number }[];
   openCashSessions: { id: string; label: string }[];
-  settlement: ReturnSettlement & { due: number; customerAssigned: boolean };
+  settlement: ReturnSettlement & { due: number; extra: number; customerAssigned: boolean };
 }
 
 export interface ReturnSettlement {
@@ -531,7 +531,7 @@ export const salesApi = {
     returnId: string,
     refundPayments?: { method: "cash" | "card" | "wallet" | "other"; amount: number; reference?: string }[],
     cashSessionId?: string,
-    extra: { pointsAmount?: number; creditAmount?: number; customerId?: string | null } = {}
+    extra: { pointsAmount?: number; creditAmount?: number; customerId?: string | null; collectPayments?: { method: "cash" | "card" | "wallet" | "other"; amount: number; reference?: string }[] } = {}
   ) =>
     request<{ ok: boolean; return: SaleReturnDetail }>(`/api/sales/returns/${returnId}/complete`, {
       method: "POST",

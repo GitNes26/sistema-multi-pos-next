@@ -1,5 +1,6 @@
 "use client";
 
+import { ClearFiltersButton } from "@/components/base/clear-filters-button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -881,6 +882,14 @@ export function InventoryPage({ canManage, canRevise, canPurchase, transfers = {
                   searchable={false}
                   className="w-44"
                 />
+                <ClearFiltersButton
+                  active={Boolean(q || productType || stockFilter !== "all")}
+                  onClear={() => {
+                    setQ("");
+                    setProductType("");
+                    setStockFilter("all");
+                  }}
+                />
                                   </>
                   }
                   renderCard={(r) => (
@@ -955,6 +964,15 @@ export function InventoryPage({ canManage, canRevise, canPurchase, transfers = {
                   placeholder="Hasta"
                   clearable
                   className="w-40"
+                />
+                <ClearFiltersButton
+                  active={Boolean(q || mType || mFrom || mTo)}
+                  onClear={() => {
+                    setQ("");
+                    setMType("");
+                    setMFrom("");
+                    setMTo("");
+                  }}
                 />
                 {locationId && (
                   <Button

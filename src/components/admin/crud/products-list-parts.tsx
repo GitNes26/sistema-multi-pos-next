@@ -53,7 +53,6 @@ export function ProductFilters({
   onChange: (next: ProductFilterState) => void
   categories: { id: string; name: string }[]
 }) {
-  const hasFilters = value.status || value.productType || value.categoryId || value.variants
   return (
     <div className="flex flex-wrap items-center gap-2">
       <SegmentedFilter
@@ -117,11 +116,6 @@ export function ProductFilters({
         </Select>
       )}
 
-      {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={() => onChange(EMPTY_PRODUCT_FILTERS)} className="text-muted-foreground">
-          Limpiar filtros
-        </Button>
-      )}
     </div>
   )
 }

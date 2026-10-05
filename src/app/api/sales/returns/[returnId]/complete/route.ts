@@ -14,6 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ret
     const ret = await completeReturn(guard.organizationId, returnId, guard.userId, {
       refundPayments: body.refundPayments,
       cashSessionId: body.cashSessionId,
+      collectPayments: Array.isArray(body.collectPayments) ? body.collectPayments : undefined,
       pointsAmount: Number(body.pointsAmount) || 0,
       creditAmount: Number(body.creditAmount) || 0,
       customerId: typeof body.customerId === "string" ? body.customerId : null,

@@ -22,6 +22,7 @@ import {
 import { useRouter } from "next/navigation"
 import { useBusinessMode } from "@/hooks/use-business-mode"
 import { Button } from "@/components/ui/button"
+import { ClearFiltersButton } from "@/components/base/clear-filters-button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { DialogComponent } from "@/components/ui/dialog"
@@ -889,6 +890,13 @@ export function CrudPage({
                     <Loader2 className="pointer-events-none absolute inset-y-0 right-2.5 my-auto size-4 animate-spin text-muted-foreground" />
                   )}
                 </div>
+                <ClearFiltersButton
+                  active={Boolean(q || (isProducts(moduleKey) && (productFilters.status || productFilters.productType || productFilters.categoryId || productFilters.variants)))}
+                  onClear={() => {
+                    setQ("")
+                    if (isProducts(moduleKey)) setProductFilters(EMPTY_PRODUCT_FILTERS)
+                  }}
+                />
                 <span className="shrink-0 text-xs text-muted-foreground tabular">
                   {total} {total === 1 ? "registro" : "registros"}
                 </span>

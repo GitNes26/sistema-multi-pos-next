@@ -62,6 +62,38 @@ const KITCHEN_PERMISSIONS = [
   "products.view",
 ] as const
 
+// Trabajador completo: todo lo operativo que se reparte entre cajero, mesero, cocina, repartidor,
+// almacén, agente de servicios y de renta, para negocios con una sola persona que hace de todo.
+// No incluye administración (usuarios, ajustes, sucursales, nómina, descuentos manuales ni cancelaciones).
+const ALL_ROUNDER_PERMISSIONS = [
+  "pos.use",
+  "products.view",
+  "inventory.view",
+  "inventory.manage",
+  "inventory.revision",
+  "transfers.view",
+  "transfers.request",
+  "transfers.dispatch",
+  "transfers.receive",
+  "purchasing.view",
+  "purchasing.receive",
+  "customers.view",
+  "customers.manage",
+  "promotions.view",
+  "sales.view",
+  "cash.open",
+  "cash.close",
+  "orders.view",
+  "orders.manage",
+  "kds.operate",
+  "delivery.manage",
+  "locations.view",
+  "appointments.view",
+  "appointments.manage",
+  "reservations.view",
+  "reservations.manage",
+] as const
+
 export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
   // ── Compartidos (todos los modos de negocio) ─────────────────────────────
   {
@@ -108,6 +140,13 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
       "orders.manage",
       "locations.view",
     ],
+  },
+  {
+    id: "system-all-rounder",
+    name: "Trabajador completo",
+    description:
+      "Trabajador completo: caja, pedidos, cocina, reparto, inventario, citas y reservaciones en un solo rol (para quien hace de todo)",
+    permissions: ALL_ROUNDER_PERMISSIONS,
   },
   {
     id: "system-courier",

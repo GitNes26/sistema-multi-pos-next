@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SegmentedFilter } from "@/components/base/segmented-filter"
 import { InputGroupField } from "@/components/base/input-group-field"
+import { ClearFiltersButton } from "@/components/base/clear-filters-button"
 import { transfersApi, type TransferListRow } from "@/lib/inventory/transfers-client"
 import { cn } from "@/lib/utils"
 import { TransferStatusPill, TransferStepper } from "./transfer-status"
@@ -87,6 +88,7 @@ export function TransfersBoard({ canManage, locationId }: { canManage: boolean; 
           ]}
         />
         <InputGroupField placeholder="Folio, origen, destino…" leftIcon={<Search className="size-4" />} value={q} onChange={(e) => setQ(e.target.value)} className="w-full sm:w-64" />
+        <ClearFiltersButton active={Boolean(q) || filter !== "active"} onClear={() => { setQ(""); setFilter("active") }} />
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => void load()} aria-label="Refrescar">
             <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
