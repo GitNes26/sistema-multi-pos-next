@@ -13,6 +13,7 @@ import { BottomSheet } from "@/components/portal/bottom-sheet"
 import { CartEmptyIllustration } from "@/components/shared/animated-illustrations"
 import { ThumbImage } from "@/components/base/thumb-image"
 import { haptic } from "@/lib/haptics"
+import { QtyControl } from "@/components/portal/qty-control"
 import { cn } from "@/lib/utils"
 
 function CartLine({ item, onEdit }: { item: PortalCartItem; onEdit?: () => void }) {
@@ -68,11 +69,14 @@ function CartLine({ item, onEdit }: { item: PortalCartItem; onEdit?: () => void 
             <p className="text-sm font-bold tabular-nums">{money(item.unitPrice * item.qty)}</p>
             <p className="text-xs text-muted-foreground">{money(item.unitPrice)}{item.kind === "bulk" ? `/${item.unitAbbrev}` : " c/u"}</p>
           </div>
-          <div className="flex items-center rounded-xl bg-muted p-0.5" aria-label={`Cantidad de ${item.name}`}>
-            <button type="button" onClick={() => change(-step)} disabled={item.qty <= step} aria-label={`Reducir ${item.name}`} className="flex size-11 items-center justify-center rounded-l-xl disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-primary"><Minus className="size-4" /></button>
-            <span className="min-w-12 text-center text-sm font-semibold tabular-nums">{round3(item.qty)}</span>
-            <button type="button" onClick={() => change(step)} disabled={item.trackInventory && item.qty >= item.stock} aria-label={`Aumentar ${item.name}`} className="flex size-11 items-center justify-center rounded-r-xl disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-primary"><Plus className="size-4" /></button>
-          </div>
+          <QtyControl
+            value={item.qty}
+            step={step}
+            max={item.trackInventory ? item.stock : undefined}
+            unit={item.kind === "bulk" ? item.unitAbbrev : null}
+            label={item.name}
+            onChange={(q) => { haptic.light(); setQty(item.key, snapToStep(q, step)) }}
+          />
         </div>
       </div>
     </article>

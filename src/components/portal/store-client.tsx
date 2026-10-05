@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ListModeBanner, ListModeCard, useListMode } from "@/components/portal/list-mode";
 import { Search } from "lucide-react";
 import { portalApi } from "@/lib/portal/client";
 import { usePortalStore } from "@/stores/portal-store";
@@ -22,6 +23,9 @@ import { categoryBranchIds } from "@/lib/catalog/categories"
 
 export function StoreClient() {
   const router = useRouter();
+  // ?list=ID: la tienda se usa para armar una lista de compras (no el carrito).
+  const listId = useSearchParams().get("list");
+  const listMode = useListMode(listId);
   const categories = usePortalStore((s) => s.categories);
   const products = usePortalStore((s) => s.products);
   const setStorefront = usePortalStore((s) => s.setStorefront);
@@ -78,6 +82,7 @@ export function StoreClient() {
 
   return (
     <div className="relative space-y-3 p-4">
+      {listId && <ListModeBanner mode={listMode} listId={listId} />}
       <div className="relative z-10">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -90,7 +95,7 @@ export function StoreClient() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className={cn("grid grid-cols-2 gap-2", listId && "hidden")}>
         <Link href="/portal/favorites" className="flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-card text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"><Heart className="size-4 text-primary" /> Favoritos</Link>
         <Link href="/portal/lists" className="flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-card text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"><ListChecks className="size-4 text-primary" /> Mis listas</Link>
       </div>
@@ -155,6 +160,14 @@ export function StoreClient() {
         </div>
       ) : filtered.length === 0 ? (
         <p className="py-12 text-center text-sm text-muted-foreground">No hay productos que coincidan</p>
+      ) : listId ? (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {filtered
+            .filter((p) => p.isAvailable && (p.kind === "bulk" ? Boolean(p.bulk?.unitId) : p.variants.length > 0))
+            .map((p) => (
+              <ListModeCard key={p.id} product={p} mode={listMode} />
+            ))}
+        </ul>
       ) : (
         <LayoutGroup>
           <motion.div

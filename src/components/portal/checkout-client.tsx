@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Banknote, CreditCard, Globe, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, Home, Plus, Trash2, Sparkles, Navigation } from "lucide-react";
+import { ArrowLeft, Banknote, CreditCard, Globe, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, Home, Plus, Trash2, Sparkles, Navigation, Package } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePortalStore, cartSubtotal, cartTax } from "@/stores/portal-store";
 import { portalApi, type LoyaltyData, type PortalPromotionPreview } from "@/lib/portal/client";
@@ -13,6 +13,7 @@ import type { PortalLocation, PaymentMethodView, CustomerAddressView, PortalOrde
 import type { DeliveryPolicyData } from "@/lib/orders/server";
 import { money } from "@/lib/pos/money";
 import { isScheduleOpenNow } from "@/lib/schedule";
+import { useStoreStatus } from "@/components/shared/store-status";
 import { swalError, swalPrompt, swalConfirm } from "@/lib/swal";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +23,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { SwipeableRow } from "@/components/shared/swipeable-row";
+import { QtyControl } from "@/components/portal/qty-control";
+import { ThumbImage } from "@/components/base/thumb-image";
 import type { GpsValue } from "@/components/base/gps-picker";
 import { DeliveryAddressField } from "@/components/portal/delivery-address-field";
 import { PermissionSlider } from "@/components/shared/permission-slider";
@@ -43,6 +46,7 @@ export function CheckoutClient() {
   const items = usePortalStore((s) => s.items);
   const clearCart = usePortalStore((s) => s.clearCart);
   const removeItem = usePortalStore((s) => s.removeItem);
+  const { status: storeStatus } = useStoreStatus(60_000);
 
   const [locations, setLocations] = useState<PortalLocation[]>([]);
   const [methods, setMethods] = useState<PaymentMethodView[]>([]);
@@ -351,6 +355,35 @@ export function CheckoutClient() {
       ? `Fuera del radio de entrega (${policy.deliveryRadiusKm} km)`
       : null;
   }, [deliveryMethod, policy, coords, locations]);
+
+  const storeClosed = storeStatus != null && !storeStatus.acceptsOrders;
+  const blockers: Blocker[] = [];
+  if (storeClosed) {
+    blockers.push({
+      key: "closed",
+      tone: "danger",
+      title: "La tienda está cerrada",
+      text: [storeStatus!.reason, storeStatus!.label].filter(Boolean).join(" · ") || "Por ahora no recibimos pedidos.",
+    });
+  } else if (scheduleInfo && !scheduleInfo.open) {
+    blockers.push({
+      key: "schedule",
+      tone: "danger",
+      title: deliveryMethod === "pickup" ? "Fuera del horario para recoger" : "Fuera del horario de entrega",
+      text: scheduleInfo.message,
+    });
+  }
+  if (minAmountError && minAmount) {
+    blockers.push({
+      key: "min",
+      tone: "warning",
+      title: "No alcanzas el pedido mínimo",
+      text: `Tu pedido es de ${money(subtotal)} y el mínimo para ${deliveryMethod === "pickup" ? "recoger" : "entrega a domicilio"} es ${money(minAmount)}. Agrega ${money(minAmount - subtotal)} más.`,
+      progress: subtotal / minAmount,
+      action: { href: "/portal/store", label: "Agregar más productos" },
+    });
+  }
+  if (radiusError) blockers.push({ key: "radius", tone: "danger", title: "Tu dirección queda fuera de la zona de entrega", text: radiusError });
 
   const submit = async () => {
     setSubmitError(null);
@@ -822,13 +855,15 @@ export function CheckoutClient() {
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <ShoppingBag className="size-4 text-primary" /> Resumen
             </h2>
-            <div className="max-h-40 space-y-1 overflow-y-auto">
+            <ul className="divide-y">
               {items.map((i) => (
-                <SwipeableRow key={i.key} onDelete={() => removeItem(i.key)}>
-                  <SummaryLine item={i} />
-                </SwipeableRow>
+                <li key={i.key}>
+                  <SwipeableRow onDelete={() => removeItem(i.key)}>
+                    <SummaryLine item={i} />
+                  </SwipeableRow>
+                </li>
               ))}
-            </div>
+            </ul>
 
             <div className="mt-2 space-y-1.5 border-t pt-2 text-sm">
               <div className="flex justify-between text-muted-foreground">
@@ -870,16 +905,10 @@ export function CheckoutClient() {
                   <span>+{money(tipAmount)}</span>
                 </div>
               )}
-              {scheduleInfo && (
-                <div className={cn("flex items-center gap-1.5 text-xs", scheduleInfo.open ? "text-success-ink" : "text-warning-ink")}>
+              {scheduleInfo?.open && (
+                <div className="flex items-center gap-1.5 text-xs text-success-ink">
                   <Clock className="size-3" />
                   {scheduleInfo.message}
-                </div>
-              )}
-              {minAmountError && (
-                <div className="flex items-center gap-1.5 text-xs text-warning-ink">
-                  <AlertTriangle className="size-3" />
-                  {minAmountError}
                 </div>
               )}
               <div className="flex justify-between border-t pt-2 text-base font-bold">
@@ -903,6 +932,7 @@ export function CheckoutClient() {
           {/* La acción permanece encima de la navegación fija del portal. */}
           <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t bg-background/95 px-4 pb-3 pt-3 backdrop-blur">
             <p className="mb-2 text-center text-xs leading-5 text-muted-foreground">Al confirmar aceptas las <Link href="/legal/comercio" target="_blank" className="underline underline-offset-4">condiciones de compra</Link> y el <Link href="/legal/privacidad" target="_blank" className="underline underline-offset-4">aviso de privacidad</Link>.</p>
+            <CheckoutBlockers blockers={blockers} loading={policyLoading} />
             {submitError && (
               <p role="alert" className="mb-2 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {submitError}
@@ -911,10 +941,10 @@ export function CheckoutClient() {
             <SlideToPay
               action="payment"
               label={`${payMethod === "online" || payMethod === "card" ? "Desliza para pagar" : "Desliza para confirmar"} · ${money(payableTotal)}`}
-              hint="Revisa el total y desliza para continuar"
+              hint={blockers.length ? `No disponible: ${blockers[0].title.toLowerCase()}` : "Revisa el total y desliza para continuar"}
               onConfirm={submit}
               loading={submitting}
-              disabled={policyLoading || !!minAmountError || !!radiusError || (scheduleInfo != null && !scheduleInfo.open)}
+              disabled={policyLoading || blockers.length > 0}
             />
           </div>
         </>
@@ -931,22 +961,78 @@ export function CheckoutClient() {
   );
 }
 
-/** Línea del resumen: toca para ver el texto completo (tópicos y notas). */
+/** Línea del resumen: foto, detalle (toca para verlo completo), cantidad editable y quitar. */
 function SummaryLine({ item: i }: { item: ReturnType<typeof usePortalStore.getState>["items"][number] }) {
+  const setQty = usePortalStore((s) => s.setQty);
+  const removeItem = usePortalStore((s) => s.removeItem);
   const [expanded, setExpanded] = useState(false);
   const options = i.selectedOptions?.flatMap((o) => o.values.map((v) => v.value)).join(", ");
-  const variant = i.variantName && i.variantName !== "Default" ? i.variantName : null;
+  const variant = i.variantName && i.variantName !== "Default" && !i.name.includes(i.variantName) ? i.variantName : null;
+  const step = i.step > 0 ? i.step : 1;
   return (
-    <div className="flex items-start justify-between gap-2 py-1.5 text-sm">
-      <button type="button" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)} className="min-w-0 flex-1 text-left">
-        <span className={expanded ? "block" : "block truncate"}>
-          {i.qty}× {i.name}
-          {variant && !i.name.includes(variant) ? ` · ${variant}` : ""}
-        </span>
-        {options && <span className={cn("block text-xs text-primary", !expanded && "truncate")}>{options}{i.extraPrice ? ` +${money(i.extraPrice)}` : ""}</span>}
-        {i.comment && <span className={cn("block text-xs text-warning-ink", !expanded && "truncate")}>{i.comment}</span>}
+    <div className="flex gap-3 py-3">
+      <button type="button" aria-expanded={expanded} aria-label={expanded ? "Contraer detalle" : "Ver detalle completo"} onClick={() => setExpanded((v) => !v)} className="size-16 shrink-0 self-start overflow-hidden rounded-xl bg-muted">
+        {i.imageUrl ? <ThumbImage src={i.imageUrl} alt="" className="size-full object-cover" /> : <span className="flex size-full items-center justify-center text-muted-foreground/60"><Package className="size-6" /></span>}
       </button>
-      <span className="shrink-0 font-medium tabular-nums">{money(i.unitPrice * i.qty)}</span>
+      <div className="min-w-0 flex-1">
+        <button type="button" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)} className="block w-full text-left">
+          <span className={cn("block text-sm font-semibold leading-snug", !expanded && "line-clamp-2")}>{i.name}</span>
+          {variant && <span className="block text-xs text-muted-foreground">{variant}</span>}
+          {options && <span className={cn("block text-xs text-primary", !expanded && "truncate")}>{options}{i.extraPrice ? ` +${money(i.extraPrice)}` : ""}</span>}
+          {i.comment && <span className={cn("block text-xs text-warning-ink", !expanded && "truncate")}>{i.comment}</span>}
+        </button>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <QtyControl
+            value={i.qty}
+            step={step}
+            max={i.trackInventory ? i.stock : undefined}
+            unit={i.kind === "bulk" ? i.unitAbbrev : null}
+            label={i.name}
+            onChange={(q) => setQty(i.key, q)}
+            onRemove={() => removeItem(i.key)}
+          />
+          <span className="text-right">
+            <span className="block text-sm font-bold tabular-nums">{money(i.unitPrice * i.qty)}</span>
+            <span className="block text-xs tabular-nums text-muted-foreground">{money(i.unitPrice)}{i.kind === "bulk" ? `/${i.unitAbbrev}` : " c/u"}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type Blocker = { key: string; tone: "danger" | "warning"; title: string; text: string; progress?: number; action?: { href: string; label: string } };
+
+/** Motivos por los que no se puede pagar, a la vista y con qué hacer. */
+function CheckoutBlockers({ blockers, loading }: { blockers: Blocker[]; loading: boolean }) {
+  if (blockers.length === 0 && !loading) return null;
+  return (
+    <div className="mb-2 space-y-2" role="alert" aria-live="polite">
+      {blockers.map((b) => (
+        <div
+          key={b.key}
+          className={cn(
+            "rounded-xl border-2 p-3 text-sm",
+            b.tone === "danger" ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-warning/60 bg-warning/15 text-warning-ink"
+          )}
+        >
+          <p className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="size-4 shrink-0" /> {b.title}
+          </p>
+          <p className="mt-0.5 text-sm leading-snug">{b.text}</p>
+          {b.progress != null && (
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-background/60">
+              <div className="h-full rounded-full bg-current opacity-70" style={{ width: `${Math.min(100, Math.round(b.progress * 100))}%` }} />
+            </div>
+          )}
+          {b.action && (
+            <Link href={b.action.href} className="mt-2 inline-flex min-h-10 items-center gap-1 text-sm font-semibold underline underline-offset-4">
+              {b.action.label}
+            </Link>
+          )}
+        </div>
+      ))}
+      {loading && blockers.length === 0 && <p className="text-center text-xs text-muted-foreground">Validando la política de entrega…</p>}
     </div>
   );
 }
