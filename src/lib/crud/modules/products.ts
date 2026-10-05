@@ -380,7 +380,7 @@ export const productsModule: CrudModule<ProductDto> = {
         categoryId,
         // Sin foto: imagen ilustrada (emoji del producto + color de su categoría).
         imageUrl: data.imageUrl ? String(data.imageUrl) : productPlaceholder(String(data.name).trim(), categoryName),
-        taxRate: Number(data.taxRate) || 0,
+        taxRate: 0, // el IVA no se captura: siempre 0
         isActive: data.isActive !== false,
         isAvailable: data.isAvailable !== false,
         availabilityNote: data.availabilityNote ? String(data.availabilityNote).trim() : null,
@@ -517,7 +517,7 @@ export const productsModule: CrudModule<ProductDto> = {
         ...(data.description !== undefined ? { description: data.description ? String(data.description) : null } : {}),
         ...(categoryId !== undefined ? { categoryId } : {}),
         ...(sentPhoto ? { imageUrl: String(data.imageUrl) } : {}),
-        ...(data.taxRate !== undefined ? { taxRate: Number(data.taxRate) || 0 } : {}),
+        ...(data.taxRate !== undefined ? { taxRate: 0 } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive !== false } : {}),
         ...(data.isAvailable !== undefined ? { isAvailable: data.isAvailable !== false } : {}),
         ...(data.availabilityNote !== undefined ? { availabilityNote: data.availabilityNote ? String(data.availabilityNote).trim() : null } : {}),

@@ -565,7 +565,8 @@ export function TicketPanel({
         <Button
           size="lg"
           data-guide="pos-checkout"
-          disabled={!items.length || t.payable <= 0}
+          // Con cupón, descuento o puntos el ticket puede quedar en $0 y aun así cerrarse.
+          disabled={!items.length || (t.payable <= 0 && t.discountTotal <= 0 && t.pointsRedeemedValue <= 0)}
           onClick={onCheckout}
           className={cn(
             "relative h-16 w-full touch-manipulation rounded-2xl px-5 text-base font-semibold desk:h-14 desk:rounded-xl",

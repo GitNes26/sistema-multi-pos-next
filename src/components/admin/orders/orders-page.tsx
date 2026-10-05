@@ -22,6 +22,7 @@ import {
 import type { OrderRow } from "@/lib/orders/server"
 import { OrderDetailDialog } from "./order-detail-dialog"
 import { OrdersMonitor } from "./orders-monitor"
+import { useOrdersLive } from "@/hooks/use-orders-live"
 import { OrderStatusPill } from "@/components/shared/order-status-pill"
 import { SegmentedFilter } from "@/components/base/segmented-filter"
 
@@ -81,8 +82,8 @@ export function OrdersPage({
   const [loading, setLoading] = useState(true)
   const [detailId, setDetailId] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const r = await ordersApi.list({
         pageSize: 100,
@@ -117,6 +118,8 @@ export function OrdersPage({
   useEffect(() => {
     load()
   }, [load])
+  // Pedidos nuevos o con cambios llegan solos a la tabla.
+  useOrdersLive(() => void load(true))
 
   const loadLocations = useCallback(async () => {
     try {
@@ -332,6 +335,7 @@ export function OrdersPage({
             setDetailId(null)
             load()
           }}
+          onUpdated={() => void load(true)}
         />
       )}
     </>

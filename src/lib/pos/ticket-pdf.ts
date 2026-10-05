@@ -250,6 +250,7 @@ const RETURN_TYPE_LABELS: Record<string, string> = {
   refund: "Devolución de dinero",
   coupon: "Cupón",
   points: "Bonificación en puntos",
+  credit: "Bonificación a crédito",
 };
 
 export async function generateTicketPdf(
@@ -364,11 +365,14 @@ export async function generateReturnTicketPdf(
   if (ret.couponCode) {
     extras.push(`Cupón: ${ret.couponCode}`, `Monto: ${MXN(Number(ret.couponAmount))}`);
     if (ret.couponExpiresAt) extras.push(`Vence: ${new Date(ret.couponExpiresAt).toLocaleDateString("es-MX")}`);
-  } else if (ret.pointsAwarded) {
-    extras.push(`Puntos bonificados: ${Number(ret.pointsAwarded)}`);
-  } else if (ret.returnType === "refund") {
+  }
+  if (ret.settlement.customer && (Number(ret.pointsAwarded) > 0 || Number(ret.creditApplied) > 0)) extras.push(`Cliente: ${ret.settlement.customer.name}`);
+  if (Number(ret.pointsAwarded) > 0) extras.push(`Puntos bonificados: ${Number(ret.pointsAwarded)}`);
+  if (Number(ret.creditApplied) > 0) extras.push(`Abonado a crédito: ${MXN(Number(ret.creditApplied))}`);
+  if (ret.returnType === "refund" || ret.returnType === "exchange") {
     for (const p of ret.refundPayments) payments.push({ label: `${PAYMENT_LABELS[p.method] ?? p.method}${p.reference ? ` · ${p.reference}` : ""}`, amount: MXN(Number(p.amount)) });
-  } else if (ret.returnType === "exchange" && exchange.length) {
+  }
+  if (ret.returnType === "exchange" && exchange.length) {
     extras.push("PRODUCTO ENTREGADO:");
     for (const e of exchange) extras.push(`${e.quantity} x ${e.name}  ${MXN(e.quantity * e.unitPrice)}`);
     const diff = Math.round((exchangeTotal - Number(ret.total)) * 100) / 100;
@@ -388,7 +392,7 @@ export async function generateReturnTicketPdf(
       `Tipo: ${RETURN_TYPE_LABELS[ret.returnType] ?? ret.returnType}`,
       `Estado: ${STATUS[ret.status] ?? ret.status}`,
     ],
-    customer: ret.sale.customer ? { name: ret.sale.customer.fullName, code: ret.sale.customer.customerCode } : null,
+    customer: ret.sale.customer ? { name: ret.sale.customer.fullName, code: ret.sale.customer.customerCode } : ret.settlement.customer ? { name: ret.settlement.customer.name, code: null } : null,
     itemsHeading: "PRODUCTOS DEVUELTOS",
     items: ret.items.map((i) => ({
       title: [i.productName, i.variantName && i.variantName !== "Default" ? i.variantName : null].filter(Boolean).join(" · "),

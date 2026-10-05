@@ -60,7 +60,7 @@ export const PurchaseStatusPill = makePill(PURCHASE_STATUS_LABELS, {
 export const RETURN_STATUS_LABELS: Record<string, string> = { pending: "Pendiente", approved: "Aprobada", completed: "Completada", rejected: "Rechazada" }
 export const ReturnStatusPill = makePill(RETURN_STATUS_LABELS, { pending: "warning", approved: "info", completed: "success", rejected: "danger" })
 
-export const RETURN_TYPE_LABELS: Record<string, string> = { refund: "Reembolso", coupon: "Cupón", points: "Puntos", exchange: "Cambio" }
+export const RETURN_TYPE_LABELS: Record<string, string> = { refund: "Reembolso", coupon: "Cupón", points: "Puntos", credit: "Crédito", exchange: "Cambio" }
 /** Tipo de devolución: categoría, no estado (sin punto). */
 export function ReturnTypePill({ type, className }: { type: string; className?: string }) {
   return (

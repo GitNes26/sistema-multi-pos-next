@@ -3,9 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Building2 } from "lucide-react";
-import { hasPermission } from "@/lib/auth/permissions";
 import { KitchenDisplay } from "@/components/kds/kitchen-display";
-import { DeliveriesBoard } from "@/components/kds/deliveries-board";
 import { LiveBadge } from "@/components/shared/live-badge";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationsBell } from "@/components/layout/notifications-bell";
@@ -16,7 +14,6 @@ import { AppearanceSync } from "@/components/appearance/appearance-sync";
 export default function KDSPage() {
   const { data: session } = useSession();
   const router = useRouter();
-  const canManageDeliveries = hasPermission(session, "delivery.manage");
 
   const orgName = session?.user?.organizationName ?? null;
   const orgMode = session?.user?.businessMode ?? null;
@@ -60,11 +57,6 @@ export default function KDSPage() {
           <ThemeToggle />
         </div>
       </div>
-      {canManageDeliveries && (
-        <div className="mb-6">
-          <DeliveriesBoard />
-        </div>
-      )}
       <KitchenDisplay />
       </div>
     </>

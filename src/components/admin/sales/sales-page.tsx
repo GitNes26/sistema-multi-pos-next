@@ -698,7 +698,7 @@ function SaleDetailDialog({
   )
 }
 
-const RETURN_TYPE_SHORT: Record<string, string> = { refund: "Reembolso", coupon: "Cupón", points: "Puntos", exchange: "Cambio" }
+const RETURN_TYPE_SHORT: Record<string, string> = { refund: "Reembolso", coupon: "Cupón", points: "Puntos", credit: "Crédito", exchange: "Cambio" }
 
 function ReturnBadge({ info }: { info: { returnNumber: number; returnType: string; status: string } }) {
   return (

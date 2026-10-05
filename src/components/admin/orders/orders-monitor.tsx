@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useOrdersLive } from "@/hooks/use-orders-live"
 import { useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
@@ -124,6 +125,7 @@ export function OrdersMonitor({
     const t = setInterval(() => load(true), 30_000)
     return () => clearInterval(t)
   }, [load])
+  useOrdersLive(() => void load(true))
 
   const activeTotal = MONITOR_STATUSES.reduce(
     (a, s) => a + (byStatus[s]?.length ?? 0),
@@ -291,6 +293,7 @@ export function OrdersMonitor({
             setDetailId(null)
             load()
           }}
+          onUpdated={() => void load(true)}
         />
       )}
     </>

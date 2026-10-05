@@ -105,6 +105,25 @@ export async function GET(req: Request) {
   }
 }
 
+/**
+ * Las mesas eliminadas se archivan (conservan su historial) y seguían ocupando su número, lo que
+ * impedía volver a crear la mesa #1. Si el número solo lo tiene una mesa archivada, esa se mueve a
+ * un número negativo libre y el número queda disponible.
+ */
+async function releaseArchivedNumber(organizationId: string, number: number, exceptId?: string) {
+  const archived = await prisma.table.findMany({
+    where: { organizationId, number, isActive: false, ...(exceptId ? { id: { not: exceptId } } : {}) },
+    select: { id: true },
+  });
+  if (archived.length === 0) return;
+  const min = (await prisma.table.aggregate({ where: { organizationId }, _min: { number: true } }))._min.number ?? 0;
+  let next = Math.min(min, 0);
+  for (const row of archived) {
+    next -= 1;
+    await prisma.table.update({ where: { id: row.id }, data: { number: next } });
+  }
+}
+
 // POST /api/tables — Create a table (solo locations.manage)
 export async function POST(req: Request) {
   const guard = await requireTablesSession();
@@ -126,12 +145,13 @@ export async function POST(req: Request) {
 
     // Check for duplicate number
     const existing = await prisma.table.findFirst({
-      where: { organizationId, number: Number(number) },
+      where: { organizationId, number: Number(number), isActive: true },
     });
     if (existing) {
       return NextResponse.json({ ok: false, error: `Ya existe la mesa #${number}` }, { status: 400 });
     }
 
+    await releaseArchivedNumber(organizationId, Number(number));
     const qrToken = randomBytes(16).toString("hex");
 
     const table = await prisma.table.create({
@@ -205,6 +225,12 @@ export async function PUT(req: Request) {
     });
     if (!owned) {
       return NextResponse.json({ ok: false, error: "Mesa no encontrada" }, { status: 404 });
+    }
+
+    if (number != null) {
+      const clash = await prisma.table.findFirst({ where: { organizationId, number: Number(number), isActive: true, id: { not: id } }, select: { id: true } });
+      if (clash) return NextResponse.json({ ok: false, error: `Ya existe la mesa #${number}` }, { status: 400 });
+      await releaseArchivedNumber(organizationId, Number(number), id);
     }
 
     const table = await prisma.table.update({

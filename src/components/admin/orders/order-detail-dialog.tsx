@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { DeliveryConfirmDialog } from "./delivery-confirm-dialog";
 import { OrderPaymentDialog } from "./order-payment-dialog";
 import { DriverPanel } from "./driver-panel";
+import { useOrdersLive } from "@/hooks/use-orders-live";
 import { OrderStatusPill } from "@/components/shared/order-status-pill";
 
 // Detalle del pedido, pensado para guiar: muestra el recorrido con la hora de
@@ -101,7 +102,8 @@ function nextAction(o: OrderDetail): { label: string; icon: LucideIcon; kind: "a
   return null;
 }
 
-export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: string; canManage: boolean; onChanged?: () => void }) {
+/** `onChanged` cierra el detalle y refresca; `onUpdated` solo refresca el listado y lo deja abierto. */
+export function OrderDetailDialog({ orderId, canManage, onChanged, onUpdated }: { orderId: string; canManage: boolean; onChanged?: () => void; onUpdated?: () => void }) {
   const [open, setOpen] = useState(true);
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [saving, setSaving] = useState(false);
@@ -112,6 +114,7 @@ export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: 
   // Tras asignar repartidor, baja hasta el aviso y el botón para continuar.
   const afterAssign = async () => {
     await load();
+    onUpdated?.();
     window.setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 200);
   };
 
@@ -125,6 +128,8 @@ export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: 
   useEffect(() => {
     void load();
   }, [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Si otro usuario (o el cliente) mueve el pedido, el modal se actualiza solo.
+  useOrdersLive(() => void load());
 
   const close = () => {
     onChanged?.();
@@ -137,7 +142,10 @@ export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: 
       await fn();
       swalToast(ok);
       if (closeAfter) close();
-      else await load();
+      else {
+        await load();
+        onUpdated?.();
+      }
     } catch (err) {
       swalError("No se pudo completar", err instanceof Error ? err.message : undefined);
     } finally {
@@ -336,13 +344,14 @@ export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: 
                   {order.items.map((it) => (
                     <li key={it.id} className="flex items-start gap-3 px-4 py-2.5 text-sm">
                       <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-xs font-bold tabular-nums">
-                        {it.bulkQuantityDisplay ?? `${it.quantity}×`}
+                        {it.bulkQuantityDisplay ? "⚖" : `${it.quantity}×`}
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="font-medium">
                           {it.productName}
                           {it.variantName && it.variantName !== "Default" ? <span className="text-muted-foreground"> · {it.variantName}</span> : null}
                         </p>
+                        {it.bulkQuantityDisplay && <p className="mt-0.5 inline-block rounded-md bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums">{it.bulkQuantityDisplay}</p>}
                         {it.comment && <p className="text-xs italic text-muted-foreground">“{it.comment}”</p>}
                       </div>
                       <span className="shrink-0 font-semibold tabular-nums">{money(it.lineTotal)}</span>
@@ -481,7 +490,7 @@ export function OrderDetailDialog({ orderId, canManage, onChanged }: { orderId: 
           onPaid={() => {
             swalToast("Cobro registrado");
             void load();
-            onChanged?.();
+            onUpdated?.();
           }}
         />
       )}

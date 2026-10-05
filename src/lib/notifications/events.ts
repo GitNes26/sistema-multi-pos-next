@@ -71,7 +71,7 @@ export async function notifyOrderEvent(
     severity: c.severity,
     title: c.title,
     body: `#${order.orderNumber}${who} por ${money(order.total)}`,
-    link: `/admin/orders?q=${order.orderNumber}`,
+    link: "/admin/orders?vista=tablero",
     metadata: { event: "order", status: order.status, sound: c.sound, orderId: order.id },
   });
 }

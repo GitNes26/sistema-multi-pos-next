@@ -52,6 +52,7 @@ enum ReturnType {
   refund
   coupon
   points
+  credit
 }
 
 enum ReturnStatus {
@@ -2347,6 +2348,10 @@ model SaleReturn {
   couponAmount    Decimal?     @db.Decimal(12, 2)
   couponExpiresAt DateTime?
   pointsAwarded   Decimal?     @db.Decimal(12, 2)
+  /// Cliente al que se bonifica (puntos/crédito) cuando la venta no lo tenía ligado.
+  customerId      String?
+  /// Monto abonado a la deuda de crédito del cliente.
+  creditApplied   Decimal?     @db.Decimal(12, 2)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 

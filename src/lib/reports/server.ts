@@ -351,7 +351,7 @@ export async function getCashReport(organizationId: string, f: ReportFilters) {
       employee: { select: { fullName: true } },
       sales: { where: { status: "completed" }, select: { total: true, payments: true, changeGiven: true } },
       saleReturns: {
-        where: { status: "completed", returnType: "refund" },
+        where: { status: "completed", returnType: { in: ["refund", "exchange"] } },
         select: { refundPayments: { where: { method: "cash" }, select: { amount: true } } },
       },
     },

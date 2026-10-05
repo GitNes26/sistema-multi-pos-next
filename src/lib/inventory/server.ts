@@ -564,9 +564,14 @@ function movementWhere(
     ...(q
       ? {
           OR: [
+            // Los movimientos de variantes (incluida la «Default» de los productos estándar)
+            // no guardan productId: el nombre del producto se busca a través de la variante.
             { product: { name: { contains: q } } },
+            { variant: { product: { name: { contains: q } } } },
             { variant: { name: { contains: q } } },
             { variant: { sku: { contains: q } } },
+            { variant: { barcode: { contains: q } } },
+            { reason: { contains: q } },
           ],
         }
       : {}),

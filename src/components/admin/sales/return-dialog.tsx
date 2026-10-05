@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
-import { salesApi, type SaleDetail, type SaleReturn } from "@/lib/api"
+import { salesApi, type ReturnSettlement, type SaleDetail, type SaleReturn } from "@/lib/api"
+import { ReturnCustomerBlock } from "./return-customer-block"
+import { cn } from "@/lib/utils"
 import { DialogComponent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -25,9 +27,9 @@ const RETURN_TYPES = [
     desc: "Se genera un cupón para uso futuro",
   },
   {
-    value: "points",
-    label: "Bonificar puntos",
-    desc: "Se bonifica el monto como puntos lealtad",
+    value: "bonus",
+    label: "Bonificar al cliente",
+    desc: "Se abona el monto en puntos de lealtad o a su crédito",
   },
   {
     value: "exchange",
@@ -57,6 +59,10 @@ interface Props {
 
 export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
   const [returnType, setReturnType] = useState<string>("refund")
+  // «Bonificar al cliente» se resuelve en puntos o en crédito, según lo que el negocio tenga habilitado.
+  const [bonusTarget, setBonusTarget] = useState<"points" | "credit">("points")
+  const [assignedCustomerId, setAssignedCustomerId] = useState("")
+  const [ctx, setCtx] = useState<(ReturnSettlement & { saleHasCustomer: boolean }) | null>(null)
   const [reason, setReason] = useState("")
   const [notes, setNotes] = useState("")
   const [selectedItems, setSelectedItems] = useState<Record<string, number>>({})
@@ -77,6 +83,27 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
       })
     }
   }, [open, sale.id])
+
+  // Opciones habilitadas y cliente (el de la venta o el que se asigne aquí).
+  useEffect(() => {
+    if (!open || !sale.id) return
+    let cancelled = false
+    salesApi
+      .returnContext(sale.id, assignedCustomerId || null)
+      .then((res) => {
+        if (!cancelled && res.ok) setCtx(res.context)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [open, sale.id, assignedCustomerId])
+
+  const loyaltyOn = ctx?.loyaltyEnabled ?? false
+  const creditOn = ctx?.creditEnabled ?? false
+  const bonusAvailable = loyaltyOn || creditOn
+  const effectiveBonus: "points" | "credit" = bonusTarget === "credit" && creditOn ? "credit" : loyaltyOn ? "points" : "credit"
+  const returnTypes = RETURN_TYPES.filter((t) => t.value !== "bonus" || bonusAvailable)
 
   // Buscar productos para el cambio (con su existencia en la sucursal de la venta)
   useEffect(() => {
@@ -126,7 +153,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
   const handleToggleItem = (saleItemId: string, maxQty: number) => {
     setSelectedItems((prev) => {
       const next = { ...prev }
-      if (next[saleItemId]) {
+      if (saleItemId in next) {
         delete next[saleItemId]
       } else {
         next[saleItemId] = maxQty
@@ -136,7 +163,8 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
   }
 
   const handleQtyChange = (saleItemId: string, qty: number) => {
-    setSelectedItems((prev) => ({ ...prev, [saleItemId]: Math.max(0, qty) }))
+    // Vaciar el campo no desmarca el producto: la cantidad queda en 0 hasta que se escriba otra.
+    setSelectedItems((prev) => ({ ...prev, [saleItemId]: Number.isFinite(qty) ? Math.max(0, qty) : 0 }))
   }
 
   const selectedTotal = Object.entries(selectedItems).reduce(
@@ -147,6 +175,11 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
     },
     0
   )
+
+  const chosenCount = Object.values(selectedItems).filter((q) => q > 0).length
+  const bonusMode = returnType === "bonus"
+  const creditShort = bonusMode && effectiveBonus === "credit" && !!ctx?.customer && selectedTotal - ctx.customer.creditBalance > 0.009
+  const needsCustomer = bonusMode && !ctx?.customer
 
   const handleSubmit = async () => {
     const items = Object.entries(selectedItems)
@@ -166,6 +199,17 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
     if (items.length === 0) {
       toast.error("Selecciona al menos un producto para devolver")
       return
+    }
+
+    if (bonusMode) {
+      if (needsCustomer) {
+        toast.error("Asigna o registra al cliente a quien se bonificará")
+        return
+      }
+      if (creditShort) {
+        toast.error("El adeudo del cliente es menor que la devolución", { description: "Usa devolución de dinero o bonifica en puntos." })
+        return
+      }
     }
 
     if (returnType === "exchange") {
@@ -188,7 +232,8 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
           returnType === "exchange"
             ? exchange.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity }))
             : undefined,
-        returnType: returnType as "exchange" | "refund" | "coupon" | "points",
+        returnType: (bonusMode ? effectiveBonus : returnType) as "exchange" | "refund" | "coupon" | "points" | "credit",
+        customerId: bonusMode && ctx && !ctx.saleHasCustomer ? ctx.customer?.id ?? null : null,
         reason: reason || undefined,
         notes: notes || undefined,
         items,
@@ -209,6 +254,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
         })
         onOpenChange(false)
         setSelectedItems({})
+        setAssignedCustomerId("")
         setExchange([])
         setReason("")
         setNotes("")
@@ -237,7 +283,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
       footer={
         <>
           {/* Resumen */}
-          {Object.keys(selectedItems).length > 0 && (
+          {chosenCount > 0 && (
             <div className="rounded-lg bg-muted p-3 w-full">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">Total a devolver:</span>
@@ -248,7 +294,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
               {returnType === "exchange" && exchange.length > 0 && (
                 <div className="mt-1 flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {exchangeTotal - selectedTotal > 0 ? "Cliente paga la diferencia" : "A favor del cliente"}
+                    {exchangeTotal - selectedTotal > 0 ? "Cliente paga la diferencia" : "A favor del cliente (se le entrega al procesar)"}
                   </span>
                   <span className="font-semibold tabular-nums">{money(Math.abs(exchangeTotal - selectedTotal))}</span>
                 </div>
@@ -260,7 +306,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={loading || Object.keys(selectedItems).length === 0 || (returnType === "exchange" && exchangeNoStock.length > 0)}
+            disabled={loading || chosenCount === 0 || (returnType === "exchange" && exchangeNoStock.length > 0) || creditShort}
           >
             {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
             Crear devolución
@@ -273,10 +319,13 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
         <Label className="font-semibold">Tipo de resolución</Label>
         <RadioGroup
           value={returnType}
-          onValueChange={setReturnType}
+          onValueChange={(v) => {
+            setReturnType(v)
+            if (v === "bonus") setBonusTarget(loyaltyOn ? "points" : "credit")
+          }}
           className="grid grid-cols-2 gap-2"
         >
-          {RETURN_TYPES.map((t) => (
+          {returnTypes.map((t) => (
             <label
               key={t.value}
               className={`flex flex-col rounded-lg border p-3 cursor-pointer transition-colors ${
@@ -297,6 +346,45 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
         </RadioGroup>
       </div>
 
+      {returnType === "bonus" && (
+        <div className="space-y-3 rounded-xl border bg-card p-3">
+          {loyaltyOn && creditOn && (
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="Destino de la bonificación">
+              {(["points", "credit"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="radio"
+                  aria-checked={effectiveBonus === t}
+                  onClick={() => setBonusTarget(t)}
+                  className={cn("h-10 rounded-md text-sm font-medium transition-colors", effectiveBonus === t ? "bg-background shadow-sm" : "text-muted-foreground")}
+                >
+                  {t === "points" ? "En puntos" : "A crédito"}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {effectiveBonus === "points"
+              ? `Se convierte con la política de lealtad (${ctx?.pointsPerCurrency ?? 1} punto por cada $1).`
+              : "Se abona como pago a la deuda de crédito del cliente."}
+          </p>
+          <ReturnCustomerBlock
+            ctx={ctx}
+            saleHasCustomer={ctx?.saleHasCustomer ?? false}
+            customerId={assignedCustomerId}
+            onCustomerChange={setAssignedCustomerId}
+            pointsMoney={effectiveBonus === "points" ? selectedTotal : 0}
+            creditMoney={effectiveBonus === "credit" ? selectedTotal : 0}
+          />
+          {creditShort && (
+            <p className="flex items-start gap-1.5 text-xs font-medium text-destructive">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> El adeudo actual ({money(ctx?.customer?.creditBalance ?? 0)}) es menor que la devolución. Elige puntos o devolución de dinero.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Productos */}
       <div className="space-y-2">
         <Label className="font-semibold">Productos a devolver</Label>
@@ -305,7 +393,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
             const returned = getReturnedQty(item.id)
             const maxReturnable = Number(item.quantity) - returned
             if (maxReturnable <= 0) return null
-            const isSelected = !!selectedItems[item.id]
+            const isSelected = item.id in selectedItems
 
             return (
               <div
@@ -355,9 +443,10 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
                             type="number"
                             min={1}
                             max={maxReturnable}
-                            value={selectedItems[item.id] ?? maxReturnable}
+                            inputMode="decimal"
+                            value={selectedItems[item.id] ? selectedItems[item.id] : ""}
                             onChange={(e) =>
-                              handleQtyChange(item.id, Number(e.target.value))
+                              handleQtyChange(item.id, e.target.value === "" ? 0 : Number(e.target.value))
                             }
                             leftIcon={<Hash className="size-4" />}
                             className="h-8 w-20 text-xs"
@@ -365,7 +454,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
                           <span className="text-xs text-muted-foreground">
                             ={" "}
                             {money(
-                              (selectedItems[item.id] ?? maxReturnable) *
+                              (selectedItems[item.id] ?? 0) *
                                 Number(item.unitPrice)
                             )}
                           </span>
@@ -438,6 +527,11 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
               )
             })}
           </div>
+          {exchange.length > 0 && selectedTotal - exchangeTotal > 0.009 && (
+            <p className="rounded-lg border border-warning/40 bg-warning/5 p-2.5 text-xs text-warning-ink">
+              El cambio cuesta menos: hay {money(selectedTotal - exchangeTotal)} a favor del cliente. Al procesar la devolución podrás entregarlo en efectivo desde la caja{loyaltyOn ? ", en puntos" : ""}{creditOn ? " o abonarlo a su crédito" : ""}.
+            </p>
+          )}
           {exchange.map((l) => {
             const short = l.stock != null && l.stock < l.quantity
             return (

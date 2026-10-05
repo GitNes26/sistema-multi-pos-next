@@ -5,7 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle,
   Eye,
+  Copy,
   Loader2,
+  Printer,
   RefreshCw,
   Search,
   Tag,
@@ -60,6 +62,8 @@ export function ReturnsTab({ canView, canManage }: Props) {
   const [locations, setLocations] = useState<ComboboxOption[]>([]);
   const [refundOpen, setRefundOpen] = useState(false);
   const [refundDetail, setRefundDetail] = useState<SaleReturnDetail | null>(null);
+  // Cupón recién emitido: se muestra el código y se ofrece imprimir el ticket completo.
+  const [couponResult, setCouponResult] = useState<SaleReturnDetail | null>(null);
 
   useEffect(() => {
     setPage(1);
@@ -175,7 +179,7 @@ export function ReturnsTab({ canView, canManage }: Props) {
       }
       setActionBusy(null);
     }
-    if (target.returnType === "refund") {
+    if (target.returnType === "refund" || (target.returnType === "exchange" && (target.settlement?.due ?? 0) > 0)) {
       setRefundDetail(target);
       setRefundOpen(true);
       return;
@@ -190,10 +194,9 @@ export function ReturnsTab({ canView, canManage }: Props) {
       await salesApi.completeReturn(returnId);
       toast.success("Devolución procesada");
       load();
-      if (detail?.id === returnId) {
-        const res = await salesApi.returnDetail(returnId);
-        setDetail(res.return);
-      }
+      const res = await salesApi.returnDetail(returnId);
+      if (detail?.id === returnId) setDetail(res.return);
+      if (res.return.returnType === "coupon" && res.return.couponCode) setCouponResult(res.return);
     } catch (err) {
       swalError("Error", err instanceof Error ? err.message : undefined);
     } finally {
@@ -244,6 +247,7 @@ export function ReturnsTab({ canView, canManage }: Props) {
             { value: "refund", label: "Reembolso" },
             { value: "coupon", label: "Cupón" },
             { value: "points", label: "Puntos" },
+            { value: "credit", label: "Crédito" },
             { value: "exchange", label: "Cambio" },
           ]}
           value={filters.returnType || null}
@@ -397,12 +401,50 @@ export function ReturnsTab({ canView, canManage }: Props) {
           />
         ) : null}
       </DialogComponent>
+      <DialogComponent
+        open={Boolean(couponResult)}
+        onOpenChange={(o) => !o && setCouponResult(null)}
+        icon={<Ticket className="size-5" />}
+        title="Cupón generado"
+        description={couponResult ? `Devolución DEV-${couponResult.returnNumber}` : undefined}
+        size="sm"
+        bodyClassName="space-y-4 text-center"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setCouponResult(null)}>Cerrar</Button>
+            <Button onClick={() => couponResult && window.open(salesApi.returnTicketUrl(couponResult.id), "_blank")}>
+              <Printer className="size-4" /> Imprimir ticket
+            </Button>
+          </>
+        }
+      >
+        {couponResult && (
+          <>
+            <p className="text-sm text-muted-foreground">Entrega este código al cliente; podrá canjearlo en su próxima compra.</p>
+            <button
+              type="button"
+              className="mx-auto flex items-center gap-2 rounded-xl border-2 border-dashed border-primary bg-primary/5 px-5 py-3 font-mono text-2xl font-bold tracking-widest"
+              onClick={() => {
+                void navigator.clipboard?.writeText(couponResult.couponCode ?? "");
+                toast.success("Código copiado");
+              }}
+              aria-label="Copiar código del cupón"
+            >
+              {couponResult.couponCode} <Copy className="size-4 text-muted-foreground" />
+            </button>
+            <p className="text-lg font-bold tabular-nums">{money(Number(couponResult.couponAmount ?? 0))}</p>
+            {couponResult.couponExpiresAt && (
+              <p className="text-xs text-muted-foreground">Vence el {new Date(couponResult.couponExpiresAt).toLocaleDateString("es-MX", { dateStyle: "long" })}</p>
+            )}
+          </>
+        )}
+      </DialogComponent>
       <RefundCompletionDialog
         open={refundOpen}
         onOpenChange={setRefundOpen}
         detail={refundDetail}
         onCompleted={() => {
-          toast.success("Reembolso registrado y devolución procesada");
+          toast.success(refundDetail?.returnType === "exchange" ? "Diferencia entregada y devolución procesada" : "Reembolso registrado y devolución procesada");
           void load();
           if (detail?.id === refundDetail?.id && refundDetail) {
             void salesApi.returnDetail(refundDetail.id).then((response) => setDetail(response.return));
@@ -500,7 +542,7 @@ function ReturnDetailContent({
       {detail.status === "completed" && (
         <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm">
           <p className="font-medium text-success-ink">Devolución procesada</p>
-          {detail.returnType === "refund" && (
+          {(detail.returnType === "refund" || detail.returnType === "exchange") && detail.refundPayments.length > 0 && (
             <div className="mt-2 space-y-1 text-success-ink">
               {detail.refundPayments.map((payment) => (
                 <p key={payment.id} className="flex flex-wrap justify-between gap-2">
@@ -515,8 +557,11 @@ function ReturnDetailContent({
           {detail.returnType === "coupon" && detail.couponCode && (
             <p className="mt-1 text-success-ink">Cupón: <code className="font-bold">{detail.couponCode}</code> por {money(Number(detail.couponAmount ?? 0))}{detail.couponExpiresAt ? ` · Vence: ${new Date(detail.couponExpiresAt).toLocaleDateString("es-MX")}` : ""}</p>
           )}
-          {detail.returnType === "points" && detail.pointsAwarded && Number(detail.pointsAwarded) > 0 && (
-            <p className="mt-1 text-success-ink">Se bonificaron <span className="font-bold">{qty(detail.pointsAwarded)}</span> puntos al cliente.</p>
+          {detail.pointsAwarded && Number(detail.pointsAwarded) > 0 && (
+            <p className="mt-1 text-success-ink">Se bonificaron <span className="font-bold">{qty(detail.pointsAwarded)}</span> puntos{detail.settlement?.customer ? ` a ${detail.settlement.customer.name}` : " al cliente"}.</p>
+          )}
+          {detail.creditApplied && Number(detail.creditApplied) > 0 && (
+            <p className="mt-1 text-success-ink">Se abonaron <span className="font-bold">{money(Number(detail.creditApplied))}</span> a la deuda de crédito{detail.settlement?.customer ? ` de ${detail.settlement.customer.name}` : ""}.</p>
           )}
           {detail.returnType === "exchange" && (
             <p className="mt-1 text-success-ink">Producto devuelto al stock. Crea una nueva venta con el producto de reemplazo.</p>

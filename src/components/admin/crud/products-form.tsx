@@ -9,7 +9,6 @@ import {
   DollarSign,
   Hash,
   Loader2,
-  Percent,
   Plus,
   Trash2,
   Type,
@@ -135,9 +134,6 @@ export function ProductsForm({
     (initial?.categoryId as string) ?? ""
   )
   const [imageUrl, setImageUrl] = useState((initial?.imageUrl as string) ?? "")
-  const [taxRate, setTaxRate] = useState(
-    String((initial?.taxRate as number) ?? "")
-  )
   const [isActive, setIsActive] = useState(
     (initial?.isActive as boolean) ?? true
   )
@@ -258,7 +254,6 @@ export function ProductsForm({
         .trim()
         .required("El nombre del producto es obligatorio")
         .max(255, "Máximo 255 caracteres"),
-      taxRate: optionalNumber().min(0, "El impuesto no puede ser negativo"),
       variantPrice: optionalNumber().min(0, "El precio no puede ser negativo"),
       variantCost: optionalNumber().min(0, "El costo no puede ser negativo"),
     }
@@ -320,7 +315,6 @@ export function ProductsForm({
     e.stopPropagation()
     const validationValues = {
       name,
-      taxRate,
       variantPrice,
       variantCost,
       bulkUnitId,
@@ -372,7 +366,8 @@ export function ProductsForm({
       description,
       categoryId: categoryId || null,
       imageUrl: imageUrl || null,
-      taxRate: numOrEmpty(taxRate),
+      // El IVA no se captura: los precios ya lo incluyen y siempre se guarda en 0.
+      taxRate: 0,
       isActive,
       isAvailable,
       availabilityNote: availabilityNote.trim() || null,
@@ -738,18 +733,6 @@ export function ProductsForm({
         icon={<ListTree className="size-4" />}
       />
       {/* </FieldRow> */}
-
-      <InputField
-        id="product-taxRate"
-        label="IVA / Impuesto (%)"
-        icon={<Percent className="size-4" />}
-        type="number"
-        step="any"
-        value={taxRate}
-        onChange={(e) => setTaxRate(e.target.value)}
-        placeholder="0.16"
-        error={errors.taxRate}
-      />
 
       <FieldRow label="Imagen" icon={<ImageIcon className="size-4" />} full>
         <Attachment

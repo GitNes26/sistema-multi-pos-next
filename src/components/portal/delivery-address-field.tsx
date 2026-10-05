@@ -53,7 +53,7 @@ export function DeliveryAddressField({
   const [locating, setLocating] = useState(false)
   const { detectMyLocation, error: geoError } = useLocation()
   const { suggestions, searching, clear, pick } = useAddressSuggestions(query, true, coords)
-  const hasAddress = address.trim().length > 0
+  const hasAddress = address.trim().length > 0 || coords != null
 
   const choose = async (index: number) => {
     const res = await pick(index)
@@ -158,7 +158,10 @@ export function DeliveryAddressField({
               <MapPin className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-muted-foreground">Dirección de entrega</p>
+              <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                Dirección de entrega
+                {coords && <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[11px] font-semibold text-success-ink">Ubicación fijada</span>}
+              </p>
               <textarea
                 value={address}
                 onChange={(e) => onTextChange(e.target.value)}

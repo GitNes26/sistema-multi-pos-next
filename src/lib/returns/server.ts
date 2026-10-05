@@ -8,6 +8,55 @@ import { persistNotification } from "@/lib/notifications/helpers";
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
+/** Opciones de bonificación vigentes y datos del cliente al que se le abonaría. */
+export interface ReturnSettlementContext {
+  loyaltyEnabled: boolean;
+  pointsPerCurrency: number;
+  creditEnabled: boolean;
+  customer: { id: string; name: string; points: number; creditBalance: number; hasCreditAccount: boolean } | null;
+}
+
+async function settlementContext(
+  db: Pick<typeof prisma, "organization" | "customer" | "customerCredit">,
+  organizationId: string,
+  customerId: string | null
+): Promise<ReturnSettlementContext> {
+  const org = await db.organization.findUnique({
+    where: { id: organizationId },
+    select: { loyaltyEnabled: true, pointsPerCurrency: true, creditPolicy: { select: { creditEnabled: true } } },
+  });
+  const customer = customerId
+    ? await db.customer.findFirst({ where: { id: customerId, organizationId }, select: { id: true, fullName: true, points: true } })
+    : null;
+  const credit = customer ? await db.customerCredit.findFirst({ where: { customerId: customer.id, organizationId }, select: { currentBalance: true } }) : null;
+  return {
+    loyaltyEnabled: Boolean(org?.loyaltyEnabled),
+    pointsPerCurrency: num(org?.pointsPerCurrency),
+    creditEnabled: Boolean(org?.creditPolicy?.creditEnabled),
+    customer: customer
+      ? { id: customer.id, name: customer.fullName, points: num(customer.points), creditBalance: num(credit?.currentBalance), hasCreditAccount: Boolean(credit) }
+      : null,
+  };
+}
+
+/** Contexto para el diálogo de nueva devolución: cliente de la venta y opciones habilitadas. */
+export async function getSaleReturnContext(organizationId: string, saleId: string, customerId?: string | null) {
+  const sale = await prisma.sale.findFirst({ where: { id: saleId, organizationId }, select: { customerId: true } });
+  if (!sale) throw new CrudError("Venta no encontrada", 404);
+  return { ...(await settlementContext(prisma, organizationId, sale.customerId ?? customerId ?? null)), saleHasCustomer: Boolean(sale.customerId) };
+}
+
+/** Cuánto se le debe entregar al cliente: todo en reembolso; en un cambio, solo lo que sobra. */
+function amountDue(ret: { returnType: string; total: unknown; exchangeItems: unknown }) {
+  if (ret.returnType === "refund") return round2(num(ret.total));
+  if (ret.returnType === "exchange") {
+    const lines = (Array.isArray(ret.exchangeItems) ? ret.exchangeItems : []) as { quantity: number; unitPrice: number }[];
+    const exchangeTotal = lines.reduce((sum, l) => sum + l.quantity * l.unitPrice, 0);
+    return Math.max(0, round2(num(ret.total) - exchangeTotal));
+  }
+  return 0;
+}
+
 export interface RefundPaymentInput {
   method: $Enums.PaymentMethod;
   amount: number;
@@ -25,7 +74,9 @@ function generateCouponCode(): string {
 
 export interface CreateReturnInput {
   saleId: string;
-  returnType: "exchange" | "refund" | "coupon" | "points";
+  returnType: "exchange" | "refund" | "coupon" | "points" | "credit";
+  /** Cliente a quien se bonifica cuando la venta no tiene uno ligado. */
+  customerId?: string | null;
   reason?: string;
   notes?: string;
   items: {
@@ -142,7 +193,7 @@ export async function createReturn(
   userId: string,
   input: CreateReturnInput
 ) {
-  if (!["exchange", "refund", "coupon", "points"].includes(input.returnType)) {
+  if (!["exchange", "refund", "coupon", "points", "credit"].includes(input.returnType)) {
     throw new CrudError("Tipo de devolución inválido", 400, "returnType");
   }
   if (!Array.isArray(input.items) || input.items.length === 0) {
@@ -193,6 +244,16 @@ export async function createReturn(
   });
   if (vigente) {
     throw new CrudError(`Esta venta ya tiene la devolución DEV-${Number(vigente.returnNumber)}. No se admite otra`, 409);
+  }
+
+  // Puntos y crédito necesitan un cliente: el de la venta o el que se asigne aquí.
+  let assignedCustomerId: string | null = null;
+  if (input.returnType === "points" || input.returnType === "credit") {
+    const ctx = await settlementContext(tx, organizationId, sale.customerId ?? input.customerId ?? null);
+    if (input.returnType === "points" && !ctx.loyaltyEnabled) throw new CrudError("La lealtad no está habilitada", 400, "returnType");
+    if (input.returnType === "credit" && !ctx.creditEnabled) throw new CrudError("El crédito no está habilitado", 400, "returnType");
+    if (!ctx.customer) throw new CrudError("Asigna o registra un cliente para bonificar la devolución", 400, "customerId");
+    assignedCustomerId = sale.customerId ? null : ctx.customer.id;
   }
 
   const exchangeLines = input.returnType === "exchange"
@@ -271,6 +332,7 @@ export async function createReturn(
       employeeId: sale.employeeId,
       userId,
       returnType: input.returnType,
+      customerId: assignedCustomerId,
       status: "pending",
       reason: input.reason,
       subtotal,
@@ -294,7 +356,7 @@ export async function createReturn(
 
   const { ret, saleNum, customerName } = result;
   // Notificar a la organización sobre la nueva devolución
-  const typeName = { refund: "Reembolso", coupon: "Cupón", points: "Puntos", exchange: "Cambio" }[input.returnType];
+  const typeName = { refund: "Reembolso", coupon: "Cupón", points: "Puntos", credit: "Crédito", exchange: "Cambio" }[input.returnType];
   persistNotification({
     organizationId,
     locationId: ret.locationId,
@@ -328,11 +390,75 @@ export async function approveReturn(
 
 // ── Procesar/devolver ───────────────────────────────────────────────────────
 
+/** Bonifica al cliente: puntos (con la política de conversión) y/o abono a su deuda de crédito. */
+async function applyBonus(
+  tx: Prisma.TransactionClient,
+  organizationId: string,
+  ret: { id: string; saleId: string; returnNumber: bigint },
+  customerId: string,
+  pointsAmount: number,
+  creditAmount: number
+) {
+  if (pointsAmount > 0) {
+    const org = await tx.organization.findUnique({ where: { id: organizationId }, select: { pointsPerCurrency: true } });
+    const points = Math.round(pointsAmount * num(org?.pointsPerCurrency));
+    if (points > 0) {
+      await tx.customer.update({ where: { id: customerId }, data: { points: { increment: points } } });
+      await tx.loyaltyTransaction.create({
+        data: {
+          organizationId,
+          customerId,
+          saleId: ret.saleId,
+          kind: "earn",
+          points,
+          note: `Bonificación por devolución DEV-${Number(ret.returnNumber)}`,
+        },
+      });
+      await tx.saleReturn.update({ where: { id: ret.id }, data: { pointsAwarded: points } });
+    }
+  }
+  if (creditAmount > 0) {
+    const account = await tx.customerCredit.findFirst({ where: { customerId, organizationId } });
+    if (!account) throw new CrudError("El cliente no tiene cuenta de crédito", 400, "creditAmount");
+    const updated = await tx.customerCredit.updateMany({
+      where: { id: account.id, currentBalance: { gte: creditAmount } },
+      data: { currentBalance: { decrement: creditAmount } },
+    });
+    if (updated.count !== 1) throw new CrudError("El abono a crédito excede el adeudo del cliente", 400, "creditAmount");
+    const balanceAfter = num((await tx.customerCredit.findUniqueOrThrow({ where: { id: account.id }, select: { currentBalance: true } })).currentBalance);
+    if (balanceAfter <= 0) await tx.customerCredit.update({ where: { id: account.id }, data: { status: "settled" } });
+    await tx.creditTransaction.create({
+      data: {
+        creditId: account.id,
+        customerId,
+        organizationId,
+        type: "payment",
+        amount: creditAmount,
+        balanceAfter,
+        description: `Bonificación por devolución DEV-${Number(ret.returnNumber)}`,
+        referenceType: "return",
+        referenceId: ret.id,
+        paidAt: new Date(),
+      },
+    });
+    await tx.saleReturn.update({ where: { id: ret.id }, data: { creditApplied: creditAmount } });
+  }
+}
+
 export async function completeReturn(
   organizationId: string,
   returnId: string,
   userId: string,
-  input: { refundPayments?: RefundPaymentInput[]; cashSessionId?: string } = {}
+  input: {
+    refundPayments?: RefundPaymentInput[];
+    cashSessionId?: string;
+    /** Parte del monto (en dinero) que se bonifica como puntos de lealtad. */
+    pointsAmount?: number;
+    /** Parte del monto que se abona a la deuda de crédito del cliente. */
+    creditAmount?: number;
+    /** Cliente a quien se bonifica si la venta no lo tenía. */
+    customerId?: string | null;
+  } = {}
 ) {
   const employee = await prisma.employee.findFirst({ where: { userId }, select: { id: true } });
   await prisma.$transaction(async (tx) => {
@@ -355,9 +481,29 @@ export async function completeReturn(
     });
     if (!ret) throw new CrudError("Devolución no encontrada", 404);
 
-    if (ret.returnType === "refund") {
-      const requested = input.refundPayments;
-      if (!Array.isArray(requested) || requested.length === 0) {
+    const due = amountDue(ret);
+    const bonusCustomerId = ret.customerId ?? ret.sale.customerId ?? input.customerId ?? null;
+    const splits = (ret.returnType === "refund" || ret.returnType === "exchange") && due > 0;
+    const pointsAmount = splits ? round2(Math.max(0, Number(input.pointsAmount) || 0)) : 0;
+    const creditAmount = splits ? round2(Math.max(0, Number(input.creditAmount) || 0)) : 0;
+    if (pointsAmount > 0 || creditAmount > 0) {
+      const ctx = await settlementContext(tx, organizationId, bonusCustomerId);
+      if (!ctx.customer) throw new CrudError("Asigna o registra un cliente para bonificar", 400, "customerId");
+      if (pointsAmount > 0 && !ctx.loyaltyEnabled) throw new CrudError("La lealtad no está habilitada", 400, "pointsAmount");
+      if (creditAmount > 0) {
+        if (!ctx.creditEnabled) throw new CrudError("El crédito no está habilitado", 400, "creditAmount");
+        if (creditAmount - ctx.customer.creditBalance > 0.009) {
+          throw new CrudError(`El abono a crédito no puede exceder el adeudo del cliente (${ctx.customer.creditBalance.toFixed(2)})`, 400, "creditAmount");
+        }
+      }
+      if (!ret.customerId && !ret.sale.customerId) await tx.saleReturn.update({ where: { id: returnId }, data: { customerId: ctx.customer.id } });
+    }
+
+    if (ret.returnType === "refund" || (ret.returnType === "exchange" && due > 0)) {
+      const requested = input.refundPayments ?? [];
+      const toDeliver = round2(due - pointsAmount - creditAmount);
+      if (toDeliver < -0.009) throw new CrudError("Las bonificaciones exceden lo que se debe al cliente", 400, "refundPayments");
+      if (toDeliver > 0.009 && (!Array.isArray(requested) || requested.length === 0)) {
         throw new CrudError("Registra cómo se entregó el reembolso", 400, "refundPayments");
       }
       const allowed = new Set<$Enums.PaymentMethod>(["cash", "card", "wallet", "other"]);
@@ -378,8 +524,8 @@ export async function completeReturn(
         });
       }
       const allocatedTotal = round2([...allocations.values()].reduce((sum, payment) => sum + payment.amount, 0));
-      if (Math.abs(allocatedTotal - num(ret.total)) > 0.009) {
-        throw new CrudError("La suma de los reembolsos debe coincidir con el total de la devolución", 400, "refundPayments");
+      if (Math.abs(allocatedTotal - toDeliver) > 0.009) {
+        throw new CrudError("La suma de los reembolsos y bonificaciones debe coincidir con lo que se debe al cliente", 400, "refundPayments");
       }
 
       const available = new Map<$Enums.PaymentMethod, number>();
@@ -422,14 +568,17 @@ export async function completeReturn(
         }
         await tx.saleReturn.update({ where: { id: returnId }, data: { cashSessionId: cashSession.id } });
       }
-      await tx.saleReturnPayment.createMany({
-        data: [...allocations].map(([method, payment]) => ({
-          returnId,
-          method,
-          amount: payment.amount,
-          reference: payment.reference,
-        })),
-      });
+      if (allocations.size > 0) {
+        await tx.saleReturnPayment.createMany({
+          data: [...allocations].map(([method, payment]) => ({
+            returnId,
+            method,
+            amount: payment.amount,
+            reference: payment.reference,
+          })),
+        });
+      }
+      if (pointsAmount > 0 || creditAmount > 0) await applyBonus(tx, organizationId, ret, bonusCustomerId!, pointsAmount, creditAmount);
     } else if (input.refundPayments?.length) {
       throw new CrudError("Esta resolución no utiliza movimientos de reembolso", 400, "refundPayments");
     }
@@ -513,33 +662,21 @@ export async function completeReturn(
       break;
     }
     case "points": {
-      // Bonificar el monto como puntos
-      const org = await tx.organization.findUnique({
-        where: { id: ret.organizationId },
-        select: { pointsPerCurrency: true, loyaltyEnabled: true },
-      });
-      if (org?.loyaltyEnabled && ret.sale.customerId) {
-        const pointsToAward = Math.round(num(ret.total) * num(org.pointsPerCurrency));
-        if (pointsToAward > 0) {
-          const customer = await tx.customer.findFirst({
-            where: { id: ret.sale.customerId, organizationId },
-          });
-          if (customer) {
-            await tx.customer.update({ where: { id: customer.id }, data: { points: { increment: pointsToAward } } });
-            await tx.loyaltyTransaction.create({
-              data: {
-                organizationId,
-                customerId: customer.id,
-                saleId: ret.saleId,
-                kind: "earn",
-                points: pointsToAward,
-                note: `Bonificación por devolución #${returnId.slice(-8)}`,
-              },
-            });
-            await tx.saleReturn.update({ where: { id: returnId }, data: { pointsAwarded: pointsToAward } });
-          }
-        }
+      // Bonificar el monto como puntos (cliente de la venta o el asignado a la devolución).
+      if (!bonusCustomerId) throw new CrudError("Asigna o registra un cliente para bonificar puntos", 400, "customerId");
+      const ctx = await settlementContext(tx, organizationId, bonusCustomerId);
+      if (!ctx.loyaltyEnabled) throw new CrudError("La lealtad no está habilitada", 400);
+      await applyBonus(tx, organizationId, ret, bonusCustomerId, num(ret.total), 0);
+      break;
+    }
+    case "credit": {
+      if (!bonusCustomerId) throw new CrudError("Asigna o registra un cliente para bonificar a crédito", 400, "customerId");
+      const ctx = await settlementContext(tx, organizationId, bonusCustomerId);
+      if (!ctx.creditEnabled) throw new CrudError("El crédito no está habilitado", 400);
+      if (num(ret.total) - (ctx.customer?.creditBalance ?? 0) > 0.009) {
+        throw new CrudError("El adeudo del cliente es menor que la devolución: usa devolución de dinero y abona solo el adeudo", 400);
       }
+      await applyBonus(tx, organizationId, ret, bonusCustomerId, 0, num(ret.total));
       break;
     }
     case "exchange": {
@@ -646,8 +783,10 @@ export async function getReturnDetail(organizationId: string, returnId: string) 
       available.set(payment.method, round2((available.get(payment.method) ?? 0) - num(payment.amount)));
     }
   }
+  const settlement = await settlementContext(prisma, organizationId, ret.customerId ?? ret.sale.customerId);
   return {
     ...ret,
+    settlement: { ...settlement, due: amountDue(ret), customerAssigned: Boolean(ret.customerId ?? ret.sale.customerId) },
     refundAvailability: [...available]
       .filter(([method, amount]) => ["cash", "card", "wallet", "other"].includes(method) && amount > 0)
       .map(([method, amount]) => ({ method, amount })),

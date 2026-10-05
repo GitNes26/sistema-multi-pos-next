@@ -1,3 +1,4 @@
+import { announceOrderChange } from "@/lib/orders/live"
 import { prisma } from "@/lib/db"
 import { getStoreStatus } from "@/lib/store-status"
 import { Prisma, type $Enums } from "@prisma/client"
@@ -1749,6 +1750,7 @@ export async function createPortalOrder(
       total: toNum(order.total),
     }
   )
+  void announceOrderChange(organizationId, order.id, { created: true })
   if (input.paymentMethod === "credit") await notifyStaff(organizationId, "orders.view", { kind: "credit_charge", title: "Nuevo pedido a crédito", body: `Pedido #${Number(order.orderNumber)} · $${toNum(order.total).toFixed(2)}`, link: "/admin/credits" }).catch((error) => console.error("[credit/notification]", error))
 
   return detail!
@@ -1835,6 +1837,7 @@ export async function cancelPortalOrder(
     await restoreRecipeIngredients(tx, organizationId, orderId, null)
   })
 
+  void announceOrderChange(organizationId, orderId)
   const customer = await prisma.customer.findUnique({
     where: { id: customerId },
   })

@@ -1,3 +1,4 @@
+import { announceOrderChange } from "@/lib/orders/live";
 import { isMercadoPagoPointPaid, paymentMatches, verifyStripeSignature, verifyMercadoPagoSignature } from "./verification";
 export { verifyStripeSignature } from "./verification";
 import { prisma } from "@/lib/db";
@@ -516,6 +517,7 @@ export async function markOrderPaid(organizationId: string, orderId: string, amo
     status: "confirmed",
     updatedAt: new Date().toISOString(),
   });
+  void announceOrderChange(organizationId, orderId);
   await notifyOrderEvent(order.organizationId, order.locationId, {}, {
     id: orderId,
     orderNumber: Number(order.orderNumber),

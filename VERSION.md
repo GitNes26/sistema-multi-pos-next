@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.38.0.0] — 2026-10-05
+- **Tipo:** `feat` (Minor)
+- feat: notificaciones de pedido al tablero en vivo, pedidos y KDS en tiempo real sin envios en cocina, portal actualiza el seguimiento por SSE, cobro en LISTO sin cerrar el modal, etiqueta de granel sin empalme, resumen de ubicacion en el portal, devoluciones con bonificacion a puntos o credito con cliente y saldos, cupon con codigo e impresion, diferencia de cambio entregada desde caja, cantidad editable sin desmarcar, busqueda de movimientos de inventario, numeros de mesa liberados, IVA oculto en 0 y cobro en cero con cupon en el POS
+
 ### [0.37.0.0] — 2026-10-05
 - **Tipo:** `feat` (Minor)
 - feat: mis direcciones del portal con edicion y pin en mapa, reservacion inmersiva por pasos, impresion completa de traslados, ver e imprimir cotizaciones y ordenes de compra, nomina con conceptos editables, captura rapida en entrada por defecto, flecha de regreso del repartidor, teclado segun tipo de dato con selectores de fecha y hora, permiso payroll.manage y documentacion

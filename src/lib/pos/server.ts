@@ -671,7 +671,7 @@ export async function getSalesStats(
           select: { total: true, payments: true, changeGiven: true },
         },
         saleReturns: {
-          where: { status: "completed", returnType: "refund" },
+          where: { status: "completed", returnType: { in: ["refund", "exchange"] } },
           select: {
             refundPayments: {
               where: { method: "cash" },
@@ -1640,7 +1640,7 @@ export async function closeCashSession(
                 organizationId,
                 cashSessionId: session.id,
                 status: "completed",
-                returnType: "refund",
+                returnType: { in: ["refund", "exchange"] },
               },
             },
             _sum: { amount: true },

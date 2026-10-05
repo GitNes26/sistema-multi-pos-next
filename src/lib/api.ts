@@ -155,7 +155,7 @@ export interface SaleReturn {
   returnNumber: number;
   exchangeItems?: { productId: string; variantId: string | null; name: string; quantity: number; unitPrice: number }[] | null;
   saleId: string;
-  returnType: "exchange" | "refund" | "coupon" | "points";
+  returnType: "exchange" | "refund" | "coupon" | "points" | "credit";
   status: "pending" | "approved" | "completed" | "rejected";
   reason: string | null;
   subtotal: number;
@@ -166,6 +166,8 @@ export interface SaleReturn {
   couponAmount: number | null;
   couponExpiresAt: string | null;
   pointsAwarded: number | null;
+  creditApplied?: number | null;
+  customerId?: string | null;
   refundPayments: {
     id: string;
     method: "cash" | "card" | "wallet" | "other" | "points" | "credit";
@@ -192,6 +194,14 @@ export interface SaleReturnDetail extends SaleReturn {
   user: { fullName: string } | null;
   refundAvailability: { method: "cash" | "card" | "wallet" | "other"; amount: number }[];
   openCashSessions: { id: string; label: string }[];
+  settlement: ReturnSettlement & { due: number; customerAssigned: boolean };
+}
+
+export interface ReturnSettlement {
+  loyaltyEnabled: boolean;
+  pointsPerCurrency: number;
+  creditEnabled: boolean;
+  customer: { id: string; name: string; points: number; creditBalance: number; hasCreditAccount: boolean } | null;
 }
 
 export type RevisionStatus = "draft" | "in_progress" | "completed" | "cancelled";
@@ -488,7 +498,8 @@ export const salesApi = {
 
   // Devoluciones
   createReturn: (saleId: string, data: {
-    returnType: "exchange" | "refund" | "coupon" | "points";
+    returnType: "exchange" | "refund" | "coupon" | "points" | "credit";
+    customerId?: string | null;
     reason?: string;
     notes?: string;
     items: { saleItemId: string; quantity: number; reason?: string; restockable?: boolean }[];
@@ -498,6 +509,10 @@ export const salesApi = {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   }),
+  returnContext: (saleId: string, customerId?: string | null) =>
+    request<{ ok: boolean; context: ReturnSettlement & { saleHasCustomer: boolean } }>(
+      `/api/sales/${saleId}/return${customerId ? `?customerId=${encodeURIComponent(customerId)}` : ""}`
+    ),
   saleReturns: (saleId: string) =>
     request<{ ok: boolean; returns: SaleReturn[] }>(`/api/sales/${saleId}/returns`),
   listReturns: (params: Record<string, string | number | undefined> = {}) => {
@@ -512,10 +527,15 @@ export const salesApi = {
     request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/approve`, { method: "PUT" }),
   rejectReturn: (returnId: string) =>
     request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/reject`, { method: "PUT" }),
-  completeReturn: (returnId: string, refundPayments?: { method: "cash" | "card" | "wallet" | "other"; amount: number; reference?: string }[], cashSessionId?: string) =>
-    request<{ ok: boolean; return: SaleReturn }>(`/api/sales/returns/${returnId}/complete`, {
+  completeReturn: (
+    returnId: string,
+    refundPayments?: { method: "cash" | "card" | "wallet" | "other"; amount: number; reference?: string }[],
+    cashSessionId?: string,
+    extra: { pointsAmount?: number; creditAmount?: number; customerId?: string | null } = {}
+  ) =>
+    request<{ ok: boolean; return: SaleReturnDetail }>(`/api/sales/returns/${returnId}/complete`, {
       method: "POST",
-      body: JSON.stringify({ refundPayments, cashSessionId }),
+      body: JSON.stringify({ refundPayments, cashSessionId, ...extra }),
     }),
   returnTicketUrl: (returnId: string) => `/api/sales/returns/${returnId}/ticket?reprint=1`,
 };

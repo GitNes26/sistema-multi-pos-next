@@ -642,10 +642,14 @@ export function CheckoutClient() {
                       return first ? { lat: first.latitude!, lon: first.longitude! } : null;
                     })()}
                     onChange={(v) => {
-                      setGps({ lat: v.lat, lon: v.lon, ...v.parts });
+                      const gpsValue = { lat: v.lat, lon: v.lon, ...v.parts };
+                      setGps(gpsValue);
                       setSelectedAddressId(null);
-                      setAddress(v.address);
-                      if (v.address.trim()) setFieldErrors((current) => ({ ...current, address: undefined }));
+                      // Sin dirección legible (el mapa no la resolvió) se arma con lo que sí se sabe,
+                      // para que el campo nunca quede vacío y el cliente pueda avanzar.
+                      const text = v.address.trim() || composeAddress(gpsValue) || `Ubicación marcada en el mapa (${v.lat.toFixed(5)}, ${v.lon.toFixed(5)})`;
+                      setAddress(text);
+                      setFieldErrors((current) => ({ ...current, address: undefined }));
                     }}
                     onTextChange={(text) => {
                       setAddress(text);

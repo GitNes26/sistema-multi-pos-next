@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { notifyOrderEvent } from "@/lib/notifications/events";
 import { broadcastOrderStatus } from "@/lib/portal/live";
 import { broadcastKdsUpdate } from "@/lib/kds/live";
+import { announceOrderChange } from "@/lib/orders/live";
 import { persistNotification } from "@/lib/notifications/helpers";
 
 // FASE 12 — Servidor de pedidos (admin): listado, detalle, estados, preparación.
@@ -597,6 +598,7 @@ export async function payOrderInStore(
   });
   // Cobrado en tienda = venta en esa caja (ticket PED-, inventario y corte).
   await recordOrderSale(organizationId, orderId, { ...ctx, cashSessionId: session.id });
+  void announceOrderChange(organizationId, orderId);
 
   return getOrderDetail(organizationId, orderId);
 }
@@ -791,6 +793,7 @@ export async function setPreparationItem(
       ...(input.notes !== undefined ? { employeeNotes: input.notes ?? null } : {}),
     },
   });
+  void announceOrderChange(organizationId, item.orderItem.orderId);
 
   return {
     id: updated.id,
@@ -826,6 +829,7 @@ export async function completePreparation(
     where: { id: prep.id },
     data: { completedAt: new Date(), elapsedSeconds: elapsed, generalNotes: generalNotes ?? null },
   });
+  void announceOrderChange(organizationId, orderId);
 
   return (await getPreparation(organizationId, orderId))!;
 }
@@ -1189,11 +1193,11 @@ export async function assignDriver(
       body: "Acéptala desde Entregas para salir en camino.",
       severity: "info",
       recipientUserId: employee.userId,
-      link: "/kds",
+      link: "/repartidor",
       metadata: { orderId: id },
     }).catch((err) => console.error("[orders] notificación de reparto:", err));
   }
-  broadcastKdsUpdate(organizationId, { type: "order_updated", orderId: id, orderNumber: Number(order.orderNumber), status: order.status });
+  void announceOrderChange(organizationId, id);
   return getOrderDetail(organizationId, id);
 }
 
