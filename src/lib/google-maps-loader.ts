@@ -82,7 +82,8 @@ export interface GooglePlaceResult {
  */
 export async function googlePlacesSearch(
   query: string,
-  limit = 5
+  limit = 5,
+  near?: { lat: number; lon: number } | null
 ): Promise<Array<{ description: string; placeId: string }>> {
   const ok = await loadGoogleMaps()
   if (!ok || !window.google?.maps?.places) return []
@@ -90,7 +91,13 @@ export async function googlePlacesSearch(
   return new Promise((resolve) => {
     const service = new window.google!.maps!.places!.AutocompleteService()
     service.getPlacePredictions(
-      { input: query, limit },
+      {
+        input: query,
+        limit,
+        componentRestrictions: { country: "mx" },
+        // Resultados cercanos a quien escribe (≈50 km a la redonda).
+        ...(near ? { location: { lat: near.lat, lng: near.lon }, radius: 50000 } : {}),
+      },
       (predictions: any, status: any) => {
         if (status !== "OK" || !predictions) {
           resolve([])

@@ -6,12 +6,12 @@ import { Home, Loader2, LocateFixed, MapPin, MapPinned, Plus, Search, Trash2 } f
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useLocation } from "@/hooks/use-location"
-import { useAddressSuggestions } from "@/components/portal/use-address-suggestions"
-import type { PickedAddress } from "@/components/portal/address-map-picker"
+import { useAddressSuggestions } from "@/components/shared/use-address-suggestions"
+import type { PickedAddress } from "@/components/shared/address-map-picker"
 import type { CustomerAddressView } from "@/lib/portal/server"
 
 // Leaflet necesita el DOM del navegador.
-const AddressMapPicker = dynamic(() => import("@/components/portal/address-map-picker").then((m) => m.AddressMapPicker), { ssr: false })
+const AddressMapPicker = dynamic(() => import("@/components/shared/address-map-picker").then((m) => m.AddressMapPicker), { ssr: false })
 
 /**
  * Dirección de entrega, al estilo de las apps de reparto: un solo campo con
@@ -52,7 +52,7 @@ export function DeliveryAddressField({
   const [mapOpen, setMapOpen] = useState(false)
   const [locating, setLocating] = useState(false)
   const { detectMyLocation, error: geoError } = useLocation()
-  const { suggestions, searching, clear, pick } = useAddressSuggestions(query)
+  const { suggestions, searching, clear, pick } = useAddressSuggestions(query, true, coords)
   const hasAddress = address.trim().length > 0
 
   const choose = async (index: number) => {
@@ -148,7 +148,7 @@ export function DeliveryAddressField({
           <MapPinned className="size-4" /> Elegir en el mapa
         </Button>
       </div>
-      {geoError && <p className="text-xs text-destructive">{geoError}</p>}
+      {geoError && !hasAddress && <p className="text-xs text-destructive">{geoError}</p>}
 
       {/* Resumen de la dirección elegida */}
       {hasAddress && (

@@ -15,8 +15,14 @@ export interface AddressSuggestion {
  * (500 ms; Nominatim pide máximo 1 consulta por segundo) y devuelve sugerencias
  * de Google Places o, sin clave, de OpenStreetMap.
  */
-export function useAddressSuggestions(query: string, enabled = true) {
-  const { searchAddress, getPlaceDetails } = useLocation()
+export function useAddressSuggestions(query: string, enabled = true, near?: { lat: number; lon: number } | null) {
+  const { searchAddress, getPlaceDetails, warmLocation } = useLocation()
+  const nearLat = near?.lat
+  const nearLon = near?.lon
+  // Sin punto de referencia, intenta tomar la ubicación del dispositivo (solo si ya dio permiso).
+  useEffect(() => {
+    if (enabled && nearLat == null) void warmLocation()
+  }, [enabled, nearLat, warmLocation])
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([])
   const [searching, setSearching] = useState(false)
   const seq = useRef(0)
@@ -31,13 +37,13 @@ export function useAddressSuggestions(query: string, enabled = true) {
     const id = ++seq.current
     const timer = window.setTimeout(async () => {
       setSearching(true)
-      const results = await searchAddress(q)
+      const results = await searchAddress(q, nearLat != null && nearLon != null ? { lat: nearLat, lon: nearLon } : null)
       if (id !== seq.current) return
       setSuggestions(results.slice(0, 6))
       setSearching(false)
     }, 500)
     return () => window.clearTimeout(timer)
-  }, [query, enabled, searchAddress])
+  }, [query, enabled, searchAddress, nearLat, nearLon])
 
   const clear = useCallback(() => {
     seq.current++

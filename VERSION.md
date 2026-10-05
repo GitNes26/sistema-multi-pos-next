@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.35.0.0] — 2026-10-05
+- **Tipo:** `feat` (Minor)
+- feat: selector de mapa a pantalla completa en todo input de direccion, sugerencias cercanas a la ubicacion del usuario (Google Places y Nominatim acotados), mensaje de GPS que ya no persiste y surtido de pedidos rediseñado con foto del producto, cantidad, topicos, barra de avance fija y acciones adaptadas a celular y tablet
+
 ### [0.34.0.0] — 2026-10-02
 - **Tipo:** `feat` (Minor)
 - feat: confirmacion al completar una preparacion sin articulos marcados, el detalle del pedido baja al aviso de repartidor asignado con el boton para continuar e interfaz del repartidor (mis entregas y disponibles, aceptar, mapa con ruta, cliente, articulos, cobro, salir en camino, llegada y confirmacion con PIN o QR)

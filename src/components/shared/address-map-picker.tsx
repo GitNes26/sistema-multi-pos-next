@@ -7,7 +7,7 @@ import "leaflet/dist/leaflet.css"
 import { ArrowLeft, Check, Loader2, LocateFixed, MapPin, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useLocation, type LocationResult } from "@/hooks/use-location"
-import { useAddressSuggestions } from "@/components/portal/use-address-suggestions"
+import { useAddressSuggestions } from "@/components/shared/use-address-suggestions"
 
 export interface PickedAddress {
   lat: number
@@ -59,7 +59,7 @@ export function AddressMapPicker({
   onConfirm: (value: PickedAddress) => void
   onPermissionError?: () => void
 }) {
-  const { detectMyLocation, reverseGeocode, error } = useLocation()
+  const { detectMyLocation, reverseGeocode, warmLocation, error } = useLocation()
   const [mounted, setMounted] = useState(false)
   const [center, setCenter] = useState<{ lat: number; lon: number } | null>(initial)
   const [resolved, setResolved] = useState<LocationResult | null>(null)
@@ -67,10 +67,22 @@ export function AddressMapPicker({
   const [locating, setLocating] = useState(false)
   const [target, setTarget] = useState<{ lat: number; lon: number; zoom?: number; nonce: number } | null>(null)
   const [query, setQuery] = useState("")
-  const { suggestions, searching, clear, pick } = useAddressSuggestions(query, open)
+  const { suggestions, searching, clear, pick } = useAddressSuggestions(query, open, center)
   const seq = useRef(0)
 
   useEffect(() => setMounted(true), [])
+  // Sin dirección previa: si ya hay permiso, abre el mapa en tu ubicación (no en otra ciudad).
+  useEffect(() => {
+    if (!open || initial) return
+    let alive = true
+    void warmLocation().then((p) => {
+      if (alive && p) setTarget({ lat: p.lat, lon: p.lon, nonce: Date.now() })
+    })
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
   useEffect(() => {
     if (!open) return
     setCenter(initial)
@@ -206,7 +218,7 @@ export function AddressMapPicker({
           ) : (
             <p className="mt-0.5 text-base font-semibold leading-snug">{resolved.address || "Punto seleccionado en el mapa"}</p>
           )}
-          {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+          {error && !resolved && <p className="mt-1 text-xs text-destructive">{error}</p>}
         </div>
         <Button
           type="button"

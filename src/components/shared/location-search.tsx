@@ -1,12 +1,15 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Crosshair, MapPin, Loader2, Map, X, ChevronRight } from "lucide-react"
+import { Crosshair, MapPin, MapPinned, Loader2, Map, X, ChevronRight } from "lucide-react"
+import dynamic from "next/dynamic"
 import { MapPreview } from "@/components/shared/map-preview"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useLocation, type LocationResult } from "@/hooks/use-location"
+
+const AddressMapPicker = dynamic(() => import("@/components/shared/address-map-picker").then((m) => m.AddressMapPicker), { ssr: false })
 
 interface LocationSearchProps {
   id?: string
@@ -53,7 +56,8 @@ export function LocationSearch({
   className,
   validationError,
 }: LocationSearchProps) {
-  const { detectMyLocation, searchAddress, getPlaceDetails, loading, error, hasGoogleMaps } = useLocation()
+  const { detectMyLocation, searchAddress, getPlaceDetails, warmLocation, loading, error, hasGoogleMaps } = useLocation()
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [suggestions, setSuggestions] = useState<Array<{ description: string; placeId?: string; lat?: number; lon?: number }>>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -90,14 +94,14 @@ export function LocationSearch({
       debounceRef.current = setTimeout(async () => {
         setSearching(true)
         setSearchedEmpty(false)
-        const results = await searchAddress(q)
+        const results = await searchAddress(q, lat != null && lon != null ? { lat, lon } : null)
         setSuggestions(results)
         setShowSuggestions(true)
         setSearchedEmpty(results.length === 0)
         setSearching(false)
       }, 300)
     },
-    [searchAddress]
+    [searchAddress, lat, lon]
   )
 
   // Select a suggestion
@@ -192,12 +196,12 @@ export function LocationSearch({
             disabled={disabled}
             aria-invalid={Boolean(validationError) || undefined}
             aria-describedby={validationError && id ? `${id}-error` : undefined}
-            className={cn("md:pl-9 desk:pl-9 md:pr-9 desk:pr-9 pl-9 pr-9", validationError && "border-destructive focus-visible:ring-destructive/20")}
+            className={cn("pl-9 pr-[4.5rem] md:pl-9 desk:pl-9 md:pr-[4.5rem] desk:pr-[4.5rem]", validationError && "border-destructive focus-visible:ring-destructive/20")}
           />
           {value && !showSuggestions && (
             <button
               type="button"
-              className="absolute right-9 text-muted-foreground hover:text-foreground"
+              className="absolute right-[4.75rem] text-muted-foreground hover:text-foreground"
               onClick={() => {
                 onChange("", null)
                 setQuery("")
@@ -205,6 +209,20 @@ export function LocationSearch({
             >
               <X className="size-3.5" />
             </button>
+          )}
+          {showDetect && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="absolute right-9 text-muted-foreground hover:text-primary"
+              disabled={disabled}
+              onClick={() => setPickerOpen(true)}
+              title="Elegir en el mapa"
+              aria-label="Elegir en el mapa"
+            >
+              <MapPinned className="size-4" />
+            </Button>
           )}
           {showDetect && (
             <Button
@@ -273,7 +291,7 @@ export function LocationSearch({
       </div>
 
       {/* Error */}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && !hasGps && <p className="text-xs text-destructive">{error}</p>}
 
       {/* Coordinates + map */}
       {hasGps && (
@@ -300,6 +318,18 @@ export function LocationSearch({
           )}
         </div>
       )}
+
+      <AddressMapPicker
+        open={pickerOpen}
+        initial={hasGps ? { lat: lat!, lon: lon! } : null}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(v) => {
+          setPickerOpen(false)
+          const result: LocationResult = { coords: { lat: v.lat, lon: v.lon }, address: v.address, parts: v.parts }
+          onChange(v.address, result.coords)
+          onLocationSelect?.(result)
+        }}
+      />
     </div>
   )
 }

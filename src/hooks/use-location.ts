@@ -31,6 +31,13 @@ export interface LocationResult {
   parts: AddressParts
 }
 
+/** Última posición conocida del dispositivo: sirve para acercar las sugerencias de dirección. */
+let knownPosition: LocationCoords | null = null
+export const getKnownPosition = () => knownPosition
+export const rememberPosition = (lat: number, lon: number) => {
+  knownPosition = { lat, lon }
+}
+
 // ── Nominatim fallback ──────────────────────────────────────
 
 interface NominatimResult {
@@ -88,8 +95,8 @@ async function nominatimReverse(lat: number, lon: number): Promise<LocationResul
   }
 }
 
-async function nominatimSearch(query: string): Promise<Array<{ description: string; lat: number; lon: number }>> {
-  try {
+async function nominatimSearch(query: string, near?: LocationCoords | null): Promise<Array<{ description: string; lat: number; lon: number }>> {
+  const run = async (bounded: boolean) => {
     const params = new URLSearchParams({
       q: query,
       format: "json",
@@ -97,12 +104,23 @@ async function nominatimSearch(query: string): Promise<Array<{ description: stri
       limit: "5",
       countrycodes: "mx",
     })
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-      headers: { Accept: "application/json" },
-    })
+    // Primero solo lo cercano (~60 km); si no hay nada, todo México.
+    if (near && bounded) {
+      const d = 0.55
+      params.set("viewbox", `${near.lon - d},${near.lat + d},${near.lon + d},${near.lat - d}`)
+      params.set("bounded", "1")
+    }
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { Accept: "application/json" } })
     if (!res.ok) return []
     const data: NominatimResult[] = await res.json()
     return data.map((r) => ({ description: r.display_name, lat: Number(r.lat), lon: Number(r.lon) }))
+  }
+  try {
+    if (near) {
+      const local = await run(true)
+      if (local.length > 0) return local
+    }
+    return await run(false)
   } catch {
     return []
   }
@@ -113,12 +131,14 @@ async function nominatimSearch(query: string): Promise<Array<{ description: stri
 export interface UseLocationReturn {
   /** Get the user's current location via browser Geolocation */
   detectMyLocation: () => Promise<LocationResult | null>
-  /** Search for an address (Google Places or Nominatim fallback) */
-  searchAddress: (query: string) => Promise<Array<{ description: string; placeId?: string; lat?: number; lon?: number }>>
+  /** Search for an address (Google Places or Nominatim fallback); `near` acerca los resultados */
+  searchAddress: (query: string, near?: LocationCoords | null) => Promise<Array<{ description: string; placeId?: string; lat?: number; lon?: number }>>
   /** Get details for a Google Place (placeId) */
   getPlaceDetails: (placeId: string) => Promise<LocationResult | null>
   /** Reverse geocode coordinates to address */
   reverseGeocode: (lat: number, lon: number) => Promise<LocationResult | null>
+  /** Si el permiso ya fue concedido, obtiene la posición en silencio (sin pedirlo) para acercar las sugerencias */
+  warmLocation: () => Promise<LocationCoords | null>
   /** Whether Google Maps is available */
   hasGoogleMaps: boolean
   /** Current loading state */
@@ -149,6 +169,8 @@ export function useLocation(): UseLocationReturn {
       const success = async (pos: GeolocationPosition) => {
           const lat = pos.coords.latitude
           const lon = pos.coords.longitude
+          knownPosition = { lat, lon }
+          setError(null)
           try {
             // Try Google reverse geocode first
             if (hasGoogleMaps) {
@@ -188,10 +210,9 @@ export function useLocation(): UseLocationReturn {
           setLoading(false)
           if (err.code === 1) {
             setError("Ubicación bloqueada. En el navegador abre los permisos de este sitio, permite Ubicación y vuelve a intentarlo.")
-          } else if (err.code === 2) {
-            setError("El teléfono no pudo determinar la ubicación. Activa GPS y precisión de ubicación.")
-          } else if (err.code === 3) {
-            setError("La ubicación tardó demasiado. Muévete a un lugar con mejor señal y vuelve a intentarlo.")
+          } else if (err.code === 2 || err.code === 3) {
+            // Suele ser señal momentánea (no GPS apagado): se puede seguir escribiendo o moviendo el pin.
+            setError("No pudimos fijar tu ubicación exacta ahora. Escribe tu dirección o ubícala moviendo el pin en el mapa.")
           } else {
             setError("No se pudo obtener tu ubicación.")
           }
@@ -202,18 +223,19 @@ export function useLocation(): UseLocationReturn {
   }, [hasGoogleMaps])
 
   const searchAddress = useCallback(
-    async (query: string) => {
+    async (query: string, near?: LocationCoords | null) => {
       if (!query.trim()) return []
       setLoading(true)
       setError(null)
+      const center = near ?? knownPosition
       try {
         if (hasGoogleMaps) {
           await loadGoogleMaps()
-          const results = await googlePlacesSearch(query)
+          const results = await googlePlacesSearch(query, 5, center)
           if (results.length > 0) return results
         }
         // Fallback to Nominatim
-        return await nominatimSearch(query)
+        return await nominatimSearch(query, center)
       } catch {
         setError("Error al buscar la dirección.")
         return []
@@ -277,8 +299,30 @@ export function useLocation(): UseLocationReturn {
     [hasGoogleMaps]
   )
 
+  const warmLocation = useCallback(async (): Promise<LocationCoords | null> => {
+    if (knownPosition) return knownPosition
+    try {
+      if (!("geolocation" in navigator) || !window.isSecureContext) return null
+      const status = await navigator.permissions?.query({ name: "geolocation" as PermissionName })
+      if (status?.state !== "granted") return null
+      return await new Promise<LocationCoords | null>((resolve) =>
+        navigator.geolocation.getCurrentPosition(
+          (p) => {
+            knownPosition = { lat: p.coords.latitude, lon: p.coords.longitude }
+            resolve(knownPosition)
+          },
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+        )
+      )
+    } catch {
+      return null
+    }
+  }, [])
+
   return {
     detectMyLocation,
+    warmLocation,
     searchAddress,
     getPlaceDetails,
     reverseGeocode,

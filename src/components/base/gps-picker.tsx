@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label"
 import { InfoTooltip } from "@/components/base/info-tooltip"
 import { InfoField } from "@/components/base/info-field"
 import { LocationSearch } from "@/components/shared/location-search"
-import { MapPinPicker } from "@/components/shared/map-pin-picker-lazy"
+import dynamic from "next/dynamic"
 import { useLocation, type LocationResult } from "@/hooks/use-location"
+
+const AddressMapPicker = dynamic(() => import("@/components/shared/address-map-picker").then((m) => m.AddressMapPicker), { ssr: false })
 
 export interface GpsValue {
   lat: number
@@ -81,16 +83,16 @@ export function GpsPicker({
     })
   }
 
-  function handleMapPick(lat: number, lon: number) {
+  function handleMapConfirm(v: { lat: number; lon: number; parts: LocationResult["parts"] }) {
     onChange?.({
-      lat,
-      lon,
-      calle: value?.calle,
-      numero: value?.numero,
-      colonia: value?.colonia,
-      cp: value?.cp,
-      municipio: value?.municipio,
-      estado: value?.estado,
+      lat: v.lat,
+      lon: v.lon,
+      calle: v.parts.calle,
+      numero: v.parts.numero,
+      colonia: v.parts.colonia,
+      cp: v.parts.cp,
+      municipio: v.parts.municipio,
+      estado: v.parts.estado,
     })
   }
 
@@ -121,28 +123,20 @@ export function GpsPicker({
         validationError={error}
       />
 
-      {/* Map toggle button */}
-      <Button
-        type="button"
-        variant={showMap ? "default" : "outline"}
-        size="sm"
-        className="w-full"
-        disabled={disabled}
-        onClick={() => setShowMap(!showMap)}
-      >
+      {/* Mapa a pantalla completa (mismo selector que el portal) */}
+      <Button type="button" variant="outline" className="w-full" disabled={disabled} onClick={() => setShowMap(true)}>
         <MapPinned className="mr-1.5 size-4" />
-        {showMap ? "Ocultar mapa" : "Seleccionar en mapa"}
+        {value ? "Confirmar o ajustar el pin en el mapa" : "Elegir en el mapa"}
       </Button>
-
-      {/* Interactive map picker */}
-      {showMap && (
-        <MapPinPicker
-          lat={value?.lat}
-          lon={value?.lon}
-          onChange={handleMapPick}
-          height={280}
-        />
-      )}
+      <AddressMapPicker
+        open={showMap}
+        initial={value ? { lat: value.lat, lon: value.lon } : null}
+        onClose={() => setShowMap(false)}
+        onConfirm={(v) => {
+          setShowMap(false)
+          handleMapConfirm(v)
+        }}
+      />
 
       {/* Coordinate fields + details */}
       {value && (

@@ -615,6 +615,10 @@ export interface PreparationItemRow {
   unitName: string | null;
   bulkQuantityDisplay: string | null;
   comment: string | null;
+  /** Foto del producto o de su variante, para reconocerlo en el surtido. */
+  imageUrl: string | null;
+  /** Tópicos elegidos por el cliente (nombre de la opción y valores). */
+  options: { name: string; value: string }[];
 }
 
 export interface PreparationView {
@@ -630,6 +634,20 @@ export interface PreparationView {
   items: PreparationItemRow[];
 }
 
+/** Foto y tópicos de una partida (para reconocerla al surtir). */
+function prepItemExtras(oi: {
+  selectedOptions: Prisma.JsonValue | null;
+  product?: { imageUrl: string | null } | null;
+  variant?: { imageUrl: string | null } | null;
+}) {
+  const options = (Array.isArray(oi.selectedOptions) ? (oi.selectedOptions as unknown[]) : []).flatMap((o) => {
+    const opt = o as { optionName?: string; value?: string; values?: { value?: string }[] };
+    const value = opt.values?.length ? opt.values.map((v) => v.value).filter(Boolean).join(", ") : opt.value ?? "";
+    return value ? [{ name: opt.optionName ?? "", value }] : [];
+  });
+  return { imageUrl: oi.variant?.imageUrl ?? oi.product?.imageUrl ?? null, options };
+}
+
 export async function getPreparation(organizationId: string, orderId: string): Promise<PreparationView | null> {
   const prep = await prisma.orderPreparation.findFirst({
     where: { orderId, order: { organizationId } },
@@ -641,6 +659,8 @@ export async function getPreparation(organizationId: string, orderId: string): P
           orderItem: {
             include: {
               unit: { select: { name: true } },
+              product: { select: { imageUrl: true } },
+              variant: { select: { imageUrl: true } },
             },
           },
         },
@@ -671,6 +691,7 @@ export async function getPreparation(organizationId: string, orderId: string): P
       unitName: i.orderItem.unit?.name ?? null,
       bulkQuantityDisplay: i.orderItem.bulkQuantityDisplay,
       comment: i.orderItem.comment,
+      ...prepItemExtras(i.orderItem),
     })),
   };
 }
@@ -758,7 +779,7 @@ export async function setPreparationItem(
 ): Promise<PreparationItemRow> {
   const item = await prisma.orderPreparationItem.findFirst({
     where: { id: itemId, preparation: { order: { organizationId } } },
-    include: { orderItem: { include: { unit: { select: { name: true } } } } },
+    include: { orderItem: { include: { unit: { select: { name: true } }, product: { select: { imageUrl: true } }, variant: { select: { imageUrl: true } } } } },
   });
   if (!item) throw new Error("Item de preparación no encontrado");
 
@@ -783,6 +804,7 @@ export async function setPreparationItem(
     unitName: item.orderItem.unit?.name ?? null,
     bulkQuantityDisplay: item.orderItem.bulkQuantityDisplay,
     comment: item.orderItem.comment,
+    ...prepItemExtras(item.orderItem),
   };
 }
 
