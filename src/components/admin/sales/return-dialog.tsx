@@ -5,6 +5,8 @@ import { toast } from "sonner"
 import { salesApi, type ReturnSettlement, type SaleDetail, type SaleReturn } from "@/lib/api"
 import { ReturnCustomerBlock } from "./return-customer-block"
 import { cn } from "@/lib/utils"
+import { AnimatePresence, motion } from "framer-motion"
+import { Input } from "@/components/ui/input"
 import { DialogComponent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -125,16 +127,23 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
     }
   }, [open, returnType, exchangeQuery, sale.id])
 
-  const addExchange = (o: ExchangeOption) =>
+  // «+1» flotante sobre el producto recién agregado (la lista de abajo no siempre se ve).
+  const [flash, setFlash] = useState<{ id: string; n: number } | null>(null)
+  const addExchange = (o: ExchangeOption) => {
+    setFlash((f) => ({ id: o.variantId, n: (f?.n ?? 0) + 1 }))
     setExchange((prev) =>
       prev.some((l) => l.variantId === o.variantId)
         ? prev.map((l) => (l.variantId === o.variantId ? { ...l, quantity: l.quantity + 1 } : l))
         : [...prev, { ...o, quantity: 1 }]
     )
+  }
   const setExchangeQty = (variantId: string, quantity: number) =>
     setExchange((prev) =>
       quantity < 1 ? prev.filter((l) => l.variantId !== variantId) : prev.map((l) => (l.variantId === variantId ? { ...l, quantity } : l))
     )
+  /** Escribir la cantidad no elimina la línea; al salir del campo con 0 sí se quita. */
+  const typeExchangeQty = (variantId: string, quantity: number) =>
+    setExchange((prev) => prev.map((l) => (l.variantId === variantId ? { ...l, quantity: Math.max(0, Math.floor(quantity) || 0) } : l)))
   const exchangeTotal = exchange.reduce((acc, l) => acc + l.quantity * l.price, 0)
   const exchangeNoStock = exchange.filter((l) => l.stock != null && l.stock < l.quantity)
 
@@ -167,11 +176,20 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
     setSelectedItems((prev) => ({ ...prev, [saleItemId]: Number.isFinite(qty) ? Math.max(0, qty) : 0 }))
   }
 
+  // Precio realmente pagado por unidad (ya con la parte proporcional del descuento).
+  const paidUnit = (item: SaleDetail["items"][number]) => {
+    const q = Number(item.quantity) || 1
+    const line = item.lineTotal != null
+      ? Number(item.lineTotal)
+      : Math.max(0, (item.totalPrice != null ? Number(item.totalPrice) : q * Number(item.unitPrice)) - Number(item.discount ?? 0))
+    return line / q
+  }
+
   const selectedTotal = Object.entries(selectedItems).reduce(
     (acc, [itemId, qty]) => {
       const item = sale.items.find((i) => i.id === itemId)
       if (!item || qty <= 0) return acc
-      return acc + qty * Number(item.unitPrice)
+      return acc + qty * paidUnit(item)
     },
     0
   )
@@ -213,7 +231,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
     }
 
     if (returnType === "exchange") {
-      if (exchange.length === 0) {
+      if (exchange.filter((l) => l.quantity > 0).length === 0) {
         toast.error("Elige el producto que se entregará a cambio")
         return
       }
@@ -230,7 +248,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
       const res = await salesApi.createReturn(sale.id, {
         exchangeItems:
           returnType === "exchange"
-            ? exchange.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity }))
+            ? exchange.filter((l) => l.quantity > 0).map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity }))
             : undefined,
         returnType: (bonusMode ? effectiveBonus : returnType) as "exchange" | "refund" | "coupon" | "points" | "credit",
         customerId: bonusMode && ctx && !ctx.saleHasCustomer ? ctx.customer?.id ?? null : null,
@@ -279,12 +297,12 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
       description="Crea una nueva devolución para esta venta. Puedes seleccionar los productos a devolver, el tipo de resolución y agregar notas internas."
       className="w-full"
       bodyClassName="space-y-3"
-      size="lg"
+      size="4xl"
       footer={
         <>
           {/* Resumen */}
           {chosenCount > 0 && (
-            <div className="rounded-lg bg-muted p-3 w-full">
+            <div className="rounded-lg bg-muted p-3 w-full lg:hidden">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">Total a devolver:</span>
                 <span className="font-bold text-lg tabular-nums">
@@ -314,6 +332,8 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
         </>
       }
     >
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        <div className="min-w-0 space-y-3">
       {/* Tipo de devolución */}
       <div className="space-y-2">
         <Label className="font-semibold">Tipo de resolución</Label>
@@ -345,45 +365,6 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
           ))}
         </RadioGroup>
       </div>
-
-      {returnType === "bonus" && (
-        <div className="space-y-3 rounded-xl border bg-card p-3">
-          {loyaltyOn && creditOn && (
-            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="Destino de la bonificación">
-              {(["points", "credit"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  role="radio"
-                  aria-checked={effectiveBonus === t}
-                  onClick={() => setBonusTarget(t)}
-                  className={cn("h-10 rounded-md text-sm font-medium transition-colors", effectiveBonus === t ? "bg-background shadow-sm" : "text-muted-foreground")}
-                >
-                  {t === "points" ? "En puntos" : "A crédito"}
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {effectiveBonus === "points"
-              ? `Se convierte con la política de lealtad (${ctx?.pointsPerCurrency ?? 1} punto por cada $1).`
-              : "Se abona como pago a la deuda de crédito del cliente."}
-          </p>
-          <ReturnCustomerBlock
-            ctx={ctx}
-            saleHasCustomer={ctx?.saleHasCustomer ?? false}
-            customerId={assignedCustomerId}
-            onCustomerChange={setAssignedCustomerId}
-            pointsMoney={effectiveBonus === "points" ? selectedTotal : 0}
-            creditMoney={effectiveBonus === "credit" ? selectedTotal : 0}
-          />
-          {creditShort && (
-            <p className="flex items-start gap-1.5 text-xs font-medium text-destructive">
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> El adeudo actual ({money(ctx?.customer?.creditBalance ?? 0)}) es menor que la devolución. Elige puntos o devolución de dinero.
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Productos */}
       <div className="space-y-2">
@@ -426,8 +407,11 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
                           </p>
                         )}
                       </div>
-                      <span className="shrink-0 text-sm font-medium tabular-nums">
-                        {money(Number(item.unitPrice))}
+                      <span className="shrink-0 text-right text-sm font-medium tabular-nums">
+                        {money(paidUnit(item))}
+                        {Math.abs(paidUnit(item) - Number(item.unitPrice)) > 0.009 && (
+                          <span className="block text-xs font-normal text-muted-foreground line-through">{money(Number(item.unitPrice))}</span>
+                        )}
                       </span>
                     </Label>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -453,10 +437,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
                           />
                           <span className="text-xs text-muted-foreground">
                             ={" "}
-                            {money(
-                              (selectedItems[item.id] ?? 0) *
-                                Number(item.unitPrice)
-                            )}
+                            {money((selectedItems[item.id] ?? 0) * paidUnit(item))}
                           </span>
                         </div>
                         <InputGroupField
@@ -494,72 +475,6 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
         </div>
       </div>
 
-      {returnType === "exchange" && (
-        <div className="space-y-2">
-          <Label className="font-semibold">Producto que se entrega a cambio</Label>
-          <InputGroupField
-            placeholder="Buscar producto, SKU o código..."
-            value={exchangeQuery}
-            onChange={(e) => setExchangeQuery(e.target.value)}
-            leftIcon={searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-          />
-          <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border p-1">
-            {exchangeOptions.length === 0 && (
-              <p className="p-3 text-center text-xs text-muted-foreground">{searching ? "Buscando…" : "Sin resultados"}</p>
-            )}
-            {exchangeOptions.map((o) => {
-              const out = o.stock != null && o.stock <= 0
-              return (
-                <button
-                  key={o.variantId}
-                  type="button"
-                  onClick={() => addExchange(o)}
-                  className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
-                >
-                  <span className="min-w-0 truncate">{o.name}</span>
-                  <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
-                    <span className={out ? "font-semibold text-destructive" : "text-muted-foreground"}>
-                      {o.stock == null ? "Sin control" : out ? "Sin existencia" : `${o.stock} disp.`}
-                    </span>
-                    <span className="font-semibold">{money(o.price)}</span>
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-          {exchange.length > 0 && selectedTotal - exchangeTotal > 0.009 && (
-            <p className="rounded-lg border border-warning/40 bg-warning/5 p-2.5 text-xs text-warning-ink">
-              El cambio cuesta menos: hay {money(selectedTotal - exchangeTotal)} a favor del cliente. Al procesar la devolución podrás entregarlo en efectivo desde la caja{loyaltyOn ? ", en puntos" : ""}{creditOn ? " o abonarlo a su crédito" : ""}.
-            </p>
-          )}
-          {exchange.map((l) => {
-            const short = l.stock != null && l.stock < l.quantity
-            return (
-              <div key={l.variantId} className={`rounded-lg border p-2 ${short ? "border-destructive/50 bg-destructive/5" : "border-primary bg-primary/5"}`}>
-                <div className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{l.name}</span>
-                  <div className="flex items-center rounded-lg bg-muted p-0.5">
-                    <button type="button" className="flex size-8 items-center justify-center rounded-md hover:bg-background" aria-label="Disminuir" onClick={() => setExchangeQty(l.variantId, l.quantity - 1)}>
-                      {l.quantity <= 1 ? <Trash2 className="size-4 text-destructive" /> : <Minus className="size-4" />}
-                    </button>
-                    <span className="w-8 text-center text-sm font-semibold tabular-nums">{l.quantity}</span>
-                    <button type="button" className="flex size-8 items-center justify-center rounded-md hover:bg-background" aria-label="Aumentar" onClick={() => setExchangeQty(l.variantId, l.quantity + 1)}>
-                      <Plus className="size-4" />
-                    </button>
-                  </div>
-                  <span className="w-20 text-right text-sm font-semibold tabular-nums">{money(l.quantity * l.price)}</span>
-                </div>
-                {short && (
-                  <p className="mt-1 flex items-center gap-1 text-xs font-medium text-destructive">
-                    <AlertTriangle className="size-3.5" /> Solo hay {l.stock} en existencia. No se podrá entregar el cambio.
-                  </p>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-
       {/* Motivo general */}
       <div className="space-y-2">
         <InputGroupField
@@ -579,6 +494,179 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
         />
+      </div>
+        </div>
+        <aside className="min-w-0 space-y-3 lg:sticky lg:top-0 lg:self-start">
+      {returnType === "bonus" && (
+        <div className="space-y-3 rounded-xl border bg-card p-3">
+          {loyaltyOn && creditOn && (
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="Destino de la bonificación">
+              {(["points", "credit"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="radio"
+                  aria-checked={effectiveBonus === t}
+                  onClick={() => setBonusTarget(t)}
+                  className={cn("h-10 rounded-md text-sm font-medium transition-colors", effectiveBonus === t ? "bg-background shadow-sm" : "text-muted-foreground")}
+                >
+                  {t === "points" ? "En puntos" : "A crédito"}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {effectiveBonus === "points"
+              ? `Se convierte con la política de lealtad (${ctx?.pointsPerCurrency ?? 1} punto por cada $1).`
+              : "Se abona como pago a la deuda de crédito del cliente."}
+          </p>
+          <ReturnCustomerBlock
+            ctx={ctx}
+            saleHasCustomer={ctx?.saleHasCustomer ?? false}
+            customerId={assignedCustomerId}
+            onCustomerChange={setAssignedCustomerId}
+            pointsMoney={effectiveBonus === "points" ? selectedTotal : 0}
+            creditMoney={effectiveBonus === "credit" ? selectedTotal : 0}
+          />
+          {creditShort && (
+            <p className="flex items-start gap-1.5 text-xs font-medium text-destructive">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> El adeudo actual ({money(ctx?.customer?.creditBalance ?? 0)}) es menor que la devolución. Elige puntos o devolución de dinero.
+            </p>
+          )}
+        </div>
+      )}
+
+      {returnType === "exchange" && (
+        <div className="space-y-2">
+          <Label className="font-semibold">Producto que se entrega a cambio</Label>
+          <InputGroupField
+            type="search"
+            placeholder="Buscar producto, SKU o código..."
+            value={exchangeQuery}
+            onChange={(e) => setExchangeQuery(e.target.value)}
+            leftIcon={searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+          />
+          <div className="max-h-44 space-y-1 overflow-y-auto rounded-lg border p-1">
+            {exchangeOptions.length === 0 && (
+              <p className="p-3 text-center text-xs text-muted-foreground">{searching ? "Buscando…" : "Sin resultados"}</p>
+            )}
+            {exchangeOptions.map((o) => {
+              const out = o.stock != null && o.stock <= 0
+              const inCart = exchange.find((l) => l.variantId === o.variantId)
+              return (
+                <button
+                  key={o.variantId}
+                  type="button"
+                  onClick={() => addExchange(o)}
+                  className="relative flex min-h-11 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted active:bg-primary/10"
+                >
+                  <span className="min-w-0 truncate">
+                    {o.name}
+                    {inCart && <span className="ml-1.5 rounded-full bg-primary/10 px-1.5 text-xs font-semibold text-primary">×{inCart.quantity}</span>}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2 text-xs tabular-nums">
+                    <span className={out ? "font-semibold text-destructive" : "text-muted-foreground"}>
+                      {o.stock == null ? "Sin control" : out ? "Sin existencia" : `${o.stock} disp.`}
+                    </span>
+                    <span className="font-semibold">{money(o.price)}</span>
+                  </span>
+                  <AnimatePresence>
+                    {flash?.id === o.variantId && (
+                      <motion.span
+                        key={flash.n}
+                        initial={{ opacity: 1, y: 0, scale: 0.8 }}
+                        animate={{ opacity: 0, y: -22, scale: 1.15 }}
+                        transition={{ duration: 0.7, ease: "easeOut" }}
+                        className="pointer-events-none absolute top-1 right-16 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground"
+                      >
+                        +1
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </button>
+              )
+            })}
+          </div>
+          {exchange.length === 0 && (
+            <p className="rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground">Toca un producto para agregarlo al cambio.</p>
+          )}
+          {exchange.map((l) => {
+            const short = l.stock != null && l.stock < l.quantity
+            return (
+              <motion.div
+                key={l.variantId}
+                layout
+                animate={flash?.id === l.variantId ? { scale: [1, 1.025, 1] } : { scale: 1 }}
+                transition={{ duration: 0.25 }}
+                className={`rounded-lg border p-2 ${short ? "border-destructive/50 bg-destructive/5" : "border-primary bg-primary/5"}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{l.name}</span>
+                  <div className="flex items-center rounded-lg bg-muted p-0.5">
+                    <button type="button" className="flex size-9 items-center justify-center rounded-md hover:bg-background" aria-label="Disminuir" onClick={() => setExchangeQty(l.variantId, l.quantity - 1)}>
+                      {l.quantity <= 1 ? <Trash2 className="size-4 text-destructive" /> : <Minus className="size-4" />}
+                    </button>
+                    <Input
+                      aria-label={`Cantidad de ${l.name}`}
+                      inputMode="numeric"
+                      value={l.quantity || ""}
+                      onChange={(e) => typeExchangeQty(l.variantId, Number(e.target.value.replace(/\D/g, "")))}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onBlur={() => l.quantity < 1 && setExchangeQty(l.variantId, 0)}
+                      className="h-9 w-12 border-0 bg-transparent px-1 text-center text-sm font-semibold tabular-nums shadow-none"
+                    />
+                    <button type="button" className="flex size-9 items-center justify-center rounded-md hover:bg-background" aria-label="Aumentar" onClick={() => setExchangeQty(l.variantId, l.quantity + 1)}>
+                      <Plus className="size-4" />
+                    </button>
+                  </div>
+                  <span className="w-20 text-right text-sm font-semibold tabular-nums">{money(l.quantity * l.price)}</span>
+                </div>
+                {short && (
+                  <p className="mt-1 flex items-center gap-1 text-xs font-medium text-destructive">
+                    <AlertTriangle className="size-3.5" /> Solo hay {l.stock} en existencia. No se podrá entregar el cambio.
+                  </p>
+                )}
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Resumen en vivo (columna derecha, como en el cobro) */}
+      <div className="space-y-1.5 rounded-xl border bg-muted/40 p-3 text-sm">
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Resumen</p>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Productos a devolver ({chosenCount})</span>
+          <span className="font-semibold tabular-nums">{money(selectedTotal)}</span>
+        </div>
+        {returnType === "exchange" && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Producto de cambio</span>
+            <span className="font-semibold tabular-nums">{money(exchangeTotal)}</span>
+          </div>
+        )}
+        {returnType === "exchange" && exchange.length > 0 && Math.abs(exchangeTotal - selectedTotal) > 0.009 && (
+          <div
+            role="status"
+            className={cn(
+              "mt-1 flex items-start gap-2 rounded-lg p-2 text-xs font-medium",
+              exchangeTotal > selectedTotal ? "bg-warning/15 text-warning-ink" : "bg-success/10 text-success-ink"
+            )}
+          >
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              {exchangeTotal > selectedTotal
+                ? `El cambio excede el monto a canjear por ${money(exchangeTotal - selectedTotal)}: el cliente pagará la diferencia al procesar.`
+                : `Al cliente le quedan ${money(selectedTotal - exchangeTotal)} a favor: se le entregan en efectivo desde la caja${loyaltyOn ? ", en puntos" : ""}${creditOn ? " o a su crédito" : ""}.`}
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between border-t pt-1.5 text-base font-bold">
+          <span>{returnType === "exchange" ? "Diferencia" : "Total a devolver"}</span>
+          <span className="tabular-nums">{money(returnType === "exchange" ? Math.abs(exchangeTotal - selectedTotal) : selectedTotal)}</span>
+        </div>
+      </div>
+        </aside>
       </div>
     </DialogComponent>
   )

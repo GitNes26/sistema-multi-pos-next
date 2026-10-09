@@ -140,6 +140,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
   const [locationFilter, setLocationFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [view, setView] = useState<"list" | "plan">("list");
+  const [planEditorOpen, setPlanEditorOpen] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<TableData | null>(null);
@@ -182,8 +183,9 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
   const [formRoom, setFormRoom] = useState("");
   const [formShape, setFormShape] = useState("round");
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    // Silencioso: refresca datos sin desmontar el plano (evita parpadeos al editarlo).
+    if (!silent) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (locationFilter) params.set("locationId", locationFilter);
@@ -466,6 +468,68 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
     reserved: tables.filter((t) => t.status === "reserved").length,
   };
 
+  const roomChips = (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <DoorOpen className="size-3.5" /> Salas
+      </span>
+      <button
+        type="button"
+        onClick={() => setSelectedRoomId("")}
+        className={cn(
+          "rounded-full border px-3 py-1 text-xs font-medium transition",
+          selectedRoomId === ""
+            ? "border-primary bg-primary/10 text-primary"
+            : "border-border text-muted-foreground hover:bg-muted"
+        )}
+      >
+        Sin sala ({tables.filter((t) => !t.room).length})
+      </button>
+      {rooms.map((r) => (
+        <span key={r.id} className="relative">
+          <button
+            type="button"
+            onClick={() => setSelectedRoomId(selectedRoomId === r.id ? "" : r.id)}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs font-medium transition",
+              selectedRoomId === r.id
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:bg-muted"
+            )}
+          >
+            {r.name} ({r._count.tables})
+          </button>
+          {canManage && (
+            <span className="absolute -right-1 -top-1 flex gap-0.5">
+              <button
+                type="button"
+                title="Renombrar sala"
+                onClick={() => openRoomEdit(r)}
+                className="flex size-4 items-center justify-center rounded-full border bg-background text-xs text-muted-foreground hover:text-foreground"
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                title="Eliminar sala"
+                onClick={() => handleDeleteRoom(r)}
+                className="flex size-4 items-center justify-center rounded-full border bg-background text-xs text-destructive hover:bg-destructive/10"
+              >
+                ✕
+              </button>
+            </span>
+          )}
+        </span>
+      ))}
+      {canManage && (
+        <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={openRoomCreate}>
+          <Plus className="size-3.5" />
+          Nueva sala
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Stats */}
@@ -723,7 +787,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
           <span className="text-xs text-muted-foreground">h antes</span>
         </div>
 
-        <Button variant="outline" size="sm" onClick={load}>
+        <Button variant="outline" size="sm" onClick={() => void load()}>
           <RefreshCcw className="w-4 h-4 mr-1" />
           Actualizar
         </Button>
@@ -741,68 +805,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         )}
       </div>
 
-      {/* Salas (solo vista plano): chips + crear/renombrar/eliminar */}
-      {view === "plan" && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-            <DoorOpen className="size-3.5" /> Salas
-          </span>
-          <button
-            type="button"
-            onClick={() => setSelectedRoomId("")}
-            className={cn(
-              "rounded-full border px-3 py-1 text-xs font-medium transition",
-              selectedRoomId === ""
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:bg-muted"
-            )}
-          >
-            Sin sala ({tables.filter((t) => !t.room).length})
-          </button>
-          {rooms.map((r) => (
-            <span key={r.id} className="relative">
-              <button
-                type="button"
-                onClick={() => setSelectedRoomId(selectedRoomId === r.id ? "" : r.id)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs font-medium transition",
-                  selectedRoomId === r.id
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {r.name} ({r._count.tables})
-              </button>
-              {canManage && (
-                <span className="absolute -right-1 -top-1 flex gap-0.5">
-                  <button
-                    type="button"
-                    title="Renombrar sala"
-                    onClick={() => openRoomEdit(r)}
-                    className="flex size-4 items-center justify-center rounded-full border bg-background text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    title="Eliminar sala"
-                    onClick={() => handleDeleteRoom(r)}
-                    className="flex size-4 items-center justify-center rounded-full border bg-background text-xs text-destructive hover:bg-destructive/10"
-                  >
-                    ✕
-                  </button>
-                </span>
-              )}
-            </span>
-          ))}
-          {canManage && (
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={openRoomCreate}>
-              <Plus className="size-3.5" />
-              Nueva sala
-            </Button>
-          )}
-        </div>
-      )}
+      {view === "plan" && roomChips}
 
       {/* Table grid / Plano */}
       {loading ? (
@@ -811,20 +814,19 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         </div>
       ) : view === "plan" ? (
         <FloorPlanEditor
-          key={selectedRoomId || "no-room"}
+          key={`preview-${selectedRoomId || "no-room"}`}
           tables={
             selectedRoomId
               ? tables.filter((t) => t.room?.id === selectedRoomId).map(planOf)
               : tables.filter((t) => !t.room).map(planOf)
           }
           nodes={planNodes.filter((n) => (selectedRoomId ? n.roomId === selectedRoomId : !n.roomId))}
-          roomName={
-            selectedRoomId ? rooms.find((r) => r.id === selectedRoomId)?.name ?? null : null
-          }
-          canManage={canManage}
+          roomName={selectedRoomId ? rooms.find((r) => r.id === selectedRoomId)?.name ?? null : null}
+          canManage={false}
           locationId={locationFilter || null}
           roomId={selectedRoomId || null}
-          onChanged={load}
+          onChanged={() => load(true)}
+          onExpand={canManage ? () => setPlanEditorOpen(true) : undefined}
         />
       ) : tables.length === 0 ? (
         <EmptyState icon={Armchair} title="Sin mesas" description="Crea tu primera mesa para comenzar." />
@@ -920,6 +922,34 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
       />
 
       {/* Create/Edit Dialog */}
+      <DialogComponent
+        open={planEditorOpen}
+        onOpenChange={setPlanEditorOpen}
+        title="Editar plano"
+        description="Arrastra mesas y elementos al lienzo, reubícalos y ajústalos. Cada cambio se guarda al instante."
+        icon={<LayoutGrid className="size-5" />}
+        className="h-[calc(100dvh-1rem)] sm:max-w-[calc(100vw-1rem)]"
+        bodyClassName="space-y-3"
+        footer={<Button onClick={() => setPlanEditorOpen(false)}>Listo</Button>}
+      >
+        {roomChips}
+        <FloorPlanEditor
+          key={`editor-${selectedRoomId || "no-room"}`}
+          fullscreen
+          tables={
+            selectedRoomId
+              ? tables.filter((t) => t.room?.id === selectedRoomId).map(planOf)
+              : tables.filter((t) => !t.room).map(planOf)
+          }
+          nodes={planNodes.filter((n) => (selectedRoomId ? n.roomId === selectedRoomId : !n.roomId))}
+          roomName={selectedRoomId ? rooms.find((r) => r.id === selectedRoomId)?.name ?? null : null}
+          canManage={canManage}
+          locationId={locationFilter || null}
+          roomId={selectedRoomId || null}
+          onChanged={() => load(true)}
+        />
+      </DialogComponent>
+
       <DialogComponent
         open={dialogOpen}
         onOpenChange={setDialogOpen}

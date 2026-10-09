@@ -196,6 +196,7 @@ enum PlanNodeKind {
   kitchen
   bar_station
   cashier
+  stairs
   other
 }
 
@@ -341,6 +342,8 @@ model Organization {
   subscription           OrganizationSubscription?
   subscriptionPayments   SubscriptionPayment[]
   pointPaymentIntents    PointPaymentIntent[]
+
+  tableCarts             TableCart[]
 
   @@map("organizations")
 }
@@ -1904,9 +1907,28 @@ model Table {
   reservations      TableReservation[]
   waitlistAvailable TableWaitlist[]    @relation("waitlistAvailableTable")
   waitlistSeated    TableWaitlist[]    @relation("waitlistSeatedTable")
+  cart              TableCart?
 
   @@unique([organizationId, number])
   @@map("tables")
+}
+
+/// Carrito compartido de una mesa, armado por los comensales desde el menú del QR.
+/// Lo ve el cajero/host en vivo; al enviarlo se convierte en comanda de cocina.
+model TableCart {
+  id             String       @id @default(cuid())
+  organizationId String
+  tableId        String       @unique
+  /// [{ key, productId, variantId, quantity, optionValueIds[], notes }]
+  items          Json
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  table        Table        @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("table_carts")
 }
 
 model TableSession {
@@ -2556,6 +2578,12 @@ model Transfer {
   receivedByEmployeeId String?
   receivedByName       String?
   driverName       String?
+  /// Trabajador asignado como chofer (con interfaz propia en /repartidor).
+  driverEmployeeId String?
+  driverAssignedAt DateTime?
+  driverAcceptedAt DateTime?
+  /// Enlace público para que un chofer sin cuenta comparta su ubicación.
+  trackToken       String?        @unique
   vehicle          String?
   expectedAt       DateTime?
   dispatchedAt     DateTime?
@@ -2575,6 +2603,7 @@ model Transfer {
 
   @@index([organizationId, status])
   @@index([organizationId, number])
+  @@index([driverEmployeeId])
   @@map("transfers")
 }
 

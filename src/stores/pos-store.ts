@@ -28,6 +28,19 @@ export interface CouponApplied {
 
 type CouponStatus = "none" | "pending" | "error" | "applied"
 
+/** Borrador de una cuenta que se dejó en pausa para atender otra (mesa o para llevar). */
+export interface HeldTicket {
+  key: string
+  label: string
+  /** Solo lo que aún no se envía a cocina; lo enviado se recarga del servidor. */
+  items: PosLineItem[]
+  customerId: string | null
+  manualDiscount: { kind: "percent" | "amount"; value: number } | null
+  coupon: { status: CouponStatus; code: string; result: CouponApplied | null; error?: string }
+  pointsRedeemed: number
+  heldAt: number
+}
+
 interface PosState extends PosCatalog {
   registerId: string
   activeCategory: string | null
@@ -49,6 +62,13 @@ interface PosState extends PosCatalog {
     error?: string
   }
   pointsRedeemed: number
+  /** Cuentas en pausa por contexto («table:<id>», «take:<orderId>» o «draft:<n>»). */
+  held: Record<string, HeldTicket>
+  stashTicket: (key: string, label: string) => void
+  takeHeld: (key: string) => HeldTicket | null
+  dropHeld: (key: string) => void
+  /** Deja en blanco el ticket de trabajo sin tocar caja, catálogo ni cuentas en pausa. */
+  resetWorkingTicket: () => void
 
   setCatalog: (catalog: PosCatalog) => void
   setRegister: (registerId: string) => void
@@ -100,6 +120,13 @@ interface PosState extends PosCatalog {
   couponPending: () => void
   clearCoupon: () => void
   setPointsRedeemed: (points: number) => void
+}
+
+/** Identifica la cuenta que se está atendiendo (para pausarla y retomarla). */
+export function ticketContextKey(s: Pick<PosState, "serviceType" | "selectedTable" | "kitchenOrderId">): string {
+  if (s.serviceType === "takeaway") return s.kitchenOrderId ? `take:${s.kitchenOrderId}` : "draft:new"
+  if (s.selectedTable && !s.selectedTable.id.startsWith("manual-")) return `table:${s.selectedTable.id}`
+  return "none"
 }
 
 function lineKey(product: PosProduct, unitId: string | null): string {
@@ -159,6 +186,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
   selectedTable: null,
   serviceType: "dine_in",
   kitchenOrderId: null,
+  held: {},
   manualDiscount: null,
   coupon: { status: "none", code: "", result: null },
   pointsRedeemed: 0,
@@ -305,6 +333,49 @@ export const usePosStore = create<PosState>()((set, get) => ({
   },
 
   clearTicket: () =>
+    set((s) => {
+      // La cuenta cobrada ya no necesita su borrador en pausa.
+      const held = { ...s.held }
+      delete held[ticketContextKey(s)]
+      return {
+        items: [],
+        customerId: null,
+        selectedTable: null,
+        kitchenOrderId: null,
+        manualDiscount: null,
+        coupon: { status: "none", code: "", result: null },
+        pointsRedeemed: 0,
+        held,
+      }
+    }),
+
+  stashTicket: (key, label) =>
+    set((s) => {
+      const unsent = s.items.filter((i) => i.qty > (i.sentQty ?? 0)).map((i) => ({ ...i, qty: i.qty - (i.sentQty ?? 0), sentQty: 0 }))
+      const hasState = unsent.length > 0 || s.manualDiscount || s.coupon.result || s.pointsRedeemed > 0
+      const held = { ...s.held }
+      if (!hasState) delete held[key]
+      else
+        held[key] = {
+          key,
+          label,
+          items: unsent,
+          customerId: s.customerId,
+          manualDiscount: s.manualDiscount,
+          coupon: s.coupon,
+          pointsRedeemed: s.pointsRedeemed,
+          heldAt: Date.now(),
+        }
+      return { held }
+    }),
+  takeHeld: (key) => get().held[key] ?? null,
+  dropHeld: (key) =>
+    set((s) => {
+      const held = { ...s.held }
+      delete held[key]
+      return { held }
+    }),
+  resetWorkingTicket: () =>
     set({
       items: [],
       customerId: null,

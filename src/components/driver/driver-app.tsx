@@ -24,6 +24,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { BottomSheet } from "@/components/portal/bottom-sheet"
 import { DeliveryTrackingMap } from "@/components/portal/delivery-tracking-map-lazy"
 import { DeliveryConfirmDialog } from "@/components/admin/orders/delivery-confirm-dialog"
+import { TransfersTab } from "./transfers-tab"
 import { ordersApi, type OrderDetail } from "@/lib/orders/client"
 import { money } from "@/lib/pos/money"
 import { swalError, swalToast } from "@/lib/swal"
@@ -68,7 +69,8 @@ export function DriverApp() {
   const [rows, setRows] = useState<Row[]>([])
   const [me, setMe] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<"mine" | "available">("mine")
+  const [tab, setTab] = useState<"mine" | "available" | "transfers">("mine")
+  const [transferCount, setTransferCount] = useState(0)
   const [openId, setOpenId] = useState<string | null>(null)
   const [detail, setDetail] = useState<OrderDetail | null>(null)
   const [actingId, setActingId] = useState<string | null>(null)
@@ -246,11 +248,17 @@ export function DriverApp() {
         options={[
           { value: "mine", label: "Mías", count: mine.length },
           { value: "available", label: "Disponibles", count: available.length, countTone: available.length ? "warning" : undefined },
+          { value: "transfers", label: "Traslados", count: transferCount },
         ]}
         className="w-full [&>button]:flex-1 [&>button]:justify-center"
       />
 
-      {loading ? (
+      {/* Los traslados cargan su conteo aunque la pestaña no esté abierta. */}
+      {tab !== "transfers" && <div className="hidden"><TransfersTab onCount={setTransferCount} /></div>}
+
+      {tab === "transfers" ? (
+        <TransfersTab onCount={setTransferCount} />
+      ) : loading ? (
         <div className="flex h-48 items-center justify-center">
           <Spinner />
         </div>

@@ -30,7 +30,9 @@ import { TicketItemRow } from "./ticket-item-row"
 import { SPRING_LAYOUT } from "@/lib/animation-tokens"
 import { TableSelector } from "./table-selector"
 import { KitchenStatus } from "./kitchen-status"
-import { rebuildKitchenLines } from "@/lib/pos/kitchen-ticket"
+import { switchTicket } from "@/lib/pos/tickets"
+import { OpenAccounts } from "./open-accounts"
+import { TableCartBanner } from "./table-cart-banner"
 
 interface TicketPanelProps {
   onEditBulk: (item: PosLineItem) => void
@@ -108,24 +110,6 @@ export function TicketPanel({
   const [justAdded, setJustAdded] = useState(false)
   const [tableDialogOpen, setTableDialogOpen] = useState(false)
   const [releasingTable, setReleasingTable] = useState(false)
-
-  /** Cuenta abierta: al elegir una mesa con comanda sin cobrar se carga lo que ya lleva pedido. */
-  const loadOpenTab = async (tableId: string) => {
-    if (tableId.startsWith("manual-")) return
-    const state = usePosStore.getState()
-    if (state.items.some((i) => (i.sentQty ?? 0) > 0)) return // ya está cargada
-    try {
-      const res = await fetch(`/api/pos/kitchen?tableId=${tableId}&full=1`, { cache: "no-store" })
-      const data = await res.json().catch(() => ({}))
-      if (!data.ok || !data.order) return
-      const lines = rebuildKitchenLines(data.order.items, usePosStore.getState().products)
-      if (lines.length === 0) return
-      prependSentLines(lines)
-      swalToast(`Cuenta abierta de la mesa cargada (${lines.length} ${lines.length === 1 ? "artículo" : "artículos"})`, "info")
-    } catch {
-      /* sin conexión: la mesa queda como nueva */
-    }
-  }
 
   const sendToKitchen = async () => {
     if (!canSend || sendingKitchen || unsentLines.length === 0) return
@@ -372,8 +356,11 @@ export function TicketPanel({
               open={tableDialogOpen}
               onClose={() => setTableDialogOpen(false)}
               onSelect={(t) => {
-                setTable(t)
-                void loadOpenTab(t.id)
+                // Alterna de cuenta: pausa la actual y carga la de la mesa (o la deja nueva).
+                if (selectedTable?.id === t.id) return
+                void switchTicket({ type: "table", table: t }).then((n) => {
+                  if (n > 0) swalToast(`Mesa ${t.number}: cuenta cargada (${n} ${n === 1 ? "artículo" : "artículos"})`, "info")
+                })
               }}
             />
 
@@ -395,6 +382,11 @@ export function TicketPanel({
                 </button>
               ))}
             </div>
+
+            {!takeaway && selectedTable && !selectedTable.id.startsWith("manual-") && <TableCartBanner tableId={selectedTable.id} />}
+
+            {/* Cuentas abiertas: alternar entre mesas y pedidos para llevar */}
+            <OpenAccounts refreshKey={lastSent?.at ?? 0} />
 
             {/* Cocina: orden abierta de la mesa + estado KDS en vivo + cancelar */}
             <KitchenStatus
@@ -505,32 +497,35 @@ export function TicketPanel({
                 <Button
                   variant="outline"
                   className="h-12 w-10 rounded-l-none border-l-0 px-0 text-destructive desk:h-10"
-                  aria-label="Liberar mesa"
+                  aria-label="Quitar mesa del ticket"
+                  title="Quitar la mesa del ticket (la cuenta abierta se conserva)"
                   disabled={releasingTable}
-                  onClick={() => {
+                  onClick={async () => {
                     const tableId = selectedTable.id
-                    if (!tableId.startsWith("manual-")) {
-                      setReleasingTable(true)
-                      fetch("/api/tables", {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: tableId, status: "free" }),
-                      })
-                        .then((res) => {
-                          if (!res.ok) throw new Error("No se pudo liberar la mesa");
-                          // Cerrar sesión activa si existe
-                          return fetch("/api/tables/session", {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ tableId }),
-                          });
-                        })
-                        .catch((err) => {
-                          console.error("[ticket-panel] Error liberando mesa:", err);
-                        })
-                        .finally(() => setReleasingTable(false))
-                    }
                     setTable(null)
+                    if (tableId.startsWith("manual-")) return
+                    // Solo se libera la mesa si no tiene una cuenta abierta en cocina.
+                    setReleasingTable(true)
+                    try {
+                      const res = await fetch(`/api/pos/kitchen?tableId=${tableId}`, { cache: "no-store" })
+                      const data = await res.json().catch(() => ({}))
+                      if (data.ok && !data.order) {
+                        await fetch("/api/tables", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ id: tableId, status: "free" }),
+                        })
+                        await fetch("/api/tables/session", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ tableId }),
+                        })
+                      }
+                    } catch (err) {
+                      console.error("[ticket-panel] Error liberando mesa:", err)
+                    } finally {
+                      setReleasingTable(false)
+                    }
                   }}
                 >
                   <X className="size-4" />

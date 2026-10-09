@@ -35,6 +35,7 @@ export interface ReceiptCompany {
   name: string
   legalName: string | null
   taxId: string | null
+  logoUrl?: string | null
 }
 
 const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!)
@@ -78,7 +79,7 @@ export function receiptBodyHtml(period: ReceiptPeriod, e: ReceiptEntry, company:
 export function receiptPrintDocument(period: ReceiptPeriod, entries: ReceiptEntry[], company: ReceiptCompany) {
   const pages = entries
     .map(
-      (e) => `<section class="sheet"><header><b>${esc(company.name)}</b><span>Recibo de nómina</span></header>${receiptBodyHtml(period, e, company)}
+      (e) => `<section class="sheet"><header><span style="display:flex;align-items:center;gap:12px;color:#20242b;font-size:18px;text-transform:none;letter-spacing:0">${company.logoUrl ? `<img src="${esc(company.logoUrl)}" alt="" style="height:44px;max-width:120px;object-fit:contain"/>` : ""}<b>${esc(company.name)}</b></span><span>Recibo de nómina</span></header>${receiptBodyHtml(period, e, company)}
       <div class="sign"><div>Firma del empleado<br/><b>${esc(e.employee.fullName)}</b></div><div>Entregó<br/><b>${esc(company.name)}</b></div></div></section>`
     )
     .join("")

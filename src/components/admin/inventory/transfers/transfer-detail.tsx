@@ -18,6 +18,7 @@ import { DateTimePicker } from "@/components/base/date-time-picker"
 import { QuantityStepper } from "@/components/base/quantity-stepper"
 import { FormCombobox } from "@/components/base/form-combobox"
 import { DialogComponent } from "@/components/ui/dialog"
+import { TransferDriverCard } from "./transfer-driver-card"
 import { crudApi } from "@/lib/api"
 import { ThumbImage } from "@/components/base/thumb-image"
 import { BackButton } from "@/components/shared/back-button"
@@ -294,6 +295,11 @@ export function TransferDetailView({ id, perms }: { id: string; perms: TransferP
                 )}
               </motion.div>
             </AnimatePresence>
+          )}
+
+          {/* Chofer: trabajador (con interfaz propia) o nombre con enlace de ubicación */}
+          {perms.dispatch && ["pending", "preparing", "in_transit"].includes(t.status) && (
+            <TransferDriverCard t={t} onChanged={() => void load()} />
           )}
 
           {/* Datos del traslado */}

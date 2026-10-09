@@ -182,11 +182,15 @@ function inferKindFromUser(
       roleId: null as string | null,
     }
   }
-  if (user.customers.length > 0 && user.employees.length === 0) {
+  // Cliente compartido entre negocios: retoma el último negocio usado; una
+  // cuenta recién registrada (sin negocio todavía) entra al portal para elegir uno.
+  const noStaffAccess = user.employees.length === 0 && (user.memberships ?? []).every((m) => m.role === "customer")
+  if (noStaffAccess && (user.customers.length > 0 || (user.memberships ?? []).length === 0)) {
+    const remembered = user.customers.find((c) => c.organizationId === user.lastOrganizationId)
     return {
       scope: "portal" as AuthScope,
       role: "customer" as const,
-      organizationId: user.customers[0].organizationId as string | null,
+      organizationId: (remembered ?? user.customers[0])?.organizationId ?? null,
       roleId: null as string | null,
     }
   }
@@ -283,6 +287,7 @@ export const authOptions: NextAuthOptions = {
           : new Set([
               ...user.employees.map((e) => e.organizationId),
               ...user.memberships.map((m) => m.organizationId),
+              ...user.customers.map((c) => c.organizationId),
             ])
         let preferredOrg: string | null = null
         if (pickedMembership && hintOrgId) {
@@ -294,11 +299,12 @@ export const authOptions: NextAuthOptions = {
           }
         }
         const candidateOrgId = preferredOrg ?? kind.organizationId ?? null
+        if (kind.scope === "portal" && candidateOrgId) kind.organizationId = candidateOrgId
         // La elección del picker (o la org efectiva del login) se recuerda
         // para el próximo login — misma filosofía que el switcher. Best-effort.
         if (
           candidateOrgId &&
-          kind.scope === "app" &&
+          (kind.scope === "app" || kind.scope === "portal") &&
           candidateOrgId !== user.lastOrganizationId
         ) {
           try {
@@ -404,6 +410,10 @@ export const authOptions: NextAuthOptions = {
           })
           if (!customerAccess) return token
           token.organizationId = next
+          // Se recuerda el negocio elegido para el próximo ingreso.
+          await prisma.user
+            .update({ where: { id: token.id }, data: { lastOrganizationId: next } })
+            .catch(() => undefined)
         }
         token.activeOrganizationId = next ?? null
         // Refrescar nombre + businessMode de la organización al cambiar de org

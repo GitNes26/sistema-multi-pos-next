@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock, Loader2, MapPin, Minus, MousePointer2, Plus, RotateCcw, RotateCw, Trash2 } from "lucide-react";
+import { Clock, Download, Loader2, MapPin, Maximize2, Minus, MousePointer2, Plus, RotateCcw, RotateCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { swalError, swalToast } from "@/lib/swal";
@@ -24,6 +24,9 @@ import {
 
 const CANVAS_W = 880;
 const CANVAS_H = 560;
+// Lienzo ampliado para la edición a pantalla completa.
+const CANVAS_W_FULL = 1600;
+const CANVAS_H_FULL = 1000;
 const STATUS_STYLE: Record<string, string> = {
   free: "border-success bg-success/15 text-success-ink",
   occupied: "border-destructive bg-destructive/15 text-destructive",
@@ -54,6 +57,7 @@ const PALETTE: PaletteItem[] = [
   { type: "node", kind: "restroom", label: "Baños" },
   { type: "node", kind: "kitchen", label: "Cocina" },
   { type: "node", kind: "cashier", label: "Caja" },
+  { type: "node", kind: "stairs", label: "Escaleras" },
 ];
 
 interface FloorPlanEditorProps {
@@ -64,6 +68,10 @@ interface FloorPlanEditorProps {
   locationId: string | null;
   roomId: string | null;
   onChanged: () => void;
+  /** Edición a pantalla completa: lienzo grande que ocupa el modal. */
+  fullscreen?: boolean;
+  /** Abre la edición a pantalla completa (solo en la vista compacta). */
+  onExpand?: () => void;
 }
 
 export function FloorPlanEditor({
@@ -74,7 +82,11 @@ export function FloorPlanEditor({
   locationId,
   roomId,
   onChanged,
+  fullscreen = false,
+  onExpand,
 }: FloorPlanEditorProps) {
+  const CANVAS_W_ = fullscreen ? CANVAS_W_FULL : CANVAS_W;
+  const CANVAS_H_ = fullscreen ? CANVAS_H_FULL : CANVAS_H;
   const [zoom, setZoom] = useState(1);
   const [selected, setSelected] = useState<{ kind: "table" | "node"; id: string } | null>(null);
   const [draft, setDraft] = useState<{ shape: string; capacity: string; name: string } | null>(null);
@@ -106,7 +118,7 @@ export function FloorPlanEditor({
   /** Coordenadas del lienzo a partir de un evento de puntero. */
   const canvasPoint = (clientX: number, clientY: number) => {
     const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return { x: CANVAS_W / 2, y: CANVAS_H / 2 };
+    if (!rect) return { x: CANVAS_W_ / 2, y: CANVAS_H_ / 2 };
     return {
       x: Math.round((clientX - rect.left + (canvasRef.current?.scrollLeft ?? 0)) / zoom),
       y: Math.round((clientY - rect.top + (canvasRef.current?.scrollTop ?? 0)) / zoom),
@@ -302,8 +314,8 @@ export function FloorPlanEditor({
     if (!item) return;
     const px = item.posX ?? 0;
     const py = item.posY ?? 0;
-    const nx = Math.max(8, Math.min(CANVAS_W - 8, Math.round(px + offset.dx / zoom)));
-    const ny = Math.max(8, Math.min(CANVAS_H - 8, Math.round(py + offset.dy / zoom)));
+    const nx = Math.max(8, Math.min(CANVAS_W_ - 8, Math.round(px + offset.dx / zoom)));
+    const ny = Math.max(8, Math.min(CANVAS_H_ - 8, Math.round(py + offset.dy / zoom)));
     if (drag.kind === "table") void patchTable(drag.id, { posX: nx, posY: ny });
     else
       { setNodeOverrides((current) => ({ ...current, [drag.id]: { ...current[drag.id], posX: nx, posY: ny } })); void fetch("/api/tables/plan-nodes", {
@@ -361,7 +373,21 @@ export function FloorPlanEditor({
             <Clock className="size-3" /> con reservación
           </span>
         )}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex flex-wrap items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 px-2 desk:h-7"
+            title="Descargar el plano en PDF"
+            onClick={() => window.open(`/api/tables/plan/pdf?roomId=${roomId ?? "none"}${locationId ? `&locationId=${locationId}` : ""}`, "_blank")}
+          >
+            <Download className="size-3.5" /> PDF
+          </Button>
+          {onExpand && (
+            <Button size="sm" className="h-9 px-2 desk:h-7" onClick={onExpand}>
+              <Maximize2 className="size-3.5" /> Editar plano
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 10) / 10))} title="Alejar">
             <Minus className="size-3.5" />
           </Button>
@@ -372,7 +398,7 @@ export function FloorPlanEditor({
         </div>
       </div>
 
-      {canManage && (
+      {canManage && fullscreen && (
         <div className="flex flex-wrap gap-1.5 rounded-xl border bg-muted/30 p-2">
           <span className="mr-1 inline-flex items-center gap-1 self-center text-xs font-semibold text-muted-foreground">
             <MousePointer2 className="size-3" /> Arrastra al plano:
@@ -406,7 +432,7 @@ export function FloorPlanEditor({
           "relative overflow-auto rounded-xl border bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)] bg-[size:24px_24px] dark:bg-[linear-gradient(to_right,#ffffff10_1px,transparent_1px),linear-gradient(to_bottom,#ffffff10_1px,transparent_1px)]",
           canManage && "drop-zone"
         )}
-        style={{ height: CANVAS_H * 0.8 }}
+        style={{ height: fullscreen ? "calc(100dvh - 20rem)" : CANVAS_H * 0.8, minHeight: fullscreen ? 320 : undefined }}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onDragOver={(e) => canManage && e.preventDefault()}
@@ -414,7 +440,7 @@ export function FloorPlanEditor({
       >
         <div
           className="relative origin-top-left"
-          style={{ width: CANVAS_W, height: CANVAS_H, transform: `scale(${zoom})` }}
+          style={{ width: CANVAS_W_, height: CANVAS_H_, transform: `scale(${zoom})` }}
         >
           {tables.length === 0 && nodes.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-1 text-muted-foreground">

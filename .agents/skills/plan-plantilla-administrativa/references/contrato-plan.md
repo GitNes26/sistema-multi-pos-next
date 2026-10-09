@@ -1,5 +1,8 @@
 # Contrato del plan
 
+Úsalo en el modo **Planear**. Para ejecutar la creación de un proyecto (modo **Crear**) sigue
+`crear-proyecto-nuevo.md`; el plan y la ejecución comparten decisiones y matriz de extracción.
+
 El documento debe ser concreto, trazable al proyecto analizado y contener:
 
 ## 1. Propósito y límites
@@ -18,13 +21,19 @@ módulo o excluir), dependencia y cambio requerido. Incluye rutas, datos, UI, AP
 - Estructura de paquetes o carpetas y límites entre núcleo, capacidades y dominio.
 - Contratos de módulos, registro de rutas/menús/permisos y configuración tipada.
 - Modelo de identidad, tenancy, roles, permisos y auditoría.
-- Base de datos mínima, migraciones y seed de producción sin datos del dominio.
+- Base de datos mínima (tablas base de `nucleo-y-estructura.md` §3), migraciones y seed de
+  producción sin datos del dominio; distingue lo que existe de lo propuesto (p. ej. auditoría).
+- Fuentes de verdad del proyecto nuevo: `AGENTS.md`, `MEMORY.md`, `CONTEXTO_SISTEMA.md`,
+  `PRODUCT.md`, `DESIGN.md` y `docs/agents/*` con su orden de autoridad.
 
 ## 4. Sistema de interfaz
 
 - Tokens, layout administrativo y navegación adaptable.
 - Convención única para formularios y campos: icono, etiqueta, requerido, ayuda,
   validación, formato, error inline y foco.
+- Análisis de apariencia, tokens, movimiento, transiciones e interacciones inmersivas
+  (`sistema-ui-y-experiencia.md` §1–3) y anatomía/estructura de archivos de una página (§4, §7).
+- Teclado por tipo de dato, fecha/hora con pickers y `ClearFiltersButton` en todo filtro.
 - Contrato de `DialogComponent`: encabezado, cuerpo desplazable y acciones.
 - Convenciones para tablas, filtros, estados, responsive y accesibilidad.
 

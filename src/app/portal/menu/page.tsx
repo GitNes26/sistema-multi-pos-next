@@ -1,28 +1,25 @@
-"use client";
+import type { Metadata } from "next"
+import { prisma } from "@/lib/db"
+import { getAppSettings } from "@/lib/db/app-settings"
+import { AppearanceSync } from "@/components/appearance/appearance-sync"
+import { DigitalMenu } from "@/components/portal/digital-menu/digital-menu"
 
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { DigitalMenu } from "@/components/portal/digital-menu/digital-menu";
-import { Spinner } from "@/components/base/spinner";
+export const metadata: Metadata = { title: "Menú de la mesa" }
+export const dynamic = "force-dynamic"
 
-function MenuContent() {
-  const searchParams = useSearchParams();
-  const tableId = searchParams.get("table") || undefined;
-  const tableToken = searchParams.get("token") || undefined;
-
-  return <DigitalMenu tableId={tableId} tableToken={tableToken} />;
-}
-
-export default function MenuPage() {
+// Menú digital por QR de mesa. Es público (sin cuenta): el QR de la mesa es la credencial y
+// define el negocio, por lo que también define sus colores.
+export default async function MenuPage({ searchParams }: { searchParams: Promise<{ table?: string; token?: string }> }) {
+  const { table, token } = await searchParams
+  let tenant = null
+  if (table && token) {
+    const t = await prisma.table.findFirst({ where: { id: table, qrToken: token, isActive: true }, select: { organizationId: true } })
+    if (t) tenant = await getAppSettings(t.organizationId)
+  }
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center h-screen">
-          <Spinner />
-        </div>
-      }
-    >
-      <MenuContent />
-    </Suspense>
-  );
+    <>
+      <AppearanceSync tenant={tenant} />
+      <DigitalMenu tableId={table} tableToken={token} />
+    </>
+  )
 }

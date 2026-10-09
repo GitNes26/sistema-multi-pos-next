@@ -5,6 +5,7 @@ import { round2, round3 } from "@/lib/pos/money";
 import { broadcastKdsUpdate } from "@/lib/kds/live";
 import { broadcastOrderStatus } from "@/lib/portal/live";
 import { notifyOrderEvent } from "@/lib/notifications/events";
+import { broadcastTableUpdate } from "@/lib/tables/live";
 
 // Enviar a cocina (POS · mesas) — crea/amplía la orden de cocina de una mesa
 // para que el ticket del POS aparezca en el KDS, espejo del flujo del portal
@@ -71,7 +72,7 @@ export interface SendToKitchenResult {
   created: SentKitchenLine[];
 }
 
-type KitchenCtx = { userId: string; employeeId: string | null };
+type KitchenCtx = { userId: string | null; employeeId: string | null };
 
 /** Crea o amplía la orden de cocina de la mesa con las líneas enviadas. */
 export async function sendTicketToKitchen(
@@ -287,6 +288,29 @@ export async function sendTicketToKitchen(
         itemStatus: i.itemStatus,
       })),
     });
+    // La mesa pasa a «ocupada» hasta que se envía algo a cocina (no al elegirla en el POS).
+    if (fresh.tableId) {
+      const table = await prisma.table.findUnique({
+        where: { id: fresh.tableId },
+        include: { location: { select: { name: true } } },
+      });
+      if (table && table.status !== "occupied") {
+        const occupied = await prisma.table.update({
+          where: { id: table.id },
+          data: { status: "occupied" },
+          include: { location: { select: { name: true } } },
+        });
+        broadcastTableUpdate(organizationId, {
+          id: occupied.id,
+          number: occupied.number,
+          name: occupied.name,
+          capacity: occupied.capacity,
+          status: occupied.status,
+          location: occupied.location,
+          updatedAt: occupied.updatedAt.toISOString(),
+        });
+      }
+    }
     await notifyOrderEvent(organizationId, fresh.locationId, { userId: ctx.userId }, {
       id: fresh.id,
       orderNumber: Number(fresh.orderNumber),

@@ -50,6 +50,10 @@ El teclado móvil debe corresponder al dato. `ui/input.tsx` e `InputGroupField` 
 - Toda pantalla con filtros o búsqueda incluye `ClearFiltersButton` (`src/components/base/clear-filters-button.tsx`), que aparece solo si hay algún filtro distinto del predeterminado y los regresa a su valor por defecto. `DataTable` ya lo trae para su búsqueda interna; los filtros externos se conectan con `filtersActive` y `onClearFilters`.
 - `CrudForm` mapea los tipos `phone` → `tel` y `email` → `email` por sí mismo.
 
+## Notificaciones y alertas
+
+Avisos normales con el sistema de toasts (en proyectos derivados de la plantilla: **notistack**); SweetAlert2 solo para alertas de gran impacto (acciones destructivas o irreversibles, errores críticos). En proyectos nuevos usa siempre las versiones estables más recientes de las librerías.
+
 ## Combobox y creación anidada
 
 - `FormCombobox` siempre puede buscar; `clearable` depende de nulabilidad.

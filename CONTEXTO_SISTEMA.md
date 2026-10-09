@@ -216,6 +216,16 @@ Implementado el 5 de octubre de 2026 (segunda tanda, pendiente de validación en
 
 Implementado el 5 de octubre de 2026 (tercera tanda): rol de sistema compartido «Trabajador completo» (`system-all-rounder`) con todo lo operativo de cajero, mesero, cocina, repartidor, almacén, citas y reservaciones (sin administración); aparece como repartidor asignable. Cambio más caro en devoluciones: el cliente paga la diferencia y se registra como `SaleReturnPayment` con importe negativo (el efectivo entra a la caja y compensa reembolsos en el corte). Botón «Limpiar filtros» en las pantallas con filtros.
 
+Implementado el 9 de octubre de 2026 (cuarta tanda, pendiente de validación en dispositivo):
+- **Cliente compartido entre negocios:** la cuenta (`User`) es única y cada negocio tiene su propio `Customer` (número de cliente, historial, puntos, crédito, listas y favoritos). Al entrar retoma el último negocio (`lastOrganizationId`); `/portal/businesses` permite elegir o unirse (`joinBusiness`); una cuenta sin negocio entra ahí. Colores y logo salen de la organización activa. El registro público (`/portal/auth/register` → `POST /api/portal/register`) crea la cuenta y envía el enlace de activación; el alta por panel/POS reutiliza la cuenta si el correo ya existe.
+- **POS estilo restaurante:** la mesa ya no se ocupa al elegirla, sino al enviar a cocina; se pueden abrir mesas ocupadas, alternar entre cuentas (`OpenAccounts`, `switchTicket`: lo enviado vive en la comanda, lo no enviado queda en pausa en el equipo) y ver mesas en lista o plano. El carrito del menú QR de una mesa aparece en el POS (`TableCartBanner`).
+- **Menú QR (`/portal/menu`, público):** mesero digital con carrito compartido por mesa (`TableCart`), envío a cocina (la comanda de la mesa), «Mi cuenta» de solo lectura y «Pedir la cuenta» (aviso al personal). Precios siempre recalculados en servidor (`lib/tables/menu.ts`). Lo enviado no se puede quitar ni disminuir.
+- **Mesas:** elemento «Escaleras» (`PlanNodeKind.stairs`), PDF del plano (`/api/tables/plan/pdf`), edición del plano en modal de pantalla completa y refresco silencioso (sin parpadeo).
+- **Devoluciones:** se devuelve lo realmente pagado (partida con su parte del descuento); diálogo a dos columnas con resumen, «+1» al agregar el producto de cambio, cantidad editable y aviso cuando el cambio excede el monto a canjear.
+- **Traslados:** chofer asignable (trabajador con interfaz en `/repartidor` → pestaña «Traslados», o nombre con enlace público `/traslado/<token>` para compartir ubicación); se puede cambiar en cualquier etapa activa.
+- **Documentos:** logo de la empresa en tickets (PNG desde disco; pdfkit no lee WebP), recibos de nómina, solicitudes de traslado, cotizaciones/órdenes y plano; QR + enlace del portal al pie de todos los tickets (`NEXT_PUBLIC_PORTAL_URL` opcional). IVA de productos oculto y en 0 (seeders incluidos).
+- **Perfil del portal:** nº de cliente visible y QR con Wake Lock (el navegador no permite subir el brillo del equipo).
+
 ## 10. Mantenimiento documental
 
 - `AGENTS.md`: reglas obligatorias y router.

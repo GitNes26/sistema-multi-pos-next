@@ -44,3 +44,5 @@ Actualizada: 1 de octubre de 2026.
 2. Leer la ruta temática en `docs/agents/README.md`.
 3. Consultar `CONTEXTO_SISTEMA.md` solo para dominio o arquitectura amplia.
 4. Confirmar detalles cambiantes en código, schema, migraciones y `git status`.
+- Clientes: cuenta compartida, un `Customer` por negocio; menú QR público con carrito por mesa; POS alterna cuentas abiertas (ver `CONTEXTO_SISTEMA.md`).
+- Skill `.agents/skills/plan-plantilla-administrativa`: crea o planea la plantilla administrativa de un proyecto nuevo con la esencia de este sistema (modo Crear/Planear/Sincronizar). Cuando cambien el núcleo, las tablas base o las guías de diseño/formularios, sincronizar sus referencias.

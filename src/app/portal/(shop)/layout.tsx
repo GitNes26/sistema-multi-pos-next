@@ -22,6 +22,8 @@ export default async function PortalShopLayout({
     redirect("/portal/auth/login");
   }
   const organizationId = session.user.organizationId ?? null;
+  // Cuenta sin negocio elegido todavía: primero escoge a cuál comprar.
+  if (!organizationId) redirect("/portal/businesses");
   const tenant = organizationId ? await getAppSettings(organizationId) : null;
 
   let storeName = "Mi Tienda";

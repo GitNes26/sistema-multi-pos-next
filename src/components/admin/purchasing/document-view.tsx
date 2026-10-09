@@ -5,6 +5,7 @@ import { FileText, Printer, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DialogComponent } from "@/components/ui/dialog"
 import { PurchaseStatusPill } from "@/components/shared/status-pills"
+import { DocumentBrand } from "@/components/shared/document-brand"
 
 const money = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" })
 
@@ -35,6 +36,7 @@ function Sheet({ doc, flat }: { doc: ViewableDocument; flat?: boolean }) {
     <article className={flat ? "w-full space-y-4 bg-white text-sm text-black" : "space-y-4 rounded-xl border bg-card text-sm"}>
       <header className="flex flex-wrap items-start justify-between gap-3 border-b bg-muted/40 p-4 print:bg-transparent">
         <div>
+          <DocumentBrand className="mb-2 flex items-center gap-3" />
           <p className="text-xs font-semibold tracking-wide uppercase text-muted-foreground">{isOrder ? "Orden de compra" : "Solicitud de cotización"}</p>
           <p className="font-mono text-2xl font-bold">{doc.folio}</p>
           <p className="mt-1 font-semibold">{doc.supplierName}</p>

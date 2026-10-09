@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.40.0.0] — 2026-10-09
+- **Tipo:** `feat` (Minor)
+- feat: cliente compartido entre negocios con registro publico y selector de negocio, POS que alterna mesas y pedidos para llevar, menu QR como mesero digital con carrito compartido, escaleras y PDF del plano con edicion a pantalla completa, devoluciones con precio realmente pagado y resumen a dos columnas, traslados con chofer e interfaz propia, logo y QR de la app en tickets y documentos, IVA en 0 y numero de cliente en el perfil
+
 ### [0.39.0.0] — 2026-10-05
 - **Tipo:** `feat` (Minor)
 - feat: rol Trabajador completo con todos los permisos operativos, boton limpiar filtros en pantallas con busqueda, cobro de la diferencia en cambios mas caros y documentacion

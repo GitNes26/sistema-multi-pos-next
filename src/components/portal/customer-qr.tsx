@@ -69,6 +69,31 @@ export function CustomerQr({
     }
   }, [open])
 
+  // Con el QR abierto la pantalla no se apaga ni se atenúa (Wake Lock). Los navegadores no
+  // permiten subir el brillo del equipo: el fondo es blanco puro para maximizar la lectura.
+  useEffect(() => {
+    if (!open) return
+    type Sentinel = { release: () => Promise<void> }
+    let sentinel: Sentinel | null = null
+    let cancelled = false
+    const request = async () => {
+      try {
+        const wl = (navigator as Navigator & { wakeLock?: { request: (t: "screen") => Promise<Sentinel> } }).wakeLock
+        if (wl && !cancelled) sentinel = await wl.request("screen")
+      } catch {
+        /* sin soporte o permiso: el QR se muestra igual */
+      }
+    }
+    void request()
+    const onVisible = () => document.visibilityState === "visible" && void request()
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      cancelled = true
+      document.removeEventListener("visibilitychange", onVisible)
+      void sentinel?.release().catch(() => undefined)
+    }
+  }, [open])
+
   return (
     <>
       <button

@@ -107,7 +107,8 @@ export function OrgSwitcher({
   // Sin datos todavía (orgs === null): los usuarios de app esperan a saber si
   // tienen más de una organización; el superAdmin siempre ve el selector.
   const hasMultipleOrgs = orgs !== null && orgs.length > 1
-  if (!isSuperadmin && !hasMultipleOrgs) return null
+  // El cliente del portal siempre lo ve: ahí también descubre y se une a otros negocios.
+  if (!isSuperadmin && scope !== "portal" && !hasMultipleOrgs) return null
 
   const switchOrg = async (orgId: string) => {
     if (orgId === activeOrganizationId) {
@@ -186,7 +187,7 @@ export function OrgSwitcher({
 
       <DropdownMenuContent align="end" sideOffset={6} className="w-64">
         <DropdownMenuLabel>
-          {isSuperadmin ? "Empresas registradas" : "Mis organizaciones"}
+          {isSuperadmin ? "Empresas registradas" : scope === "portal" ? "Mis negocios" : "Mis organizaciones"}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {!orgs ? (
@@ -236,6 +237,14 @@ export function OrgSwitcher({
               </DropdownMenuItem>
             ))}
           </DropdownMenuGroup>
+        )}
+        {scope === "portal" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => router.push("/portal/businesses")}>
+              Explorar y unirme a otros negocios
+            </DropdownMenuItem>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

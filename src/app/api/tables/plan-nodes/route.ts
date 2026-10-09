@@ -9,7 +9,7 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 const DENIED = { ok: false, error: "Permiso requerido: locations.manage" };
-const KINDS: $Enums.PlanNodeKind[] = ["entrance", "exit", "restroom", "kitchen", "bar_station", "cashier", "other"];
+const KINDS: $Enums.PlanNodeKind[] = ["entrance", "exit", "restroom", "kitchen", "bar_station", "cashier", "stairs", "other"];
 
 /** Sesión de app con organización (base común de todos los handlers). */
 async function requireSession() {

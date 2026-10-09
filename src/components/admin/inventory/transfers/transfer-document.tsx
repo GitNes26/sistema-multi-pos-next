@@ -2,6 +2,7 @@
 
 import type { TransferDetail } from "@/lib/inventory/transfers-client"
 import { TRANSFER_STATUS_LABELS } from "@/lib/inventory/transfers-client"
+import { DocumentBrand } from "@/components/shared/document-brand"
 
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"
@@ -18,6 +19,7 @@ export function TransferDocument({ t, flat = false }: { t: TransferDetail; /** V
     <article className={flat ? "w-full space-y-5 bg-white text-sm text-black" : "mx-auto w-full max-w-3xl space-y-5 rounded-lg border bg-white p-6 text-sm text-black"}>
       <header className="flex items-start justify-between gap-4 border-b border-black/20 pb-3">
         <div>
+          <DocumentBrand className="mb-2 flex items-center gap-3 text-black" />
           <p className="text-xs font-semibold tracking-widest uppercase text-black/60">Solicitud de traslado</p>
           <h2 className="font-mono text-2xl font-bold">{t.folio}</h2>
         </div>

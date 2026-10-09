@@ -1336,7 +1336,7 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
         name: def.name,
         description: def.desc,
         imageUrl: productImageUrl(def.emoji, def.category),
-        taxRate: 0.16,
+        taxRate: 0, // sin IVA por ahora
         trackInventory: true,
         productType: "standard",
         allowSplit: false,
@@ -1517,7 +1517,7 @@ async function seedRestaurantDemo(ownerUserId: string, passwordHash: string) {
         name: def.name,
         description: def.desc,
         imageUrl: productImageUrl(def.emoji, def.category),
-        taxRate: 0.16,
+        taxRate: 0, // sin IVA por ahora
         trackInventory: true,
         productType: "custom",
         isNew: false,
@@ -2774,7 +2774,7 @@ async function seedHybridDemo(ownerUserId: string, passwordHash: string) {
         name: def.name,
         description: def.desc,
         imageUrl: productImageUrl(def.emoji, def.category),
-        taxRate: 0.16,
+        taxRate: 0, // sin IVA por ahora
         trackInventory: true,
         productType: "standard",
         allowSplit: false,
@@ -4309,7 +4309,7 @@ async function seedVerticalOrgDemo(
         name: def.name,
         description: def.desc,
         imageUrl: productImageUrl(def.emoji, def.category),
-        taxRate: 0.16,
+        taxRate: 0, // sin IVA por ahora
         trackInventory,
         productType: "standard",
         allowSplit: false,
@@ -5109,7 +5109,7 @@ async function finalizeDemoAccess(
               description: [product.name, variant?.name].filter(Boolean).join(" · "),
               quantity,
               unitCost,
-              taxRate: 0.16,
+              taxRate: 0, // sin IVA por ahora
             }],
           },
         },
@@ -5137,7 +5137,7 @@ async function finalizeDemoAccess(
               description: [product.name, variant?.name].filter(Boolean).join(" · "),
               quantity,
               unitCost,
-              taxRate: 0.16,
+              taxRate: 0, // sin IVA por ahora
             }],
           },
         },
@@ -5641,7 +5641,7 @@ export async function seedDemo() {
         name: def.name,
         description: def.desc,
         imageUrl: productImageUrl(def.emoji, def.category),
-        taxRate: 0.16,
+        taxRate: 0, // sin IVA por ahora
         trackInventory: true,
         productType: def.bulk ? "bulk" : "standard",
         bulkUnitId: def.bulk ? unitKg?.id : undefined,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { inventoryGuard, inventoryErrorResponse } from "../../guard";
 import {
   cancelTransfer,
+  assignTransferDriver,
   dispatchTransfer,
   getTransfer,
   receiveTransfer,
@@ -33,6 +34,14 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   try {
     const { id } = await params;
     switch (body.action) {
+      case "assign":
+        return NextResponse.json(
+          await assignTransferDriver(organizationId, id, userId, {
+            employeeId: typeof body.employeeId === "string" && body.employeeId ? body.employeeId : null,
+            name: typeof body.name === "string" ? body.name : null,
+            vehicle: typeof body.vehicle === "string" ? body.vehicle : undefined,
+          })
+        );
       case "prepare":
         return NextResponse.json(await startPreparing(organizationId, id));
       case "dispatch":

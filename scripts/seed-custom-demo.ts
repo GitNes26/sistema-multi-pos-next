@@ -162,7 +162,7 @@ async function main() {
         name: def.name,
         description: def.desc,
         imageUrl: placeholderImageUrl(def.emoji, def.category),
-        taxRate: 0.16,
+        taxRate: 0, // sin IVA por ahora
         trackInventory: true,
         productType: "custom",
         isNew: true,

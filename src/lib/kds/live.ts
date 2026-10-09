@@ -10,7 +10,9 @@ export interface KdsUpdatePayload {
     | "order_removed"
     | "reservations_changed"
     // Nueva reservación PRÓXIMA confirmada (campana del KDS).
-    | "reservation_confirmed";
+    | "reservation_confirmed"
+    // El carrito del menú QR de una mesa cambió (status = nº de artículos).
+    | "table_cart";
   orderId?: string;
   orderNumber?: string | number;
   status?: string;

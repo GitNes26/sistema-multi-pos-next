@@ -39,6 +39,7 @@ export const PLAN_NODE_META: Record<
   kitchen: { label: "Cocina", icon: "🍽️", shape: "rounded-lg" },
   bar_station: { label: "Estación", icon: "🍸", shape: "rounded-lg" },
   cashier: { label: "Caja", icon: "🧾", shape: "rounded-lg" },
+  stairs: { label: "Escaleras", icon: "🪜", shape: "rounded-lg" },
   other: { label: "Zona", icon: "📍", shape: "rounded-lg" },
 };
 
@@ -49,6 +50,7 @@ export const NODE_KIND_OPTIONS = [
   { value: "kitchen", label: "Cocina" },
   { value: "bar_station", label: "Estación de servicio" },
   { value: "cashier", label: "Caja" },
+  { value: "stairs", label: "Escaleras (otro piso)" },
   { value: "other", label: "Otra zona" },
 ];
 

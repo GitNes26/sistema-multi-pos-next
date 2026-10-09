@@ -1,18 +1,25 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Armchair, Check, Clock, X } from "lucide-react"
+import { Armchair, Clock, LayoutGrid, List } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { LiveBadge } from "@/components/shared/live-badge"
 import { useSseStore } from "@/stores/sse-store"
+import { PlanNodeElement, PlanTableElement, type PlanNode } from "@/components/admin/tables/plan-elements"
 import { cn } from "@/lib/utils"
 
 interface Table {
   id: string
   number: number
   name: string | null
+  posX?: number | null
+  posY?: number | null
+  width?: number | null
+  height?: number | null
+  shape?: string
+  rotation?: number
   capacity: number | null
   status: string
   room: { id: string; name: string } | null
@@ -30,14 +37,14 @@ interface Props {
 
 const statusColor = (s: string) => {
   if (s === "free") return "bg-success/10 border-success/30 text-success-ink hover:bg-success/20"
-  if (s === "occupied") return "bg-destructive/10 border-destructive/30 text-destructive cursor-not-allowed"
+  if (s === "occupied") return "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20"
   if (s === "reserved") return "bg-warning/10 border-warning/30 text-warning-ink"
   return "bg-muted border-border text-foreground"
 }
 
 const statusLabel = (s: string) => {
   if (s === "free") return "Libre"
-  if (s === "occupied") return "Ocupada"
+  if (s === "occupied") return "Ocupada · ver cuenta"
   if (s === "reserved") return "Reservada"
   return s
 }
@@ -48,6 +55,24 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
   const [tables, setTables] = useState<Table[]>([])
   const [loading, setLoading] = useState(true)
   const [glowingIds, setGlowingIds] = useState<Set<string>>(new Set())
+  // Dos vistas: lista (rápida) y plano (para ubicarse en la sala). Se recuerda la elección.
+  const [mode, setMode] = useState<"list" | "plan">(() => {
+    try {
+      return (localStorage.getItem("multi-pos.table-selector-mode") as "list" | "plan") || "list"
+    } catch {
+      return "list"
+    }
+  })
+  const changeMode = (m: "list" | "plan") => {
+    setMode(m)
+    try {
+      localStorage.setItem("multi-pos.table-selector-mode", m)
+    } catch {
+      /* sin almacenamiento */
+    }
+  }
+  const [nodes, setNodes] = useState<PlanNode[]>([])
+  const [planRoom, setPlanRoom] = useState<string>("")
   const glowTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const esRef = useRef<EventSource | null>(null)
   const retriesRef = useRef(0)
@@ -153,6 +178,10 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
       .then((d) => setTables(d.tables ?? []))
       .catch(() => setTables([]))
       .finally(() => setLoading(false))
+    fetch(`/api/tables/plan-nodes?${params}`)
+      .then((r) => r.json())
+      .then((d) => setNodes(d.nodes ?? []))
+      .catch(() => setNodes([]))
 
     // Open SSE stream for live updates.
     registerSse("tables")
@@ -179,6 +208,23 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
             Seleccionar Mesa
             <LiveBadge sources={["tables"]} compact className="ml-auto" />
           </DialogTitle>
+          <div className="flex gap-1 rounded-xl bg-muted p-1" role="radiogroup" aria-label="Vista de mesas">
+            {([["list", "Lista", List], ["plan", "Plano", LayoutGrid]] as const).map(([value, label, Icon]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={mode === value}
+                onClick={() => changeMode(value)}
+                className={cn(
+                  "flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold transition",
+                  mode === value ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="size-4" /> {label}
+              </button>
+            ))}
+          </div>
         </DialogHeader>
 
         {loading ? (
@@ -210,8 +256,62 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full border border-violet-400 ring-2 ring-violet-300/60" /> Llega hoy</span>
             </div>
 
+            {mode === "plan" && (() => {
+              const rooms = [...new Map(tables.map((t) => [t.room?.id ?? "", t.room?.name ?? "Sin sala"])).entries()]
+              const current = rooms.some(([id]) => id === planRoom) ? planRoom : (rooms[0]?.[0] ?? "")
+              const roomTables = tables.filter((t) => (t.room?.id ?? "") === current)
+              const roomNodes = nodes.filter((n) => (n.roomId ?? "") === current)
+              return (
+                <div className="space-y-2">
+                  {rooms.length > 1 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {rooms.map(([id, name]) => (
+                        <button
+                          key={id || "none"}
+                          type="button"
+                          onClick={() => setPlanRoom(id)}
+                          className={cn(
+                            "h-9 rounded-full border px-3 text-xs font-semibold transition",
+                            current === id ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted"
+                          )}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="overflow-auto rounded-xl border bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)] bg-[size:24px_24px] dark:bg-[linear-gradient(to_right,#ffffff10_1px,transparent_1px),linear-gradient(to_bottom,#ffffff10_1px,transparent_1px)]" style={{ maxHeight: "55dvh" }}>
+                    <div className="relative" style={{ width: 880, height: 560 }}>
+                      {roomNodes.map((n) => (
+                        <PlanNodeElement key={n.id} node={n} x={n.posX} y={n.posY} disabled />
+                      ))}
+                      {roomTables.map((t, i) => (
+                        <PlanTableElement
+                          key={t.id}
+                          table={{ ...t, shape: t.shape ?? "round", width: t.width ?? null, height: t.height ?? null, posX: t.posX ?? null, posY: t.posY ?? null, capacity: t.capacity ?? 4 }}
+                          x={t.posX ?? 70 + (i % 5) * 120}
+                          y={t.posY ?? 70 + Math.floor(i / 5) * 110}
+                          label={t.status === "occupied" ? "ver cuenta" : t.capacity ? `${t.capacity} pers.` : null}
+                          className={cn(
+                            t.status === "free" && "border-success bg-success/15 text-success-ink",
+                            t.status === "occupied" && "border-destructive bg-destructive/15 text-destructive",
+                            t.status === "reserved" && "border-warning bg-warning/15 text-warning-ink",
+                            glowingIds.has(t.id) && "animate-table-glow"
+                          )}
+                          onClick={() => {
+                            onSelect({ id: t.id, number: t.number, name: t.name })
+                            onClose()
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* Mesas agrupadas por sala (el plano del local) */}
-            {(() => {
+            {mode === "list" && (() => {
               const groups = new Map<string, Table[]>()
               for (const t of tables) {
                 const key = t.room?.name ?? "Sin sala"
@@ -233,18 +333,8 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
                           <button
                             key={t.id}
                             type="button"
-                            disabled={t.status === "occupied"}
                             onClick={() => {
-                              // Marcar mesa como ocupada en BD
-                              fetch("/api/tables", {
-                                method: "PUT",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ id: t.id, status: "occupied" }),
-                              }).then((res) => {
-                                if (!res.ok) console.error("[table-selector] No se pudo marcar mesa como ocupada")
-                              }).catch((err) => {
-                                console.error("[table-selector] Error marcando mesa:", err)
-                              })
+                              // La mesa queda «ocupada» hasta que se envía algo a cocina, no al elegirla.
                               onSelect({ id: t.id, number: t.number, name: t.name })
                               onClose()
                             }}
@@ -252,7 +342,7 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
                               ? `Mesa ${t.number} · reservación confirmada ${new Date(t.upcomingReservation.startsAt).toLocaleString("es-MX", { hour: "2-digit", minute: "2-digit" })} · ${t.upcomingReservation.guests} pers.`
                               : undefined}
                             className={cn(
-                              "press relative flex min-h-28 flex-col items-center justify-center gap-1 rounded-2xl border-2 p-3 disabled:cursor-not-allowed",
+                              "press relative flex min-h-28 flex-col items-center justify-center gap-1 rounded-2xl border-2 p-3",
                               statusColor(t.status),
                               glowingIds.has(t.id) && "animate-table-glow",
                               t.upcomingReservation && "ring-2 ring-violet-500/60 ring-offset-2 ring-offset-popover"

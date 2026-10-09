@@ -64,7 +64,7 @@ function serialize(c: CustomerRow): CustomerDto {
   };
 }
 
-async function nextCustomerCode(organizationId: string): Promise<string> {
+export async function nextCustomerCode(organizationId: string): Promise<string> {
   const rows = await prisma.customer.findMany({
     where: { organizationId, customerCode: { startsWith: "CLI-" } },
     select: { customerCode: true },
@@ -132,10 +132,14 @@ export const customersModule: CrudModule<CustomerDto> = {
 
     const emailRaw = data.email ? String(data.email).trim().toLowerCase() : "";
     const phone = data.phone ? String(data.phone).trim() : null;
-    if (emailRaw) {
-      if (process.env.NODE_ENV === "production" && !mailConfigured()) throw new CrudError("Configura el correo SMTP antes de registrar clientes con acceso", 503, "email");
-      const dupEmail = await prisma.user.findUnique({ where: { email: emailRaw } });
-      if (dupEmail) throw new CrudError("Ya existe un usuario con ese correo", 400, "email");
+    // Las cuentas son compartidas entre negocios: si el correo ya tiene usuario, se liga
+    // como cliente de este negocio (historial, puntos y crédito quedan separados por negocio).
+    const sharedUser = emailRaw ? await prisma.user.findUnique({ where: { email: emailRaw } }) : null;
+    if (sharedUser) {
+      const already = await prisma.customer.findFirst({ where: { organizationId, userId: sharedUser.id }, select: { id: true } });
+      if (already) throw new CrudError("Ya es cliente de este negocio con ese correo", 400, "email");
+    } else if (emailRaw && process.env.NODE_ENV === "production" && !mailConfigured()) {
+      throw new CrudError("Configura el correo SMTP antes de registrar clientes con acceso", 503, "email");
     }
     if (phone) {
       const dupPhone = await prisma.customer.findFirst({ where: { organizationId, phone } });
@@ -153,12 +157,16 @@ export const customersModule: CrudModule<CustomerDto> = {
     const email = emailRaw || `cli-${randomBytes(4).toString("hex")}@portal.local`;
     const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
 
-    const user = await prisma.user.create({
-      data: { email, passwordHash, fullName, phone, isActive: true, activationRequired: Boolean(emailRaw) },
-    });
+    const user =
+      sharedUser ??
+      (await prisma.user.create({
+        data: { email, passwordHash, fullName, phone, isActive: true, activationRequired: Boolean(emailRaw) },
+      }));
 
     try {
-      await setMembership(user.id, organizationId, "customer");
+      // No degradar la membresía de quien ya es personal de este negocio.
+      const hasMembership = await prisma.membership.findFirst({ where: { userId: user.id, organizationId }, select: { id: true } });
+      if (!hasMembership) await setMembership(user.id, organizationId, "customer");
       const customer = await prisma.customer.create({
         data: {
           organizationId,
@@ -180,7 +188,7 @@ export const customersModule: CrudModule<CustomerDto> = {
         },
         include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true, activationRequired: true, emailVerified: true } } },
       });
-      if (emailRaw && mailConfigured()) {
+      if (emailRaw && !sharedUser && mailConfigured()) {
         const registrationLocation = data.registrationLocationId
           ? await prisma.location.findFirst({ where: { id: String(data.registrationLocationId), organizationId }, select: { name: true } })
           : null;
@@ -191,7 +199,7 @@ export const customersModule: CrudModule<CustomerDto> = {
       // Cleanup orphaned user/membership on create failure
       await prisma.customer.deleteMany({ where: { userId: user.id, organizationId } }).catch((cleanupErr) => console.error("[customers] cleanup customer failed:", cleanupErr));
       await prisma.membership.deleteMany({ where: { userId: user.id, organizationId } }).catch((cleanupErr) => console.error("[customers] cleanup membership failed:", cleanupErr));
-      await prisma.user.delete({ where: { id: user.id } }).catch((cleanupErr) => console.error("[customers] cleanup user failed:", cleanupErr));
+      if (!sharedUser) await prisma.user.delete({ where: { id: user.id } }).catch((cleanupErr) => console.error("[customers] cleanup user failed:", cleanupErr));
       throw err;
     }
   },

@@ -13,6 +13,7 @@ import {
 } from "@/lib/pos/kitchen";
 import type { KitchenLineInput } from "@/lib/pos/kitchen";
 import { requirePosSession, resolveLocationId, getCashierContext } from "../helpers";
+import { resolveLines } from "@/lib/tables/menu";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,64 @@ export async function GET(req: Request) {
   const tableId = sp.get("tableId");
   const orderId = sp.get("orderId");
   const full = sp.get("full") === "1";
+
+  // Lista de cuentas abiertas (mesas y para llevar) para alternar entre ellas en el POS.
+  if (sp.get("open") === "1") {
+    const locationId = sp.get("locationId");
+    const rows = await prisma.order.findMany({
+      where: {
+        organizationId,
+        source: "pos",
+        deliveryMethod: "pickup",
+        status: { in: OPEN_KITCHEN_STATUSES },
+        saleId: null,
+        ...(locationId ? { locationId } : {}),
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        serviceType: true,
+        total: true,
+        createdAt: true,
+        table: { select: { id: true, number: true, name: true } },
+        _count: { select: { items: true } },
+      },
+    });
+    // Carritos armados por los comensales desde el QR (aún sin enviar a cocina).
+    const carts = await prisma.tableCart.findMany({
+      where: { organizationId },
+      select: { tableId: true, items: true, table: { select: { number: true, name: true, locationId: true } } },
+    });
+    const cartRows = [];
+    for (const c of carts) {
+      if (locationId && c.table.locationId && c.table.locationId !== locationId) continue;
+      const lines = await resolveLines(organizationId, Array.isArray(c.items) ? (c.items as never[]) : []);
+      if (!lines.length) continue;
+      cartRows.push({
+        tableId: c.tableId,
+        number: c.table.number,
+        name: c.table.name,
+        count: lines.reduce((s, l) => s + l.quantity, 0),
+        total: Math.round(lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0) * 100) / 100,
+      });
+    }
+    return NextResponse.json({
+      ok: true,
+      carts: cartRows,
+      orders: rows.map((o) => ({
+        id: o.id,
+        orderNumber: Number(o.orderNumber),
+        status: o.status,
+        serviceType: o.serviceType,
+        total: Number(o.total),
+        items: o._count.items,
+        createdAt: o.createdAt.toISOString(),
+        table: o.table ? { id: o.table.id, number: o.table.number, name: o.table.name } : null,
+      })),
+    });
+  }
   if (!tableId && !orderId) {
     return NextResponse.json({ ok: false, error: "Falta tableId u orderId" }, { status: 400 });
   }
@@ -54,6 +113,7 @@ export async function GET(req: Request) {
         status: true,
         serviceType: true,
         createdAt: true,
+        customerId: true,
         items: {
           select: {
             id: true,
@@ -74,14 +134,22 @@ export async function GET(req: Request) {
         },
       },
     });
-    if (!order) return NextResponse.json({ ok: true, order: null });
+    // Carrito QR de la mesa (si hay) para que el cajero lo vea y lo pase al ticket.
+    let cart: Awaited<ReturnType<typeof resolveLines>> = [];
+    if (tableId) {
+      const row = await prisma.tableCart.findUnique({ where: { tableId } });
+      if (row && row.organizationId === organizationId) cart = await resolveLines(organizationId, Array.isArray(row.items) ? (row.items as never[]) : []);
+    }
+    if (!order) return NextResponse.json({ ok: true, order: null, cart });
     return NextResponse.json({
       ok: true,
+      cart,
       order: {
         id: order.id,
         orderNumber: Number(order.orderNumber),
         status: order.status,
         serviceType: order.serviceType,
+        customerId: order.customerId,
         createdAt: order.createdAt.toISOString(),
         items: order.items.map((i) => ({
           id: i.id,

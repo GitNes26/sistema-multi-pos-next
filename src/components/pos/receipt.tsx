@@ -1,10 +1,39 @@
 "use client"
 
-import type { CSSProperties } from "react"
+import { useEffect, useState, type CSSProperties } from "react"
+import QRCode from "qrcode"
 
 import type { PosCustomer, PosSalePayload } from "@/types/pos"
 import { money, qty } from "@/lib/pos/money"
 import { PAYMENT_METHOD_LABELS } from "@/lib/pos/config"
+import { PORTAL_LOGIN_URL } from "@/lib/portal/public-url"
+
+/** QR e invitación a comprar desde la app, al pie de todo ticket. */
+function AppPromo() {
+  const [qr, setQr] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    QRCode.toDataURL(PORTAL_LOGIN_URL, { margin: 0, width: 200, errorCorrectionLevel: "M" })
+      .then((u) => alive && setQr(u))
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [])
+  return (
+    <div className="mt-3 border-t border-dashed border-black/40 pt-3 text-center text-[9px] leading-snug">
+      <p className="text-[10px] font-bold">COMPRA DESDE LA APP</p>
+      {qr && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={qr} alt="QR del portal de clientes" className="mx-auto my-1.5 size-20" />
+      )}
+      <p>Escanea el QR o entra a</p>
+      <p className="font-bold">{PORTAL_LOGIN_URL.replace(/^https?:\/\//, "")}</p>
+      <p>Haz tus pedidos desde tu celular y suma puntos.</p>
+      <p>Regístrate en el punto de venta o con el botón «Soy nuevo» del enlace.</p>
+    </div>
+  )
+}
 
 interface ReceiptProps {
   sale: { id: string; saleNumber: string; locationName: string }
@@ -200,6 +229,7 @@ export function Receipt({
           className="mx-auto mt-3 h-10 max-w-full object-fill"
         />
         <p className="mt-1 text-[8px]">Escanea este código para consultar la venta</p>
+        <AppPromo />
       </div>
     </div>
   )

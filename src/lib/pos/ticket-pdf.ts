@@ -5,6 +5,9 @@ import type { $Enums } from "@prisma/client";
 import bwipjs from "bwip-js/node";
 import { buildTicketCode } from "@/lib/sales/ticket-code";
 import { getReturnDetail } from "@/lib/returns/server";
+import QRCode from "qrcode";
+import { loadLogoPng } from "@/lib/documents/branding";
+import { PORTAL_LOGIN_URL } from "@/lib/portal/public-url";
 
 // Ticket térmico en PDF (58/80 mm). Un solo diseño para ventas, ventas por
 // pedido y devoluciones: encabezado de la empresa, partidas, totales, pagos,
@@ -50,19 +53,10 @@ export interface TicketModel {
   reprint?: boolean;
 }
 
-async function fetchLogo(url: string | null): Promise<Buffer | null> {
-  if (!url) return null;
-  try {
-    const abs = url.startsWith("http") ? url : `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}${url}`;
-    const res = await fetch(abs);
-    return res.ok ? Buffer.from(await res.arrayBuffer()) : null;
-  } catch {
-    return null;
-  }
-}
+type TicketLogo = { buffer: Buffer; width: number; height: number };
 
 /** Dibuja el ticket; devuelve la Y final para dimensionar la página. */
-function draw(doc: PDFKit.PDFDocument, m: TicketModel, logo: Buffer | null, barcode: Buffer): number {
+function draw(doc: PDFKit.PDFDocument, m: TicketModel, logo: TicketLogo | null, barcode: Buffer, appQr: Buffer): number {
   const pageWidth = m.paperWidth * 2.83465;
   const margin = m.paperWidth === 58 ? 9 : 12;
   const contentWidth = pageWidth - margin * 2;
@@ -91,9 +85,14 @@ function draw(doc: PDFKit.PDFDocument, m: TicketModel, logo: Buffer | null, barc
   }
   if (logo) {
     try {
-      const w = 40;
-      doc.image(logo, (pageWidth - w) / 2, doc.y, { width: w });
-      doc.moveDown(3.2);
+      // Cabe en un recuadro de ancho de papel y alto limitado, centrado y sin deformarse.
+      const box = { w: Math.min(contentWidth, m.paperWidth === 58 ? 90 : 120), h: 46 };
+      const scale = Math.min(box.w / logo.width, box.h / logo.height);
+      const w = logo.width * scale;
+      const h = logo.height * scale;
+      const y = doc.y;
+      doc.image(logo.buffer, (pageWidth - w) / 2, y, { width: w, height: h });
+      doc.y = y + h + 6;
     } catch {
       /* logo inválido: se omite */
     }
@@ -183,6 +182,26 @@ function draw(doc: PDFKit.PDFDocument, m: TicketModel, logo: Buffer | null, barc
   doc.moveDown(3.4);
   doc.font("Courier").fontSize(6);
   center(m.barcodeCaption);
+
+  // Invitación a comprar desde la app (todos los tickets).
+  doc.moveDown(1);
+  rule();
+  doc.font("Courier-Bold").fontSize(small + 1);
+  center("COMPRA DESDE LA APP");
+  doc.moveDown(0.4);
+  const qrSize = m.paperWidth === 58 ? 70 : 86;
+  const qy = doc.y;
+  doc.image(appQr, (pageWidth - qrSize) / 2, qy, { width: qrSize, height: qrSize });
+  doc.y = qy + qrSize + 6;
+  doc.font("Courier").fontSize(6.5);
+  center("Escanea el QR o entra a:");
+  doc.font("Courier-Bold").fontSize(6.5);
+  center(PORTAL_LOGIN_URL.replace(/^https?:\/\//, ""));
+  doc.moveDown(0.3);
+  doc.font("Courier").fontSize(6.5);
+  center("Haz tus pedidos desde tu celular y suma puntos.");
+  center("Regístrate en el punto de venta o con el");
+  center("botón «Soy nuevo» del enlace.");
   return doc.y + margin;
 }
 
@@ -201,15 +220,16 @@ function watermark(doc: PDFKit.PDFDocument, width: number, height: number) {
 export async function renderTicketPdf(m: TicketModel): Promise<Buffer> {
   const pageWidth = m.paperWidth * 2.83465;
   const margin = m.paperWidth === 58 ? 9 : 12;
-  const [logo, barcode] = await Promise.all([
-    fetchLogo(m.company.logoUrl),
+  const [logo, barcode, appQr] = await Promise.all([
+    loadLogoPng(m.company.logoUrl, 360),
     bwipjs.toBuffer({ bcid: "code128", text: m.barcodeText, height: 10, scale: 2, includetext: false, padding: 0 }),
+    QRCode.toBuffer(PORTAL_LOGIN_URL, { errorCorrectionLevel: "M", margin: 0, width: 240, color: { dark: "#000000", light: "#ffffff" } }),
   ]);
 
   // Pasada 1: mide la altura real; pasada 2: página del tamaño exacto.
   const measure = new PDFDocument({ size: [pageWidth, 6000], margin });
   measure.on("data", () => undefined);
-  const height = Math.ceil(draw(measure, m, logo, barcode));
+  const height = Math.ceil(draw(measure, m, logo, barcode, appQr));
   measure.end();
 
   const doc = new PDFDocument({ size: [pageWidth, Math.max(height, 200)], margin, font: "Courier" });
@@ -219,7 +239,7 @@ export async function renderTicketPdf(m: TicketModel): Promise<Buffer> {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
   });
-  draw(doc, m, logo, barcode);
+  draw(doc, m, logo, barcode, appQr);
   if (m.reprint) watermark(doc, pageWidth, Math.max(height, 200));
   doc.end();
   return done;

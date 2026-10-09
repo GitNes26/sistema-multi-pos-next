@@ -1,4 +1,4 @@
 interface:
-  display_name: "Plan de plantilla administrativa"
-  short_description: "Planifica una base administrativa reutilizable"
-  default_prompt: "Analiza este proyecto como referencia y crea un plan para convertir sus patrones transversales en una plantilla administrativa reutilizable, separando el núcleo común de las reglas específicas del dominio."
+  display_name: "Plantilla administrativa"
+  short_description: "Crea o planea una base administrativa para un proyecto nuevo"
+  default_prompt: "Usa esta skill para crear un proyecto nuevo con la esencia de este sistema: reglas de AGENTS.md, MEMORY.md, diseño, formularios, shell administrativo, usuarios, roles/permisos, menús, componentes y tablas base de BD, sin el dominio de Multi-POS. Te doy el contexto del nuevo proyecto."

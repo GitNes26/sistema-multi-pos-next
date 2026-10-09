@@ -130,7 +130,8 @@ export async function middleware(req: NextRequest) {
   }
 
   // Portal de clientes (el login del portal es público)
-  if (pathname.startsWith("/portal") && !pathname.startsWith("/portal/auth")) {
+  // El menú digital por QR de mesa es público (la mesa y su token son la credencial).
+  if (pathname.startsWith("/portal") && !pathname.startsWith("/portal/auth") && !pathname.startsWith("/portal/menu")) {
     if (!authenticated || token!.scope !== "portal") {
       return NextResponse.redirect(loginUrl("/portal/auth/login", pathname + search));
     }

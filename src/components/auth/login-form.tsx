@@ -301,6 +301,14 @@ export function LoginForm({
               )}
             </Button>
           </form>
+          {isPortal && (
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              ¿Eres nuevo?{" "}
+              <Link href="/portal/auth/register" className="font-medium text-primary underline-offset-4 hover:underline">
+                Crea tu cuenta
+              </Link>
+            </p>
+          )}
         </div>
 
         {/* Demo access */}

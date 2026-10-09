@@ -307,8 +307,14 @@ export async function createReturn(
       );
     }
 
-    const unitPrice = num(saleItem.unitPrice);
-    const lineTotal = Math.round(item.quantity * unitPrice * 100) / 100;
+    // Se devuelve lo que el cliente realmente pagó: precio de lista menos la parte del
+    // descuento (promoción, cupón o manual) que le tocó a la partida al venderse.
+    const soldQty = num(saleItem.quantity);
+    const paidLine = saleItem.lineTotal != null
+      ? num(saleItem.lineTotal)
+      : Math.max(0, (saleItem.totalPrice != null ? num(saleItem.totalPrice) : soldQty * num(saleItem.unitPrice)) - num(saleItem.discount));
+    const lineTotal = soldQty > 0 ? Math.round(((paidLine * item.quantity) / soldQty) * 100) / 100 : 0;
+    const unitPrice = item.quantity > 0 ? Math.round((lineTotal / item.quantity) * 100) / 100 : 0;
     const itemTax = num(saleItem.taxRate) * lineTotal;
 
     subtotal += lineTotal;
