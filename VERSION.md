@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.40.2.0] — 2026-10-09
+- **Tipo:** `fix` (Patch)
+- fix: texto de la guia de diseno que rompia la compilacion de estilos y dejaba la aplicacion sin cargar
+
 ### [0.40.1.0] — 2026-10-09
 - **Tipo:** `fix` (Patch)
 - fix: enlace de activacion estable al registrarse, mapa que no se traba dentro de dialogos, numero de cliente arriba del nombre y en el login, QR del ticket a dos columnas, historial de puntos sin eliminar, cantidad editable en el detalle del producto y plano a pantalla completa sin desplazamiento

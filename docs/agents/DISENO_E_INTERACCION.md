@@ -35,7 +35,7 @@ Una página operativa no debe exigir descubrir acciones por hover. En touch las 
 - Header pegado arriba: `safe-area-top` o `pt-[env(safe-area-inset-top)]`.
 - Navegación/footer fijo: `safe-area-bottom` o padding calculado.
 - Contenido deja espacio por barra fija: `calc(altura + env(safe-area-inset-bottom))`.
-- Altura de header con inset: `h-[calc(3.5rem+env(safe-area-inset-top))]` (un `h-14` con `pt-[env(...)]` encoge el contenido en teléfonos con notch).
+- Altura de header con inset: `h-[calc(3.5rem+env(safe-area-inset-top))]` (un `h-14` con `pt` con `env(safe-area-inset-top)` encoge el contenido en teléfonos con notch).
 - Horizontal (apaisado con notch): barras y raíz del POS suman `env(safe-area-inset-left/right)`.
 - POS: la raíz usa `h-dvh`; el inset inferior lo aplica cada panel que toca el borde (ticket y catálogo), nunca el contenedor padre también.
 - Diálogos y drawers ya compensan safe area; no la dupliques dentro de cada formulario.
