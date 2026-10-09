@@ -21,16 +21,19 @@ function AppPromo() {
     }
   }, [])
   return (
-    <div className="mt-3 border-t border-dashed border-black/40 pt-3 text-center text-[9px] leading-snug">
-      <p className="text-[10px] font-bold">COMPRA DESDE LA APP</p>
-      {qr && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={qr} alt="QR del portal de clientes" className="mx-auto my-1.5 size-20" />
-      )}
-      <p>Escanea el QR o entra a</p>
-      <p className="font-bold">{PORTAL_LOGIN_URL.replace(/^https?:\/\//, "")}</p>
-      <p>Haz tus pedidos desde tu celular y suma puntos.</p>
-      <p>Regístrate en el punto de venta o con el botón «Soy nuevo» del enlace.</p>
+    <div className="mt-3 border-t border-dashed border-black/40 pt-2 text-[8px] leading-snug">
+      <p className="mb-1 text-center text-[9px] font-bold">COMPRA DESDE LA APP</p>
+      <div className="flex items-center gap-2">
+        {qr && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={qr} alt="QR del portal de clientes" className="size-16 shrink-0" />
+        )}
+        <div className="min-w-0 text-left">
+          <p>Escanea el QR o entra a</p>
+          <p className="break-all font-bold">{PORTAL_LOGIN_URL.replace(/^https?:\/\//, "")}</p>
+          <p>Haz tus pedidos desde tu celular y suma puntos. Regístrate en el punto de venta o con «Soy nuevo» del enlace.</p>
+        </div>
+      </div>
     </div>
   )
 }

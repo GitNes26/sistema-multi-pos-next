@@ -929,7 +929,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         description="Arrastra mesas y elementos al lienzo, reubícalos y ajústalos. Cada cambio se guarda al instante."
         icon={<LayoutGrid className="size-5" />}
         className="h-[calc(100dvh-1rem)] sm:max-w-[calc(100vw-1rem)]"
-        bodyClassName="space-y-3"
+        bodyClassName="flex min-h-0 flex-col gap-2 overflow-hidden"
         footer={<Button onClick={() => setPlanEditorOpen(false)}>Listo</Button>}
       >
         {roomChips}

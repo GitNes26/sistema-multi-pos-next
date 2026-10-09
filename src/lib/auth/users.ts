@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { randomBytes, createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { $Enums } from "@prisma/client";
 
@@ -172,9 +172,21 @@ export async function issuePasswordResetToken(
   const user = await prisma.user.findUnique({ where: { email: normalizeIdentifier(email) } });
   if (!user || !user.isActive) return { sent: false };
 
-  const token = randomBytes(32).toString("hex");
+  // El token se deriva (HMAC) del usuario y su vencimiento: pedir el enlace varias veces
+  // (doble clic, reintento, «olvidé mi contraseña») entrega SIEMPRE el mismo enlace válido, en
+  // lugar de invalidar el del correo anterior.
+  const derive = (expiresMs: number) =>
+    createHmac("sha256", process.env.NEXTAUTH_SECRET ?? "multi-pos-reset")
+      .update(`${user.id}:${expiresMs}`)
+      .digest("hex");
+  const now = Date.now();
+  if (user.passwordResetToken && user.passwordResetExpires && user.passwordResetExpires.getTime() > now + 2 * 60 * 1000) {
+    const current = derive(user.passwordResetExpires.getTime());
+    if (createHash("sha256").update(current).digest("hex") === user.passwordResetToken) return { token: current, sent: true };
+  }
+  const expires = new Date(now + 60 * 60 * 1000); // 1 hora
+  const token = derive(expires.getTime());
   const tokenHash = createHash("sha256").update(token).digest("hex");
-  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
 
   await prisma.user.update({
     where: { id: user.id },

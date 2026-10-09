@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.40.1.0] — 2026-10-09
+- **Tipo:** `fix` (Patch)
+- fix: enlace de activacion estable al registrarse, mapa que no se traba dentro de dialogos, numero de cliente arriba del nombre y en el login, QR del ticket a dos columnas, historial de puntos sin eliminar, cantidad editable en el detalle del producto y plano a pantalla completa sin desplazamiento
+
 ### [0.40.0.0] — 2026-10-09
 - **Tipo:** `feat` (Minor)
 - feat: cliente compartido entre negocios con registro publico y selector de negocio, POS que alterna mesas y pedidos para llevar, menu QR como mesero digital con carrito compartido, escaleras y PDF del plano con edicion a pantalla completa, devoluciones con precio realmente pagado y resumen a dos columnas, traslados con chofer e interfaz propia, logo y QR de la app en tickets y documentos, IVA en 0 y numero de cliente en el perfil

@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { createPortal } from "react-dom"
+import { Dialog as DialogPrimitive } from "radix-ui"
 import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
 import { ArrowLeft, Check, Loader2, LocateFixed, MapPin, Search } from "lucide-react"
@@ -133,8 +133,20 @@ export function AddressMapPicker({
   if (!open || !mounted) return null
   const start = initial ?? fallbackCenter ?? { lat: DEFAULT_CENTER[0], lon: DEFAULT_CENTER[1] }
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] isolate flex flex-col bg-background" role="dialog" aria-modal="true" aria-label="Elegir ubicación de entrega">
+  // Es un diálogo de Radix propio: así funciona también cuando se abre desde otro diálogo
+  // (que de lo contrario bloquea el puntero y el foco fuera de él: mapa trabado, buscador
+  // sin respuesta y cierre al tocar).
+  return (
+    <DialogPrimitive.Root open onOpenChange={(o) => !o && onClose()}>
+    <DialogPrimitive.Portal>
+    <DialogPrimitive.Content
+      data-slot="dialog-content"
+      aria-describedby={undefined}
+      onInteractOutside={(e) => e.preventDefault()}
+      onOpenAutoFocus={(e) => e.preventDefault()}
+      className="fixed inset-0 z-[100] isolate flex flex-col bg-background outline-none"
+    >
+      <DialogPrimitive.Title className="sr-only">Elegir ubicación de entrega</DialogPrimitive.Title>
       <div className="relative min-h-0 flex-1">
         <MapContainer
           center={[start.lat, start.lon]}
@@ -232,7 +244,8 @@ export function AddressMapPicker({
           <Check className="size-5" /> Confirmar ubicación
         </Button>
       </div>
-    </div>,
-    document.body
+    </DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }

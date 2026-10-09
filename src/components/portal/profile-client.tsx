@@ -192,15 +192,15 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate font-heading text-xl font-semibold tracking-tight">{customer.fullName}</h1>
-            {customer.email && <p className="truncate text-sm text-muted-foreground">{customer.email}</p>}
             {customer.customerCode && (
-              <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary tabular">
+              <p className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary tabular">
                 <IdCard className="size-3.5" aria-hidden="true" />
                 <span className="font-medium text-muted-foreground">Nº de cliente</span>
                 {customer.customerCode}
               </p>
             )}
+            <h1 className="truncate font-heading text-xl font-semibold tracking-tight">{customer.fullName}</h1>
+            {customer.email && <p className="truncate text-sm text-muted-foreground">{customer.email}</p>}
           </div>
           <CustomerQr
             customerId={customer.id}

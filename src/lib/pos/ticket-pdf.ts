@@ -189,19 +189,22 @@ function draw(doc: PDFKit.PDFDocument, m: TicketModel, logo: TicketLogo | null, 
   doc.font("Courier-Bold").fontSize(small + 1);
   center("COMPRA DESDE LA APP");
   doc.moveDown(0.4);
-  const qrSize = m.paperWidth === 58 ? 70 : 86;
+  // Dos columnas para ahorrar papel: QR a la izquierda, información a la derecha.
+  const qrSize = m.paperWidth === 58 ? 52 : 62;
+  const gap = 6;
+  const textW = contentWidth - qrSize - gap;
+  const textX = margin + qrSize + gap;
   const qy = doc.y;
-  doc.image(appQr, (pageWidth - qrSize) / 2, qy, { width: qrSize, height: qrSize });
-  doc.y = qy + qrSize + 6;
-  doc.font("Courier").fontSize(6.5);
-  center("Escanea el QR o entra a:");
-  doc.font("Courier-Bold").fontSize(6.5);
-  center(PORTAL_LOGIN_URL.replace(/^https?:\/\//, ""));
-  doc.moveDown(0.3);
-  doc.font("Courier").fontSize(6.5);
-  center("Haz tus pedidos desde tu celular y suma puntos.");
-  center("Regístrate en el punto de venta o con el");
-  center("botón «Soy nuevo» del enlace.");
+  doc.image(appQr, margin, qy, { width: qrSize, height: qrSize });
+  doc.y = qy;
+  doc.font("Courier").fontSize(6);
+  doc.text("Escanea el QR o entra a:", textX, doc.y, { width: textW });
+  doc.font("Courier-Bold").fontSize(6);
+  doc.text(PORTAL_LOGIN_URL.replace(/^https?:\/\//, ""), textX, doc.y, { width: textW });
+  doc.font("Courier").fontSize(6);
+  doc.moveDown(0.2);
+  doc.text("Haz tus pedidos desde tu celular y suma puntos. Regístrate en el punto de venta o con «Soy nuevo» del enlace.", textX, doc.y, { width: textW });
+  doc.y = Math.max(doc.y, qy + qrSize) + 2;
   return doc.y + margin;
 }
 

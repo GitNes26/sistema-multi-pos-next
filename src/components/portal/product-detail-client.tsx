@@ -31,6 +31,7 @@ import {
 import { swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
 import { SPRING_BOUNCE, STAGGER_FADE_UP } from "@/lib/animation-tokens"
+import { QuantityStepper } from "@/components/base/quantity-stepper"
 import { haptic } from "@/lib/haptics"
 import { ThumbImage } from "@/components/base/thumb-image"
 
@@ -407,34 +408,17 @@ export function ProductDetailClient({ productId }: { productId: string }) {
         {!isBulk && p.trackInventory && (selectedVariant?.stock ?? 0) > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Cantidad</p>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setQuantity((q) => Math.max(1, q - 1))
-                  haptic.light()
-                }}
-                disabled={quantity <= 1}
-                className="flex size-11 touch-manipulation items-center justify-center rounded-xl border bg-background transition active:scale-95 active:bg-muted disabled:opacity-40"
-              >
-                <Minus className="size-4" />
-              </button>
-              <span className="min-w-[3ch] text-center text-lg font-bold tabular-nums">
-                {quantity}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  const max = selectedVariant?.stock ?? 99
-                  setQuantity((q) => Math.min(max, q + 1))
-                  haptic.light()
-                }}
-                disabled={quantity >= (selectedVariant?.stock ?? 99)}
-                className="flex size-11 touch-manipulation items-center justify-center rounded-xl border bg-background transition active:scale-95 active:bg-muted disabled:opacity-40"
-              >
-                <Plus className="size-4" />
-              </button>
-            </div>
+            <QuantityStepper
+              size="lg"
+              value={quantity}
+              min={1}
+              max={selectedVariant?.stock ?? 99}
+              onChange={(v) => {
+                setQuantity(v)
+                haptic.light()
+              }}
+              ariaLabel="Cantidad"
+            />
           </div>
         )}
 

@@ -25,8 +25,8 @@ import {
 const CANVAS_W = 880;
 const CANVAS_H = 560;
 // Lienzo ampliado para la edición a pantalla completa.
-const CANVAS_W_FULL = 1600;
-const CANVAS_H_FULL = 1000;
+const CANVAS_W_FULL = 1200;
+const CANVAS_H_FULL = 720;
 const STATUS_STYLE: Record<string, string> = {
   free: "border-success bg-success/15 text-success-ink",
   occupied: "border-destructive bg-destructive/15 text-destructive",
@@ -96,6 +96,23 @@ export function FloorPlanEditor({
   const [nodeOverrides, setNodeOverrides] = useState<Record<string, Partial<PlanNode>>>({});
   const dragRef = useRef<{ kind: "table" | "node"; id: string; startX: number; startY: number; moved: boolean } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // A pantalla completa el plano se ajusta de entrada al área disponible (se ve todo sin desplazar).
+  useEffect(() => {
+    if (!fullscreen) return;
+    const fit = () => {
+      const el = canvasRef.current;
+      if (!el) return;
+      const z = Math.min(el.clientWidth / CANVAS_W_FULL, el.clientHeight / CANVAS_H_FULL, 1.5);
+      if (z > 0.2) setZoom(Math.round(z * 100) / 100);
+    };
+    const t = window.setTimeout(fit, 80);
+    window.addEventListener("resize", fit);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("resize", fit);
+    };
+  }, [fullscreen]);
 
   const selectedTableBase = selected?.kind === "table" ? tables.find((t) => t.id === selected.id) ?? null : null;
   const selectedNodeBase = selected?.kind === "node" ? nodes.find((n) => n.id === selected.id) ?? null : null;
@@ -361,7 +378,7 @@ export function FloorPlanEditor({
   };
 
   return (
-    <div className="space-y-3">
+    <div className={cn(fullscreen ? "flex min-h-0 flex-1 flex-col gap-2" : "space-y-3")}>
       <div className="flex flex-wrap items-center gap-2">
         <MapPin className="size-4 text-muted-foreground" />
         <p className="text-sm font-semibold">{roomName ? `Plano · ${roomName}` : "Mesas sin sala"}</p>
@@ -399,7 +416,7 @@ export function FloorPlanEditor({
       </div>
 
       {canManage && fullscreen && (
-        <div className="flex flex-wrap gap-1.5 rounded-xl border bg-muted/30 p-2">
+        <div className="flex shrink-0 flex-wrap gap-1.5 rounded-xl border bg-muted/30 p-2">
           <span className="mr-1 inline-flex items-center gap-1 self-center text-xs font-semibold text-muted-foreground">
             <MousePointer2 className="size-3" /> Arrastra al plano:
           </span>
@@ -429,10 +446,11 @@ export function FloorPlanEditor({
       <div
         ref={canvasRef}
         className={cn(
+          fullscreen && "min-h-0 flex-1",
           "relative overflow-auto rounded-xl border bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)] bg-[size:24px_24px] dark:bg-[linear-gradient(to_right,#ffffff10_1px,transparent_1px),linear-gradient(to_bottom,#ffffff10_1px,transparent_1px)]",
           canManage && "drop-zone"
         )}
-        style={{ height: fullscreen ? "calc(100dvh - 20rem)" : CANVAS_H * 0.8, minHeight: fullscreen ? 320 : undefined }}
+        style={fullscreen ? { minHeight: 200 } : { height: CANVAS_H * 0.8 }}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onDragOver={(e) => canManage && e.preventDefault()}
@@ -508,7 +526,7 @@ export function FloorPlanEditor({
 
       {/* Barra de edición del elemento seleccionado */}
       {selectedTable && draft && (
-        <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-muted/30 p-3">
+        <div className="flex shrink-0 flex-wrap items-end gap-3 rounded-xl border bg-muted/30 p-3">
           <div>
             <label className="mb-1 block text-xs font-medium">Forma</label>
             <select
@@ -565,7 +583,7 @@ export function FloorPlanEditor({
       )}
 
       {selectedNode && (
-        <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-muted/30 p-3">
+        <div className="flex shrink-0 flex-wrap items-end gap-3 rounded-xl border bg-muted/30 p-3">
           <div>
             <label className="mb-1 block text-xs font-medium">Elemento</label>
             <p className="text-sm font-semibold">{PLAN_NODE_META[selectedNode.kind]?.label ?? "Zona"}</p>
@@ -596,7 +614,7 @@ export function FloorPlanEditor({
         </div>
       )}
 
-      {canManage && (
+      {canManage && !fullscreen && (
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           <span>Arrastra para reubicar · clic para editar · Supr elimina el seleccionado.</span>
           <span className="ml-auto flex items-center gap-1">

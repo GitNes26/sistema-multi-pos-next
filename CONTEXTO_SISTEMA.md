@@ -226,6 +226,8 @@ Implementado el 9 de octubre de 2026 (cuarta tanda, pendiente de validación en 
 - **Documentos:** logo de la empresa en tickets (PNG desde disco; pdfkit no lee WebP), recibos de nómina, solicitudes de traslado, cotizaciones/órdenes y plano; QR + enlace del portal al pie de todos los tickets (`NEXT_PUBLIC_PORTAL_URL` opcional). IVA de productos oculto y en 0 (seeders incluidos).
 - **Perfil del portal:** nº de cliente visible y QR con Wake Lock (el navegador no permite subir el brillo del equipo).
 
+Ajustes del 9 de octubre de 2026 (segunda parte): el enlace de activación/recuperación ya es idempotente (`issuePasswordResetToken` deriva el token con HMAC del usuario y su vencimiento, así que pedirlo de nuevo reenvía el mismo enlace válido en lugar de invalidar el anterior); el selector de mapa (`AddressMapPicker`) es un diálogo Radix propio para funcionar dentro de otros diálogos; el QR del ticket va a dos columnas; el plano editable a pantalla completa se ajusta a la ventana.
+
 ## 10. Mantenimiento documental
 
 - `AGENTS.md`: reglas obligatorias y router.

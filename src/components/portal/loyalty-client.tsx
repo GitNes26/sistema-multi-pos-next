@@ -8,7 +8,6 @@ import { money } from "@/lib/pos/money"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PullToRefresh } from "@/components/shared/pull-to-refresh"
 import { EmptyState } from "@/components/shared/empty-state"
-import { SwipeableRow } from "@/components/shared/swipeable-row"
 import { cn } from "@/lib/utils"
 import { STAGGER } from "@/lib/animation-tokens"
 
@@ -102,7 +101,6 @@ export function LoyaltyClient() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * STAGGER.COMPACT }}
                   >
-                    <SwipeableRow onDelete={() => {}}>
                       <div className="flex items-center gap-3 rounded-2xl border bg-card p-3.5">
                         <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", config.color)}>
                           <Icon className="size-4" />
@@ -123,7 +121,6 @@ export function LoyaltyClient() {
                           {t.points >= 0 ? "+" : ""}{money(t.points)}
                         </span>
                       </div>
-                    </SwipeableRow>
                   </motion.div>
                 )
               })}
