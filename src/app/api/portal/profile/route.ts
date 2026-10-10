@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
+import { getPortalCustomer } from "@/lib/portal/server";
 import { prisma } from "@/lib/db";
 
 // GET /api/portal/profile — Get customer profile
@@ -14,31 +15,14 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "Sin organización" }, { status: 403 });
   }
 
-  const customer = await prisma.customer.findFirst({
-    where: { userId: session.user.id, organizationId },
-    select: {
-      id: true,
-      fullName: true,
-      phone: true,
-      email: true,
-      points: true,
-      imageUrl: true,
-      address: true,
-      latitude: true,
-      longitude: true,
-    },
-  });
+  // Incluye el Nº de cliente (se asigna si aún no lo tenía).
+  const customer = await getPortalCustomer(organizationId, session.user.id);
   if (!customer) {
     return NextResponse.json({ ok: false, error: "Cliente no encontrado" }, { status: 404 });
   }
 
   // Prisma Decimal fields arrive as objects — convert to plain numbers.
-  const safe = {
-    ...customer,
-    points: customer.points != null ? Number(customer.points) : 0,
-    latitude: customer.latitude != null ? Number(customer.latitude) : null,
-    longitude: customer.longitude != null ? Number(customer.longitude) : null,
-  };
+  const safe = customer;
 
   return NextResponse.json({ ok: true, customer: safe });
 }

@@ -614,8 +614,8 @@ export function FloorPlanEditor({
         </div>
       )}
 
-      {canManage && !fullscreen && (
-        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+      {canManage && (
+        <div className={cn("flex shrink-0 flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground", fullscreen && "text-[11px] leading-tight")}>
           <span>Arrastra para reubicar · clic para editar · Supr elimina el seleccionado.</span>
           <span className="ml-auto flex items-center gap-1">
             {NODE_KIND_OPTIONS.slice(0, 3).map((k) => (

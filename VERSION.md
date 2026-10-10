@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.40.3.0] — 2026-10-10
+- **Tipo:** `fix` (Patch)
+- fix: el perfil del portal devolvia el numero de cliente vacio (ahora siempre se muestra y se asigna si falta) e indicaciones del plano visibles en la edicion a pantalla completa
+
 ### [0.40.2.0] — 2026-10-09
 - **Tipo:** `fix` (Patch)
 - fix: texto de la guia de diseno que rompia la compilacion de estilos y dejaba la aplicacion sin cargar

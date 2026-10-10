@@ -1,4 +1,5 @@
 import { announceOrderChange } from "@/lib/orders/live"
+import { nextCustomerCode } from "@/lib/crud/modules/customers"
 import { prisma } from "@/lib/db"
 import { getStoreStatus } from "@/lib/store-status"
 import { Prisma, type $Enums } from "@prisma/client"
@@ -90,8 +91,22 @@ export async function getPortalCustomer(
     },
   })
   if (!c) return null
+  // Clientes dados de alta antes de que existiera el número: se les asigna al consultarse.
+  let customerCode = c.customerCode
+  if (!customerCode) {
+    for (let attempt = 0; attempt < 3 && !customerCode; attempt++) {
+      try {
+        const next = await nextCustomerCode(organizationId)
+        await prisma.customer.update({ where: { id: c.id }, data: { customerCode: next } })
+        customerCode = next
+      } catch {
+        /* otro proceso tomó el consecutivo: reintenta */
+      }
+    }
+  }
   return {
     ...c,
+    customerCode,
     points: toNum(c.points),
     latitude: c.latitude ? toNum(c.latitude) : null,
     longitude: c.longitude ? toNum(c.longitude) : null,
