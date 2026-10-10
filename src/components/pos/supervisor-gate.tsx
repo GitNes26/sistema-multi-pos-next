@@ -1,6 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useSession } from "next-auth/react";
+import { hasPermission } from "@/lib/auth/permissions";
+import { swalToast } from "@/lib/swal";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -14,7 +17,12 @@ interface SupervisorContextValue {
   required: boolean;
   setRequired: (value: boolean) => void;
   setPin: (pin: string) => void;
-  requestSupervisor: (action: string) => Promise<boolean>;
+  requestSupervisor: (action: string, opts?: { force?: boolean }) => Promise<boolean>;
+  /**
+   * Artículos que ya se llevaron a la mesa: no se quitan ni disminuyen salvo que el negocio lo
+   * haya configurado en «Aprobación de supervisor»; entonces lo autoriza un supervisor o gerente.
+   */
+  approveServedChange: (label: string) => Promise<boolean>;
 }
 
 const SupervisorContext = createContext<SupervisorContextValue>({
@@ -22,6 +30,7 @@ const SupervisorContext = createContext<SupervisorContextValue>({
   setRequired: () => undefined,
   setPin: () => undefined,
   requestSupervisor: async () => true,
+  approveServedChange: async () => true,
 });
 
 export function useSupervisor() {
@@ -39,11 +48,19 @@ export function SupervisorProvider({ children }: { children: ReactNode }) {
   const [action, setAction] = useState("");
   const [error, setError] = useState(false);
   const resolver = useRef<((ok: boolean) => void) | null>(null);
+  const { data: session } = useSession();
+  const [policy, setPolicy] = useState<{ required: boolean; actions: string[] }>({ required: false, actions: [] });
+  useEffect(() => {
+    fetch("/api/pos/supervisor", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => d.ok && setPolicy({ required: Boolean(d.settings.required), actions: d.settings.actions ?? [] }))
+      .catch(() => undefined);
+  }, []);
 
   const requestSupervisor = useCallback(
-    (act: string) =>
+    (act: string, opts?: { force?: boolean }) =>
       new Promise<boolean>((resolve) => {
-        if (!required) {
+        if (!required && !opts?.force) {
           resolve(true);
           return;
         }
@@ -54,6 +71,20 @@ export function SupervisorProvider({ children }: { children: ReactNode }) {
         resolver.current = resolve;
       }),
     [required]
+  );
+
+  const approveServedChange = useCallback(
+    async (label: string) => {
+      const configured = policy.required && policy.actions.includes("served_items");
+      if (!configured) {
+        swalToast("Ya se llevó a la mesa: no se puede quitar ni disminuir. Pide autorización a un supervisor.", "warning");
+        return false;
+      }
+      // Quien ya tiene permiso de supervisor/gerente autoriza directamente.
+      if (hasPermission(session, "supervisor.approve")) return true;
+      return requestSupervisor(label, { force: true });
+    },
+    [policy, session, requestSupervisor]
   );
 
   const setRequired = (value: boolean) => setRequiredState(value);
@@ -78,7 +109,7 @@ export function SupervisorProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <SupervisorContext.Provider value={{ required, setRequired, setPin, requestSupervisor }}>
+    <SupervisorContext.Provider value={{ required, setRequired, setPin, requestSupervisor, approveServedChange }}>
       {children}
       <DialogComponent
         open={open}

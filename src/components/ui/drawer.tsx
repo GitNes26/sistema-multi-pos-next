@@ -4,6 +4,7 @@ import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
+import { OverlayBackGuard } from "@/hooks/use-overlay-back"
 
 function Drawer({
   ...props
@@ -64,6 +65,7 @@ function DrawerContent({
         )}
         {...props}
       >
+        <OverlayBackGuard />
         <div className="mx-auto mt-4 hidden h-1 w-[100px] shrink-0 rounded-full bg-muted group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
         {children}
       </DrawerPrimitive.Content>

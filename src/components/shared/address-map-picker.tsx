@@ -6,6 +6,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
 import { ArrowLeft, Check, Loader2, LocateFixed, MapPin, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { OverlayBackGuard } from "@/hooks/use-overlay-back"
 import { useLocation, type LocationResult } from "@/hooks/use-location"
 import { useAddressSuggestions } from "@/components/shared/use-address-suggestions"
 
@@ -146,6 +147,7 @@ export function AddressMapPicker({
       onOpenAutoFocus={(e) => e.preventDefault()}
       className="fixed inset-0 z-[100] isolate flex flex-col bg-background outline-none"
     >
+      <OverlayBackGuard />
       <DialogPrimitive.Title className="sr-only">Elegir ubicación de entrega</DialogPrimitive.Title>
       <div className="relative min-h-0 flex-1">
         <MapContainer

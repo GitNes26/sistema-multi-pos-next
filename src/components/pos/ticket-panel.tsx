@@ -31,6 +31,7 @@ import { SPRING_LAYOUT } from "@/lib/animation-tokens"
 import { TableSelector } from "./table-selector"
 import { KitchenStatus } from "./kitchen-status"
 import { switchTicket } from "@/lib/pos/tickets"
+import { useSupervisor } from "./supervisor-gate"
 import { OpenAccounts } from "./open-accounts"
 import { TableCartBanner } from "./table-cart-banner"
 
@@ -189,10 +190,12 @@ export function TicketPanel({
   }
 
   /** Cantidad escrita a mano (p. ej. 50 piezas): respeta la existencia. */
-  const setItemQty = (key: string, qty: number) => {
+  const setItemQty = async (key: string, qty: number) => {
     const item = items.find((i) => i.key === key)
     if (!item) return
     let next = Math.max(1, Math.floor(qty))
+    if (!(await canReduce(item, next))) return
+    if (next < (item.sentQty ?? 0)) clampSent(key, next)
     if (item.trackInventory && next > Math.floor(item.stock)) {
       next = Math.max(1, Math.floor(item.stock))
       swalToast(`Solo hay ${next} en existencia`, "warning")
@@ -201,15 +204,43 @@ export function TicketPanel({
     notifyChange(key)
   }
 
-  const decrement = (key: string) => {
+  const { approveServedChange} = useSupervisor()
+
+  /** Baja la cantidad enviada junto con la línea cuando un supervisor autorizó el cambio. */
+  const clampSent = (key: string, qty: number) =>
+    usePosStore.setState((s) => ({ items: s.items.map((i) => (i.key === key && (i.sentQty ?? 0) > qty ? { ...i, sentQty: qty } : i)) }))
+
+  /** ¿Se puede quitar `to` (0 = quitar) de una línea? Lo ya llevado a la mesa pide autorización. */
+  const canReduce = async (item: PosLineItem, to: number) => {
+    const sent = item.sentQty ?? 0
+    if (sent <= 0 || to >= sent) return true
+    return approveServedChange(`${to <= 0 ? "Quitar" : "Disminuir"} «${item.name}» (ya llevado a la mesa)`)
+  }
+
+  const removeLine = async (key: string) => {
+    const item = items.find((i) => i.key === key)
+    if (!item) return
+    if (!(await canReduce(item, 0))) return
+    removeItem(key)
+  }
+
+  const decrement = async (key: string) => {
     const item = items.find((i) => i.key === key)
     if (!item) return
     if (item.qty <= 1) {
-      removeItem(key)
+      await removeLine(key)
       return
     }
+    if (!(await canReduce(item, item.qty - 1))) return
     setQty(key, item.qty - 1)
+    clampSent(key, item.qty - 1)
     notifyChange(key)
+  }
+
+  const clearAll = async () => {
+    const served = items.filter((i) => (i.sentQty ?? 0) > 0)
+    if (served.length > 0 && !(await approveServedChange("Limpiar el ticket con artículos ya llevados a la mesa"))) return
+    clearTicket()
   }
 
   return (
@@ -226,7 +257,7 @@ export function TicketPanel({
           variant="ghost"
           size="sm"
           disabled={!items.length}
-          onClick={clearTicket}
+          onClick={() => void clearAll()}
           className="text-muted-foreground hover:text-destructive"
         >
           <RotateCcw className="size-4" />
@@ -275,9 +306,9 @@ export function TicketPanel({
                   }}
                   flashNonce={flash.key === item.key ? flash.nonce : 0}
                   onIncrement={increment}
-                  onDecrement={decrement}
-                  onRemove={removeItem}
-                  onSetQty={setItemQty}
+                  onDecrement={(k) => void decrement(k)}
+                  onRemove={(k) => void removeLine(k)}
+                  onSetQty={(k, q) => void setItemQty(k, q)}
                   onEdit={onEditBulk}
                 />
               </motion.div>

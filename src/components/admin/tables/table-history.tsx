@@ -5,14 +5,13 @@ import {
   Armchair,
   Clock,
   DollarSign,
-  Hash,
+  Receipt,
   History,
   ShoppingBag,
   TrendingUp,
 } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { DialogComponent } from "@/components/ui/dialog"
-import { Spinner } from "@/components/base/spinner"
 import { EmptyState } from "@/components/shared/empty-state"
 import { money } from "@/lib/pos/money"
 import { cn } from "@/lib/utils"
@@ -126,181 +125,116 @@ export function TableHistoryDialog({ open, tableId, tableNumber, onClose }: Prop
     }
   }, [open, tableId, load])
 
+  // Visitas y órdenes en una sola línea de tiempo por día (las órdenes ligadas a una sesión no se repiten).
+  type Entry = {
+    key: string
+    at: string
+    endedAt: string | null
+    live: boolean
+    notes: string | null
+    order: { orderNumber: number; status: string; total: number; itemCount: number } | null
+  }
+  const entries: Entry[] = []
+  if (data) {
+    const inSession = new Set<string>()
+    for (const s of data.sessions) {
+      if (s.order) inSession.add(s.order.id)
+      entries.push({ key: `s-${s.id}`, at: s.startedAt, endedAt: s.endedAt, live: !s.endedAt, notes: s.notes, order: s.order ? { orderNumber: s.order.orderNumber, status: s.order.status, total: s.order.total, itemCount: s.order.itemCount } : null })
+    }
+    for (const o of data.orders) {
+      if (inSession.has(o.id)) continue
+      entries.push({ key: `o-${o.id}`, at: o.createdAt, endedAt: null, live: false, notes: null, order: { orderNumber: o.orderNumber, status: o.status, total: o.total, itemCount: o.itemCount } })
+    }
+    entries.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+  }
+  const byDay = new Map<string, Entry[]>()
+  for (const e of entries) {
+    const day = new Date(e.at).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    byDay.set(day, [...(byDay.get(day) ?? []), e])
+  }
+  const time = (iso: string) => new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+
   return (
     <DialogComponent
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title={tableNumber != null ? `Historial Mesa #${tableNumber}` : "Historial"}
+      title={tableNumber != null ? `Historial · Mesa ${tableNumber}` : "Historial"}
+      description={data ? `${data.table.name ? `${data.table.name} · ` : ""}${data.table.capacity} personas` : undefined}
       icon={<History className="size-5" />}
-      size="lg"
+      size="2xl"
+      bodyClassName="space-y-5"
     >
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Spinner />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-2xl" />
+            ))}
+          </div>
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
         </div>
       ) : error ? (
         <div className="py-8 text-center text-sm text-destructive">{error}</div>
       ) : !data ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
-          Sin datos
-        </div>
-      ) : data.sessions.length === 0 && data.orders.length === 0 ? (
-        <EmptyState
-          icon={Armchair}
-          title="Sin historial"
-          description="Esta mesa aún no tiene sesiones ni órdenes registradas."
-        />
+        <div className="py-8 text-center text-sm text-muted-foreground">Sin datos</div>
+      ) : entries.length === 0 ? (
+        <EmptyState icon={Armchair} title="Sin historial" description="Esta mesa aún no tiene sesiones ni órdenes registradas." />
       ) : (
-        <div className="space-y-5">
-          {/* ── Summary stats ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard
-              icon={DollarSign}
-              iconBg="bg-success/10"
-              iconColor="text-success-ink"
-              label="Ingresos totales"
-              value={money(data.stats.totalRevenue)}
-            />
-            <StatCard
-              icon={ShoppingBag}
-              iconBg="bg-info/10"
-              iconColor="text-info-ink"
-              label="Órdenes"
-              value={String(data.stats.totalOrders)}
-            />
-            <StatCard
-              icon={Clock}
-              iconBg="bg-warning/10"
-              iconColor="text-warning-ink"
-              label="Sesiones"
-              value={String(data.stats.totalSessions)}
-            />
-            <StatCard
-              icon={TrendingUp}
-              iconBg="bg-violet-100"
-              iconColor="text-violet-600"
-              label="Ticket promedio"
-              value={money(data.stats.avgOrderValue)}
-            />
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard icon={DollarSign} tone="success" label="Ingresos" value={money(data.stats.totalRevenue)} />
+            <StatCard icon={ShoppingBag} tone="info" label="Órdenes" value={String(data.stats.totalOrders)} />
+            <StatCard icon={Clock} tone="warning" label="Visitas" value={String(data.stats.totalSessions)} />
+            <StatCard icon={TrendingUp} tone="primary" label="Ticket promedio" value={money(data.stats.avgOrderValue)} />
           </div>
 
-          {/* ── Sessions timeline ── */}
-          {data.sessions.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                <Clock className="size-4" />
-                Sesiones ({data.sessions.length})
-              </h4>
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {data.sessions.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-start gap-3 rounded-xl border p-3 text-sm"
-                  >
-                    {/* Timeline dot */}
-                    <div className="mt-1 flex flex-col items-center">
-                      <div
+          <div className="space-y-5">
+            {[...byDay.entries()].map(([day, list]) => (
+              <section key={day} className="space-y-2">
+                <h4 className="sticky top-0 z-10 -mx-1 bg-popover/95 px-1 py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur">
+                  {day}
+                </h4>
+                <ol className="relative space-y-2 border-l pl-4">
+                  {list.map((e) => (
+                    <li key={e.key} className="relative rounded-xl border bg-card p-3 text-sm">
+                      <span
                         className={cn(
-                          "w-2.5 h-2.5 rounded-full",
-                          s.endedAt ? "bg-muted-foreground/30" : "bg-success animate-pulse"
+                          "absolute top-4 -left-[1.38rem] size-2.5 rounded-full ring-4 ring-popover",
+                          e.live ? "animate-pulse bg-success" : "bg-muted-foreground/40"
                         )}
                       />
-                      {s.endedAt && (
-                        <div className="w-px flex-1 bg-muted mt-1" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium">
-                          {new Date(s.startedAt).toLocaleDateString("es-MX", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                        <span className="font-semibold tabular-nums">
+                          {time(e.at)}
+                          {e.endedAt && <span className="font-normal text-muted-foreground"> → {time(e.endedAt)}</span>}
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDuration(s.startedAt, s.endedAt)}
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground tabular-nums">
+                          {e.live ? "En curso · " : ""}
+                          {formatDuration(e.at, e.endedAt)}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(s.startedAt).toLocaleTimeString("es-MX", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                        {s.endedAt &&
-                          ` → ${new Date(s.endedAt).toLocaleTimeString("es-MX", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}`}
-                      </p>
-
-                      {s.order && (
-                        <div className="flex items-center justify-between gap-2 mt-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <Hash className="size-3 text-muted-foreground" />
-                            <span className="font-mono text-xs">
-                              #{s.order.orderNumber}
+                      {e.order && (
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/50 px-2.5 py-2">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <Receipt className="size-4 shrink-0 text-muted-foreground" />
+                            <span className="font-mono text-xs font-medium">#{e.order.orderNumber}</span>
+                            <OrderStatusPill status={e.order.status} />
+                            <span className="text-xs text-muted-foreground">
+                              {e.order.itemCount} {e.order.itemCount === 1 ? "artículo" : "artículos"}
                             </span>
-                            <OrderStatusPill status={s.order.status} />
-                          </div>
-                          <span className="font-semibold tabular-nums">
-                            {money(s.order.total)}
                           </span>
+                          <span className="font-bold tabular-nums">{money(e.order.total)}</span>
                         </div>
                       )}
-
-                      {s.notes && (
-                        <p className="text-xs text-muted-foreground italic mt-1">
-                          📝 {s.notes}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Orders list ── */}
-          {data.orders.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                <ShoppingBag className="size-4" />
-                Órdenes ({data.orders.length})
-              </h4>
-              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                {data.orders.map((o) => (
-                  <div
-                    key={o.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-mono font-medium text-xs">
-                        #{o.orderNumber}
-                      </span>
-                      <OrderStatusPill status={o.status} />
-                      <span className="text-xs text-muted-foreground hidden sm:inline">
-                        {o.itemCount} art.
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(o.createdAt).toLocaleDateString("es-MX", {
-                          day: "numeric",
-                          month: "short",
-                        })}
-                      </span>
-                      <span className="font-semibold tabular-nums">
-                        {money(o.total)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+                      {e.notes && <p className="mt-2 text-xs text-muted-foreground italic">“{e.notes}”</p>}
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ))}
+          </div>
+        </>
       )}
     </DialogComponent>
   )
@@ -310,37 +244,33 @@ export function TableHistoryDialog({ open, tableId, tableNumber, onClose }: Prop
 /*  StatCard helper                                                    */
 /* ------------------------------------------------------------------ */
 
+const TONES = {
+  success: "bg-success/10 text-success-ink",
+  info: "bg-info/10 text-info-ink",
+  warning: "bg-warning/10 text-warning-ink",
+  primary: "bg-primary/10 text-primary",
+} as const
+
 function StatCard({
   icon: Icon,
-  iconBg,
-  iconColor,
+  tone,
   label,
   value,
 }: {
   icon: React.ComponentType<{ className?: string }>
-  iconBg: string
-  iconColor: string
+  tone: keyof typeof TONES
   label: string
   value: string
 }) {
   return (
-    <Card>
-      <CardContent className="pt-3 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div
-            className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-              iconBg
-            )}
-          >
-            <Icon className={cn("w-4 h-4", iconColor)} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground truncate">{label}</p>
-            <p className="text-base font-bold tabular-nums">{value}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-3 rounded-2xl border bg-card p-3">
+      <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", TONES[tone])}>
+        <Icon className="size-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-xs text-muted-foreground">{label}</span>
+        <span className="block truncate text-base font-bold tabular-nums">{value}</span>
+      </span>
+    </div>
   )
 }

@@ -228,6 +228,12 @@ Implementado el 9 de octubre de 2026 (cuarta tanda, pendiente de validación en 
 
 Ajustes del 9 de octubre de 2026 (segunda parte): el enlace de activación/recuperación ya es idempotente (`issuePasswordResetToken` deriva el token con HMAC del usuario y su vencimiento, así que pedirlo de nuevo reenvía el mismo enlace válido en lugar de invalidar el anterior); el selector de mapa (`AddressMapPicker`) es un diálogo Radix propio para funcionar dentro de otros diálogos; el QR del ticket va a dos columnas; el plano editable a pantalla completa se ajusta a la ventana.
 
+Ajustes del 9 de octubre de 2026 (tercera parte):
+- **«Atrás» cierra el overlay:** los diálogos, sheets y drawers (`DialogContent`, `SheetContent`, `DrawerContent` y el mapa de direcciones) agregan una entrada al historial mediante `OverlayBackGuard` (`src/hooks/use-overlay-back.ts`); el botón o gesto «atrás» cierra solo el de más arriba (simula Escape) y no navega.
+- **Cambio de tienda en el portal:** `PortalShell` vuelve a montar las páginas (`key` = organización activa) y limpia catálogo y favoritos, de modo que cada pantalla muestra su esqueleto y recarga los datos del negocio nuevo.
+- **POS:** los artículos ya enviados a cocina/llevados a la mesa no se quitan ni disminuyen salvo que la acción `served_items` esté activa en «Aprobación de supervisor»; entonces la autoriza quien tenga `supervisor.approve` o el PIN de supervisor (el PIN sigue siendo el de demostración guardado en el equipo). El selector de mesas muestra el avance del servicio (en cocina / por llevar / todo servido, `lib/tables/service.ts`) y la comanda activa del ticket es un acordeón.
+- **Historial de mesas:** línea de tiempo por día con visitas y órdenes unificadas.
+
 ## 10. Mantenimiento documental
 
 - `AGENTS.md`: reglas obligatorias y router.

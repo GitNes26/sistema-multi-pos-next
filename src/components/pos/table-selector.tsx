@@ -26,6 +26,8 @@ interface Table {
   location: { name: string } | null
   // Aviso de llegada: reservación confirmada próxima (anfitrión prepara el lugar).
   upcomingReservation?: { guests: number; startsAt: string } | null
+  /** Avance del servicio de la cuenta abierta (cocina → mesa). */
+  service?: { total: number; inKitchen: number; toServe: number; served: number; amount: number } | null
 }
 
 interface Props {
@@ -44,12 +46,37 @@ const statusColor = (s: string) => {
 
 const statusLabel = (s: string) => {
   if (s === "free") return "Libre"
-  if (s === "occupied") return "Ocupada · ver cuenta"
+  if (s === "occupied") return "Ocupada"
   if (s === "reserved") return "Reservada"
   return s
 }
 
 const SSE_RETRIES_MAX = 5;
+
+/** Qué le falta a la mesa: en cocina, listo para llevar o todo servido. */
+function ServiceChips({ service }: { service?: Table["service"] }) {
+  if (!service || service.total <= 0) return null
+  const done = service.inKitchen === 0 && service.toServe === 0
+  return (
+    <span className="flex flex-wrap gap-1">
+      {service.toServe > 0 && (
+        <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-warning-ink tabular">
+          Por llevar {service.toServe}
+        </span>
+      )}
+      {service.inKitchen > 0 && (
+        <span className="rounded-full bg-info/15 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-info-ink tabular">
+          En cocina {service.inKitchen}
+        </span>
+      )}
+      {done && (
+        <span className="rounded-full bg-success/20 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-success-ink">
+          Todo servido
+        </span>
+      )}
+    </span>
+  )
+}
 
 export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
   const [tables, setTables] = useState<Table[]>([])
@@ -136,6 +163,7 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
                       data.upcomingReservation !== undefined
                         ? data.upcomingReservation
                         : t.upcomingReservation,
+                    service: data.service !== undefined ? data.service : t.service,
                   }
                 : t
             )
@@ -186,8 +214,16 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
     // Open SSE stream for live updates.
     registerSse("tables")
     connectSse()
+    // El avance de cocina → mesa cambia sin eventos de mesa: refresco suave.
+    const poll = window.setInterval(() => {
+      fetch(`/api/tables?${params}`)
+        .then((r) => r.json())
+        .then((d) => Array.isArray(d.tables) && setTables(d.tables))
+        .catch(() => undefined)
+    }, 10_000)
 
     return () => {
+      window.clearInterval(poll)
       closedRef.current = true
       esRef.current?.close()
       esRef.current = null
@@ -291,7 +327,17 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
                           table={{ ...t, shape: t.shape ?? "round", width: t.width ?? null, height: t.height ?? null, posX: t.posX ?? null, posY: t.posY ?? null, capacity: t.capacity ?? 4 }}
                           x={t.posX ?? 70 + (i % 5) * 120}
                           y={t.posY ?? 70 + Math.floor(i / 5) * 110}
-                          label={t.status === "occupied" ? "ver cuenta" : t.capacity ? `${t.capacity} pers.` : null}
+                          label={
+                            t.status === "occupied" && t.service
+                              ? t.service.toServe > 0
+                                ? `llevar ${t.service.toServe}`
+                                : t.service.inKitchen > 0
+                                  ? `cocina ${t.service.inKitchen}`
+                                  : "servido"
+                              : t.capacity
+                                ? `${t.capacity} pers.`
+                                : null
+                          }
                           className={cn(
                             t.status === "free" && "border-success bg-success/15 text-success-ink",
                             t.status === "occupied" && "border-destructive bg-destructive/15 text-destructive",
@@ -328,7 +374,7 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
                       <p className="mb-2 text-sm font-semibold text-muted-foreground">
                         {room}
                       </p>
-                      <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5">
+                      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
                         {groups.get(room)!.map((t) => (
                           <button
                             key={t.id}
@@ -338,37 +384,35 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
                               onSelect({ id: t.id, number: t.number, name: t.name })
                               onClose()
                             }}
-                            title={t.upcomingReservation
-                              ? `Mesa ${t.number} · reservación confirmada ${new Date(t.upcomingReservation.startsAt).toLocaleString("es-MX", { hour: "2-digit", minute: "2-digit" })} · ${t.upcomingReservation.guests} pers.`
-                              : undefined}
                             className={cn(
-                              "press relative flex min-h-28 flex-col items-center justify-center gap-1 rounded-2xl border-2 p-3",
+                              "press relative flex min-h-32 min-w-0 flex-col gap-1.5 rounded-2xl border-2 p-3 text-left",
                               statusColor(t.status),
                               glowingIds.has(t.id) && "animate-table-glow",
                               t.upcomingReservation && "ring-2 ring-violet-500/60 ring-offset-2 ring-offset-popover"
                             )}
                           >
-                            {t.upcomingReservation && (
-                              <span className="absolute -top-2.5 -right-2 flex items-center gap-1 rounded-full bg-violet-600 px-2 py-0.5 text-xs font-semibold text-white shadow-e1 tabular">
-                                <Clock className="size-3" />
-                                {new Date(t.upcomingReservation.startsAt).toLocaleTimeString("es-MX", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                            )}
-                            <Armchair className="size-5" />
-                            <span className="text-xl leading-none font-bold tabular">{t.number}</span>
-                            {t.name && <span className="w-full truncate text-center text-xs">{t.name}</span>}
-                            {t.capacity && <span className="text-xs opacity-80 tabular">{t.capacity} pers.</span>}
-                            <Badge variant="outline" className="px-1.5 py-0 text-xs">
-                              {statusLabel(t.status)}
-                            </Badge>
-                            {t.upcomingReservation && (
-                              <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">
-                                Llega · {t.upcomingReservation.guests} pers.
-                              </span>
-                            )}
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="text-2xl leading-none font-bold tabular">{t.number}</span>
+                              <Armchair className="size-5 shrink-0 opacity-70" />
+                            </span>
+                            <span className="min-w-0">
+                              {t.name && <span className="block truncate text-xs font-medium">{t.name}</span>}
+                              {t.capacity && <span className="block text-xs opacity-75 tabular">{t.capacity} personas</span>}
+                            </span>
+                            <span className="mt-auto flex flex-col gap-1">
+                              <Badge variant="outline" className="w-fit max-w-full truncate px-1.5 py-0 text-xs">
+                                {statusLabel(t.status)}
+                              </Badge>
+                              <ServiceChips service={t.service} />
+                              {t.upcomingReservation && (
+                                <span className="flex items-center gap-1 text-xs font-semibold text-violet-700 dark:text-violet-300">
+                                  <Clock className="size-3 shrink-0" />
+                                  <span className="truncate tabular">
+                                    {new Date(t.upcomingReservation.startsAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })} · {t.upcomingReservation.guests} pers.
+                                  </span>
+                                </span>
+                              )}
+                            </span>
                           </button>
                         ))}
                       </div>

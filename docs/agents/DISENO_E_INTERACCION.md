@@ -42,6 +42,11 @@ Una página operativa no debe exigir descubrir acciones por hover. En touch las 
 - Para laterales fullscreen usa `safe-area-inset-left/right` si el contenido toca el borde en landscape.
 - Prueba 320/375 px, tablet touch, desktop fine pointer y landscape; revisa teclado virtual y zoom.
 
+## Overlays y navegación
+
+- Todo diálogo, sheet o drawer pasa por `DialogContent`/`SheetContent`/`DrawerContent`, que ya cierran con «atrás» (botón o gesto) sin salir de la página. Un overlay propio con Radix debe incluir `<OverlayBackGuard />`; no uses `window.history` a mano.
+- Un cambio de contexto (negocio, sucursal) debe remontar las vistas con una `key` y limpiar los datos en memoria para que cada una muestre su esqueleto.
+
 ## Motion
 
 - 60 ms press-in; 150–250 ms cambios; ~300 ms sheets/rutas.

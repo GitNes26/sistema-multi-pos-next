@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
+import { tableServiceSummary } from "@/lib/tables/service";
 import { openTableChannel } from "@/lib/tables/live";
 import { upcomingReservationsByTable } from "@/lib/tables/upcoming";
 import { safeJson } from "@/lib/api-helpers";
@@ -44,6 +45,7 @@ export async function GET(req: Request) {
         })
         .then(async (tables) => {
           const upcoming = await upcomingReservationsByTable(organizationId, locationId ?? null);
+          const service = await tableServiceSummary(organizationId, tables.map((t) => t.id));
           const payload = {
             tables: tables.map((t) => {
               const u = upcoming.get(t.id);
@@ -61,6 +63,7 @@ export async function GET(req: Request) {
                 status: t.status,
                 room: t.room,
                 location: t.location,
+                service: service.get(t.id) ?? null,
                 upcomingReservation: u ? { guests: u.guests, startsAt: u.startsAt.toISOString() } : null,
               };
             }),

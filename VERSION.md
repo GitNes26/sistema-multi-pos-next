@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.41.0.0] — 2026-10-10
+- **Tipo:** `feat` (Minor)
+- feat: cambio de tienda en el portal recarga con esqueletos, atras cierra solo el overlay abierto, articulos ya llevados a la mesa requieren supervisor, selector de mesas con avance del servicio, historial de mesas en linea de tiempo, comanda activa como acordeon y documentacion
+
 ### [0.40.3.0] — 2026-10-10
 - **Tipo:** `fix` (Patch)
 - fix: el perfil del portal devolvia el numero de cliente vacio (ahora siempre se muestra y se asigna si falta) e indicaciones del plano visibles en la edicion a pantalla completa

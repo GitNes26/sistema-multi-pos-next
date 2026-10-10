@@ -136,6 +136,12 @@ Reglas de construcción:
   gran impacto (destructivas, irreversibles, errores críticos) y nunca como formulario complejo.
   La referencia usa sonner + `src/lib/swal.ts`; el starter usa notistack.
 
+## 5.1 Overlays, historial y cambio de contexto
+
+- Cada overlay (diálogo, sheet, drawer, selector a pantalla completa) registra una entrada de historial para que «atrás» (botón o gesto del teléfono) lo cierre en lugar de salir de la página: centraliza esto en un guard dentro del contenido del overlay (`OverlayBackGuard`), nunca en cada pantalla.
+- Cuando el contexto cambia (negocio, sucursal, cuenta), remonta las vistas con una `key` y limpia las cachés en memoria: cada vista debe mostrar su esqueleto mientras carga lo nuevo.
+- Acciones que deshacen trabajo ya entregado (quitar lo servido) piden autorización configurable de supervisor.
+
 ## 6. Responsive, safe areas y accesibilidad
 
 - Mobile-first; destinos táctiles 44–48 px; `desk:` compacta solo con puntero fino.

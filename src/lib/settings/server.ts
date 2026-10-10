@@ -515,6 +515,7 @@ export const SUPERVISOR_ACTIONS = [
   { key: "void", label: "Cancelar venta" },
   { key: "refund", label: "Devolución" },
   { key: "credit", label: "Venta a crédito" },
+  { key: "served_items", label: "Quitar o disminuir artículos ya llevados a la mesa" },
 ] as const;
 
 export interface SupervisorSettings {

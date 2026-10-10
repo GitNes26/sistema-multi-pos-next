@@ -7,6 +7,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db";
 import { randomBytes } from "crypto";
 import { broadcastTableUpdate } from "@/lib/tables/live";
+import { tableServiceSummary } from "@/lib/tables/service";
 import { upcomingReservationsByTable } from "@/lib/tables/upcoming";
 
 const DENIED_CONFIG = { ok: false, error: "Permiso requerido: locations.manage" };
@@ -90,10 +91,12 @@ export async function GET(req: Request) {
     // Aviso de llegada: reservación confirmada próxima por mesa (para que el
     // anfitrión/la cocina preparen el lugar).
     const upcoming = await upcomingReservationsByTable(organizationId, locationId ?? null);
+    const service = await tableServiceSummary(organizationId, tables.map((t) => t.id));
     const tablesWithUpcoming = tables.map((t) => {
       const u = upcoming.get(t.id);
       return {
         ...t,
+        service: service.get(t.id) ?? null,
         upcomingReservation: u ? { guests: u.guests, startsAt: u.startsAt.toISOString() } : null,
       };
     });

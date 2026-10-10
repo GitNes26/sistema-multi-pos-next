@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { CheckCircle2, Flame, Loader2, Undo2 } from "lucide-react"
+import { CheckCircle2, ChevronDown, Flame, Loader2, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { swalConfirm, swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
@@ -65,6 +65,24 @@ export function KitchenStatus({
   const [loading, setLoading] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [tick, setTick] = useState(() => Date.now())
+  // Acordeón: se recuerda abierto/cerrado en este equipo.
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    try {
+      setOpen(localStorage.getItem("multi-pos.kitchen-status-open") === "1")
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, [])
+  const toggle = () =>
+    setOpen((v) => {
+      try {
+        localStorage.setItem("multi-pos.kitchen-status-open", v ? "0" : "1")
+      } catch {
+        /* sin almacenamiento */
+      }
+      return !v
+    })
 
   const load = useCallback(async () => {
     const realTable = tableId && !tableId.startsWith("manual-") ? tableId : null
@@ -125,32 +143,39 @@ export function KitchenStatus({
     }
   }
 
+  // Resumen para la fila contraída: artículos listos / servidos de los que lleva la orden.
+  const total = order?.items.length ?? 0
+  const ready = order?.items.filter((i) => i.itemStatus === "ready" || i.itemStatus === "served").length ?? 0
+  const allReady = total > 0 && ready === total
+
   return (
-    <div className="rounded-xl border border-warning/40 bg-warning/5 px-3 py-2.5">
-      <div className="flex items-center gap-2">
+    <div className={cn("rounded-xl border px-3 py-2", allReady ? "border-success/40 bg-success/5" : "border-warning/40 bg-warning/5")}>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        aria-label={open ? "Contraer la cocina" : "Ver la orden de cocina"}
+        className="flex min-h-10 w-full items-center gap-2 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
         {loading && !order ? (
           <Loader2 className="size-4 shrink-0 animate-spin text-warning-ink" />
         ) : (
-          <Flame className={cn("size-4 shrink-0 text-warning-ink", order?.status === "preparing" && "animate-pulse")} />
+          <Flame className={cn("size-4 shrink-0", allReady ? "text-success-ink" : "text-warning-ink", order?.status === "preparing" && "animate-pulse")} />
         )}
-        <span className="text-xs font-bold uppercase tracking-wide text-warning-ink">
-          Cocina
-        </span>
+        <span className={cn("text-xs font-bold uppercase tracking-wide", allReady ? "text-success-ink" : "text-warning-ink")}>Cocina</span>
         {order ? (
           <>
-            <span className="ml-auto text-xs font-semibold text-warning-ink tabular-nums">
-              #{order.orderNumber} · {elapsed(order.createdAt, tick)}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={cancelling}
-              onClick={cancelOrder}
-              className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+            <span
+              className={cn(
+                "truncate rounded-full px-2 py-0.5 text-[0.65rem] font-semibold",
+                STATUS_META[order.status]?.badge ?? "bg-muted text-muted-foreground"
+              )}
             >
-              {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : <Undo2 className="size-3.5" />}
-              Cancelar
-            </Button>
+              {STATUS_META[order.status]?.label ?? order.status}
+            </span>
+            <span className="ml-auto shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+              {ready}/{total} · #{order.orderNumber} · {elapsed(order.createdAt, tick)}
+            </span>
           </>
         ) : (
           <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
@@ -158,23 +183,11 @@ export function KitchenStatus({
             Sin orden en cocina
           </span>
         )}
-      </div>
+        {order && <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />}
+      </button>
 
-      {order && (
-        <div className="mt-2 space-y-1.5 border-t border-warning/20 pt-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[0.65rem] font-semibold",
-                STATUS_META[order.status]?.badge ?? "bg-muted text-muted-foreground"
-              )}
-            >
-              {STATUS_META[order.status]?.label ?? order.status}
-            </span>
-            <span className="text-[0.65rem] text-muted-foreground">
-              {order.items.length} {order.items.length === 1 ? "artículo" : "artículos"}
-            </span>
-          </div>
+      {order && open && (
+        <div className="mt-1.5 space-y-1.5 border-t border-warning/20 pt-2">
           <ul className="space-y-0.5">
             {order.items.map((i) => (
               <li key={i.id} className="flex items-center justify-between gap-2 text-xs">
@@ -185,9 +198,7 @@ export function KitchenStatus({
                 <span
                   className={cn(
                     "shrink-0 text-[0.65rem] font-medium",
-                    i.itemStatus === "ready" || i.itemStatus === "served"
-                      ? "text-success-ink"
-                      : "text-muted-foreground"
+                    i.itemStatus === "ready" || i.itemStatus === "served" ? "text-success-ink" : "text-muted-foreground"
                   )}
                 >
                   {ITEM_STATUS_LABELS[i.itemStatus] ?? i.itemStatus}
@@ -195,6 +206,16 @@ export function KitchenStatus({
               </li>
             ))}
           </ul>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={cancelling}
+            onClick={cancelOrder}
+            className="h-8 w-full justify-center text-xs text-destructive hover:text-destructive"
+          >
+            {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : <Undo2 className="size-3.5" />}
+            Cancelar la orden de cocina
+          </Button>
         </div>
       )}
     </div>

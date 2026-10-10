@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import {
   Home,
@@ -84,6 +84,18 @@ export function PortalShell({
   // cuenta + empresa (otra cuenta en el mismo navegador empieza vacía).
   const { data: session } = useSession();
   const cartOwner = session?.user ? `${session.user.id}:${session.user.organizationId ?? ""}` : null;
+  // Cambio de tienda: se descarta lo cargado de la anterior y las páginas se vuelven a montar
+  // (cada una muestra su esqueleto mientras carga lo de la nueva).
+  const tenantKey = session?.user?.organizationId ?? "none";
+  const lastTenant = useRef(tenantKey);
+  useEffect(() => {
+    if (lastTenant.current === tenantKey) return;
+    lastTenant.current = tenantKey;
+    const s = usePortalStore.getState();
+    s.setStorefront([], []);
+    s.setFavorites([]);
+    window.scrollTo({ top: 0 });
+  }, [tenantKey]);
   useEffect(() => {
     if (!cartOwner) return;
     void Promise.resolve(usePortalStore.persist.rehydrate()).then(() => usePortalStore.getState().bindCartOwner(cartOwner));
@@ -133,7 +145,7 @@ export function PortalShell({
       <PortalHeader storeName={storeName} logoUrl={logoUrl} user={user} storeStatus={storeStatus} />
       <StoreClosedBanner status={storeStatus} />
 
-      <main className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
+      <main key={tenantKey} className="flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))]">{children}</main>
 
       <nav
         aria-label="Navegación principal"
