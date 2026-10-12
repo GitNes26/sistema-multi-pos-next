@@ -234,6 +234,8 @@ Ajustes del 9 de octubre de 2026 (tercera parte):
 - **POS:** los artículos ya enviados a cocina/llevados a la mesa no se quitan ni disminuyen salvo que la acción `served_items` esté activa en «Aprobación de supervisor»; entonces la autoriza quien tenga `supervisor.approve` o el PIN de supervisor (el PIN sigue siendo el de demostración guardado en el equipo). El selector de mesas muestra el avance del servicio (en cocina / por llevar / todo servido, `lib/tables/service.ts`) y la comanda activa del ticket es un acordeón.
 - **Historial de mesas:** línea de tiempo por día con visitas y órdenes unificadas.
 
+Ajustes del 12 de octubre de 2026: en traslados, «Cargar y despachar» solo trata la mercancía; el chofer (trabajador o nombre), el vehículo con placas (obligatorio) y la llegada estimada se capturan en «Chofer del traslado», y despachar exige tenerlos; al recibir es obligatorio indicar un empleado o un nombre. El botón «Preparar pedido» navega con `router.push` sin cerrar antes el diálogo (el cierre con «atrás» deshacía la navegación). Flyers de presentación (administrativa, operativa y portal) en `docs/flyers/`.
+
 ## 10. Mantenimiento documental
 
 - `AGENTS.md`: reglas obligatorias y router.

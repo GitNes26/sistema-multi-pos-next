@@ -13,6 +13,8 @@ const closers = new Map<string, () => void>()
 const consumed = new Set<string>()
 let skipPops = 0
 let bound = false
+// Hay una navegación en curso (recarga o cambio de página): no se retrocede el historial.
+let leaving = false
 
 function onPop() {
   if (skipPops > 0) {
@@ -26,6 +28,12 @@ function onPop() {
 function bind() {
   if (bound || typeof window === "undefined") return
   window.addEventListener("popstate", onPop)
+  window.addEventListener("beforeunload", () => {
+    leaving = true
+  })
+  window.addEventListener("pageshow", () => {
+    leaving = false
+  })
   bound = true
 }
 
@@ -58,10 +66,17 @@ export function useOverlayBack() {
       const at = stack.indexOf(id)
       if (at >= 0) stack.splice(at, 1)
       const wasPopped = consumed.delete(id)
-      // Cerrado por otro medio (X, arrastre, guardar): quita la entrada que agregó.
-      if (!wasPopped && window.history.state?.__overlay === id) {
-        skipPops++
-        window.history.back()
+      // Cerrado por otro medio (X, arrastre, guardar): quita la entrada que agregó. Se espera un
+      // instante: si el cierre fue por una navegación (enlace, router.push, location.href) la URL
+      // cambia y NO se debe retroceder, o se deshace esa navegación.
+      if (!wasPopped) {
+        const href = window.location.href
+        window.setTimeout(() => {
+          if (!leaving && window.location.href === href && window.history.state?.__overlay === id) {
+            skipPops++
+            window.history.back()
+          }
+        }, 150)
       }
     }
   }, [id])

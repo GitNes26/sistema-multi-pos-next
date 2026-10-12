@@ -5,6 +5,7 @@ import { Check, Copy, Link2, Loader2, Truck, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { FormCombobox } from "@/components/base/form-combobox"
+import { DateTimePicker } from "@/components/base/date-time-picker"
 import { crudApi } from "@/lib/api"
 import { swalError, swalToast } from "@/lib/swal"
 import { transfersApi, type TransferDetail } from "@/lib/inventory/transfers-client"
@@ -18,6 +19,9 @@ export function TransferDriverCard({ t, onChanged }: { t: TransferDetail; onChan
   const [employees, setEmployees] = useState<{ value: string; label: string }[]>([])
   const [employeeId, setEmployeeId] = useState<string | null>(t.driver.employeeId)
   const [name, setName] = useState(t.driver.employeeId ? "" : (t.driver.name ?? ""))
+  const [vehicle, setVehicle] = useState(t.vehicle ?? "")
+  const [expectedAt, setExpectedAt] = useState<Date | null>(t.expectedAt ? new Date(t.expectedAt) : null)
+  const [errors, setErrors] = useState<{ driver?: string; vehicle?: string }>({})
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -31,13 +35,20 @@ export function TransferDriverCard({ t, onChanged }: { t: TransferDetail; onChan
   const link = t.driver.trackToken && typeof window !== "undefined" ? `${window.location.origin}/traslado/${t.driver.trackToken}` : null
 
   const save = async () => {
-    if (!employeeId && !name.trim()) {
-      swalError("Falta el responsable", "Elige un trabajador o escribe el nombre de quien lo lleva.")
-      return
-    }
+    const next: typeof errors = {}
+    if (!employeeId && !name.trim()) next.driver = "Elige un trabajador o escribe el nombre de quien lo lleva"
+    if (!vehicle.trim()) next.vehicle = "Escribe el vehículo y las placas"
+    setErrors(next)
+    if (next.driver || next.vehicle) return
     setBusy(true)
     try {
-      await transfersApi.action(t.id, { action: "assign", employeeId: employeeId ?? undefined, name: employeeId ? undefined : name.trim() })
+      await transfersApi.action(t.id, {
+        action: "assign",
+        employeeId: employeeId ?? undefined,
+        name: employeeId ? undefined : name.trim(),
+        vehicle: vehicle.trim(),
+        expectedAt: expectedAt ? expectedAt.toISOString() : null,
+      })
       swalToast("Responsable asignado")
       onChanged()
     } catch (err) {
@@ -90,6 +101,7 @@ export function TransferDriverCard({ t, onChanged }: { t: TransferDetail; onChan
         searchable
         placeholder="Elige a quien lo lleva"
         helper="Lo verá en su interfaz de entregas y compartirá su ubicación."
+        error={errors.driver}
       />
       {!employeeId && (
         <InputGroupField
@@ -99,8 +111,19 @@ export function TransferDriverCard({ t, onChanged }: { t: TransferDetail; onChan
           leftIcon={<User className="size-4" />}
           placeholder="Si no es trabajador (proveedor, familiar, paquetería)"
           helper="Recibirá un enlace para compartir su ubicación sin necesidad de cuenta."
+          error={errors.driver}
         />
       )}
+      <InputGroupField
+        label="Vehículo y placas"
+        required
+        value={vehicle}
+        onChange={(e) => setVehicle(e.target.value)}
+        leftIcon={<Truck className="size-4" />}
+        placeholder="Ej. Camioneta blanca ABC-123"
+        error={errors.vehicle}
+      />
+      <DateTimePicker label="Llegada estimada" value={expectedAt} onChange={setExpectedAt} />
       <Button className="w-full" onClick={() => void save()} disabled={busy}>
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />} Asignar chofer
       </Button>

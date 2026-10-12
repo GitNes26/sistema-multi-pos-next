@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.41.1.0] — 2026-10-12
+- **Tipo:** `fix` (Patch)
+- fix: traslados con chofer, vehiculo y llegada en su seccion y validaciones de quien recibe, preparar pedido que no navegaba, landing con las funciones nuevas y flyers de presentacion
+
 ### [0.41.0.0] — 2026-10-10
 - **Tipo:** `feat` (Minor)
 - feat: cambio de tienda en el portal recarga con esqueletos, atras cierra solo el overlay abierto, articulos ya llevados a la mesa requieren supervisor, selector de mesas con avance del servicio, historial de mesas en linea de tiempo, comanda activa como acordeon y documentacion

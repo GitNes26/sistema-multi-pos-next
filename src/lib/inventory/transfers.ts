@@ -336,9 +336,11 @@ export async function assignTransferDriver(
   organizationId: string,
   id: string,
   userId: string,
-  input: { employeeId?: string | null; name?: string | null; vehicle?: string | null }
+  input: { employeeId?: string | null; name?: string | null; vehicle?: string | null; expectedAt?: string | null }
 ) {
   const t = await findTransfer(organizationId, id);
+  const vehicle = (input.vehicle !== undefined ? input.vehicle : t.vehicle)?.trim() ?? "";
+  if (!vehicle) throw new CrudError("Escribe el vehículo y las placas", 400, "vehicle");
   if (!["pending", "preparing", "in_transit"].includes(t.status)) throw new CrudError("El traslado ya terminó", 409);
   const me = await employeeFor(userId);
   let employee: { id: string; fullName: string; userId: string } | null = null;
@@ -361,7 +363,8 @@ export async function assignTransferDriver(
       driverName: name,
       driverAssignedAt: new Date(),
       driverAcceptedAt: self ? new Date() : null,
-      ...(input.vehicle !== undefined ? { vehicle: input.vehicle?.trim() || null } : {}),
+      vehicle,
+      ...(input.expectedAt !== undefined ? { expectedAt: input.expectedAt ? new Date(input.expectedAt) : null } : {}),
       ...(needsToken ? { trackToken: randomBytes(18).toString("hex") } : {}),
     },
   });
@@ -459,6 +462,10 @@ export async function dispatchTransfer(
 ) {
   const t = await findTransfer(organizationId, id);
   if (t.status !== "pending" && t.status !== "preparing") throw new CrudError("Este traslado ya salió o fue cerrado", 409);
+  // El chofer y el vehículo se capturan antes en «Chofer del traslado».
+  if (!t.driverName?.trim() || !t.vehicle?.trim()) {
+    throw new CrudError("Asigna el chofer y el vehículo con placas antes de despachar", 400, "driverName");
+  }
   const employee = await employeeFor(userId);
   const folio = transferFolio(t.number);
 
@@ -567,6 +574,9 @@ export async function receiveTransfer(
     if (!ok) throw new CrudError("El empleado que recibe no existe", 400, "receiverEmployeeId");
   }
   const receiverName = input.receiverName?.trim().slice(0, 120) || null;
+  if (!receiverEmployeeId && !receiverName) {
+    throw new CrudError("Indica quién recibe: elige un empleado o escribe su nombre", 400, "receiverName");
+  }
   const employee = await employeeFor(userId);
   const folio = transferFolio(t.number);
   const byItem = new Map(input.items.map((i) => [i.itemId, i]));

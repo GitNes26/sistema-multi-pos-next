@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -104,6 +105,7 @@ function nextAction(o: OrderDetail): { label: string; icon: LucideIcon; kind: "a
 
 /** `onChanged` cierra el detalle y refresca; `onUpdated` solo refresca el listado y lo deja abierto. */
 export function OrderDetailDialog({ orderId, canManage, onChanged, onUpdated }: { orderId: string; canManage: boolean; onChanged?: () => void; onUpdated?: () => void }) {
+  const router = useRouter();
   const [open, setOpen] = useState(true);
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [saving, setSaving] = useState(false);
@@ -164,8 +166,8 @@ export function OrderDetailDialog({ orderId, canManage, onChanged, onUpdated }: 
     const a = nextAction(order);
     if (!a) return;
     if (a.kind === "prepare") {
-      onChanged?.();
-      window.location.href = `/admin/orders/${order.id}/prepare`;
+      // Navega sin cerrar antes el diálogo: al cerrarse "atrás" deshacía esta navegación.
+      router.push(`/admin/orders/${order.id}/prepare`);
       return;
     }
     if (a.kind === "pin") {

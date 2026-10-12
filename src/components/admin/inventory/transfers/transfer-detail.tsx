@@ -395,11 +395,10 @@ function StageCard({
 function DispatchCard({ t, busy, onDispatch }: { t: Detail; busy: boolean; onDispatch: (body: Record<string, unknown>) => void }) {
   const [loaded, setLoaded] = useState<Record<string, boolean>>({})
   const [qty, setQty] = useState<Record<string, number>>(() => Object.fromEntries(t.items.map((i) => [i.id, i.quantity])))
-  const [driverName, setDriverName] = useState(t.driverName ?? "")
-  const [vehicle, setVehicle] = useState(t.vehicle ?? "")
-  const [expectedAt, setExpectedAt] = useState<Date | null>(t.expectedAt ? new Date(t.expectedAt) : null)
   const done = t.items.filter((i) => loaded[i.id]).length
   const allLoaded = done === t.items.length
+  // El chofer y el vehículo se capturan en la sección «Chofer del traslado».
+  const driverReady = Boolean(t.driver.name?.trim() && t.vehicle?.trim())
 
   return (
     <StageCard icon={Truck} title="Cargar y despachar" text="Marca cada producto al subirlo al vehículo. Si falta algo, ajusta la cantidad que realmente sale.">
@@ -423,22 +422,16 @@ function DispatchCard({ t, busy, onDispatch }: { t: Detail; busy: boolean; onDis
           ))}
         </ul>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="driver">Chofer</Label>
-          <Input id="driver" value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="¿Quién lo lleva?" />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="vehicle">Vehículo / placas</Label>
-          <Input id="vehicle" value={vehicle} onChange={(e) => setVehicle(e.target.value)} placeholder="Ej. Camioneta ABC-123" />
-        </div>
-      </div>
-      <DateTimePicker label="Llegada estimada" value={expectedAt} onChange={setExpectedAt} />
+      {!driverReady && (
+        <p className="flex items-start gap-2 rounded-lg bg-warning/15 p-2.5 text-sm text-warning-ink">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" /> Antes de despachar, asigna el chofer y el vehículo con placas en «Chofer del traslado».
+        </p>
+      )}
       <Button
         className="w-full"
         size="lg"
-        disabled={busy || !allLoaded}
-        onClick={() => onDispatch({ driverName, vehicle, expectedAt: expectedAt?.toISOString() ?? null, quantities: qty })}
+        disabled={busy || !allLoaded || !driverReady}
+        onClick={() => onDispatch({ quantities: qty })}
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />}
         {allLoaded ? "Despachar: la mercancía sale ahora" : `Marca los ${t.items.length - done} productos restantes`}
@@ -463,6 +456,8 @@ function ReceiveCard({ t, busy, onReceive }: { t: Detail; busy: boolean; onRecei
       .catch(() => setEmployees([]))
   }, [])
   const missing = t.items.reduce((s, i) => s + Math.max(0, i.quantity - (counts[i.id] ?? 0)), 0)
+  // Debe quedar registrado quién recibe: un empleado o un nombre escrito.
+  const receiverReady = Boolean(receiverEmployeeId || receiverName.trim())
 
   return (
     <StageCard icon={PackageCheck} title="Recibir en destino" text={`Cuenta lo que llegó a ${t.to.name}. Solo lo recibido entra al inventario.`}>
@@ -504,9 +499,13 @@ function ReceiveCard({ t, busy, onReceive }: { t: Detail; busy: boolean; onRecei
         <FormCombobox
           id="receiver-employee"
           label="¿Quién recibe? (empleado)"
+          required
           options={employees}
           value={receiverEmployeeId}
-          onChange={setReceiverEmployeeId}
+          onChange={(v) => {
+            setReceiverEmployeeId(v ?? "")
+            if (v) setReceiverName("")
+          }}
           placeholder="Elegir empleado…"
           searchable
         />
@@ -515,11 +514,12 @@ function ReceiveCard({ t, busy, onReceive }: { t: Detail; busy: boolean; onRecei
           <Input id="receiver-name" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Ej. persona externa que recibió" />
         </div>
       </div>
+      {!receiverReady && <p className="text-xs font-medium text-destructive">Elige un empleado o escribe el nombre de quien recibe.</p>}
       <Textarea rows={2} value={general} onChange={(e) => setGeneral(e.target.value)} placeholder="Comentario general (opcional)" />
       <Button
         className="w-full"
         size="lg"
-        disabled={busy}
+        disabled={busy || !receiverReady}
         onClick={() =>
           onReceive({
             items: t.items.map((i) => ({ itemId: i.id, receivedQty: counts[i.id] ?? 0, note: notes[i.id] })),

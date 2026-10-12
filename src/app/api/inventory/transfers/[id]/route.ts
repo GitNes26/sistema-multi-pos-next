@@ -40,6 +40,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
             employeeId: typeof body.employeeId === "string" && body.employeeId ? body.employeeId : null,
             name: typeof body.name === "string" ? body.name : null,
             vehicle: typeof body.vehicle === "string" ? body.vehicle : undefined,
+            expectedAt: typeof body.expectedAt === "string" ? body.expectedAt : body.expectedAt === null ? null : undefined,
           })
         );
       case "prepare":

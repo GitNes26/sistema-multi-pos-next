@@ -89,6 +89,12 @@ const FEATURES = [
   { icon: Bell, title: "Notificaciones en vivo", text: "Entérate al instante de ventas, nuevos pedidos y stock bajo, en tiempo real." },
   { icon: ClipboardCheck, title: "Proveedores y compras", text: "Vincula productos, solicita cotizaciones, aprueba órdenes y registra recepciones en inventario." },
   { icon: CreditCard, title: "Crédito para clientes", text: "Configura límites por cliente, registra ventas a crédito y consulta saldos y abonos." },
+  { icon: QrCode, title: "Menú QR: mesero digital", text: "El comensal escanea su mesa, arma su pedido entre todos y lo manda a cocina; tu equipo lo ve en vivo." },
+  { icon: ChefHat, title: "Mesas y cuentas abiertas", text: "Plano de sala con escaleras, varias cuentas a la vez, cocina en tiempo real y cobro al final." },
+  { icon: Truck, title: "Traslados con chofer", text: "Asigna a un trabajador o a un externo, comparte su ubicación y recibe con conteo y diferencias." },
+  { icon: Building2, title: "Una cuenta, varios negocios", text: "El cliente usa la misma cuenta en cada negocio, con su historial, puntos y crédito por separado." },
+  { icon: Users, title: "Equipo, roles y nómina", text: "Roles por área, permisos por plan, aprobación de supervisor y recibos de nómina con logo." },
+  { icon: FileSpreadsheet, title: "Devoluciones justas", text: "Se devuelve lo realmente pagado: dinero, cupón, puntos, crédito o cambio de producto." },
 ]
 
 const CAPABILITIES = [
@@ -102,6 +108,10 @@ const CAPABILITIES = [
   { icon: Bell, label: "Alertas de stock" },
   { icon: ClipboardCheck, label: "Compras a proveedores" },
   { icon: CreditCard, label: "Crédito y abonos" },
+  { icon: QrCode, label: "Menú QR por mesa" },
+  { icon: Truck, label: "Traslados con GPS" },
+  { icon: Building2, label: "Multi-negocio" },
+  { icon: Users, label: "Roles y permisos" },
 ]
 
 const TOUCH_SCREENS = [
@@ -127,6 +137,18 @@ const FAQS = [
   {
     q: "¿Sirve para restaurante, servicios o renta, no solo tienda?",
     a: "Sí. Al configurar tu empresa eliges el tipo de negocio y el sistema activa las herramientas que corresponden: mesas y cocina, agenda de citas o reservaciones por periodo.",
+  },
+  {
+    q: "¿Cómo funciona el menú digital por QR?",
+    a: "Cada mesa tiene su QR. El comensal lo escanea desde su teléfono, sin cuenta ni descarga, arma el pedido en un carrito compartido con su mesa y lo manda a cocina. Tu equipo lo ve en vivo; lo ya enviado no se puede quitar y pide la cuenta con un toque.",
+  },
+  {
+    q: "¿Un cliente puede comprar en varios negocios con la misma cuenta?",
+    a: "Sí. Crea su cuenta una vez y elige a qué negocio comprar; en cada uno conserva su número de cliente, historial, puntos, crédito, listas y favoritos por separado, con los colores y el logo de ese negocio.",
+  },
+  {
+    q: "¿Cómo manejo traslados entre sucursales?",
+    a: "Solicitas, preparas y despachas la mercancía, asignas al chofer (trabajador o externo con enlace para compartir su ubicación) y el destino recibe contando lo que llegó; las diferencias quedan registradas.",
   },
   {
     q: "¿Cómo contrato un plan?",
