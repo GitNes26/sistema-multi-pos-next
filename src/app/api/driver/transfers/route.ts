@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth/options"
 import { effectiveOrgId } from "@/lib/auth/org-context"
 import { hasPermission } from "@/lib/auth/permissions"
 import { prisma } from "@/lib/db"
-import { acceptTransfer, dispatchTransfer, listDriverTransfers, recordTransferLocation } from "@/lib/inventory/transfers"
+import { acceptTransfer, confirmTransferArrival, dispatchTransfer, getDriverTransfer, listDriverTransfers, recordTransferLocation } from "@/lib/inventory/transfers"
 
 export const dynamic = "force-dynamic"
 
@@ -23,17 +23,19 @@ const fail = (err: unknown) => {
 }
 
 // GET — traslados del chofer: los asignados a él y los que aún no tienen chofer.
-export async function GET() {
+export async function GET(req: Request) {
   const ctx = await driverSession()
   if (!ctx) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 })
   try {
+    const id = new URL(req.url).searchParams.get("id")
+    if (id) return NextResponse.json({ ok: true, transfer: await getDriverTransfer(ctx.organizationId, id, ctx.employee?.id ?? null) })
     return NextResponse.json({ ok: true, myEmployeeId: ctx.employee?.id ?? null, rows: await listDriverTransfers(ctx.organizationId, ctx.employee?.id ?? null) })
   } catch (err) {
     return fail(err)
   }
 }
 
-// POST { id, action: "accept" | "depart" | "location", lat?, lng? }
+// POST { id, action: "accept" | "depart" | "arrive" | "location", lat?, lng? }
 export async function POST(req: Request) {
   const ctx = await driverSession()
   if (!ctx) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 })
@@ -47,6 +49,7 @@ export async function POST(req: Request) {
     // Salir y compartir ubicación solo lo hace el chofer asignado.
     if (t.driverEmployeeId !== ctx.employee.id) return NextResponse.json({ ok: false, error: "Primero acepta el traslado" }, { status: 403 })
     if (body.action === "depart") return NextResponse.json(await dispatchTransfer(ctx.organizationId, body.id, ctx.userId, { driverName: ctx.employee.fullName }))
+    if (body.action === "arrive") return NextResponse.json(await confirmTransferArrival(ctx.organizationId, body.id))
     if (body.action === "location" && typeof body.lat === "number" && typeof body.lng === "number") {
       return NextResponse.json(await recordTransferLocation(ctx.organizationId, body.id, { lat: body.lat, lng: body.lng, accuracy: body.accuracy ?? null }))
     }

@@ -156,7 +156,7 @@ export interface TransferDetail {
   requestedBy: string | null;
   driverName: string | null;
   /** Chofer asignado (trabajador) y si ya aceptó; `trackToken` es el enlace para quien no tiene cuenta. */
-  driver: { employeeId: string | null; name: string | null; accepted: boolean; trackToken: string | null };
+  driver: { employeeId: string | null; name: string | null; accepted: boolean; trackToken: string | null; arrivedAt: string | null };
   vehicle: string | null;
   expectedAt: string | null;
   hasDiscrepancy: boolean;
@@ -231,7 +231,7 @@ export async function getTransfer(organizationId: string, id: string): Promise<T
     receivedBy: [receiverEmployee?.fullName, t.receivedByName].filter(Boolean).join(" · ") || null,
     requestedBy: userName(t.requestedById),
     driverName: t.driverName,
-    driver: { employeeId: t.driverEmployeeId, name: t.driverName, accepted: Boolean(t.driverAcceptedAt), trackToken: t.trackToken },
+    driver: { employeeId: t.driverEmployeeId, name: t.driverName, accepted: Boolean(t.driverAcceptedAt), trackToken: t.trackToken, arrivedAt: t.driverArrivedAt?.toISOString() ?? null },
     vehicle: t.vehicle,
     expectedAt: t.expectedAt?.toISOString() ?? null,
     hasDiscrepancy: t.hasDiscrepancy,
@@ -384,6 +384,36 @@ export async function assignTransferDriver(
   return { ok: true };
 }
 
+/**
+ * El chofer confirma que llegó al destino: desde ese momento el destino puede capturar la
+ * recepción. (`by` = empleado; null cuando lo confirma el enlace público o un administrador.)
+ */
+export async function confirmTransferArrival(organizationId: string, id: string) {
+  const t = await findTransfer(organizationId, id);
+  if (t.status !== "in_transit") throw new CrudError("El traslado no está en camino", 409);
+  if (t.driverArrivedAt) return { ok: true };
+  await prisma.transfer.update({ where: { id }, data: { driverArrivedAt: new Date() } });
+  const places = await placeNames(organizationId);
+  await persistNotification({
+    organizationId,
+    locationId: t.toLocationType === "location" ? t.toLocationId : null,
+    kind: "transfer",
+    title: `Traslado ${transferFolio(t.number)} llegó`,
+    body: `${t.driverName ?? "El chofer"} está en ${places.get(t.toLocationId)?.name ?? "el destino"}: ya puedes recibirlo.`,
+    severity: "success",
+    link: `/admin/inventory/transfers/${t.id}`,
+    metadata: { transferId: t.id },
+  }).catch(() => null);
+  return { ok: true };
+}
+
+/** Confirmación de llegada con el enlace público del chofer. */
+export async function confirmArrivalByToken(token: string) {
+  const t = await prisma.transfer.findUnique({ where: { trackToken: token }, select: { id: true, organizationId: true } });
+  if (!t) throw new CrudError("Enlace inválido", 404);
+  return confirmTransferArrival(t.organizationId, t.id);
+}
+
 /** El chofer acepta un traslado asignado (o toma uno sin chofer). */
 export async function acceptTransfer(organizationId: string, id: string, employeeId: string) {
   const t = await findTransfer(organizationId, id);
@@ -426,10 +456,21 @@ export async function listDriverTransfers(organizationId: string, employeeId: st
     units: round(t.items.reduce((s, i) => s + num(i.quantity), 0)),
     mine: Boolean(employeeId && t.driverEmployeeId === employeeId),
     accepted: Boolean(t.driverAcceptedAt),
+    arrived: Boolean(t.driverArrivedAt),
+    vehicle: t.vehicle,
+    expectedAt: t.expectedAt?.toISOString() ?? null,
     driverName: t.driverName,
     notes: t.notes,
     createdAt: t.createdAt.toISOString(),
   }));
+}
+
+/** Detalle de un traslado para el chofer: lo suyo o uno que aún no tiene chofer. */
+export async function getDriverTransfer(organizationId: string, id: string, employeeId: string | null) {
+  const t = await prisma.transfer.findFirst({ where: { id, organizationId }, select: { driverEmployeeId: true } });
+  if (!t) throw new CrudError("Traslado no encontrado", 404);
+  if (t.driverEmployeeId && t.driverEmployeeId !== employeeId) throw new CrudError("Este traslado lo lleva otro chofer", 403);
+  return getTransfer(organizationId, id);
 }
 
 /** Ubicación reportada por el enlace público del chofer (sin cuenta). */
@@ -450,6 +491,7 @@ export async function getTransferByToken(token: string) {
     toName: places.get(t.toLocationId)?.name ?? "—",
     toAddress: places.get(t.toLocationId)?.address ?? null,
     driverName: t.driverName,
+    arrived: Boolean(t.driverArrivedAt),
   };
 }
 
@@ -568,6 +610,7 @@ export async function receiveTransfer(
 ) {
   const t = await findTransfer(organizationId, id);
   if (t.status !== "in_transit") throw new CrudError("Solo se puede recibir un traslado en camino", 409);
+  if (!t.driverArrivedAt) throw new CrudError("El chofer aún no confirma que llegó al destino", 409);
   const receiverEmployeeId = input.receiverEmployeeId?.trim() || null;
   if (receiverEmployeeId) {
     const ok = await prisma.employee.findFirst({ where: { id: receiverEmployeeId, organizationId }, select: { id: true } });

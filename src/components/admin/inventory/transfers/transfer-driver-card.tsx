@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Check, Copy, Link2, Loader2, Truck, User } from "lucide-react"
+import { Check, CheckCircle2, Copy, Link2, Loader2, Truck, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { FormCombobox } from "@/components/base/form-combobox"
@@ -11,13 +11,13 @@ import { swalError, swalToast } from "@/lib/swal"
 import { transfersApi, type TransferDetail } from "@/lib/inventory/transfers-client"
 
 /**
- * Responsable del traslado, como un repartidor: un trabajador (usa su interfaz en /repartidor y
- * comparte su ubicación) o solo un nombre, con un enlace para compartir la ubicación sin cuenta.
- * Se puede cambiar mientras el traslado siga activo, también en camino.
+ * Responsable del traslado, como un repartidor. Dos opciones (basta una): un trabajador, que lo
+ * ve en «Mis entregas» y comparte su ubicación, o solo un nombre (servicio externo), que recibe un
+ * enlace para compartirla sin cuenta. Una vez que el trabajador confirma, la asignación se bloquea.
  */
 export function TransferDriverCard({ t, onChanged }: { t: TransferDetail; onChanged: () => void }) {
   const [employees, setEmployees] = useState<{ value: string; label: string }[]>([])
-  const [employeeId, setEmployeeId] = useState<string | null>(t.driver.employeeId)
+  const [employeeId, setEmployeeId] = useState<string>(t.driver.employeeId ?? "")
   const [name, setName] = useState(t.driver.employeeId ? "" : (t.driver.name ?? ""))
   const [vehicle, setVehicle] = useState(t.vehicle ?? "")
   const [expectedAt, setExpectedAt] = useState<Date | null>(t.expectedAt ? new Date(t.expectedAt) : null)
@@ -32,6 +32,16 @@ export function TransferDriverCard({ t, onChanged }: { t: TransferDetail; onChan
       .catch(() => setEmployees([]))
   }, [])
 
+  const assigned = Boolean(t.driver.name)
+  // El trabajador ya confirmó: no se puede cambiar la asignación.
+  const locked = Boolean(t.driver.employeeId && t.driver.accepted)
+  const unchanged =
+    assigned &&
+    (t.driver.employeeId ?? "") === employeeId &&
+    (employeeId ? true : (t.driver.name ?? "") === name.trim()) &&
+    (t.vehicle ?? "") === vehicle.trim() &&
+    (t.expectedAt ? new Date(t.expectedAt).getTime() : null) === (expectedAt ? expectedAt.getTime() : null)
+
   const link = t.driver.trackToken && typeof window !== "undefined" ? `${window.location.origin}/traslado/${t.driver.trackToken}` : null
 
   const save = async () => {
@@ -44,12 +54,12 @@ export function TransferDriverCard({ t, onChanged }: { t: TransferDetail; onChan
     try {
       await transfersApi.action(t.id, {
         action: "assign",
-        employeeId: employeeId ?? undefined,
+        employeeId: employeeId || undefined,
         name: employeeId ? undefined : name.trim(),
         vehicle: vehicle.trim(),
         expectedAt: expectedAt ? expectedAt.toISOString() : null,
       })
-      swalToast("Responsable asignado")
+      swalToast("Chofer asignado")
       onChanged()
     } catch (err) {
       swalError("No se pudo asignar", err instanceof Error ? err.message : undefined)
@@ -69,6 +79,12 @@ export function TransferDriverCard({ t, onChanged }: { t: TransferDetail; onChan
     }
   }
 
+  const status = !assigned
+    ? "Sin chofer asignado"
+    : t.driver.employeeId
+      ? `${t.driver.name} · ${t.driver.accepted ? "confirmó la asignación" : "falta que confirme"}`
+      : `${t.driver.name} · servicio externo`
+
   return (
     <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-e1">
       <div className="flex items-center gap-2">
@@ -77,55 +93,80 @@ export function TransferDriverCard({ t, onChanged }: { t: TransferDetail; onChan
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="font-semibold">Chofer del traslado</h2>
-          <p className="text-xs text-muted-foreground">
-            {t.driver.name
-              ? t.driver.employeeId
-                ? `${t.driver.name} · ${t.driver.accepted ? "ya aceptó" : "falta que acepte"}`
-                : `${t.driver.name} · sin cuenta`
-              : "Sin chofer asignado"}
-          </p>
+          <p className="text-xs text-muted-foreground">{status}</p>
         </div>
       </div>
 
-      <FormCombobox
-        label="Trabajador"
-        icon={<User className="size-4" />}
-        options={employees}
-        value={employeeId}
-        onChange={(v) => {
-          setEmployeeId(v || null)
-          if (v) setName("")
-        }}
-        onClear={() => setEmployeeId(null)}
-        clearable
-        searchable
-        placeholder="Elige a quien lo lleva"
-        helper="Lo verá en su interfaz de entregas y compartirá su ubicación."
-        error={errors.driver}
-      />
-      {!employeeId && (
-        <InputGroupField
-          label="…o escribe el nombre"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          leftIcon={<User className="size-4" />}
-          placeholder="Si no es trabajador (proveedor, familiar, paquetería)"
-          helper="Recibirá un enlace para compartir su ubicación sin necesidad de cuenta."
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FormCombobox
+          id="driver-employee"
+          label="¿Quién lo lleva? (trabajador)"
+          required
+          icon={<User className="size-4" />}
+          options={employees}
+          value={employeeId || null}
+          onChange={(v) => {
+            setEmployeeId(v ?? "")
+            if (v) setName("")
+            setErrors((e) => ({ ...e, driver: undefined }))
+          }}
+          onClear={() => setEmployeeId("")}
+          clearable
+          searchable
+          disabled={locked}
+          placeholder="Elegir trabajador…"
           error={errors.driver}
         />
-      )}
-      <InputGroupField
-        label="Vehículo y placas"
-        required
-        value={vehicle}
-        onChange={(e) => setVehicle(e.target.value)}
-        leftIcon={<Truck className="size-4" />}
-        placeholder="Ej. Camioneta blanca ABC-123"
-        error={errors.vehicle}
-      />
-      <DateTimePicker label="Llegada estimada" value={expectedAt} onChange={setExpectedAt} />
-      <Button className="w-full" onClick={() => void save()} disabled={busy}>
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <Truck className="size-4" />} Asignar chofer
+        <InputGroupField
+          id="driver-name"
+          label="O escribe su nombre"
+          value={name}
+          disabled={locked || Boolean(employeeId)}
+          onChange={(e) => {
+            setName(e.target.value)
+            if (e.target.value) setEmployeeId("")
+            setErrors((x) => ({ ...x, driver: undefined }))
+          }}
+          leftIcon={<User className="size-4" />}
+          placeholder="Servicio externo, proveedor, paquetería…"
+        />
+      </div>
+      <p className="-mt-1 text-xs text-muted-foreground">
+        Basta una opción. Un trabajador lo ve en «Mis entregas»; un nombre externo recibe un enlace para compartir su ubicación.
+      </p>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <InputGroupField
+          id="driver-vehicle"
+          label="Vehículo y placas"
+          required
+          value={vehicle}
+          disabled={locked}
+          onChange={(e) => {
+            setVehicle(e.target.value)
+            setErrors((x) => ({ ...x, vehicle: undefined }))
+          }}
+          leftIcon={<Truck className="size-4" />}
+          placeholder="Ej. Camioneta blanca ABC-123"
+          error={errors.vehicle}
+        />
+        <DateTimePicker label="Llegada estimada" value={expectedAt} onChange={setExpectedAt} />
+      </div>
+
+      <Button
+        className="w-full"
+        variant={assigned && unchanged ? "outline" : "default"}
+        onClick={() => void save()}
+        disabled={busy || locked || (assigned && unchanged && Boolean(t.driver.employeeId))}
+      >
+        {busy ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : assigned && unchanged ? (
+          <CheckCircle2 className="size-4 text-success-ink" />
+        ) : (
+          <Truck className="size-4" />
+        )}
+        {locked ? "Chofer confirmado" : assigned && unchanged ? "Chofer asignado" : assigned ? "Actualizar chofer" : "Asignar chofer"}
       </Button>
 
       {link && (

@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.42.0.0] — 2026-10-12
+- **Tipo:** `feat` (Minor)
+- feat: traslados con llegada confirmada por el chofer que habilita la recepcion, chofer por trabajador o nombre libre con boton bloqueado al confirmar, detalle del traslado en Mis Entregas y flyers ilustrados
+
 ### [0.41.1.0] — 2026-10-12
 - **Tipo:** `fix` (Patch)
 - fix: traslados con chofer, vehiculo y llegada en su seccion y validaciones de quien recibe, preparar pedido que no navegaba, landing con las funciones nuevas y flyers de presentacion

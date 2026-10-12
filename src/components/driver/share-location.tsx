@@ -11,6 +11,7 @@ interface Info {
   toName: string
   toAddress: string | null
   driverName: string | null
+  arrived?: boolean
 }
 
 const INTERVAL_MS = 15_000
@@ -21,6 +22,7 @@ export function ShareLocation({ token }: { token: string }) {
   const [sharing, setSharing] = useState(false)
   const [state, setState] = useState<"idle" | "active" | "denied" | "waiting">("idle")
   const [lastSent, setLastSent] = useState<number | null>(null)
+  const [arriving, setArriving] = useState(false)
   const watch = useRef<number | null>(null)
   const last = useRef(0)
 
@@ -78,6 +80,20 @@ export function ShareLocation({ token }: { token: string }) {
     )
   }
   const done = info.status === "received" || info.status === "cancelled"
+  const arrive = async () => {
+    setArriving(true)
+    try {
+      const res = await fetch(`/api/public/transfers/${token}/arrive`, { method: "POST" })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok || d.ok === false) throw new Error(d.error ?? "No se pudo confirmar")
+      setInfo((i) => (i ? { ...i, arrived: true } : i))
+      setSharing(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo confirmar")
+    } finally {
+      setArriving(false)
+    }
+  }
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]">
@@ -116,6 +132,14 @@ export function ShareLocation({ token }: { token: string }) {
             </p>
           )}
           {error && <p className="text-center text-xs text-warning-ink">{error}</p>}
+          {info.status === "in_transit" &&
+            (info.arrived ? (
+              <p className="rounded-2xl bg-success/10 p-3 text-center text-sm font-semibold text-success-ink">Avisaste que llegaste. Gracias.</p>
+            ) : (
+              <Button variant="secondary" className="h-14 rounded-2xl text-base" disabled={arriving} onClick={() => void arrive()}>
+                {arriving ? <Loader2 className="size-5 animate-spin" /> : <MapPin className="size-5" />} Ya llegué al destino
+              </Button>
+            ))}
           <p className="text-center text-xs text-muted-foreground">Mantén esta pantalla abierta mientras llevas el traslado.</p>
         </>
       )}

@@ -2582,6 +2582,8 @@ model Transfer {
   driverEmployeeId String?
   driverAssignedAt DateTime?
   driverAcceptedAt DateTime?
+  /// El chofer confirmó que llegó al destino: habilita la recepción.
+  driverArrivedAt  DateTime?
   /// Enlace público para que un chofer sin cuenta comparta su ubicación.
   trackToken       String?        @unique
   vehicle          String?

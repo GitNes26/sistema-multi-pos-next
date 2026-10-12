@@ -43,7 +43,7 @@ export interface TransferDetail {
   receivedBy: string | null
   requestedBy: string | null
   driverName: string | null
-  driver: { employeeId: string | null; name: string | null; accepted: boolean; trackToken: string | null }
+  driver: { employeeId: string | null; name: string | null; accepted: boolean; trackToken: string | null; arrivedAt: string | null }
   vehicle: string | null
   expectedAt: string | null
   hasDiscrepancy: boolean

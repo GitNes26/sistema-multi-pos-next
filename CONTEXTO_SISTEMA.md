@@ -245,3 +245,5 @@ Ajustes del 12 de octubre de 2026: en traslados, «Cargar y despachar» solo tra
 - `PLAN.md`: plan histórico, nunca autoridad única.
 
 Toda modificación estructural debe actualizar estos niveles sin copiar secretos ni resultados efímeros.
+
+- **Llegada del chofer en traslados (migración `20261012120000_transfer_arrival`)**: `Transfer.driverArrivedAt`. El chofer confirma "Ya llegué al destino" (pestaña Traslados de `/repartidor`, o enlace público `/traslado/[token]` vía `POST /api/public/transfers/[token]/arrive`); un usuario con permiso de despacho puede confirmarlo manualmente (`action: "arrived"`). Hasta entonces `receiveTransfer` responde 409 y el bloque "Recibir en destino" aparece bloqueado. "Chofer del traslado" ofrece trabajador **o** nombre libre + vehículo/placas obligatorios + llegada estimada; el botón pasa a "Chofer asignado" y se bloquea al confirmarlo el trabajador. El chofer ve el detalle del traslado (productos, destino, vehículo, ETA) en "Mis Entregas" (`GET /api/driver/transfers?id=`). Flyers ilustrados: `docs/flyers/multi-pos-flyers-visual.*`.

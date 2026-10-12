@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Multi-POS · Flyers visuales</title>
+<style>
+  :root { --ink:#0f172a; --muted:#64748b; --c1:#4f46e5; --c2:#0d9488; --c3:#ea580c; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin:0; background:#cbd5e1; font-family:"Segoe UI", Inter, Arial, sans-serif; color:var(--ink); }
+  @page { size: letter; margin: 0; }
+  .page { width:8.5in; height:11in; margin:24px auto; position:relative; overflow:hidden; display:flex; flex-direction:column;
+    background: var(--bg); box-shadow:0 12px 40px rgba(15,23,42,.25); page-break-after:always; }
+  .admin { --a: var(--c1); --bg:#eef2ff; --deep:#1e1b4b; }
+  .ops { --a: var(--c2); --bg:#ecfeff; --deep:#042f2e; }
+  .portal { --a: var(--c3); --bg:#fff7ed; --deep:#431407; }
+
+  .top { padding:.5in .6in 0; display:flex; align-items:center; gap:10px; }
+  .logo { width:34px; height:34px; border-radius:10px; background:var(--a); color:#fff; display:grid; place-items:center; font-weight:800; }
+  .top b { font-size:16px; }
+  .chip { margin-left:auto; background:var(--a); color:#fff; font-size:11px; letter-spacing:.14em; text-transform:uppercase; padding:7px 14px; border-radius:999px; }
+  h1 { font-size:46px; line-height:1.02; letter-spacing:-.03em; margin:.28in .6in 0; color:var(--deep); }
+  h1 span { color:var(--a); }
+  .sub { margin:.12in .6in 0; font-size:17px; color:var(--muted); }
+
+  .art { margin:.22in .6in 0; height:3.35in; border-radius:28px; background: linear-gradient(135deg, var(--a), var(--deep)); position:relative; overflow:hidden; }
+  .art svg { position:absolute; inset:0; width:100%; height:100%; }
+
+  .tiles { margin:.26in .6in 0; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .tile { background:#fff; border-radius:20px; padding:16px 12px 14px; text-align:center; box-shadow:0 6px 16px rgba(15,23,42,.08); }
+  .tile .ic { width:50px; height:50px; margin:0 auto 8px; border-radius:16px; background:color-mix(in oklab, var(--a) 14%, white); color:var(--a); display:grid; place-items:center; }
+  .tile svg { width:26px; height:26px; }
+  .tile b { display:block; font-size:15px; }
+  .tile span { font-size:11.5px; color:var(--muted); }
+
+  footer { margin-top:auto; background:var(--deep); color:#fff; padding:.2in .6in; display:flex; align-items:center; gap:14px; }
+  footer b { font-size:15px; }
+  footer .go { margin-left:auto; background:var(--a); padding:10px 18px; border-radius:12px; font-weight:700; font-size:14px; }
+
+  .note { text-align:center; font-size:13px; color:#334155; padding:12px; }
+  @media print { body{background:#fff} .page{margin:0; box-shadow:none} .note{display:none} }
+</style>
+</head>
+<body>
+<p class="note">Imprimir → «Guardar como PDF» · Carta · sin márgenes · activar «Gráficos de fondo».</p>
+
+<!-- ADMINISTRATIVA -->
+<section class="page admin">
+  <div class="top"><span class="logo">M</span><b>Multi-POS</b><span class="chip">Administrativa</span></div>
+  <h1>Todo tu negocio,<br /><span>en un panel.</span></h1>
+  <p class="sub">Controla sucursales, inventario y equipo sin hojas de cálculo.</p>
+
+  <div class="art">
+    <svg viewBox="0 0 640 320" preserveAspectRatio="xMidYMid slice">
+      <rect x="60" y="34" width="520" height="250" rx="18" fill="#fff"/>
+      <rect x="60" y="34" width="110" height="250" rx="18" fill="#eef2ff"/>
+      <g fill="#4f46e5"><rect x="78" y="62" width="70" height="10" rx="5"/><rect x="78" y="92" width="56" height="8" rx="4" opacity=".5"/><rect x="78" y="116" width="64" height="8" rx="4" opacity=".5"/><rect x="78" y="140" width="50" height="8" rx="4" opacity=".5"/><rect x="78" y="164" width="60" height="8" rx="4" opacity=".5"/></g>
+      <g><rect x="190" y="56" width="110" height="62" rx="12" fill="#eef2ff"/><rect x="314" y="56" width="110" height="62" rx="12" fill="#ecfdf5"/><rect x="438" y="56" width="124" height="62" rx="12" fill="#fff7ed"/></g>
+      <g fill="#4f46e5"><rect x="204" y="70" width="40" height="8" rx="4" opacity=".5"/><rect x="204" y="88" width="64" height="16" rx="6"/></g>
+      <g fill="#10b981"><rect x="328" y="70" width="40" height="8" rx="4" opacity=".5"/><rect x="328" y="88" width="64" height="16" rx="6"/></g>
+      <g fill="#ea580c"><rect x="452" y="70" width="40" height="8" rx="4" opacity=".5"/><rect x="452" y="88" width="72" height="16" rx="6"/></g>
+      <g fill="#6366f1"><rect x="206" y="226" width="26" height="40" rx="5"/><rect x="242" y="206" width="26" height="60" rx="5"/><rect x="278" y="216" width="26" height="50" rx="5"/><rect x="314" y="182" width="26" height="84" rx="5"/><rect x="350" y="196" width="26" height="70" rx="5"/><rect x="386" y="160" width="26" height="106" rx="5" fill="#4f46e5"/></g>
+      <circle cx="500" cy="212" r="46" fill="none" stroke="#e0e7ff" stroke-width="20"/>
+      <circle cx="500" cy="212" r="46" fill="none" stroke="#4f46e5" stroke-width="20" stroke-dasharray="190 300" transform="rotate(-90 500 212)"/>
+      <path d="M190 150 C 250 120, 300 170, 360 135 S 470 130, 560 140" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg></div><b>Inventario</b><span>Sucursales y CEDIS</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h13m-4-5 5 5-5 5"/><path d="M21 5v14"/></svg></div><b>Traslados</b><span>Con chofer y GPS</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-2 9H8z"/><path d="M6 6 5 3H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg></div><b>Compras</b><span>Cotiza y recibe</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 6.5C17 4.6 14.8 4 12 4S7 5 7 7.5 9 10.5 12 11s5 1.5 5 3.5S14.8 18 12 18s-5-.8-5-3"/></svg></div><b>Promos y puntos</b><span>Lealtad real</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14.2c2 .6 3.5 2.3 3.5 5.8"/></svg></div><b>Equipo y nómina</b><span>Roles y permisos</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div><b>Reportes</b><span>PDF y Excel</span></div>
+  </div>
+  <footer><b>Multi-POS</b><span>Administra sin complicarte</span><span class="go">multipos.nessik.net</span></footer>
+</section>
+
+<!-- OPERATIVA -->
+<section class="page ops">
+  <div class="top"><span class="logo">M</span><b>Multi-POS</b><span class="chip">Operativa</span></div>
+  <h1>Vende y sirve<br /><span>sin fricción.</span></h1>
+  <p class="sub">Caja, mesas, cocina y reparto conectados en tiempo real.</p>
+
+  <div class="art">
+    <svg viewBox="0 0 640 320" preserveAspectRatio="xMidYMid slice">
+      <rect x="36" y="40" width="340" height="236" rx="20" fill="#fff"/>
+      <g><rect x="52" y="58" width="76" height="62" rx="12" fill="#ccfbf1"/><rect x="138" y="58" width="76" height="62" rx="12" fill="#e0f2fe"/><rect x="224" y="58" width="76" height="62" rx="12" fill="#fef3c7"/>
+         <rect x="52" y="130" width="76" height="62" rx="12" fill="#fce7f3"/><rect x="138" y="130" width="76" height="62" rx="12" fill="#ede9fe"/><rect x="224" y="130" width="76" height="62" rx="12" fill="#dcfce7"/></g>
+      <rect x="52" y="212" width="248" height="46" rx="14" fill="#0d9488"/><rect x="150" y="229" width="52" height="12" rx="6" fill="#fff"/>
+      <rect x="312" y="58" width="52" height="200" rx="12" fill="#f1f5f9"/>
+      <g stroke="#94a3b8" stroke-width="3" stroke-linecap="round"><path d="M324 80h28M324 100h28M324 120h20"/></g>
+      <!-- comanda -->
+      <rect x="400" y="52" width="200" height="104" rx="16" fill="#fef9c3" transform="rotate(3 500 104)"/>
+      <g fill="#a16207" transform="rotate(3 500 104)"><rect x="416" y="70" width="90" height="9" rx="4"/><rect x="416" y="92" width="150" height="7" rx="3" opacity=".6"/><rect x="416" y="108" width="130" height="7" rx="3" opacity=".6"/><rect x="416" y="124" width="100" height="7" rx="3" opacity=".6"/></g>
+      <!-- plano -->
+      <rect x="396" y="176" width="210" height="100" rx="16" fill="#fff"/>
+      <g><circle cx="436" cy="208" r="16" fill="#99f6e4"/><circle cx="486" cy="208" r="16" fill="#fecaca"/><rect x="520" y="192" width="40" height="32" rx="8" fill="#99f6e4"/><circle cx="436" cy="252" r="12" fill="#fde68a"/><rect x="474" y="238" width="44" height="26" rx="8" fill="#99f6e4"/></g>
+    </svg>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div><b>Caja táctil</b><span>Escáner y báscula</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><path d="M5 5h14M12 2v3"/></svg></div><b>Mesas</b><span>Plano y cuentas</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3c2 3-2 4 0 7M13 3c2 3-2 4 0 7M5 14h14l-1.5 6h-11z"/></svg></div><b>Cocina</b><span>En vivo</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h7v7H3zM14 4h7v7h-7zM3 14h7v7H3zM17 14v3h-3m3 4h4v-4"/></svg></div><b>Menú QR</b><span>Pide desde la mesa</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg></div><b>Reparto</b><span>Con mapa y PIN</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div><b>Citas y reservas</b><span>Agenda y rentas</span></div>
+  </div>
+  <footer><b>Multi-POS</b><span>Opera más rápido, con menos errores</span><span class="go">multipos.nessik.net</span></footer>
+</section>
+
+<!-- PORTAL -->
+<section class="page portal">
+  <div class="top"><span class="logo">M</span><b>Multi-POS</b><span class="chip">Portal de clientes</span></div>
+  <h1>Compra desde<br /><span>tu teléfono.</span></h1>
+  <p class="sub">Una cuenta, tus negocios favoritos, sin descargar nada.</p>
+
+  <div class="art">
+    <svg viewBox="0 0 640 320" preserveAspectRatio="xMidYMid slice">
+      <g transform="translate(70 24)">
+        <rect width="150" height="276" rx="26" fill="#0f172a"/>
+        <rect x="8" y="14" width="134" height="248" rx="18" fill="#fff"/>
+        <rect x="18" y="28" width="70" height="10" rx="5" fill="#ea580c"/>
+        <g><rect x="18" y="52" width="52" height="60" rx="10" fill="#ffedd5"/><rect x="80" y="52" width="52" height="60" rx="10" fill="#fee2e2"/><rect x="18" y="122" width="52" height="60" rx="10" fill="#dcfce7"/><rect x="80" y="122" width="52" height="60" rx="10" fill="#e0e7ff"/></g>
+        <rect x="18" y="204" width="114" height="36" rx="12" fill="#ea580c"/>
+      </g>
+      <g transform="translate(250 60)">
+        <rect width="170" height="130" rx="20" fill="#fff"/>
+        <path d="M0 78 Q40 40 80 70 T170 52" stroke="#fdba74" stroke-width="6" fill="none"/>
+        <circle cx="84" cy="64" r="12" fill="#ea580c"/><circle cx="84" cy="64" r="5" fill="#fff"/>
+        <rect x="16" y="14" width="86" height="10" rx="5" fill="#fed7aa"/>
+      </g>
+      <g transform="translate(250 212)">
+        <rect width="170" height="70" rx="18" fill="#fff"/>
+        <g fill="#ea580c"><rect x="16" y="16" width="38" height="38" rx="6" opacity=".15"/><rect x="22" y="22" width="10" height="10"/><rect x="38" y="22" width="10" height="10"/><rect x="22" y="38" width="10" height="10"/><rect x="38" y="40" width="6" height="6"/></g>
+        <rect x="70" y="20" width="80" height="9" rx="4" fill="#fed7aa"/><rect x="70" y="38" width="56" height="9" rx="4" fill="#ffedd5"/>
+      </g>
+      <g transform="translate(450 40)">
+        <circle cx="90" cy="70" r="62" fill="#fff"/>
+        <path d="m90 38 10 22 24 3-18 17 5 24-21-12-21 12 5-24-18-17 24-3z" fill="#ea580c"/>
+        <rect x="20" y="170" width="140" height="56" rx="18" fill="#fff"/>
+        <rect x="36" y="188" width="108" height="10" rx="5" fill="#fed7aa"/><rect x="36" y="206" width="70" height="8" rx="4" fill="#ffedd5"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-1.5 11h-15zM8 9l2-5M16 9l-2-5"/></svg></div><b>Tienda</b><span>Pide y reordena</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg></div><b>Seguimiento</b><span>En vivo con mapa</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></div><b>Puntos</b><span>Y crédito</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></div><b>Reserva</b><span>Tu mesa en el plano</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h7v7H3zM14 4h7v7h-7zM3 14h7v7H3zM17 14v3h-3m3 4h4v-4"/></svg></div><b>Menú QR</b><span>Pide en la mesa</span></div>
+    <div class="tile"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div><b>Como app</b><span>Sin descargar</span></div>
+  </div>
+  <footer><b>Compra desde la app</b><span>multipos.nessik.net/portal/auth/login</span><span class="go">Crea tu cuenta</span></footer>
+</section>
+</body>
+</html>

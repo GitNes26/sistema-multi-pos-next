@@ -269,7 +269,25 @@ export function TransferDetailView({ id, perms }: { id: string; perms: TransferP
                 {t.status === "in_transit" && (
                   <div className="space-y-5">
                     {perms.dispatch && <DriverMode transferId={t.id} onSent={load} />}
-                    {perms.receive && <ReceiveCard t={t} busy={busy} onReceive={(body) => run({ action: "receive", ...body }, "Traslado recibido completo")} />}
+                    {perms.receive &&
+                      (t.driver.arrivedAt ? (
+                        <ReceiveCard t={t} busy={busy} onReceive={(body) => run({ action: "receive", ...body }, "Traslado recibido completo")} />
+                      ) : (
+                        <StageCard
+                          icon={PackageCheck}
+                          title="Recibir en destino"
+                          text={`La recepción se habilita cuando el chofer confirma que llegó a ${t.to.name}.`}
+                        >
+                          <p className="flex items-center gap-2 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+                            <Truck className="size-4 shrink-0" /> En camino · esperando la confirmación de llegada{t.driver.name ? ` de ${t.driver.name}` : ""}.
+                          </p>
+                          {perms.dispatch && (
+                            <Button variant="outline" className="w-full" disabled={busy} onClick={() => void run({ action: "arrived" }, "Llegada confirmada")}>
+                              <CheckCircle2 className="size-4" /> Confirmar que llegó (manual)
+                            </Button>
+                          )}
+                        </StageCard>
+                      ))}
                   </div>
                 )}
                 {t.status === "received" && (

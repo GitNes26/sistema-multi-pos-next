@@ -3,6 +3,7 @@ import { inventoryGuard, inventoryErrorResponse } from "../../guard";
 import {
   cancelTransfer,
   assignTransferDriver,
+  confirmTransferArrival,
   dispatchTransfer,
   getTransfer,
   receiveTransfer,
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
             expectedAt: typeof body.expectedAt === "string" ? body.expectedAt : body.expectedAt === null ? null : undefined,
           })
         );
+      case "arrived":
+        return NextResponse.json(await confirmTransferArrival(organizationId, id));
       case "prepare":
         return NextResponse.json(await startPreparing(organizationId, id));
       case "dispatch":
