@@ -1,5 +1,6 @@
 "use client"
 
+import { TextareaField } from "@/components/base/textarea-field"
 import { ActiveStatusPill, PurchaseStatusPill } from "@/components/shared/status-pills"
 import * as React from "react"
 import {
@@ -1423,10 +1424,7 @@ function PurchaseDocumentDialog({
             <div className="flex justify-between"><dt className="text-muted-foreground">IVA</dt><dd className="tabular-nums">{money.format(taxes)}</dd></div>
             <div className="flex justify-between border-t pt-1 text-base font-semibold"><dt>Total estimado</dt><dd className="tabular-nums">{money.format(subtotal + taxes)}</dd></div>
           </dl>
-          <div className="space-y-2">
-            <Label htmlFor="purchase-notes">Notas y condiciones</Label>
-            <Textarea id="purchase-notes" value={doc.notes} onChange={(e) => setDoc((v) => ({ ...v, notes: e.target.value }))} placeholder="Ej. entregar en horario de 8 a 12" />
-          </div>
+          <TextareaField id="purchase-notes" label="Notas y condiciones" value={doc.notes} onChange={(e) => setDoc((v) => ({ ...v, notes: e.target.value }))} placeholder="Ej. entregar en horario de 8 a 12"  />
         </div>
       )}
     </DialogComponent>

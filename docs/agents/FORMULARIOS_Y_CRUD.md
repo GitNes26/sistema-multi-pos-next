@@ -21,7 +21,7 @@
 | Necesidad | Componente |
 |---|---|
 | Texto, número, correo, teléfono, contraseña | `InputGroupField` |
-| Texto largo | `Textarea` dentro de un field con label/helper/error consistente |
+| Texto largo | `TextareaField` (etiqueta con icono, pista y error; nunca `Label` + `Textarea` sueltos) |
 | Opción fija | `FormCombobox`, sin crear/sincronizar |
 | Catálogo relacionado | `OptionSelect` o `FormCombobox` con sync/create + `CrudCreateDialog` |
 | Booleano | `SwitchField`; si es composición manual, `id` + `<label htmlFor>` |
@@ -32,6 +32,22 @@
 | Cantidad incremental | `QuantityStepper` |
 
 No uses `<select>` ni `<input type="date">`. Los campos de búsqueda usan `type="search"`. Labels y controles deben estar vinculados por `id`/`htmlFor`; helper explica para qué y cuándo usar el dato, no repite el label.
+
+## Cada campo lleva un icono acorde con su dato (obligatorio)
+
+Dinero → moneda, correo → sobre, teléfono → teléfono, fecha → calendario, hora → reloj, dirección → pin, notas → texto largo, persona → usuario, cantidad → numeral, enlace → cadena.
+
+- `InputGroupField`, `TextareaField` y `FormCombobox` lo infieren de la etiqueta, el `type` y el `inputMode` con `inferFieldIcon` (`src/lib/field-icons.ts`); `CrudForm` usa el `icon` declarado y, si falta, infiere por etiqueta y tipo.
+- Si no acierta, pasa el icono explícito (`leftIcon`/`icon`). Los grupos que no son un input (`SegmentedFilter`, casillas) llevan su título con icono.
+- Añade palabras nuevas a `RULES` de `field-icons.ts`; no lo resuelvas caso por caso.
+
+## Buscadores, filtros y selectores ignoran mayúsculas y acentos (obligatorio)
+
+«jose» encuentra «José» y «adoracion» «Adoración».
+
+- Cliente: `matchesSearch` / `matchesAllWords` de `src/lib/search.ts`. Nunca `x.toLowerCase().includes(q)`.
+- `FormCombobox` y `ui/command.tsx` ya filtran así; un `cmdk` propio pasa `filter={commandFilter}`.
+- Servidor: la intercalación de MySQL es insensible; `contains` de Prisma sin `mode`.
 
 ## Teclado, fecha y hora (obligatorio en todo campo nuevo)
 
@@ -49,6 +65,7 @@ El teclado móvil debe corresponder al dato. `ui/input.tsx` e `InputGroupField` 
 - Hora siempre con `TimePicker`; fecha con `DatePicker`; fecha+hora con `DateTimePicker`. Nunca `<input type="date|time|datetime-local">`. Convierte con `src/lib/date-input.ts` (`ymdToDate`, `dateToYmd`, `localToDate`, `dateToLocal`).
 - Toda pantalla con filtros o búsqueda incluye `ClearFiltersButton` (`src/components/base/clear-filters-button.tsx`), que aparece solo si hay algún filtro distinto del predeterminado y los regresa a su valor por defecto. `DataTable` ya lo trae para su búsqueda interna; los filtros externos se conectan con `filtersActive` y `onClearFilters`.
 - `CrudForm` mapea los tipos `phone` → `tel` y `email` → `email` por sí mismo.
+- **`DateTimePicker` ocupa todo el ancho disponible** (fecha y hora se reparten la fila; en móvil se apilan). No lo envuelvas en contenedores de ancho fijo.
 
 ## Notificaciones y alertas
 
@@ -64,7 +81,7 @@ Avisos normales con el sistema de toasts (en proyectos derivados de la plantilla
 
 ## Diálogos y overlays
 
-Usa `DialogComponent` con `open`, `onOpenChange`, `title`, `description`, `icon`, `size`, `footer` y cuerpo. El componente ya ofrece:
+Usa `DialogComponent` con `open`, `onOpenChange`, `title`, `description`, `icon`, `size`, `footer` y cuerpo. Se compone de **tres partes**: encabezado fijo (icono en recuadro + nombre + leyenda; sin `icon` se infiere del título con `inferDialogIcon`), cuerpo con scroll que crece hasta casi 100 dvh y pie fijo con las acciones finales. El componente ya ofrece:
 
 - header/footer fijos y body con scroll;
 - altura limitada y safe area;

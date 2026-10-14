@@ -1,5 +1,6 @@
 "use client"
 
+import { TextareaField } from "@/components/base/textarea-field"
 import { useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import { Home, MapPin, MapPinned, Pencil, Plus, Trash2 } from "lucide-react"
@@ -186,10 +187,7 @@ export function AddressesClient() {
             <Button type="button" variant="outline" className="h-12 w-full" onClick={() => setMapOpen(true)}>
               <MapPinned className="size-4" /> {draft.latitude != null ? "Confirmar o ajustar el pin en el mapa" : "Ubicar en el mapa"}
             </Button>
-            <div className="space-y-1.5">
-              <Label htmlFor="addr-notes">Referencias (opcional)</Label>
-              <Textarea id="addr-notes" rows={2} maxLength={200} placeholder="Portón negro, entre calle X y Y, timbre 2…" value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
-            </div>
+            <TextareaField id="addr-notes" label="Referencias (opcional)" rows={2} maxLength={200} placeholder="Portón negro, entre calle X y Y, timbre 2…" value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} />
           </>
         )}
       </DialogComponent>

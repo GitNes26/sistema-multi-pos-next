@@ -29,6 +29,15 @@ Una página operativa no debe exigir descubrir acciones por hover. En touch las 
 - Tablas se vuelven cards mediante `DataTable`; no fuerces scroll horizontal salvo datos matriciales reales.
 - Usa `h-dvh`/`min-h-dvh`; no dependas de `100vh` en móvil.
 
+## Todo elemento interactivo lo parece (obligatorio)
+
+Todo lo que se puede tocar o pulsar — botones, enlaces, filas y tarjetas clicables, pestañas, interruptores, casillas, chips, ítems de menú — debe:
+
+- mostrar `cursor: pointer` al pasar el puntero (`not-allowed` si está deshabilitado);
+- dar una **animación minimalista** que lo delate como interactivo: elevación o realce sutil con puntero fino y un leve hundimiento (`scale(.97)`) al presionar, siempre bajo `prefers-reduced-motion: no-preference`.
+
+`globals.css` aplica la base a `a[href]`, `button`, `[role=button|tab|menuitem|option|switch|checkbox|radio]`, `summary`, `label[for]` e inputs de casilla/rango/archivo. Para tarjetas y filas clicables que no sean botón ni enlace usa `.press`; si el elemento es un `div` con `onClick`, conviértelo en `button`/`Link` (accesible y con teclado). No inventes animaciones propias por componente.
+
 ## Safe areas
 
 - Root metadata debe conservar `viewport-fit=cover`.

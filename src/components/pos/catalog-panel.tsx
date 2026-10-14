@@ -1,5 +1,6 @@
 "use client"
 
+import { matchesSearch } from "@/lib/search"
 import { useEffect, useMemo, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { STAGGER_COMPACT, STAGGER } from "@/lib/animation-tokens"
@@ -90,8 +91,8 @@ export function CatalogPanel({
       ) return false
       if (!q) return true
       return (
-        p.name.toLowerCase().includes(q) ||
-        (p.sku ?? "").toLowerCase().includes(q) ||
+        matchesSearch(p.name, q) ||
+        matchesSearch((p.sku ?? ""), q) ||
         (p.barcode ?? "").includes(q)
       )
     })

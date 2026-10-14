@@ -1,5 +1,6 @@
 "use client"
 
+import { matchesSearch } from "@/lib/search"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ClipboardList,
@@ -145,7 +146,7 @@ export function CatalogsModal({
     return orders.filter(
       (o) =>
         String(o.orderNumber).includes(q) ||
-        (o.customerName ?? "").toLowerCase().includes(q) ||
+        matchesSearch((o.customerName ?? ""), q) ||
         o.status.includes(q)
     )
   }, [orders, searchOrders])
@@ -155,9 +156,9 @@ export function CatalogsModal({
     const q = searchProducts.toLowerCase()
     return products.filter(
       (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.sku ?? "").toLowerCase().includes(q) ||
-        (p.categoryName ?? "").toLowerCase().includes(q)
+        matchesSearch(p.name, q) ||
+        matchesSearch((p.sku ?? ""), q) ||
+        matchesSearch((p.categoryName ?? ""), q)
     )
   }, [products, searchProducts])
 
@@ -166,10 +167,10 @@ export function CatalogsModal({
     const q = searchCustomers.toLowerCase()
     return customers.filter(
       (c) =>
-        c.fullName.toLowerCase().includes(q) ||
+        matchesSearch(c.fullName, q) ||
         (c.phone ?? "").includes(q) ||
-        (c.email ?? "").toLowerCase().includes(q) ||
-        (c.customerCode ?? "").toLowerCase().includes(q)
+        matchesSearch((c.email ?? ""), q) ||
+        matchesSearch((c.customerCode ?? ""), q)
     )
   }, [customers, searchCustomers])
 
@@ -178,7 +179,7 @@ export function CatalogsModal({
     const q = searchPromos.toLowerCase()
     return promotions.filter(
       (p) =>
-        p.name.toLowerCase().includes(q) ||
+        matchesSearch(p.name, q) ||
         p.scope.includes(q) ||
         p.benefit.includes(q)
     )

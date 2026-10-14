@@ -1,5 +1,6 @@
 "use client"
 
+import { TextareaField } from "@/components/base/textarea-field"
 import * as React from "react"
 import { ArrowLeft, ArrowRight, Building2, Check, FileText, Loader2, Pencil, Plus, Search, Star, Trash2, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -319,10 +320,7 @@ export function QuoteRequestWizard({
               disabledBefore={new Date()}
               clearable
             />
-            <div className="space-y-2">
-              <Label htmlFor="quote-notes">Notas y condiciones</Label>
-              <Textarea id="quote-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej. entregar en horario de 8 a 12" />
-            </div>
+            <TextareaField id="quote-notes" label="Notas y condiciones" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej. entregar en horario de 8 a 12"  />
           </div>
 
           {groups.map((g, index) => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search"
 import { ReturnStatusPill, ReturnTypePill } from "@/components/shared/status-pills";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -88,8 +89,8 @@ export function ReturnsTab({ canView, canManage }: Props) {
         ? allRows.filter((r) => {
             const search = q.toLowerCase();
             return (
-              r.id.toLowerCase().includes(search) ||
-              r.sale?.customer?.fullName?.toLowerCase().includes(search) ||
+              matchesSearch(r.id, search) ||
+              matchesSearch(r.sale?.customer?.fullName, search) ||
               String(r.sale?.locationSaleNumber ?? "").includes(search)
             );
           })

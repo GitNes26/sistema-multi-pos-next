@@ -1,5 +1,7 @@
 "use client"
 
+import { TextareaField } from "@/components/base/textarea-field"
+import { matchesSearch } from "@/lib/search"
 import { TransferFlow } from "./transfer-flow"
 import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
@@ -139,7 +141,7 @@ export function NewTransferWizard({
   const units = lines.reduce((s, [, q]) => s + q, 0)
   const filtered = stock
     .filter((s) => s.quantity > 0)
-    .filter((s) => !q || `${s.productName} ${s.variantName ?? ""} ${s.sku ?? ""}`.toLowerCase().includes(q.toLowerCase()))
+    .filter((s) => !q || matchesSearch(`${s.productName} ${s.variantName ?? ""} ${s.sku ?? ""}`, q))
 
   const canNext = step === 0 ? Boolean(from && to && !(from.id === to.id && from.type === to.type)) : step === 1 ? lines.length > 0 : true
 
@@ -304,10 +306,7 @@ export function NewTransferWizard({
               </ul>
               <div className="space-y-3">
                 <DateTimePicker label="Llegada estimada (opcional)" value={expectedAt} onChange={setExpectedAt} />
-                <div className="space-y-1.5">
-                  <Label htmlFor="transfer-notes">Notas para quien prepara</Label>
-                  <Textarea id="transfer-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej. empacar refrigerados aparte" />
-                </div>
+                <TextareaField id="transfer-notes" label="Notas para quien prepara" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej. empacar refrigerados aparte"  />
               </div>
             </>
           )}

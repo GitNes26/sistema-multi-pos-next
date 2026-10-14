@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search"
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Loader2, Mail, Phone, Search, Trash2, UserPlus, UserRound } from "lucide-react";
 import * as yup from "yup";
@@ -41,7 +42,7 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
     if (!needle) return customers;
     const qrId = parseCustomerQr(q);
     if (qrId) return customers.filter((c) => c.id === qrId);
-    return customers.filter((c) => c.fullName.toLowerCase().includes(needle) || (c.phone ?? "").includes(needle) || (c.customerCode ?? "").toLowerCase().includes(needle));
+    return customers.filter((c) => matchesSearch(c.fullName, needle) || (c.phone ?? "").includes(needle) || matchesSearch((c.customerCode ?? ""), needle));
   }, [customers, q]);
 
   const close = () => { setCreating(false); setDraft(blank); setErrors({}); setQ(""); onClose(); };

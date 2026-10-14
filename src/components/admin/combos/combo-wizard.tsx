@@ -1,5 +1,7 @@
 "use client"
 
+import { TextareaField } from "@/components/base/textarea-field"
+import { matchesSearch } from "@/lib/search"
 import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowLeft, ArrowRight, Check, Layers, Package, PiggyBank, Plus, Search, Sparkles, Tag, Trash2, TriangleAlert } from "lucide-react"
@@ -139,7 +141,7 @@ export function ComboWizard({
   const update = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
   const remove = (i: number) => setLines((ls) => ls.filter((_, idx) => idx !== i))
 
-  const filtered = products.filter((p) => !q || p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 60)
+  const filtered = products.filter((p) => !q || matchesSearch(p.name, q)).slice(0, 60)
 
   const problems = [
     step >= 0 && lines.length === 0 && "Agrega al menos un producto.",
@@ -379,10 +381,7 @@ export function ComboWizard({
                     <p className="flex items-center gap-1 text-xs text-muted-foreground"><Sparkles className="size-3.5" /> Nombre sugerido; puedes cambiarlo.</p>
                   )}
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="combo-desc">Descripción corta</Label>
-                  <Textarea id="combo-desc" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ej. Ideal para compartir en la comida" />
-                </div>
+                <TextareaField id="combo-desc" label="Descripción corta" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ej. Ideal para compartir en la comida"  />
                 <div className="space-y-4">
                   <Attachment label="Foto" value={imageUrl} onChange={setImageUrl} upload={uploadFile} accept={UPLOAD_IMAGE_ACCEPT} widthClass="w-32" heightClass="h-32" />
                   <SwitchField

@@ -1,5 +1,7 @@
 "use client";
 
+import { TextareaField } from "@/components/base/textarea-field"
+import { matchesSearch } from "@/lib/search"
 import { ClearFiltersButton } from "@/components/base/clear-filters-button";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -417,10 +419,7 @@ function MovementDialog({
               )}
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="movementReason">Motivo (opcional)</Label>
-            <Textarea id="movementReason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. reposición de inventario" />
-          </div>
+          <TextareaField id="movementReason" label="Motivo (opcional)" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej. reposición de inventario"  />
     </DialogComponent>
   );
 }
@@ -1247,10 +1246,7 @@ function NewRevisionDialog({
         </>
       }
     >
-          <div className="space-y-1.5">
-            <Label htmlFor="newRevisionNotes">Notas (opcional)</Label>
-            <Textarea id="newRevisionNotes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej. inventario de fin de mes" />
-          </div>
+          <TextareaField id="newRevisionNotes" label="Notas (opcional)" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej. inventario de fin de mes"  />
     </DialogComponent>
   );
 }
@@ -1320,8 +1316,8 @@ function RevisionDialog({
       (i) =>
         (i.barcode && i.barcode.toLowerCase() === q) ||
         (i.sku && i.sku.toLowerCase() === q) ||
-        i.productName.toLowerCase().includes(q) ||
-        (i.variantName ?? "").toLowerCase().includes(q)
+        matchesSearch(i.productName, q) ||
+        matchesSearch((i.variantName ?? ""), q)
     );
     if (!item) {
       playSound("error");
@@ -1434,16 +1430,12 @@ function RevisionDialog({
               <ClipboardCheck className="size-3.5 shrink-0" />
               El conteo se guarda automáticamente al escanear o escribir; no requiere presionar ningún botón.
             </p>
-            <div className="space-y-1.5">
-              <Label htmlFor="revisionNotes">Notas (opcional)</Label>
-              <Textarea
-                id="revisionNotes"
+            <TextareaField id="revisionNotes" label="Notas (opcional)"
                 rows={2}
                 value={notes}
                 onChange={(e) => handleNotesChange(e.target.value)}
                 placeholder="Ej. conteo de fin de mes, incidencias…"
-              />
-            </div>
+               />
           </>
         )}
         {!editable && notes && (

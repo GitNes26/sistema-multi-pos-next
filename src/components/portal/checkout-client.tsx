@@ -1,5 +1,6 @@
 "use client";
 
+import { TextareaField } from "@/components/base/textarea-field"
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -922,16 +923,12 @@ export function CheckoutClient() {
             </div>
           </section>
 
-          <div className="space-y-2">
-            <Label htmlFor="checkout-notes">Notas para tu pedido (opcional)</Label>
-            <Textarea
-              id="checkout-notes"
+          <TextareaField id="checkout-notes" label="Notas para tu pedido (opcional)"
               placeholder="Notas para tu pedido (opcional)…"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="rounded-2xl"
-            />
-          </div>
+             />
 
           {/* La acción permanece encima de la navegación fija del portal. */}
           <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t bg-background/95 px-4 pb-3 pt-3 backdrop-blur">

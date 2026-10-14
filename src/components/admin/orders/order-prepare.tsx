@@ -1,5 +1,6 @@
 "use client"
 
+import { matchesSearch } from "@/lib/search"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -170,8 +171,8 @@ export function OrderPrepare({ orderId }: { orderId: string }) {
     const target = prep.items.find(
       (i) =>
         !i.found &&
-        (i.productName.toLowerCase().includes(q) ||
-          (i.variantName ?? "").toLowerCase().includes(q))
+        (matchesSearch(i.productName, q) ||
+          matchesSearch((i.variantName ?? ""), q))
     )
     if (target) {
       playSound("scan")

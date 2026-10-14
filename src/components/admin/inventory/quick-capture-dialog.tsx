@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search"
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Barcode, Keyboard, ListChecks, Loader2, Save, Search, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,7 @@ export function QuickCaptureDialog({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((r) => {
-      if (q && !`${r.productName} ${r.variantName ?? ""} ${r.sku ?? ""} ${r.barcode ?? ""}`.toLowerCase().includes(q)) return false;
+      if (q && !matchesSearch(`${r.productName} ${r.variantName ?? ""} ${r.sku ?? ""} ${r.barcode ?? ""}`, q)) return false;
       if (filter === "noMin") return r.minThreshold === 0;
       if (filter === "low") return r.minThreshold > 0 && r.quantity <= r.minThreshold;
       if (filter === "changed") return changed.some((c) => c.id === r.id);
@@ -139,7 +140,7 @@ export function QuickCaptureDialog({
     if (!code) return;
     const row =
       rows.find((r) => r.barcode?.toLowerCase() === code || r.sku?.toLowerCase() === code) ??
-      rows.find((r) => `${r.productName} ${r.variantName ?? ""}`.toLowerCase().includes(code));
+      rows.find((r) => matchesSearch(`${r.productName} ${r.variantName ?? ""}`, code));
     setScan("");
     if (!row) {
       playSound("error");

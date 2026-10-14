@@ -1,5 +1,6 @@
 "use client"
 
+import { TextareaField } from "@/components/base/textarea-field"
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { salesApi, type ReturnSettlement, type SaleDetail, type SaleReturn } from "@/lib/api"
@@ -485,16 +486,12 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
           leftIcon={<MessageSquare className="size-4" />}
         />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="returnNotes">Notas internas (opcional)</Label>
-        <Textarea
-          id="returnNotes"
+      <TextareaField id="returnNotes" label="Notas internas (opcional)"
           placeholder="Notas para el equipo..."
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
-        />
-      </div>
+         />
         </div>
         <aside className="min-w-0 space-y-3 lg:sticky lg:top-0 lg:self-start">
       {returnType === "bonus" && (

@@ -1,5 +1,6 @@
 "use client"
 
+import { matchesSearch } from "@/lib/search"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { AlertTriangle, ArrowRight, Clock, MapPin, Plus, RefreshCw, Search, Truck } from "lucide-react"
@@ -70,7 +71,7 @@ export function TransfersBoard({ canManage, locationId }: { canManage: boolean; 
           : filter === "pending" ? r.status === "pending" || r.status === "preparing"
             : r.status === filter
     )
-    .filter((r) => !q || `${r.folio} ${r.fromName} ${r.toName} ${r.driverName ?? ""}`.toLowerCase().includes(q.toLowerCase()))
+    .filter((r) => !q || matchesSearch(`${r.folio} ${r.fromName} ${r.toName} ${r.driverName ?? ""}`, q))
 
   return (
     <div className="space-y-4">

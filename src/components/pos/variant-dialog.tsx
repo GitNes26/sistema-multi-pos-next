@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search"
 import { useEffect, useMemo, useState } from "react";
 import { CornerDownLeft, Layers, Search } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
@@ -27,7 +28,7 @@ export function VariantDialog({
     if (!product) return [];
     const t = q.trim().toLowerCase();
     if (!t) return product.variants;
-    return product.variants.filter((v) => v.name.toLowerCase().includes(t));
+    return product.variants.filter((v) => matchesSearch(v.name, t));
   }, [product, q]);
 
   // Limpiar el buscador y el resaltado cada que se cierra el diálogo.

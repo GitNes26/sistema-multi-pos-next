@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search"
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -76,7 +77,7 @@ export function StoreClient() {
       );
     }
     const q = search.trim().toLowerCase();
-    if (q) list = list.filter((p) => p.name.toLowerCase().includes(q) || (p.categoryName ?? "").toLowerCase().includes(q));
+    if (q) list = list.filter((p) => matchesSearch(p.name, q) || matchesSearch((p.categoryName ?? ""), q));
     return list;
   }, [products, activeCategory, activeCategoryIds, search]);
 

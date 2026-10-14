@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { matchesSearch } from "@/lib/search"
 import { Prisma, type $Enums } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { CrudError } from "@/lib/crud/types";
@@ -131,7 +132,7 @@ export async function listTransfers(
       expectedAt: t.expectedAt?.toISOString() ?? null,
       lastLocationAt: t.lastLocationAt?.toISOString() ?? null,
     };
-  }).filter((r) => !f.q || `${r.folio} ${r.fromName} ${r.toName} ${r.driverName ?? ""}`.toLowerCase().includes(f.q.toLowerCase()));
+  }).filter((r) => !f.q || matchesSearch(`${r.folio} ${r.fromName} ${r.toName} ${r.driverName ?? ""}`, f.q));
 }
 
 export interface TransferPlace {

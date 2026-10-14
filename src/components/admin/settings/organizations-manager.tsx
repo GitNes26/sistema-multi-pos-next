@@ -1,5 +1,6 @@
 "use client"
 
+import { matchesSearch } from "@/lib/search"
 import { ActiveStatusPill } from "@/components/shared/status-pills"
 import { StatusPill } from "@/components/base/status-pill"
 import { BusinessModeBadge } from "@/components/shared/business-mode-badge"
@@ -241,7 +242,7 @@ function OrganizationsTab() {
   const visible = orgs.filter(
     (o) =>
       (modeFilter === "all" || o.businessMode === modeFilter) &&
-      (!query || `${o.name} ${o.ownerName ?? ""} ${o.ownerEmail ?? ""}`.toLowerCase().includes(query.toLowerCase()))
+      (!query || matchesSearch(`${o.name} ${o.ownerName ?? ""} ${o.ownerEmail ?? ""}`, query))
   )
 
   return (
@@ -759,7 +760,7 @@ function UsersTab() {
         (userFilter === "unassigned" && isUnassigned(u)) ||
         (userFilter === "superadmin" && u.isSuperadmin) ||
         (userFilter === "inactive" && !u.isActive)) &&
-      (!query || `${u.fullName} ${u.email} ${u.memberships.map((m) => m.organizationName).join(" ")}`.toLowerCase().includes(query.toLowerCase()))
+      (!query || matchesSearch(`${u.fullName} ${u.email} ${u.memberships.map((m) => m.organizationName).join(" ")}`, query))
   )
 
   return (

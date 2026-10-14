@@ -1,5 +1,6 @@
 "use client"
 
+import { matchesSearch } from "@/lib/search"
 import { useMemo, useState } from "react"
 import { Check, Layers3, Loader2, Search } from "lucide-react"
 import { DialogComponent } from "@/components/ui/dialog"
@@ -15,7 +16,7 @@ export function BulkCategoriesDialog({ open, onOpenChange, onComplete }: { open:
   const [query, setQuery] = useState("")
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState(false)
-  const options = useMemo(() => PRESETS[sector].filter((name) => name.toLowerCase().includes(query.trim().toLowerCase())), [query, sector])
+  const options = useMemo(() => PRESETS[sector].filter((name) => matchesSearch(name, query)), [query, sector])
 
   const toggle = (name: string) => setSelected((current) => {
     const next = new Set(current)

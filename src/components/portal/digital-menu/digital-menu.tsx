@@ -1,5 +1,6 @@
 "use client";
 
+import { matchesSearch } from "@/lib/search"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -179,7 +180,7 @@ export function DigitalMenu({ tableId, tableToken }: { tableId?: string; tableTo
 
   const filtered = products.filter((p) => {
     if (!p.isAvailable) return false;
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !matchesSearch(p.name, search)) return false;
     if (category && p.categoryId !== category) return false;
     return true;
   });
