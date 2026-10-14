@@ -656,6 +656,7 @@ function EditOrgDialog({
       open={Boolean(org)}
       onOpenChange={(v) => !v && onClose()}
       title="Editar organización"
+      description="Datos de la empresa, su dueño y su plan."
       icon={<Building2 className="size-4" />}
       footer={
         <>

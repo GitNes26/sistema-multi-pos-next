@@ -235,6 +235,7 @@ export function CatalogsModal({
       onOpenChange={(o) => !o && onClose()}
       icon={<ClipboardList className="size-5 text-primary" />}
       title="Catálogos y pedidos"
+      description="Consulta productos, clientes y pedidos sin salir de la venta."
       className="sm:max-w-3xl"
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-1">

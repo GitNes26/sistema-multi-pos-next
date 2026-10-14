@@ -394,7 +394,7 @@ export function ReturnsTab({ canView, canManage }: Props) {
       )}
 
       {/* Dialog detalle */}
-      <DialogComponent open={detailOpen} onOpenChange={setDetailOpen} size="lg">
+      <DialogComponent open={detailOpen} onOpenChange={setDetailOpen} size="lg" title="Detalle de la devolución" description="Artículos devueltos, importe reembolsado y quién lo autorizó.">
         {detailLoading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />

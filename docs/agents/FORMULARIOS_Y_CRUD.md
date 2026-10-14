@@ -66,6 +66,8 @@ El teclado móvil debe corresponder al dato. `ui/input.tsx` e `InputGroupField` 
 - Toda pantalla con filtros o búsqueda incluye `ClearFiltersButton` (`src/components/base/clear-filters-button.tsx`), que aparece solo si hay algún filtro distinto del predeterminado y los regresa a su valor por defecto. `DataTable` ya lo trae para su búsqueda interna; los filtros externos se conectan con `filtersActive` y `onClearFilters`.
 - `CrudForm` mapea los tipos `phone` → `tel` y `email` → `email` por sí mismo.
 - **`DateTimePicker` ocupa todo el ancho disponible** (fecha y hora se reparten la fila; en móvil se apilan). No lo envuelvas en contenedores de ancho fijo.
+- Todo selector de fecha trae **«Hoy»** al pie del calendario y todo selector de hora **«Ahora»** (hora actual); `DateTimePicker` los hereda. La letra de `TimePicker` es una talla menor y sus selects son fluidos para no salirse del contenedor.
+- `SegmentedFilter` con más opciones que ancho muestra **flechas** a los lados para desplazar con el puntero (en táctil se arrastra).
 
 ## Notificaciones y alertas
 

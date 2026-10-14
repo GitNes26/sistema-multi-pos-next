@@ -17,8 +17,8 @@ export function ReservationWizardDialog({
   locations: { id: string; name: string }[];
 }) {
   return (
-    <DialogComponent open={open} onOpenChange={onOpenChange} title="Nueva reservación">
-      <div className="max-h-[70vh] overflow-y-auto p-4">
+    <DialogComponent open={open} onOpenChange={onOpenChange} title="Nueva reservación" description="Elige sede, fecha, mesa y los datos del cliente." size="3xl">
+      <div className="py-1">
         <ReservationWizard
           locations={locations}
           createUrl="/api/table-reservations"

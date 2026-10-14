@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.44.0.0] — 2026-10-14
+- **Tipo:** `feat` (Minor)
+- feat: hora actual y fecha de hoy en los selectores, letra menor en el selector de hora, flechas para desplazar filtros segmentados y leyendas en modales
+
 ### [0.43.0.0] — 2026-10-14
 - **Tipo:** `feat` (Minor)
 - feat: busqueda sin mayusculas ni acentos en filtros y selectores, icono por campo segun su dato, encabezado del modal con icono y leyenda, campo de texto largo unificado, fecha y hora a ancho completo e interacciones con cursor y animacion minimalista

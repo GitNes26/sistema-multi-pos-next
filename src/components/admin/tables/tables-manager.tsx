@@ -954,6 +954,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         title={editingTable ? `Editar Mesa #${editingTable.number}` : "Nueva Mesa"}
+        description="Número, capacidad y zona de la mesa en el plano."
       >
         <div className="space-y-4 p-4">
           <InputGroupField
@@ -1020,6 +1021,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         open={!!qrDialogTable}
         onOpenChange={() => setQrDialogTable(null)}
         title={`QR Mesa #${qrDialogTable?.number || ""}`}
+        description="El cliente lo escanea para ver el menú y pedir desde su mesa."
       >
         {qrDialogTable && (
           <div className="flex flex-col items-center gap-4 p-4">
