@@ -978,6 +978,18 @@ export async function seedProduction() {
 
   const plans = [
     {
+      name: "Miscelánea",
+      description: "Para una tienda de un solo encargado: vende, controla inventario y atiende clientes.",
+      monthlyPrice: 399,
+      includedLocations: 1,
+      includedEmployees: 1,
+      extraLocationPrice: 249,
+      extraEmployeePackSize: 5,
+      extraEmployeePackPrice: 149,
+      sortOrder: 5,
+      features: ["Punto de venta", "Panel administrativo", "Portal de clientes", "Inventario", "Compras a proveedores", "Cocina, agenda, reservaciones y entregas", "Reportes PDF y Excel"],
+    },
+    {
       name: "Esencial",
       description: "Operación inicial para un negocio pequeño.",
       monthlyPrice: 699,
@@ -987,7 +999,7 @@ export async function seedProduction() {
       extraEmployeePackSize: 5,
       extraEmployeePackPrice: 149,
       sortOrder: 10,
-      features: ["Punto de venta", "Panel administrativo", "Portal de clientes", "Inventario", "Compras a proveedores", "Reportes PDF y Excel"],
+      features: ["Punto de venta", "Panel administrativo", "Portal de clientes", "Inventario", "Compras a proveedores", "Cocina (KDS)", "Agenda de citas", "Reservaciones", "Entregas a domicilio", "Reportes PDF y Excel"],
     },
     {
       name: "Crecimiento",
@@ -1028,6 +1040,11 @@ export async function seedProduction() {
         where: { id: saved.id },
         data: { permissions: PLAN_PERMISSION_KEYS.filter((k) => !excluded.includes(k)) },
       })
+    } else if (plan.name === "Esencial" && Array.isArray(saved.permissions)) {
+      // Esencial ahora incluye cocina, agenda, reservaciones y entregas.
+      const add = ["kds.operate", "appointments.view", "appointments.manage", "reservations.view", "reservations.manage", "delivery.manage"]
+      const next = [...new Set([...saved.permissions.map(String), ...add])]
+      if (next.length !== saved.permissions.length) await prisma.subscriptionPlan.update({ where: { id: saved.id }, data: { permissions: next } })
     }
   }
 

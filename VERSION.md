@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.45.0.0] — 2026-10-16
+- **Tipo:** `feat` (Minor)
+- feat: nuevo plan Miscelanea en el seeder (sin traslados, CEDIS ni nomina) y Esencial con cocina, agenda de citas, reservaciones y entregas a domicilio
+
 ### [0.44.0.0] — 2026-10-14
 - **Tipo:** `feat` (Minor)
 - feat: hora actual y fecha de hoy en los selectores, letra menor en el selector de hora, flechas para desplazar filtros segmentados y leyendas en modales

@@ -28,7 +28,9 @@ export function sanitizePlanPermissions(value: unknown): PermissionKey[] | null 
 
 /** Módulos por defecto de los planes del seeder. */
 export const DEFAULT_PLAN_EXCLUSIONS: Record<string, PermissionKey[]> = {
-  Esencial: ["cedis.manage", "kds.operate", "appointments.view", "appointments.manage", "reservations.view", "reservations.manage", "delivery.manage"],
+  // Miscelánea: como Esencial pero sin traslados, CEDIS ni nómina.
+  Miscelánea: ["transfers.view", "transfers.request", "transfers.dispatch", "transfers.receive", "transfers.cancel", "cedis.manage", "payroll.manage"],
+  Esencial: ["cedis.manage"],
   Crecimiento: ["cedis.manage"],
   "Multi-sucursal": [],
 }
