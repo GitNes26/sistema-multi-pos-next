@@ -527,7 +527,7 @@ function CreateOrgDialog({
         <p className="text-xs font-semibold text-muted-foreground">
           Cuenta del owner
         </p>
-        <InputGroupField
+        <InputGroupField required
           id="create-org-ownerName"
           label="Nombre"
           placeholder="Nombre completo"

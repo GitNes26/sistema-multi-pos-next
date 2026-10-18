@@ -490,8 +490,8 @@ function NewPeriodDialog({ open, onOpenChange, employees, onCreated }: { open: b
     >
       <SegmentedFilter ariaLabel="Frecuencia" value={frequency} onChange={setFrequency} options={["weekly", "biweekly", "monthly"].map((v) => ({ value: v, label: FREQUENCY_LABELS[v] }))} />
       <div className="grid gap-3 sm:grid-cols-2">
-        <DatePicker label="Desde" value={fromIso(start)} onChange={(d) => setStart(d ? toIso(d) : "")} />
-        <DatePicker label="Hasta" value={fromIso(end)} onChange={(d) => setEnd(d ? toIso(d) : "")} />
+        <DatePicker required label="Desde" value={fromIso(start)} onChange={(d) => setStart(d ? toIso(d) : "")} />
+        <DatePicker required label="Hasta" value={fromIso(end)} onChange={(d) => setEnd(d ? toIso(d) : "")} />
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs">Días festivos del periodo</Label>

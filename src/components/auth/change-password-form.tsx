@@ -95,7 +95,7 @@ export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?
           className="space-y-4"
           noValidate
         >
-          <InputGroupField
+          <InputGroupField required
             id="oldPassword"
             label="Contraseña actual"
             type="password"
@@ -105,7 +105,7 @@ export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?
             {...register("oldPassword")}
           />
 
-          <InputGroupField
+          <InputGroupField required
             id="newPassword"
             label="Nueva contraseña"
             type="password"
@@ -115,7 +115,7 @@ export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?
             {...register("newPassword")}
           />
 
-          <InputGroupField
+          <InputGroupField required
             id="confirm"
             label="Confirmar contraseña"
             type="password"
@@ -126,7 +126,7 @@ export function ChangePasswordForm({ returnHref = "/auth/login" }: { returnHref?
           />
 
           <div className="space-y-2">
-            <InputGroupField
+            <InputGroupField required
               id="code"
               label="Código de verificación"
               leftIcon={<MailCheck className="size-4" />}

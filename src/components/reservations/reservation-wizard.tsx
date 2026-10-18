@@ -685,7 +685,7 @@ export function ReservationWizard({
       {step === 3 && (
         <div className="space-y-3">
           <p className="text-sm font-semibold">Datos de la reservación</p>
-          <InputGroupField
+          <InputGroupField required
             id="reservation-guest-name"
             label="Nombre del comensal"
             value={name}

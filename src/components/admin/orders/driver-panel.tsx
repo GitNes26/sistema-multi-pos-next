@@ -79,7 +79,7 @@ export function DriverPanel({ order, canAssign, onChanged }: { order: OrderDetai
 
       {editable && (
         <div className="mt-3 flex flex-wrap items-end gap-2">
-          <FormCombobox
+          <FormCombobox required
             id="driver-select"
             label={d ? "Cambiar repartidor" : "Asignar repartidor"}
             options={drivers.map((x) => ({

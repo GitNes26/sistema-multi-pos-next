@@ -164,7 +164,7 @@ export function AddressesClient() {
           <>
             <InputGroupField id="addr-label" label="Nombre" required placeholder="Casa, Oficina, Casa de mis padres…" value={draft.label} error={errors.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
             <div className="relative">
-              <InputGroupField id="addr-search" type="search" label="Buscar dirección" placeholder="Buscar calle, número y colonia" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <InputGroupField required id="addr-search" type="search" label="Buscar dirección" placeholder="Buscar calle, número y colonia" value={query} onChange={(e) => setQuery(e.target.value)} />
               {(suggestions.length > 0 || searching) && (
                 <ul className="absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border bg-popover p-1 shadow-lg" role="listbox">
                   {searching && suggestions.length === 0 && <li className="px-3 py-2 text-sm text-muted-foreground">Buscando…</li>}

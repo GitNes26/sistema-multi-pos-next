@@ -100,7 +100,7 @@ export function LoyaltyForm() {
         onCheckedChange={(v) => setForm({ ...form, loyaltyEnabled: v })}
       />
       <div className="grid gap-4 sm:grid-cols-2 mt-3">
-        <InputGroupField
+        <InputGroupField required
           id="loyalty-pointsPerCurrency"
           label="Puntos que gana por cada $1"
           helper="Multiplica el total de la compra por esta cantidad."
@@ -114,7 +114,7 @@ export function LoyaltyForm() {
           }
           error={errors.pointsPerCurrency}
         />
-        <InputGroupField
+        <InputGroupField required
           id="loyalty-pointValue"
           label="Cuánto vale 1 punto"
           helper="Importe que se descuenta cuando el cliente canjea un punto."

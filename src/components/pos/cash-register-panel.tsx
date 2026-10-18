@@ -218,7 +218,7 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
               ) : (
                 <div className="space-y-3">
                   <p className="text-sm font-semibold">Retirar efectivo de la caja</p>
-                  <InputGroupField
+                  <InputGroupField required
                     id="withdrawAmount"
                     label="¿Cuánto sacas? ($)"
                     leftIcon={<span className="text-sm">$</span>}
@@ -227,7 +227,7 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
                     placeholder="0.00"
                     inputMode="decimal"
                   />
-                  <InputGroupField
+                  <InputGroupField required
                     id="withdrawReason"
                     label="¿Para qué es?"
                     value={wReason}

@@ -176,7 +176,7 @@ export function ReservationPolicyDialog({
             onCheckedChange={(v) => setForm({ ...form, enabled: v })}
           />
           <div className="grid grid-cols-2 gap-3">
-            <InputGroupField
+            <InputGroupField required
               id="reservation-minNoticeMinutes"
               label="Anticipación mínima (min)"
               type="number"
@@ -186,7 +186,7 @@ export function ReservationPolicyDialog({
               leftIcon={<span className="text-xs">⏱</span>}
               error={errors.minNoticeMinutes}
             />
-            <InputGroupField
+            <InputGroupField required
               id="reservation-maxAdvanceDays"
               label="Ventana del calendario (días)"
               type="number"
@@ -195,7 +195,7 @@ export function ReservationPolicyDialog({
               onChange={(e) => setForm({ ...form, maxAdvanceDays: e.target.value.replace(/\D/g, "") })}
               error={errors.maxAdvanceDays}
             />
-            <InputGroupField
+            <InputGroupField required
               id="reservation-maxGuests"
               label="Máx. comensales"
               type="number"
@@ -214,7 +214,7 @@ export function ReservationPolicyDialog({
               onChange={(e) => setForm({ ...form, maxReservationsPerDay: e.target.value.replace(/\D/g, "") })}
               error={errors.maxReservationsPerDay}
             />
-            <InputGroupField
+            <InputGroupField required
               id="reservation-durationMinutes"
               label="Duración de la mesa (min)"
               type="number"
@@ -223,7 +223,7 @@ export function ReservationPolicyDialog({
               onChange={(e) => setForm({ ...form, durationMinutes: e.target.value.replace(/\D/g, "") })}
               error={errors.durationMinutes}
             />
-            <InputGroupField
+            <InputGroupField required
               id="reservation-slotMinutes"
               label="Slot del horario (min)"
               type="number"

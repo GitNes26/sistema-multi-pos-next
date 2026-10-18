@@ -117,7 +117,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
           className="space-y-4"
           noValidate
         >
-          <InputGroupField
+          <InputGroupField required
             id="password"
             label="Nueva contraseña"
             type="password"
@@ -135,7 +135,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
             {errors.acceptedLegal && <p role="alert" className="text-xs text-destructive">{errors.acceptedLegal.message}</p>}
           </div>
 
-          <InputGroupField
+          <InputGroupField required
             id="confirm"
             label="Confirmar contraseña"
             type="password"

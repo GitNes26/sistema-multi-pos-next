@@ -971,7 +971,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
           />
-          <InputGroupField
+          <InputGroupField required
             label="Capacidad"
             type="number"
             value={formCapacity}
@@ -1000,7 +1000,7 @@ export function TablesManager({ canManage = false }: { canManage?: boolean }) {
         description={roomEditing ? "Actualiza el nombre con el que el equipo identifica este espacio." : "Una sala agrupa mesas dentro de un mismo espacio, por ejemplo Salón principal, Terraza o Bar."}
       >
         <div className="space-y-4 p-4">
-          <InputGroupField
+          <InputGroupField required
             label="Nombre de la sala"
             placeholder="Ej: Salón principal, Terraza, Bar…"
             value={formRoomName}

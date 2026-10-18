@@ -275,7 +275,7 @@ export function PaymentMethodsClient() {
       <BottomSheet open={showForm} onOpenChange={setShowForm} title="Agregar tarjeta">
         <div className="space-y-4">
           <InputGroupField
-            label="Alias *"
+            label="Alias" required
             leftIcon={<Wallet className="size-4" />}
             placeholder="Mi tarjeta"
             value={form.alias}
@@ -283,7 +283,7 @@ export function PaymentMethodsClient() {
             onChange={(e) => setForm({ ...form, alias: e.target.value })}
           />
           <InputGroupField
-            label="Marca *"
+            label="Marca" required
             leftIcon={<CreditCard className="size-4" />}
             placeholder="Visa, Mastercard…"
             value={form.brand}
@@ -311,7 +311,7 @@ export function PaymentMethodsClient() {
           </div>
 
           <InputGroupField
-            label="Últimos 4 dígitos *"
+            label="Últimos 4 dígitos" required
             inputMode="numeric"
             leftIcon={<Hash className="size-4" />}
             maxLength={4}
@@ -324,7 +324,7 @@ export function PaymentMethodsClient() {
           <div className="grid grid-cols-2 gap-3">
             <InputGroupField
               ref={monthRef}
-              label="Mes *"
+              label="Mes" required
               inputMode="numeric"
               leftIcon={<Calendar className="size-4" />}
               placeholder="MM"
@@ -339,7 +339,7 @@ export function PaymentMethodsClient() {
             />
             <InputGroupField
               ref={yearRef}
-              label="Año *"
+              label="Año" required
               inputMode="numeric"
               leftIcon={<Calendar className="size-4" />}
               placeholder="YYYY"

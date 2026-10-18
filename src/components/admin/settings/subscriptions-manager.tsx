@@ -368,7 +368,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
       <section className="grid gap-4 md:grid-cols-2">
         <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
           <p className="text-sm font-semibold">Registrar pago</p>
-          <InputGroupField label="Importe" type="number" leftIcon={<Wallet className="size-4" />} value={payment.amount} placeholder={String(total)} onChange={(e) => setPayment({ ...payment, amount: e.target.value })} />
+          <InputGroupField required label="Importe" type="number" leftIcon={<Wallet className="size-4" />} value={payment.amount} placeholder={String(total)} onChange={(e) => setPayment({ ...payment, amount: e.target.value })} />
           <InputGroupField label="Referencia" leftIcon={<Receipt className="size-4" />} value={payment.reference} onChange={(e) => setPayment({ ...payment, reference: e.target.value })} />
           <Button variant="outline" className="w-full" onClick={() => void pay()} disabled={busy}>
             Registrar pago y desbloquear

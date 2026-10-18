@@ -423,7 +423,7 @@ export function ReturnDialog({ open, onOpenChange, sale, onCreated }: Props) {
                     {isSelected && (
                       <div className="mt-3 space-y-2">
                         <div className="flex items-center gap-2">
-                          <InputGroupField
+                          <InputGroupField required
                             label="Cantidad"
                             type="number"
                             min={1}

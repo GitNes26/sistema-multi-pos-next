@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.47.0.0] — 2026-10-18
+- **Tipo:** `feat` (Minor)
+- feat: convencion de campo obligatorio con asterisco rojo aplicada a los formularios, documentada en AGENTS y guia de formularios, con prueba que protege el asterisco
+
 ### [0.46.0.0] — 2026-10-18
 - **Tipo:** `feat` (Minor)
 - feat: precios de planes redondeados, stock minimo al crear producto, aviso de productos sin costo, precio obligatorio, gastos con retiro de caja, ganancias con costo de lo vendido, cliente antes de cobrar con lealtad, plan Miscelanea y asistentes actualizados

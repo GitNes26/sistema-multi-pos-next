@@ -384,7 +384,7 @@ function MovementDialog({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <InputGroupField
+            <InputGroupField required
               label={`Cantidad (${type === "adjustment" ? "puede ser negativa" : row.unit ?? "pza"})`}
               type="number"
               step="any"
@@ -469,7 +469,7 @@ function ThresholdDialog({
         </>
       }
     >
-          <InputGroupField
+          <InputGroupField required
             label={`Mínimo (${row.unit ?? "pza"})`}
             type="number"
             step="any"

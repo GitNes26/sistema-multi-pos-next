@@ -231,11 +231,11 @@ export function PlansManager() {
             {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
             <section className="grid gap-4 sm:grid-cols-2">
               <InputGroupField label="Nombre" required leftIcon={<CreditCard className="size-4" />} value={form.name} onChange={set("name")} />
-              <InputGroupField label="Precio mensual" type="number" leftIcon={<CreditCard className="size-4" />} value={form.monthlyPrice} onChange={set("monthlyPrice")} />
+              <InputGroupField required label="Precio mensual" type="number" leftIcon={<CreditCard className="size-4" />} value={form.monthlyPrice} onChange={set("monthlyPrice")} />
               <InputGroupField label="Descripción" leftIcon={<CreditCard className="size-4" />} value={form.description} onChange={set("description")} className="sm:col-span-2" />
-              <InputGroupField label="Sucursales incluidas" type="number" leftIcon={<Building2 className="size-4" />} value={form.includedLocations} onChange={set("includedLocations")} />
+              <InputGroupField required label="Sucursales incluidas" type="number" leftIcon={<Building2 className="size-4" />} value={form.includedLocations} onChange={set("includedLocations")} />
               <InputGroupField label="Precio por sucursal extra" type="number" leftIcon={<Building2 className="size-4" />} value={form.extraLocationPrice} onChange={set("extraLocationPrice")} />
-              <InputGroupField label="Empleados incluidos" type="number" leftIcon={<Users className="size-4" />} value={form.includedEmployees} onChange={set("includedEmployees")} />
+              <InputGroupField required label="Empleados incluidos" type="number" leftIcon={<Users className="size-4" />} value={form.includedEmployees} onChange={set("includedEmployees")} />
               <InputGroupField label="Empleados por paquete extra" type="number" leftIcon={<Users className="size-4" />} value={form.extraEmployeePackSize} onChange={set("extraEmployeePackSize")} />
               <InputGroupField label="Precio del paquete de empleados" type="number" leftIcon={<Users className="size-4" />} value={form.extraEmployeePackPrice} onChange={set("extraEmployeePackPrice")} />
               <label className="space-y-2 text-sm font-medium sm:col-span-2">

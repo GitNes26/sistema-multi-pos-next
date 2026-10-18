@@ -487,10 +487,10 @@ export function ReservationDetailDialog({ reservation, canManage, onOpenChange, 
           {rescheduling && (
             <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/30 p-3">
               <div>
-                <DatePicker label="Entrega" value={ymdToDate(startYmd)} onChange={(d) => setStartYmd(dateToYmd(d))} />
+                <DatePicker required label="Entrega" value={ymdToDate(startYmd)} onChange={(d) => setStartYmd(dateToYmd(d))} />
               </div>
               <div>
-                <DatePicker label="Regreso" value={ymdToDate(endYmd)} onChange={(d) => setEndYmd(dateToYmd(d))} />
+                <DatePicker required label="Regreso" value={ymdToDate(endYmd)} onChange={(d) => setEndYmd(dateToYmd(d))} />
               </div>
               <Button size="sm" onClick={() => void saveReschedule()} disabled={busy}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}

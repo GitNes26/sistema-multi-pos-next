@@ -328,6 +328,7 @@ export function ProductsForm({
       key: "unit",
       label: "Unidad de medida",
       type: "select",
+      required: true,
       optionsModule: "units",
       optionValue: "id",
       optionLabel: "name",
@@ -853,7 +854,7 @@ export function ProductsForm({
             infoTooltip="Unidad en la que se controla y vende este producto, por ejemplo kg, L o m."
           />
           {/* </FieldRow> */}
-          <InputField
+          <InputField required
             id="product-bulkPricePerUnit"
             label="Precio por unidad ($)"
             icon={<DollarSign className="size-4" />}
@@ -937,7 +938,7 @@ export function ProductsForm({
                 infoTooltip="Unidad usada para cada pieza o fracción cuando la venta dividida está activa."
               />
               {/* </FieldRow> */}
-              <InputField
+              <InputField required
                 id="product-splitPricePerUnit"
                 label="Precio por pieza ($)"
                 icon={<DollarSign className="size-4" />}
@@ -964,7 +965,7 @@ export function ProductsForm({
               elegirá cuál al pedir.
             </p>
           </FieldRow>
-          <InputField
+          <InputField required={!isEdit && isAvailable}
             id="product-variantPrice"
             label="Precio de venta ($)"
             icon={<DollarSign className="size-4" />}
@@ -1332,7 +1333,7 @@ export function ProductsForm({
                   : "Crea una variante base para que el producto aparezca en el POS."}
             </p>
           </FieldRow>
-          <InputField
+          <InputField required={!isEdit && isAvailable}
             id="product-variantPrice"
             label="Precio de venta ($)"
             icon={<DollarSign className="size-4" />}

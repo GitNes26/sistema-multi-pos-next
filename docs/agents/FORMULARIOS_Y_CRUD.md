@@ -16,6 +16,15 @@
 - Botón principal muestra progreso, impide doble envío y permanece accesible en footer fijo del diálogo.
 - Si una entidad compuesta tiene subformularios (variantes, tópicos, reglas), el guardado principal coordina los cambios o advierte claramente; no depende de botones secundarios invisibles.
 
+## Campos obligatorios: asterisco rojo (obligatorio)
+
+Todo campo que el formulario exija —por Yup, por una validación manual o porque el servidor lo rechaza— muestra un **asterisco rojo (*) en su etiqueta**.
+
+- Se logra con el prop `required` de los componentes base (`InputGroupField`, `FormCombobox`, `TextareaField`, `DatePicker`, `TimePicker`, `DateTimePicker`, `Attachment`, `AddressField`, `GpsPicker`, `SwitchField`, `InfoField`), que pinta `<span className="text-destructive"> *</span>`. `OptionSelect` lo toma de `field.required`; en `CrudForm` se declara `required: true` en el campo de `crud-config.ts`.
+- Si es condicional (p. ej. el precio solo al crear algo en venta), usa `required={condición}` y alinea la misma condición en el esquema.
+- No escribas el `*` dentro del texto de la etiqueta ni lo pongas en campos opcionales; los opcionales pueden llevar «(opcional)» en el texto.
+- Al agregar un campo con validación nueva, revisa que su etiqueta lleve `required`; al volver opcional un campo, quítalo. `tests/unit/required-marker.test.mjs` protege que los componentes base sigan pintando el asterisco.
+
 ## Campos
 
 | Necesidad | Componente |

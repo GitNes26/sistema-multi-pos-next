@@ -712,7 +712,7 @@ export function CreditsManager({ isSuperadmin }: CreditsManagerProps) {
               infoTooltip="Desactívalo para asignar una excepción individual. Un límite vacío permite crédito sin tope monetario."
             />
           )}
-          <InputGroupField
+          <InputGroupField required={actionType !== "limit"}
             label={
               actionType === "limit"
                 ? "Nuevo límite (vacío = sin límite)"

@@ -85,7 +85,7 @@ export function ForgotPasswordForm() {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <InputGroupField
+          <InputGroupField required
             id="email"
             label="Correo electrónico"
             type="email"

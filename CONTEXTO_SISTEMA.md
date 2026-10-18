@@ -260,3 +260,5 @@ Toda modificación estructural debe actualizar estos niveles sin copiar secretos
   - **No ejecutes `npm run db:seed` en la base local**: `.env` trae `SEED_DEMO=true` y el seeder de demo limpia tablas completas.
 
 - **Precios de planes redondeados** en el seeder: Miscelánea $400, Esencial $700, Crecimiento $1,500, Multi-sucursal $3,000 (extras: sucursal $250/$250/$200/$150 y paquete de empleados $150/$150/$200/$300). El seeder los actualiza al correrse. El alta de producto también guarda el **stock mínimo** (`initialMinStock`) en la sucursal elegida y el panel avisa de los productos sin costo (`productsWithoutCost`). Wizards: `product` actualizado y nuevo `expenses` (`guides.tsx`, `business-modes.ts`).
+
+- **Convención de formularios: campo obligatorio = asterisco rojo (*)**: todo campo que la validación exija lleva `required` en su componente base (ver `AGENTS.md` y `docs/agents/FORMULARIOS_Y_CRUD.md`); se auditaron los formularios de ajustes, ventas, pedidos, agenda, reservaciones, autenticación y portal. `tests/unit/required-marker.test.mjs` protege el asterisco de los componentes base.

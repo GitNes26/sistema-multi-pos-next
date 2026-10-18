@@ -260,7 +260,7 @@ export function RefundCompletionDialog({
               <span className="text-muted-foreground">El cliente paga</span>
               <span className="text-lg font-bold tabular-nums">{money(extra)}</span>
             </div>
-            <FormCombobox
+            <FormCombobox required
               id="collect-method"
               label="Medio de pago"
               options={(Object.keys(METHOD_META) as RefundMethod[]).map((m) => ({ value: m, label: METHOD_META[m].label }))}

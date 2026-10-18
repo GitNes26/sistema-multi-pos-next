@@ -169,7 +169,7 @@ export function StoreStatusSwitch({ className, compact = false }: { className?: 
               ))}
             </div>
             {mode === "until" && (
-              <DateTimePicker label="Reabre el" value={localToDate(until)} onChange={(d) => setUntil(dateToLocal(d))} />
+              <DateTimePicker required label="Reabre el" value={localToDate(until)} onChange={(d) => setUntil(dateToLocal(d))} />
             )}
             <label className="block space-y-1 text-xs font-medium">
               Aviso para tus clientes (opcional)

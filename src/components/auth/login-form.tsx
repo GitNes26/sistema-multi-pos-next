@@ -224,7 +224,7 @@ export function LoginForm({
                 </Select>
               </div>
             )}
-            <InputGroupField
+            <InputGroupField required
               id="identifier"
               label={isPortal ? "Correo, teléfono o N° de cliente" : "Correo, teléfono o N° de nómina"}
               leftIcon={<User className="size-4" />}

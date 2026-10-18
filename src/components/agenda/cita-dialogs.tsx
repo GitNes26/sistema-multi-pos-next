@@ -257,7 +257,7 @@ export function CitaCreateDialog({
         <DatePicker label="Fecha" required value={date ? fromYMD(date) : null} onChange={(value) => setDate(value ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}` : "")} clearable={false} />
         <TimePicker label="Hora" required value={time} onChange={(value) => setTime(value ?? "")} clearable={false} />
 
-        <InputGroupField label="Duración" rightAddon="min" helper="Se propone la duración configurada para el servicio; puedes ajustarla para esta cita."
+        <InputGroupField required label="Duración" rightAddon="min" helper="Se propone la duración configurada para el servicio; puedes ajustarla para esta cita."
             type="number"
             min={5}
             max={480}
@@ -468,10 +468,10 @@ export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: D
           {rescheduling && (
             <div className="flex flex-wrap items-end gap-2 rounded-xl border bg-muted/30 p-3">
               <div>
-                <DatePicker label="Fecha" value={ymdToDate(date)} onChange={(d) => setDate(dateToYmd(d))} />
+                <DatePicker required label="Fecha" value={ymdToDate(date)} onChange={(d) => setDate(dateToYmd(d))} />
               </div>
               <div>
-                <TimePicker label="Hora" value={time || null} onChange={(v) => setTime(v ?? "")} clearable={false} />
+                <TimePicker required label="Hora" value={time || null} onChange={(v) => setTime(v ?? "")} clearable={false} />
               </div>
               <div>
                 <Label className="text-xs">Min</Label>
