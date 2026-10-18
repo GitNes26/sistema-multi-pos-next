@@ -304,6 +304,7 @@ model Organization {
   variantPriceHistory    VariantPriceHistory[]
   inventoryRevisions     InventoryRevision[]
   sales                  Sale[]
+  expenses               Expense[]
   saleReturns            SaleReturn[]
   promotions             Promotion[]
   coupons                Coupon[]
@@ -874,6 +875,7 @@ model Location {
   cashRegisters        CashRegister[]
   cashSessions         CashSession[]
   sales                Sale[]
+  expenses             Expense[]
   orders               Order[]
   employees            Employee[]
   appointments         Appointment[]
@@ -933,6 +935,43 @@ model CashRegister {
   @@map("cash_registers")
 }
 
+/// De dónde salió el dinero de un gasto.
+enum ExpensePaidFrom {
+  cash_register
+  other
+}
+
+/// Gasto del negocio (renta, luz, mercancía, retiros de caja con motivo…).
+model Expense {
+  id             String          @id @default(cuid())
+  organizationId String
+  locationId     String?
+  category       String
+  description    String
+  amount         Decimal         @db.Decimal(12, 2)
+  expenseDate    DateTime
+  paidFrom       ExpensePaidFrom @default(other)
+  /// Caja abierta de la que salió el efectivo (solo paidFrom = cash_register).
+  cashSessionId  String?
+  supplierName   String?
+  receiptUrl     String?
+  notes          String?         @db.Text
+  createdById    String?
+  employeeId     String?
+  /// false = anulado (se conserva la historia).
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  location     Location?    @relation(fields: [locationId], references: [id])
+  cashSession  CashSession? @relation(fields: [cashSessionId], references: [id])
+
+  @@index([organizationId, expenseDate])
+  @@index([cashSessionId])
+  @@map("expenses")
+}
+
 model CashSession {
   id             String            @id @default(cuid())
   organizationId String
@@ -957,6 +996,7 @@ model CashSession {
   openedByUser User?        @relation("CashSessionOpenedBy", fields: [openedBy], references: [id])
   sales        Sale[]
   saleReturns  SaleReturn[]
+  expenses     Expense[]
 
   @@map("cash_sessions")
 }
@@ -1025,6 +1065,8 @@ model Product {
   bulkMinQuantity   Decimal     @default(0) @db.Decimal(12, 3)
   bulkStep          Decimal     @default(0.01) @db.Decimal(12, 3)
   bulkMaxQuantity   Decimal     @default(0) @db.Decimal(12, 3)
+  /// Costo por unidad de granel (kg, L…): base de la ganancia al vender.
+  bulkCostPerUnit   Decimal     @default(0) @db.Decimal(12, 2)
   allowSplit        Boolean     @default(false)
   splitUnitId       String?
   splitPricePerUnit Decimal     @default(0) @db.Decimal(12, 2)

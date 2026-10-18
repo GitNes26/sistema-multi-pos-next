@@ -370,6 +370,7 @@ export async function GET(req: NextRequest) {
         { header: "Apertura", width: 18 }, { header: "Cierre", width: 18 }, { header: "Estado", width: 10 },
         { header: "Ventas", width: 10 }, { header: "Total ventas", width: 14 }, { header: "Efectivo", width: 12 },
         { header: "Cambio", width: 10 }, { header: "Reembolsos efectivo", width: 18 },
+        { header: "Retiros y gastos de caja", width: 22 },
         { header: "Esperado", width: 12 }, { header: "Corte", width: 12 },
         { header: "Diferencia", width: 12 },
       ];
@@ -377,7 +378,7 @@ export async function GET(req: NextRequest) {
         ws.addRow([
           r.registerName ?? "", r.locationName, r.employeeName ?? "",
           r.openedAt ? new Date(r.openedAt).toLocaleString("es-MX") : "", r.closedAt ? new Date(r.closedAt).toLocaleString("es-MX") : "",
-          r.status, r.salesCount, r.totalSales, r.cashPayments, r.changeGiven, r.cashRefunds, r.expectedCash,
+          r.status, r.salesCount, r.totalSales, r.cashPayments, r.changeGiven, r.cashRefunds, r.cashExpenses, r.expectedCash,
           r.closingCash ?? "", r.difference ?? "",
         ])
       );

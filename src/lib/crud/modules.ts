@@ -10,6 +10,7 @@ import { employeesModule } from "./modules/employees";
 import { cashRegistersModule } from "./modules/cash-registers";
 import { cedisModule } from "./modules/cedis";
 import { promotionsModule } from "./modules/promotions";
+import { expensesModule } from "./modules/expenses";
 
 // FASE 7 — Registro central de módulos CRUD del admin.
 // El metadata de UI vive en components/admin/crud/crud-config.ts (lado cliente).
@@ -95,6 +96,13 @@ export const CRUD_MODULES: Record<string, CrudRegistryEntry> = {
     description: "Ofertas, descuentos y cupones.",
     permissionView: "promotions.view",
     permissionManage: "promotions.manage",
+  },
+  expenses: {
+    module: expensesModule as CrudModule<unknown>,
+    title: "Gastos",
+    description: "Lo que gastas en tu negocio: renta, luz, mercancía y retiros de caja.",
+    permissionView: "expenses.view",
+    permissionManage: "expenses.manage",
   },
 };
 

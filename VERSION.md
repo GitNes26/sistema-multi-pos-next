@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.46.0.0] — 2026-10-18
+- **Tipo:** `feat` (Minor)
+- feat: precios de planes redondeados, stock minimo al crear producto, aviso de productos sin costo, precio obligatorio, gastos con retiro de caja, ganancias con costo de lo vendido, cliente antes de cobrar con lealtad, plan Miscelanea y asistentes actualizados
+
 ### [0.45.0.0] — 2026-10-16
 - **Tipo:** `feat` (Minor)
 - feat: nuevo plan Miscelanea en el seeder (sin traslados, CEDIS ni nomina) y Esencial con cocina, agenda de citas, reservaciones y entregas a domicilio

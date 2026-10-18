@@ -32,6 +32,8 @@ export interface DashboardData {
   productCount: number;
   /** Ventas completadas de todo el tiempo (no solo el período). */
   totalSales: number;
+  /** Productos con inventario sin costo capturado (impiden calcular la ganancia). */
+  productsWithoutCost: number;
 }
 
 export interface CashReportRow {
@@ -48,6 +50,8 @@ export interface CashReportRow {
   cashPayments: number;
   changeGiven: number;
   cashRefunds: number;
+  /** Retiros y gastos pagados de la caja. */
+  cashExpenses: number;
   expectedCash: number;
   closingCash: number | null;
   difference: number | null;
@@ -111,7 +115,7 @@ export async function getDashboardData(organizationId: string): Promise<Dashboar
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  const [{ _sum, _count: todayCount }, period, customers, productCount, totalSales] = await Promise.all([
+  const [{ _sum, _count: todayCount }, period, customers, productCount, totalSales, productsWithoutCost] = await Promise.all([
     prisma.sale.aggregate({
       where: { organizationId, status: "completed", createdAt: { gte: todayStart, lte: todayEnd } },
       _sum: { total: true },
@@ -184,6 +188,18 @@ export async function getDashboardData(organizationId: string): Promise<Dashboar
     prisma.customer.count({ where: { organizationId } }),
     prisma.product.count({ where: { organizationId, isActive: true } }),
     prisma.sale.count({ where: { organizationId, status: "completed" } }),
+    // Productos con inventario sin costo: sin él no se puede calcular la ganancia.
+    prisma.product.count({
+      where: {
+        organizationId,
+        isActive: true,
+        trackInventory: true,
+        OR: [
+          { productType: "bulk", bulkCostPerUnit: 0 },
+          { productType: { in: ["standard", "custom"] }, variants: { none: { isActive: true, cost: { gt: 0 } } } },
+        ],
+      },
+    }),
   ]);
 
   const todaySales = toNum(_sum?.total ?? 0);
@@ -205,6 +221,7 @@ export async function getDashboardData(organizationId: string): Promise<Dashboar
     orgName: org?.name ?? "",
     productCount,
     totalSales,
+    productsWithoutCost,
   };
 }
 
@@ -354,6 +371,7 @@ export async function getCashReport(organizationId: string, f: ReportFilters) {
         where: { status: "completed", returnType: { in: ["refund", "exchange"] } },
         select: { refundPayments: { where: { method: "cash" }, select: { amount: true } } },
       },
+      expenses: { where: { paidFrom: "cash_register", isActive: true }, select: { amount: true } },
     },
     orderBy: { openedAt: "desc" },
     take: Math.min(2000, f.limit ?? 500),
@@ -371,7 +389,8 @@ export async function getCashReport(organizationId: string, f: ReportFilters) {
       0
     );
     const opening = toNum(s.openingCash);
-    const expectedCash = opening + cashPayments - changeGiven - cashRefunds;
+    const cashExpenses = s.expenses.reduce((a, e) => a + toNum(e.amount), 0);
+    const expectedCash = opening + cashPayments - changeGiven - cashRefunds - cashExpenses;
     const closing = s.closingCash == null ? null : toNum(s.closingCash);
     return {
       id: s.id,
@@ -387,6 +406,7 @@ export async function getCashReport(organizationId: string, f: ReportFilters) {
       cashPayments: round2(cashPayments),
       changeGiven: round2(changeGiven),
       cashRefunds: round2(cashRefunds),
+      cashExpenses: round2(cashExpenses),
       expectedCash: round2(expectedCash),
       closingCash: closing == null ? null : round2(closing),
       difference: closing == null ? null : round2(closing - expectedCash),

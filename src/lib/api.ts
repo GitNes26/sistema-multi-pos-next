@@ -579,6 +579,8 @@ export interface DashboardData {
   orgName: string;
   productCount: number;
   totalSales: number;
+  /** Productos con inventario sin costo capturado (impiden calcular la ganancia). */
+  productsWithoutCost?: number;
 }
 
 export interface SalesReportRow {
@@ -613,6 +615,7 @@ export interface CashReportRow {
   cashPayments: number;
   changeGiven: number;
   cashRefunds: number;
+  cashExpenses: number;
   expectedCash: number;
   closingCash: number | null;
   difference: number | null;

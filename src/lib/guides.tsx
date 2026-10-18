@@ -89,8 +89,14 @@ const productGuide: GuideDef = {
               opciones: nieves, cafés, platillos).
             </li>
             <li>
-              <strong>Precio, unidad e impuesto</strong> — el resto son
-              opcionales.
+              <strong>Precio de venta</strong> — obligatorio: sin precio el
+              producto no se puede vender. El <strong>costo</strong> también
+              conviene ponerlo: con él calculamos cuánto ganas.
+            </li>
+            <li>
+              <strong>Existencias iniciales</strong> — cuántos tienes hoy y a
+              partir de cuántos quieres que te avisemos. Así no tienes que ir
+              después a Inventario.
             </li>
           </ul>
           <p className="pt-1 font-medium">
@@ -145,6 +151,20 @@ const productGuide: GuideDef = {
         <p>
           Confirma el impuesto aplicable. Después completa imagen, precio,
           costo, SKU, código de barras y los campos propios del tipo elegido.
+        </p>
+      ),
+    },
+    {
+      route: "/admin/products",
+      selector: "#product-initialStock",
+      title: "¿Cuántos tienes ahora?",
+      body: (
+        <p>
+          Escribe las piezas (o kilos) que tienes hoy y, debajo, el{" "}
+          <strong>stock mínimo</strong>: cuando baje de ahí te avisamos y armamos
+          tu pedido sugerido al proveedor. Se guarda como «Stock inicial» en
+          Inventario. Si no llevas cuenta de este artículo, apaga{" "}
+          <strong>Controlar inventario</strong>.
         </p>
       ),
     },
@@ -1283,6 +1303,52 @@ const payrollGuide: GuideDef = {
   ],
 }
 
+// ── Guía: Gastos y ganancias ─────────────────────────────────────────────────
+
+const expensesGuide: GuideDef = {
+  id: "expenses",
+  title: "Anota tus gastos y mira tu ganancia",
+  steps: [
+    {
+      route: "/admin/expenses",
+      title: "Tus gastos",
+      body: (
+        <p>
+          Aquí anotas lo que gastas en el negocio: <strong>renta, luz, sueldos, mercancía</strong>… Es opcional, pero sin los gastos
+          la ganancia se ve mayor de lo que realmente es. Los retiros de efectivo que hagas desde la caja del POS también aparecen aquí.
+        </p>
+      ),
+    },
+    {
+      route: "/admin/expenses",
+      selector: "[data-guide='crud-new']",
+      title: "Anota un gasto",
+      body: (
+        <p>
+          Presiona <strong>«Nuevo gasto»</strong>: escribe en qué fue, el monto y si salió <strong>de la caja</strong> (se descuenta del
+          efectivo esperado en el corte) o <strong>fuera de la caja</strong> (transferencia, tarjeta o efectivo aparte).
+        </p>
+      ),
+      advanceOnClick: true,
+    },
+    {
+      route: "/admin/profit",
+      selector: "[data-guide='profit-summary']",
+      title: "¿Ganaste o perdiste?",
+      body: (
+        <p>
+          <strong>Ganancias</strong> resta a tus ventas lo que te costó la mercancía y tus gastos. Si algún producto no tiene costo, te
+          avisamos para que se lo pongas y la cifra sea exacta.
+        </p>
+      ),
+      actions: [
+        { label: "Ver mis gastos", href: "/admin/expenses", primary: true },
+        { label: "Volver al panel", href: "/admin" },
+      ],
+    },
+  ],
+}
+
 export const GUIDES: Record<string, GuideDef> = {
   product: productGuide,
   combos: combosGuide,
@@ -1300,4 +1366,5 @@ export const GUIDES: Record<string, GuideDef> = {
   "pos-food": posFoodGuide,
   purchasing: purchasingGuide,
   payroll: payrollGuide,
+  expenses: expensesGuide,
 }

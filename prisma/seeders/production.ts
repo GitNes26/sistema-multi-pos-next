@@ -364,6 +364,16 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     sortOrder: 3,
   },
   {
+    id: "menu-ganancias",
+    parentId: "menu-principal",
+    type: "item",
+    label: "Ganancias",
+    icon: "TrendingUp",
+    href: "/admin/profit",
+    permissionKey: "expenses.view",
+    sortOrder: 3.5,
+  },
+  {
     id: "menu-reportes",
     parentId: "menu-principal",
     type: "item",
@@ -529,6 +539,16 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     href: "/admin/purchasing",
     permissionKey: "purchasing.view",
     sortOrder: 1.5,
+  },
+  {
+    id: "menu-gastos",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Gastos",
+    icon: "Receipt",
+    href: "/admin/expenses",
+    permissionKey: "expenses.view",
+    sortOrder: 1.7,
   },
   {
     id: "menu-sucursales",
@@ -810,6 +830,7 @@ export async function seedProduction() {
   // ¿Es la primera vez que existen los permisos de traslados? (para respaldar lo ya configurado)
   const hadTransferPermissions = !!(await prisma.permission.findUnique({ where: { key: "transfers.view" } }))
   const hadPayrollPermission = !!(await prisma.permission.findUnique({ where: { key: "payroll.manage" } }))
+  const hadExpensePermissions = !!(await prisma.permission.findUnique({ where: { key: "expenses.view" } }))
   const hadPanelStats = !!(await prisma.permission.findUnique({ where: { key: "panel.stats" } }))
 
   // Permisos
@@ -922,6 +943,30 @@ export async function seedProduction() {
     }
   }
 
+  // Gastos: los roles personalizados que ya veían reportes y los que cerraban caja heredan el acceso una sola vez.
+  if (!hadExpensePermissions) {
+    const MAP: [string, string[]][] = [
+      ["reports.view", ["expenses.view"]],
+      ["cash.close", ["expenses.manage"]],
+    ]
+    const existing = await prisma.rolePermission.findMany({
+      where: { permissionKey: { in: MAP.map(([k]) => k) }, role: { isSystem: false } },
+      select: { organizationId: true, roleId: true, permissionKey: true, allowed: true },
+    })
+    for (const rp of existing) {
+      for (const key of MAP.find(([k]) => k === rp.permissionKey)?.[1] ?? []) {
+        const dup = await prisma.rolePermission.findFirst({ where: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: key } })
+        if (!dup) await prisma.rolePermission.create({ data: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: key, allowed: rp.allowed } })
+      }
+    }
+    for (const plan of await prisma.subscriptionPlan.findMany({ select: { id: true, permissions: true } })) {
+      if (!Array.isArray(plan.permissions)) continue
+      const keys = plan.permissions.map(String)
+      const next = [...new Set([...keys, ...MAP.filter(([k]) => keys.includes(k)).flatMap(([, add]) => add)])]
+      if (next.length !== keys.length) await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: next } })
+    }
+  }
+
   // Unidades del sistema
   for (const u of SYSTEM_UNITS) {
     const existing = await prisma.unitOfMeasure.findFirst({
@@ -980,48 +1025,48 @@ export async function seedProduction() {
     {
       name: "Miscelánea",
       description: "Para una tienda de un solo encargado: vende, controla inventario y atiende clientes.",
-      monthlyPrice: 399,
+      monthlyPrice: 400,
       includedLocations: 1,
       includedEmployees: 1,
-      extraLocationPrice: 249,
+      extraLocationPrice: 250,
       extraEmployeePackSize: 5,
-      extraEmployeePackPrice: 149,
+      extraEmployeePackPrice: 150,
       sortOrder: 5,
       features: ["Punto de venta", "Panel administrativo", "Portal de clientes", "Inventario", "Compras a proveedores", "Cocina, agenda, reservaciones y entregas", "Reportes PDF y Excel"],
     },
     {
       name: "Esencial",
       description: "Operación inicial para un negocio pequeño.",
-      monthlyPrice: 699,
+      monthlyPrice: 700,
       includedLocations: 1,
       includedEmployees: 5,
-      extraLocationPrice: 249,
+      extraLocationPrice: 250,
       extraEmployeePackSize: 5,
-      extraEmployeePackPrice: 149,
+      extraEmployeePackPrice: 150,
       sortOrder: 10,
       features: ["Punto de venta", "Panel administrativo", "Portal de clientes", "Inventario", "Compras a proveedores", "Cocina (KDS)", "Agenda de citas", "Reservaciones", "Entregas a domicilio", "Reportes PDF y Excel"],
     },
     {
       name: "Crecimiento",
       description: "Más capacidad para equipos y sucursales en expansión.",
-      monthlyPrice: 1499,
+      monthlyPrice: 1500,
       includedLocations: 3,
       includedEmployees: 20,
-      extraLocationPrice: 199,
+      extraLocationPrice: 200,
       extraEmployeePackSize: 10,
-      extraEmployeePackPrice: 199,
+      extraEmployeePackPrice: 200,
       sortOrder: 20,
       features: ["Todo Esencial", "Crédito y lealtad", "Agenda, reservaciones y KDS según el giro", "Entregas y pagos en línea", "Reportes BI", "Sucursales adicionales"],
     },
     {
       name: "Multi-sucursal",
       description: "Control centralizado para operaciones de mayor escala.",
-      monthlyPrice: 2999,
+      monthlyPrice: 3000,
       includedLocations: 10,
       includedEmployees: 75,
-      extraLocationPrice: 149,
+      extraLocationPrice: 150,
       extraEmployeePackSize: 25,
-      extraEmployeePackPrice: 299,
+      extraEmployeePackPrice: 300,
       sortOrder: 30,
       features: ["Todo Crecimiento", "Operación multi-sucursal", "CEDIS y transferencias", "Roles y permisos avanzados", "Compras y recepciones", "Soporte para equipos amplios"],
     },

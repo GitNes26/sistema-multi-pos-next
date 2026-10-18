@@ -25,11 +25,11 @@ export async function POST(req: NextRequest) {
   const moduleKey = req.nextUrl.pathname.split("/").at(-1) as string;
   const guard = await guardCrud(moduleKey, "manage");
   if ("response" in guard) return guard.response;
-  const { entry, organizationId, userId } = guard;
+  const { entry, organizationId, userId, canManageInventory } = guard;
 
   try {
     const body = await req.json();
-    const row = await entry.module.create(organizationId, body, { userId });
+    const row = await entry.module.create(organizationId, body, { userId, canManageInventory });
     return NextResponse.json({ ok: true, row }, { status: 201 });
   } catch (err) {
     return crudErrorResponse(err);

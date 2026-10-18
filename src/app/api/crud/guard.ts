@@ -25,7 +25,7 @@ export async function guardCrud(
   moduleKey: string,
   action: CrudAction
 ): Promise<
-  | { entry: CrudRegistryEntry; organizationId: string; userId: string }
+  | { entry: CrudRegistryEntry; organizationId: string; userId: string; canManageInventory: boolean }
   | { response: NextResponse }
 > {
   const entry = getCrudEntry(moduleKey);
@@ -47,7 +47,7 @@ export async function guardCrud(
     return { response: NextResponse.json({ ok: false, error: "No tienes permiso para esta acción" }, { status: 403 }) };
   }
 
-  return { entry, organizationId, userId: session.user.id };
+  return { entry, organizationId, userId: session.user.id, canManageInventory: hasPermission(session, "inventory.manage") };
 }
 
 export function isCrudError(err: unknown): err is CrudError {

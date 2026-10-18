@@ -76,6 +76,7 @@ export interface ProductDto {
   bulkUnitAbbrev: string | null;
   bulkUnitName: string | null;
   bulkPricePerUnit: number;
+  bulkCostPerUnit: number;
   bulkMinQuantity: number;
   bulkStep: number;
   bulkMaxQuantity: number;
@@ -104,6 +105,7 @@ type ProductRow = {
   productType: "standard" | "bulk" | "custom";
   bulkUnitId: string | null;
   bulkPricePerUnit: { toNumber(): number } | number;
+  bulkCostPerUnit: { toNumber(): number } | number;
   bulkMinQuantity: { toNumber(): number } | number;
   bulkStep: { toNumber(): number } | number;
   bulkMaxQuantity: { toNumber(): number } | number;
@@ -206,6 +208,7 @@ function serialize(p: ProductRow): ProductDto {
     bulkUnitAbbrev: p.bulkUnit?.abbreviation ?? null,
     bulkUnitName: p.bulkUnit?.name ?? null,
     bulkPricePerUnit: num(p.bulkPricePerUnit),
+    bulkCostPerUnit: num(p.bulkCostPerUnit),
     bulkMinQuantity: num(p.bulkMinQuantity),
     bulkStep: num(p.bulkStep),
     bulkMaxQuantity: num(p.bulkMaxQuantity),
@@ -355,8 +358,16 @@ export const productsModule: CrudModule<ProductDto> = {
     return serialize(p);
   },
 
-  async create(organizationId, input, _ctx) {
+  async create(organizationId, input, ctx) {
     const data = input as Record<string, unknown>;
+    // Existencias iniciales: se validan antes de crear nada.
+    const initialStock = data.trackInventory !== false ? Number(data.initialStock) || 0 : 0;
+    const initialMin = data.trackInventory !== false ? Number(data.initialMinStock) || 0 : 0;
+    if (initialStock < 0) throw new CrudError("Las existencias iniciales no pueden ser negativas", 400, "initialStock");
+    if (initialMin < 0) throw new CrudError("El stock mínimo no puede ser negativo", 400, "initialMinStock");
+    if ((initialStock > 0 || initialMin > 0) && !ctx.canManageInventory) {
+      throw new CrudError("No tienes permiso para registrar existencias; crea el producto sin cantidad inicial ni stock mínimo", 403, "initialStock");
+    }
     const categoryId = await validateCategory(organizationId, data.categoryId);
     if (!data.name || String(data.name).trim() === "") {
       throw new CrudError("El nombre es obligatorio", 400, "name");
@@ -389,6 +400,7 @@ export const productsModule: CrudModule<ProductDto> = {
         productType,
         bulkUnitId: productType === "bulk" && data.bulkUnitId ? String(data.bulkUnitId) : null,
         bulkPricePerUnit: productType === "bulk" ? Number(data.bulkPricePerUnit) || 0 : 0,
+        bulkCostPerUnit: productType === "bulk" ? Math.max(0, Number(data.bulkCostPerUnit) || 0) : 0,
         bulkMinQuantity: productType === "bulk" ? Number(data.bulkMinQuantity) || 0 : 0,
         bulkStep: productType === "bulk" ? Number(data.bulkStep) || 0.01 : 0,
         bulkMaxQuantity: productType === "bulk" ? Number(data.bulkMaxQuantity) || 0 : 0,
@@ -447,6 +459,10 @@ export const productsModule: CrudModule<ProductDto> = {
           "topic"
         );
       }
+    }
+
+    if (initialStock > 0 || initialMin > 0) {
+      await applyInitialStock(organizationId, product.id, { quantity: initialStock, minThreshold: initialMin }, data.initialStockLocationId ? String(data.initialStockLocationId) : null, ctx.userId);
     }
 
     // Auto-generate publication when product is marked as new
@@ -530,6 +546,7 @@ export const productsModule: CrudModule<ProductDto> = {
         ...(data.bulkMinQuantity !== undefined ? { bulkMinQuantity: productType === "bulk" ? Number(data.bulkMinQuantity) || 0 : 0 } : {}),
         ...(data.bulkStep !== undefined ? { bulkStep: productType === "bulk" ? Number(data.bulkStep) || 0.01 : 0 } : {}),
         ...(data.bulkMaxQuantity !== undefined ? { bulkMaxQuantity: productType === "bulk" ? Number(data.bulkMaxQuantity) || 0 : 0 } : {}),
+        ...(data.bulkCostPerUnit !== undefined ? { bulkCostPerUnit: productType === "bulk" ? Math.max(0, Number(data.bulkCostPerUnit) || 0) : 0 } : {}),
         ...(data.allowSplit !== undefined ? { allowSplit: productType === "bulk" && data.allowSplit === true } : {}),
         ...(data.splitUnitId !== undefined
           ? { splitUnitId: productType === "bulk" && data.allowSplit === true && data.splitUnitId ? String(data.splitUnitId) : null }
@@ -701,6 +718,37 @@ function parseTopicOptions(raw: unknown): SaveOptionInput[] {
       };
     })
     .filter((o): o is SaveOptionInput => o !== null);
+}
+
+/**
+ * Registra las existencias iniciales como un ajuste «Stock inicial» en la
+ * sucursal elegida (o la primera activa). En productos con variantes, la
+ * cantidad se aplica a cada variante generada.
+ */
+async function applyInitialStock(organizationId: string, productId: string, stock: { quantity: number; minThreshold: number }, locationId: string | null, userId: string) {
+  const location = await prisma.location.findFirst({
+    where: { organizationId, isActive: true, ...(locationId ? { id: locationId } : {}) },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (!location) throw new CrudError("Sucursal no encontrada para las existencias iniciales", 400, "initialStockLocationId");
+  const { ensureInventoryRows, registerMovement, setMinThreshold } = await import("@/lib/inventory/server");
+  await ensureInventoryRows(organizationId, "location", location.id);
+  const rows = await prisma.inventory.findMany({
+    where: {
+      organizationId,
+      locationId: location.id,
+      locationType: "location",
+      OR: [{ productId }, { variant: { productId } }],
+    },
+    select: { id: true },
+  });
+  for (const row of rows) {
+    if (stock.minThreshold > 0) await setMinThreshold(organizationId, row.id, stock.minThreshold);
+    if (stock.quantity > 0) {
+      await registerMovement(organizationId, { inventoryId: row.id, type: "adjustment", quantity: stock.quantity, reason: "Stock inicial" }, userId);
+    }
+  }
 }
 
 async function syncVariantInventory(organizationId: string, productId: string, variantId: string) {

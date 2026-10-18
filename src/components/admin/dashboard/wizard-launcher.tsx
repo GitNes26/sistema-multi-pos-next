@@ -26,6 +26,7 @@ import {
   Layers,
   RefreshCcw,
   Wallet,
+  Receipt,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -59,6 +60,7 @@ const ACTION_ICONS: Record<WizardActionKind, LucideIcon> = {
   inventory: Boxes,
   purchasing: Truck,
   payroll: Wallet,
+  expenses: Receipt,
   tables: Armchair,
   kds: ChefHat,
   agenda: CalendarDays,

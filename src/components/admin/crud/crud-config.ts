@@ -1,6 +1,7 @@
 import type React from "react";
 import type { StatusTone } from "@/components/base/status-pill";
 import { PromotionDescriptionPreview } from "@/components/admin/promotions/description-preview";
+import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS, EXPENSE_PAID_FROM, EXPENSE_PAID_FROM_LABELS } from "@/lib/expenses/shared";
 
 // FASE 7 — Metadatos de UI para el CRUD genérico del admin (solo lado cliente).
 // No importa nada del servidor para poder usarse en componentes "use client".
@@ -632,6 +633,70 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
         ],
       },
       { key: "isActive", label: "Activo", type: "boolean" },
+    ],
+  },
+
+  expenses: {
+    module: "expenses",
+    title: "Gastos",
+    singular: "gasto",
+    newLabel: "Nuevo gasto",
+    description: "Anota lo que gastas (renta, luz, mercancía, retiros de caja). Es opcional: sirve para saber tu ganancia real.",
+    canDelete: true,
+    searchPlaceholder: "Buscar por concepto o proveedor…",
+    subtitleKeys: ["supplierName"],
+    columns: [
+      { key: "description", label: "Concepto" },
+      { key: "dateLabel", label: "Fecha" },
+      { key: "category", label: "Categoría", type: "badge", displayMap: EXPENSE_CATEGORY_LABELS },
+      { key: "amount", label: "Monto", type: "money" },
+      { key: "paidFrom", label: "Salió de", type: "badge", displayMap: EXPENSE_PAID_FROM_LABELS },
+      { key: "locationName", label: "Sucursal", type: "badge" },
+      { key: "isActive", label: "Estado", type: "boolean" },
+    ],
+    fields: [
+      {
+        key: "description",
+        label: "¿En qué se gastó?",
+        type: "text",
+        required: true,
+        placeholder: "Ej. Pago de luz de octubre",
+        icon: "FileText",
+        maxLength: 190,
+        full: true,
+      },
+      { key: "amount", label: "Monto ($)", type: "money", required: true, min: 0, icon: "DollarSign" },
+      { key: "expenseDate", label: "Fecha", type: "date", required: true, icon: "Calendar" },
+      {
+        key: "category",
+        label: "Categoría",
+        type: "select",
+        icon: "Tags",
+        options: EXPENSE_CATEGORIES.map((c) => ({ value: c.value, label: c.label })),
+        required: true,
+      },
+      {
+        key: "paidFrom",
+        label: "¿De dónde salió el dinero?",
+        type: "select",
+        icon: "Wallet",
+        options: EXPENSE_PAID_FROM.map((c) => ({ value: c.value, label: c.label })),
+        help: "Si sale de la caja abierta, se descuenta del efectivo esperado en el corte. No se puede cambiar después.",
+        required: true,
+      },
+      {
+        key: "locationId",
+        label: "Sucursal",
+        type: "select",
+        icon: "MapPin",
+        optionsModule: "locations",
+        optionValue: "id",
+        optionLabel: "name",
+        help: "Opcional; sirve para ver la ganancia por sucursal.",
+      },
+      { key: "supplierName", label: "Proveedor o a quién se pagó", type: "text", icon: "Store", maxLength: 190 },
+      { key: "receiptUrl", label: "Foto del comprobante", type: "image", icon: "Receipt", full: true },
+      { key: "notes", label: "Notas", type: "textarea", icon: "FileText", full: true },
     ],
   },
 

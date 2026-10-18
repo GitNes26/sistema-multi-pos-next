@@ -22,6 +22,8 @@ export interface CashCloseSummary {
   cashPayments: number
   changeGiven: number
   cashRefunds: number
+  /** Retiros y gastos pagados de la caja (opcional en cortes viejos). */
+  cashExpenses?: number
   openingCash: number
   systemCash: number
   closingCash: number
@@ -140,15 +142,23 @@ export function CashDiscrepancyDialog({ open, onClose, summary }: Props) {
         <Row
           icon={<TrendingDown className="size-3.5" />}
           label="Cambio entregado"
-          value={-summary.changeGiven}
+          value={summary.changeGiven > 0 ? -summary.changeGiven : 0}
           className="text-destructive"
         />
         <Row
           icon={<CircleMinus className="size-3.5" />}
           label="Reembolsos en efectivo"
-          value={-summary.cashRefunds}
+          value={summary.cashRefunds > 0 ? -summary.cashRefunds : 0}
           className="text-destructive"
         />
+        {(summary.cashExpenses ?? 0) > 0 && (
+          <Row
+            icon={<CircleMinus className="size-3.5" />}
+            label="Retiros y gastos de caja"
+            value={-(summary.cashExpenses ?? 0)}
+            className="text-destructive"
+          />
+        )}
         <div className="border-t pt-2">
           <Row
             icon={<FileText className="size-3.5" />}

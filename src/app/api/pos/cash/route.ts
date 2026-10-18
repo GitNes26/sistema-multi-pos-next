@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { closeCashSession, openCashSession, getSalesStats } from "@/lib/pos/server";
+import { createExpense } from "@/lib/expenses/server";
+import { CrudError } from "@/lib/crud/types";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import {
   assertPermission,
   PermissionDeniedError,
 } from "@/lib/auth/server-permissions";
-import { requirePosSession, resolveLocationId } from "../helpers";
+import { getCashierContext, requirePosSession, resolveLocationId } from "../helpers";
 
 export async function GET(req: Request) {
   const guard = await requirePosSession();
@@ -26,7 +28,10 @@ export async function POST(req: Request) {
 
   try {
     const body = (await req.json()) as {
-      action: "open" | "close";
+      action: "open" | "close" | "withdraw";
+      amount?: number;
+      description?: string;
+      category?: string;
       locationId?: string;
       registerId?: string;
       openingCash?: number;
@@ -72,8 +77,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, summary });
     }
 
+    // Retiro de efectivo con motivo: queda registrado como gasto de la caja abierta.
+    if (body.action === "withdraw") {
+      // Quien registra gastos o quien cierra la caja puede retirar efectivo.
+      try {
+        assertPermission(session, "expenses.manage");
+      } catch {
+        assertPermission(session, "cash.close");
+      }
+      if (!body.sessionId) {
+        return NextResponse.json({ ok: false, error: "No hay sesión de caja abierta" }, { status: 400 });
+      }
+      const expense = await createExpense(
+        organizationId,
+        { amount: body.amount, description: body.description, category: body.category || "cash_withdrawal" },
+        {
+          userId: session.user.id,
+          employeeId: (await getCashierContext(session.user.id, organizationId)).employeeId,
+          cashSessionId: body.sessionId,
+        }
+      );
+      return NextResponse.json({ ok: true, expense });
+    }
+
     return NextResponse.json({ ok: false, error: "Acción no válida" }, { status: 400 });
   } catch (err) {
+    if (err instanceof CrudError) {
+      return NextResponse.json({ ok: false, error: err.message, field: err.field ?? null }, { status: err.status });
+    }
     if (err instanceof PermissionDeniedError) {
       return NextResponse.json({ ok: false, error: err.message }, { status: 403 });
     }

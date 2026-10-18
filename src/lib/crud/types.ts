@@ -9,6 +9,8 @@ export type CrudListResult<T> = { rows: T[]; total: number };
 
 export interface CrudContext {
   userId: string;
+  /** El usuario puede registrar movimientos de inventario (existencias iniciales al crear productos). */
+  canManageInventory?: boolean;
 }
 
 export interface CrudModule<T> {

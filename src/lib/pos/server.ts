@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { resolveBulkUnitPrice } from "@/lib/pos/bulk-pricing"
+import { resolveUnitCosts } from "@/lib/pos/cost"
 import type { Prisma, $Enums } from "@prisma/client"
 import type {
   PosCashRegister,
@@ -679,6 +680,10 @@ export async function getSalesStats(
             },
           },
         },
+        expenses: {
+          where: { paidFrom: "cash_register", isActive: true },
+          select: { amount: true },
+        },
       },
     }),
   ])
@@ -709,6 +714,9 @@ export async function getSalesStats(
               ),
             0
           )
+        ),
+        cashExpenses: round2(
+          session.expenses.reduce((sum, e) => sum + toNum(e.amount), 0)
         ),
       }
     : null
@@ -1138,8 +1146,9 @@ export async function createSale(
     })
 
     if (payload.items.length) {
+      const unitCosts = await resolveUnitCosts(tx, organizationId, payload.items)
       await tx.saleItem.createMany({
-        data: payload.items.map((i) => ({
+        data: payload.items.map((i, index) => ({
           saleId: sale.id,
           productId: i.productId,
           variantId: i.variantId,
@@ -1147,9 +1156,9 @@ export async function createSale(
           variantName: i.variantName,
           productType: i.productType,
           quantity: i.quantity,
-          unitId: i.unitId,
+          unitId: i.unitId || null,
           unitPrice: i.unitPrice,
-          unitCost: null,
+          unitCost: unitCosts[index],
           totalPrice: i.totalPrice,
           discount: i.discount,
           taxRate: i.taxRate,
@@ -1259,7 +1268,7 @@ export async function createSale(
           locationType: "location",
           type: "sale",
           quantity: -item.quantity,
-          unitId: item.unitId,
+          unitId: item.unitId || null,
           reason: "Venta POS",
           referenceId: sale.id,
           userId: ctx.userId,
@@ -1649,8 +1658,18 @@ export async function closeCashSession(
       )
     )
     const totalSales = round2(sales.reduce((acc, s) => acc + toNum(s.total), 0))
+    const cashExpenses = round2(
+      toNum(
+        (
+          await tx.expense.aggregate({
+            where: { cashSessionId: session.id, paidFrom: "cash_register", isActive: true },
+            _sum: { amount: true },
+          })
+        )._sum.amount
+      )
+    )
     const expectedCash = round2(
-      toNum(session.openingCash) + cashPayments - changeGiven - cashRefunds
+      toNum(session.openingCash) + cashPayments - changeGiven - cashRefunds - cashExpenses
     )
 
     const updated = await tx.cashSession.update({
@@ -1671,6 +1690,7 @@ export async function closeCashSession(
       cashPayments,
       changeGiven,
       cashRefunds,
+      cashExpenses,
       openingCash: toNum(session.openingCash),
       systemCash: round2(expectedCash),
       closingCash: round2(closingCash),

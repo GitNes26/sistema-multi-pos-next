@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LockKeyhole, Unlock } from "lucide-react";
+import { HandCoins, LockKeyhole, Unlock } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { InputGroupField } from "@/components/base/input-group-field";
+import { FormCombobox } from "@/components/base/form-combobox";
+import { EXPENSE_CATEGORIES } from "@/lib/expenses/shared";
 import { usePosStore } from "@/stores/pos-store";
 import { money } from "@/lib/pos/money";
 import { playSound } from "@/lib/sounds";
@@ -22,7 +24,7 @@ interface CashRegisterPanelProps {
 interface SessionStats {
   todaySales: number;
   todayCount: number;
-  session: { sales: number; cashPayments: number; changeGiven: number; cashRefunds: number } | null;
+  session: { sales: number; cashPayments: number; changeGiven: number; cashRefunds: number; cashExpenses: number } | null;
 }
 
 export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
@@ -37,6 +39,12 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
   const [closingCash, setClosingCash] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  // Retiro de efectivo con motivo (queda como gasto de la caja).
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [wAmount, setWAmount] = useState("");
+  const [wReason, setWReason] = useState("");
+  const [wCategory, setWCategory] = useState("cash_withdrawal");
+  const [wError, setWError] = useState<string | null>(null);
   const [closeSummary, setCloseSummary] = useState<CashCloseSummary | null>(null);
 
   useEffect(() => {
@@ -44,7 +52,12 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
     setOpeningCash("");
     setClosingCash("");
     setNotes("");
-    fetch("/api/pos/cash", { cache: "no-store" })
+    setWithdrawOpen(false);
+    setWAmount("");
+    setWReason("");
+    setWCategory("cash_withdrawal");
+    setWError(null);
+    fetch(`/api/pos/cash?locationId=${encodeURIComponent(usePosStore.getState().location.id)}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => d.ok && setStats(d))
       .catch(() => undefined);
@@ -113,8 +126,35 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
     ? stats.session.cashPayments +
       (session?.openingCash ?? 0) -
       stats.session.changeGiven -
-      stats.session.cashRefunds
+      stats.session.cashRefunds -
+      stats.session.cashExpenses
     : 0;
+
+  const doWithdraw = async () => {
+    const amount = parseFloat(wAmount.replace(",", "."));
+    if (!Number.isFinite(amount) || amount <= 0) return setWError("Escribe cuánto dinero sacas de la caja");
+    if (!wReason.trim()) return setWError("Escribe para qué sacas el dinero");
+    if (!session) return;
+    setLoading(true);
+    setWError(null);
+    try {
+      const res = await fetch("/api/pos/cash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "withdraw", sessionId: session.id, amount, description: wReason.trim(), category: wCategory }),
+      });
+      const data = await res.json();
+      if (!data.ok) return setWError(data.error ?? "No se pudo registrar el retiro");
+      swalToast(`Retiro de ${money(amount)} registrado`);
+      setWithdrawOpen(false);
+      setWAmount("");
+      setWReason("");
+      const fresh = await fetch(`/api/pos/cash?locationId=${encodeURIComponent(usePosStore.getState().location.id)}`, { cache: "no-store" }).then((r) => r.json());
+      if (fresh.ok) setStats(fresh);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
@@ -159,10 +199,57 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
                 <span className="text-muted-foreground">Abierta desde</span>
                 <span>{new Date(session.openedAt).toLocaleString("es-MX")}</span>
               </div>
+              {(stats?.session?.cashExpenses ?? 0) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Retiros y gastos</span>
+                  <span className="font-medium tabular-nums text-destructive">-{money(stats?.session?.cashExpenses ?? 0)}</span>
+                </div>
+              )}
               <div className="flex justify-between border-t pt-1">
                 <span className="text-muted-foreground">Esperado en caja</span>
                 <span className="font-bold tabular-nums">{money(expected)}</span>
               </div>
+            </div>
+            <div className="rounded-xl border bg-card p-3">
+              {!withdrawOpen ? (
+                <Button type="button" variant="outline" className="w-full justify-start gap-2" onClick={() => setWithdrawOpen(true)}>
+                  <HandCoins className="size-4" /> Retirar efectivo (pago a proveedor, gasto…)
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold">Retirar efectivo de la caja</p>
+                  <InputGroupField
+                    id="withdrawAmount"
+                    label="¿Cuánto sacas? ($)"
+                    leftIcon={<span className="text-sm">$</span>}
+                    value={wAmount}
+                    onChange={(e) => setWAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+                    placeholder="0.00"
+                    inputMode="decimal"
+                  />
+                  <InputGroupField
+                    id="withdrawReason"
+                    label="¿Para qué es?"
+                    value={wReason}
+                    onChange={(e) => setWReason(e.target.value)}
+                    placeholder="Ej. Pago al proveedor de refrescos"
+                    maxLength={190}
+                  />
+                  <FormCombobox
+                    id="withdrawCategory"
+                    label="Tipo de gasto"
+                    options={EXPENSE_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
+                    value={wCategory}
+                    onChange={setWCategory}
+                  />
+                  {wError && <p role="alert" className="text-sm text-destructive">{wError}</p>}
+                  <div className="flex gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setWithdrawOpen(false)} disabled={loading}>Cancelar</Button>
+                    <Button type="button" className="flex-1" onClick={doWithdraw} disabled={loading}>{loading ? "Guardando…" : "Registrar retiro"}</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Se descuenta del efectivo esperado y queda anotado en Gastos.</p>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <InputGroupField

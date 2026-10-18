@@ -547,6 +547,11 @@ export async function receiveOrder(
             where: { id: item.variantId, organizationId },
             data: { cost: item.unitCost },
           })
+        else
+          await tx.product.updateMany({
+            where: { id: item.productId, organizationId, productType: "bulk" },
+            data: { bulkCostPerUnit: item.unitCost },
+          })
       }
       const refreshed = await tx.purchaseOrderItem.findMany({
         where: { orderId: order.id },

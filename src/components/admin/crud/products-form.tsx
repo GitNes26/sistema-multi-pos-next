@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { InputGroupField } from "@/components/base/input-group-field"
-import { FormCombobox } from "@/components/base/form-combobox"
+import { FormCombobox, type ComboboxOption } from "@/components/base/form-combobox"
 import { cn } from "@/lib/utils"
 import { optionsApi, type ProductOption, type ProductOptionVariantRule } from "@/lib/api"
 import { swalToast } from "@/lib/swal"
@@ -148,11 +148,33 @@ export function ProductsForm({
   )
   const [isNew, setIsNew] = useState((initial?.isNew as boolean) ?? false)
 
+  // Existencias iniciales (solo al crear y con control de inventario).
+  const [initialStock, setInitialStock] = useState("")
+  const [initialMinStock, setInitialMinStock] = useState("")
+  const [stockLocationId, setStockLocationId] = useState("")
+  const [stockLocations, setStockLocations] = useState<ComboboxOption[]>([])
+  useEffect(() => {
+    if (isEdit) return
+    const controller = new AbortController()
+    void fetch("/api/crud/locations?pageSize=100", { signal: controller.signal })
+      .then((r) => r.json())
+      .then((d) => {
+        const rows = (d?.rows ?? []) as { id: string; name: string; isActive?: boolean }[]
+        setStockLocations(rows.filter((l) => l.isActive !== false).map((l) => ({ value: l.id, label: l.name })))
+      })
+      .catch(() => undefined)
+    return () => controller.abort()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const [bulkUnitId, setBulkUnitId] = useState(
     (initial?.bulkUnitId as string) ?? ""
   )
   const [bulkPricePerUnit, setBulkPrice] = useState(
     String((initial?.bulkPricePerUnit as number) ?? "")
+  )
+  const [bulkCostPerUnit, setBulkCost] = useState(
+    String((initial?.bulkCostPerUnit as number) || "")
   )
   const [bulkMinQuantity, setBulkMin] = useState(
     String((initial?.bulkMinQuantity as number) ?? "")
@@ -254,7 +276,11 @@ export function ProductsForm({
         .trim()
         .required("El nombre del producto es obligatorio")
         .max(255, "Máximo 255 caracteres"),
-      variantPrice: optionalNumber().min(0, "El precio no puede ser negativo"),
+      // Al crear algo en venta, el precio es obligatorio: evita artículos de $0.00 en el POS y el portal.
+      variantPrice:
+        !isEdit && isAvailable && productType !== "bulk"
+          ? optionalNumber().required("Pon el precio de venta").moreThan(0, "El precio debe ser mayor que cero")
+          : optionalNumber().min(0, "El precio no puede ser negativo"),
       variantCost: optionalNumber().min(0, "El costo no puede ser negativo"),
     }
     if (productType === "bulk") {
@@ -284,7 +310,7 @@ export function ProductsForm({
       }
     }
     return yup.object(shape)
-  }, [allowSplit, productType])
+  }, [allowSplit, productType, isEdit, isAvailable])
 
   const categoryField = useMemo<CrudField>(
     () => ({
@@ -380,6 +406,7 @@ export function ProductsForm({
       Object.assign(payload, {
         bulkUnitId: bulkUnitId || null,
         bulkPricePerUnit: numOrEmpty(bulkPricePerUnit),
+        bulkCostPerUnit: numOrEmpty(bulkCostPerUnit),
         bulkMinQuantity: numOrEmpty(bulkMinQuantity),
         bulkStep: numOrEmpty(bulkStep),
         bulkMaxQuantity: numOrEmpty(bulkMaxQuantity),
@@ -438,6 +465,20 @@ export function ProductsForm({
           price: numOrEmpty(variantPrice),
           cost: numOrEmpty(variantCost),
         }
+      }
+    }
+
+    if (!isEdit && trackInventory && (initialStock.trim() !== "" || initialMinStock.trim() !== "")) {
+      const qty = initialStock.trim() === "" ? 0 : Number(initialStock)
+      const min = initialMinStock.trim() === "" ? 0 : Number(initialMinStock)
+      if (!Number.isFinite(qty) || qty < 0 || !Number.isFinite(min) || min < 0) {
+        setServerError("Las existencias y el stock mínimo deben ser números iguales o mayores que 0")
+        return
+      }
+      if (qty > 0 || min > 0) {
+        if (qty > 0) payload.initialStock = qty
+        if (min > 0) payload.initialMinStock = min
+        if (stockLocationId) payload.initialStockLocationId = stockLocationId
       }
     }
 
@@ -824,6 +865,16 @@ export function ProductsForm({
             error={errors.bulkPricePerUnit}
           />
           <InputField
+            id="product-bulkCostPerUnit"
+            label="Costo por unidad ($) · para calcular tu ganancia"
+            icon={<DollarSign className="size-4" />}
+            type="number"
+            step="0.01"
+            value={bulkCostPerUnit}
+            onChange={(e) => setBulkCost(e.target.value)}
+            placeholder="0.00"
+          />
+          <InputField
             id="product-bulkMinQuantity"
             label="Cantidad mínima"
             icon={<Hash className="size-4" />}
@@ -925,7 +976,7 @@ export function ProductsForm({
           />
           <InputField
             id="product-variantCost"
-            label="Costo ($)"
+            label="Costo ($) · para calcular tu ganancia"
             icon={<DollarSign className="size-4" />}
             type="number"
             step="0.01"
@@ -1423,6 +1474,58 @@ export function ProductsForm({
             </div>
           </FieldRow>
         </>
+      )}
+
+      {/* Existencias iniciales: evita el producto «Agotado» por olvidar ir a Inventario */}
+      {!isEdit && trackInventory && (
+        <section className="space-y-2 sm:col-span-2" aria-labelledby="product-stock-title">
+          <h3 id="product-stock-title" className="text-sm font-semibold">Existencias iniciales</h3>
+          <div className="grid gap-3 rounded-xl border bg-card p-3 sm:grid-cols-2">
+            <InputField
+              id="product-initialStock"
+              label={productType === "bulk" ? "¿Cuánto tienes ahora? (en la unidad elegida)" : "¿Cuántos tienes ahora?"}
+              icon={<Boxes className="size-4" />}
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="any"
+              placeholder="0"
+              value={initialStock}
+              onChange={(e) => setInitialStock(e.target.value)}
+            />
+            <InputField
+              id="product-initialMinStock"
+              label="Avísame cuando queden menos de…"
+              icon={<Boxes className="size-4" />}
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="any"
+              placeholder="0"
+              value={initialMinStock}
+              onChange={(e) => setInitialMinStock(e.target.value)}
+            />
+            {stockLocations.length > 1 && (
+              <FormCombobox
+                id="product-stockLocation"
+                label="Sucursal donde está"
+                options={stockLocations}
+                value={stockLocationId || stockLocations[0]?.value}
+                onChange={setStockLocationId}
+              />
+            )}
+            <p className="text-xs text-muted-foreground sm:col-span-2">
+              El stock mínimo es la cantidad a partir de la cual el sistema te avisa que ya toca surtir y arma tu pedido sugerido al proveedor. Déjalo en 0 si no lo necesitas.
+            </p>
+            <p className={cn("text-xs sm:col-span-2", Number(initialStock) > 0 ? "text-muted-foreground" : "text-warning-ink")}>
+              {Number(initialStock) > 0
+                ? productType === "standard" && options.some((o) => o.name.trim())
+                  ? "Se registra como «Stock inicial» y se aplica a cada variante; luego puedes ajustarlas por separado en Inventario."
+                  : "Se registra como «Stock inicial» en Inventario; no tendrás que capturarlo después."
+                : "Sin existencias, el producto aparecerá como «Agotado» hasta que registres una entrada en Inventario. Si no llevas cuenta de este artículo, apaga «Controlar inventario»."}
+            </p>
+          </div>
+        </section>
       )}
     </form>
   )

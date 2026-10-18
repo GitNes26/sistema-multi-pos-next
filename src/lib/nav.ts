@@ -28,6 +28,7 @@ import {
   ShoppingCart,
   Sparkles,
   Tags,
+  TrendingUp,
   Truck,
   UserCog,
   Users,
@@ -74,6 +75,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Ventas",
         icon: ShoppingCart,
         permission: "sales.view",
+      },
+      {
+        href: "/admin/profit",
+        label: "Ganancias",
+        icon: TrendingUp,
+        permission: "expenses.view",
       },
       {
         href: "/admin/reports",
@@ -169,6 +176,12 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Proveedores y compras",
         icon: Truck,
         permission: "purchasing.view",
+      },
+      {
+        href: "/admin/expenses",
+        label: "Gastos",
+        icon: HandCoins,
+        permission: "expenses.view",
       },
       {
         href: "/admin/locations",

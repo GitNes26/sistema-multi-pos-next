@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { MapPin, Package, Percent, Ruler, Tags, Users, Warehouse, UserCog, Banknote, Briefcase, Construction } from "lucide-react";
+import { MapPin, Package, Percent, Ruler, Tags, Users, Warehouse, UserCog, Banknote, Briefcase, Construction, Receipt } from "lucide-react";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
 import { CRUD_KEYS, getCrudEntry } from "@/lib/crud/modules";
@@ -40,6 +40,7 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
   cashRegisters: <Banknote className="size-5" />,
   cedis: <Warehouse className="size-5" />,
   promotions: <Percent className="size-5" />,
+  expenses: <Receipt className="size-5" />,
 };
 
 const PLACEHOLDER_TITLES: Record<string, { title: string; description: string; redirect?: string }> = {

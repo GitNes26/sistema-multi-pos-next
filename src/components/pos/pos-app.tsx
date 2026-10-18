@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Printer } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
@@ -180,6 +180,40 @@ export function PosApp({
   const [bulkTarget, setBulkTarget] = useState<BulkTarget | null>(null);
   const [variantTarget, setVariantTarget] = useState<PosProduct | null>(null);
   const [customerOpen, setCustomerOpen] = useState(false);
+  // Con lealtad activa, antes de cobrar se pregunta por el cliente (una vez por ticket si lo omiten).
+  const loyaltyOn = usePosStore((s) => s.loyalty.enabled);
+  const ticketEmpty = usePosStore((s) => s.items.length === 0);
+  const [customerPrompt, setCustomerPrompt] = useState(false);
+  const [customerSkipped, setCustomerSkipped] = useState(false);
+  const pendingCheckout = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    if (ticketEmpty) setCustomerSkipped(false);
+  }, [ticketEmpty]);
+  const startCheckout = (go: () => void) => {
+    if (loyaltyOn && !usePosStore.getState().customerId && !customerSkipped) {
+      pendingCheckout.current = go;
+      setCustomerPrompt(true);
+      setCustomerOpen(true);
+      return;
+    }
+    go();
+  };
+  const closeCustomer = () => {
+    setCustomerOpen(false);
+    if (!customerPrompt) return;
+    setCustomerPrompt(false);
+    const go = pendingCheckout.current;
+    pendingCheckout.current = null;
+    // Si lo asoció, sigue al cobro; si cerró con la X, se queda en el ticket.
+    if (go && usePosStore.getState().customerId) go();
+  };
+  const skipCustomer = () => {
+    setCustomerSkipped(true);
+    setCustomerPrompt(false);
+    const go = pendingCheckout.current;
+    pendingCheckout.current = null;
+    go?.();
+  };
   const [discountOpen, setDiscountOpen] = useState(false);
   const [cashOpen, setCashOpen] = useState(false);
   const [catalogsOpen, setCatalogsOpen] = useState(false);
@@ -372,11 +406,13 @@ export function PosApp({
             onEditBulk={openBulkEdit}
             onOpenCustomer={() => setCustomerOpen(true)}
             onOpenDiscount={() => setDiscountOpen(true)}
-            onCheckout={() => setPaymentOpen(true)}
-            onSplitBill={(parts) => {
-              setSplitParts(parts)
-              setPaymentOpen(true)
-            }}
+            onCheckout={() => startCheckout(() => setPaymentOpen(true))}
+            onSplitBill={(parts) =>
+              startCheckout(() => {
+                setSplitParts(parts)
+                setPaymentOpen(true)
+              })
+            }
           />
         </main>
       </div>
@@ -407,7 +443,7 @@ export function PosApp({
         }}
       />
 
-      <CustomerModal open={customerOpen} onClose={() => setCustomerOpen(false)} />
+      <CustomerModal open={customerOpen} onClose={closeCustomer} prompt={customerPrompt} onSkip={skipCustomer} />
       <DiscountDialog open={discountOpen} onClose={() => setDiscountOpen(false)} />
       <PaymentDialog open={paymentOpen} onClose={() => { setPaymentOpen(false); setSplitParts(null) }} onSuccess={onSaleSuccess} splitParts={splitParts} />
       <ProductBuilder

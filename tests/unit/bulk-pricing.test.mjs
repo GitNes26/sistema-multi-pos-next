@@ -21,3 +21,15 @@ test("usa el precio de la presentación dividida", () => {
 test("rechaza unidades ajenas al producto", () => {
   assert.throws(() => resolveBulkUnitPrice(product, "liter"), /no está disponible/)
 })
+
+test("granel heredado sin unidad guardada cobra con el precio base", () => {
+  const legacy = { bulkUnitId: null, bulkPricePerUnit: 32, allowSplit: false, splitUnitId: null, splitPricePerUnit: 0 }
+  assert.equal(resolveBulkUnitPrice(legacy, ""), 32)
+  assert.equal(resolveBulkUnitPrice(legacy, null), 32)
+  assert.throws(() => resolveBulkUnitPrice(legacy, "kg"), /no está disponible/)
+})
+
+test("granel heredado sin precio base sigue rechazándose", () => {
+  const legacy = { bulkUnitId: null, bulkPricePerUnit: 0, allowSplit: false, splitUnitId: null, splitPricePerUnit: 0 }
+  assert.throws(() => resolveBulkUnitPrice(legacy, ""), /no está disponible/)
+})

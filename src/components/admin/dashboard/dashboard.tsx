@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { hasPermission } from "@/lib/auth/permissions";
 import {
   Banknote,
   ShoppingCart,
@@ -173,6 +175,16 @@ export function AdminDashboard() {
           usuario ya la descartó (persiste por organización en localStorage);
           con negocio en marcha muestra su hero "sigue haciendo crecer". */}
       <WizardLauncher productCount={data.productCount ?? 0} totalSales={data.totalSales ?? 0} />
+      {(data.productsWithoutCost ?? 0) > 0 && (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning-ink">
+          <span>
+            {data.productsWithoutCost === 1 ? "1 producto no tiene costo" : `${data.productsWithoutCost} productos no tienen costo`}: sin él no podemos calcular cuánto ganas.
+          </span>
+          <Link href="/admin/products" className="font-semibold underline underline-offset-2">
+            Ponles su costo
+          </Link>
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
@@ -319,6 +331,13 @@ export function AdminDashboard() {
                 </p>
               </div>
             </div>
+            {hasPermission(session, "expenses.view") && (
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/admin/profit">
+                  <TrendingUp className="size-4" /> Ver cuánto gané (ventas, costos y gastos)
+                </Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

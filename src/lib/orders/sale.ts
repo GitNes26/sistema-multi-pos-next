@@ -1,5 +1,6 @@
 import type { $Enums, Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
+import { resolveUnitCosts } from "@/lib/pos/cost"
 
 // Un pedido del portal ES una venta: la mercancía sale de una sucursal y el
 // dinero llega a caja. Al cobrarse en tienda o al entregarse, el pedido se
@@ -112,8 +113,9 @@ export async function recordOrderSale(organizationId: string, orderId: string, c
       const linked = await tx.order.updateMany({ where: { id: order.id, saleId: null }, data: { saleId: sale.id, paidAt: order.paidAt ?? new Date() } })
       if (!linked.count) throw new AlreadyLinked()
 
+      const unitCosts = await resolveUnitCosts(tx, organizationId, order.items)
       await tx.saleItem.createMany({
-        data: order.items.map((i) => ({
+        data: order.items.map((i, index) => ({
           saleId: sale.id,
           productId: i.productId,
           variantId: i.variantId,
@@ -123,7 +125,7 @@ export async function recordOrderSale(organizationId: string, orderId: string, c
           quantity: i.quantity,
           unitId: i.unitId,
           unitPrice: i.unitPrice,
-          unitCost: null,
+          unitCost: unitCosts[index],
           totalPrice: i.lineTotal,
           discount: 0,
           taxRate: num(i.product?.taxRate),

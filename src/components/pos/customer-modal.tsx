@@ -15,7 +15,13 @@ import { pointsToMoney } from "@/lib/pos/pricing";
 import { ApiError, crudApi } from "@/lib/api";
 import { usePosRefresh } from "@/hooks/use-pos-refresh";
 
-interface CustomerModalProps { open: boolean; onClose: () => void }
+interface CustomerModalProps {
+  open: boolean
+  onClose: () => void
+  /** Antes de cobrar (lealtad activa): pregunta por el cliente y permite omitirlo. */
+  prompt?: boolean
+  onSkip?: () => void
+}
 type Draft = { fullName: string; email: string; phone: string };
 const blank: Draft = { fullName: "", email: "", phone: "" };
 const schema = yup.object({
@@ -24,7 +30,7 @@ const schema = yup.object({
   phone: yup.string().trim().matches(/^$|^[0-9+()\-\s]{7,20}$/, "Escribe un teléfono válido"),
 });
 
-export function CustomerModal({ open, onClose }: CustomerModalProps) {
+export function CustomerModal({ open, onClose, prompt = false, onSkip }: CustomerModalProps) {
   const customers = usePosStore((s) => s.customers);
   const customerId = usePosStore((s) => s.customerId);
   const setCustomer = usePosStore((s) => s.setCustomer);
@@ -88,8 +94,8 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
   return (
     <DialogComponent open={open} onOpenChange={(value) => !value && close()}
       icon={creating ? <UserPlus className="size-5 text-primary" /> : <UserRound className="size-5 text-primary" />}
-      title={creating ? "Nuevo cliente" : "Asociar cliente"}
-      description={creating ? "Regístralo sin salir del cobro. Recibirá un correo para crear su contraseña y entrar al portal." : "Busca un cliente existente o regístralo en pocos pasos."}
+      title={creating ? "Nuevo cliente" : prompt ? "¿A nombre de quién va la compra?" : "Asociar cliente"}
+      description={creating ? "Regístralo sin salir del cobro. Recibirá un correo para crear su contraseña y entrar al portal." : prompt ? "Con su cliente acumula puntos y canjea premios en esta compra. Puedes omitirlo." : "Busca un cliente existente o regístralo en pocos pasos."}
       className="sm:max-w-md" bodyClassName="space-y-3"
       footer={creating ? <>
         <Button type="button" variant="ghost" onClick={() => setCreating(false)}><ArrowLeft className="size-4" /> Volver</Button>
@@ -97,6 +103,7 @@ export function CustomerModal({ open, onClose }: CustomerModalProps) {
       </> : <>
         {customerId && <Button variant="outline" onClick={() => setCustomer(null)} className="text-destructive"><Trash2 className="size-4" /> Quitar cliente</Button>}
         <Button variant="ghost" onClick={close}>Cancelar</Button>
+        {prompt && onSkip && <Button type="button" onClick={() => { close(); onSkip() }}>Omitir y cobrar</Button>}
       </>}>
       {creating ? <form id="pos-customer-create" className="space-y-4" onSubmit={createCustomer}>
         <InputGroupField autoFocus id="pos-customer-name" label="Nombre completo" required value={draft.fullName} onChange={(e) => setDraft((d) => ({ ...d, fullName: e.target.value }))} error={errors.fullName} />
