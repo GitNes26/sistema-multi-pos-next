@@ -103,7 +103,7 @@ export function CustomerModal({ open, onClose, prompt = false, onSkip }: Custome
       </> : <>
         {customerId && <Button variant="outline" onClick={() => setCustomer(null)} className="text-destructive"><Trash2 className="size-4" /> Quitar cliente</Button>}
         <Button variant="ghost" onClick={close}>Cancelar</Button>
-        {prompt && onSkip && <Button type="button" onClick={() => { close(); onSkip() }}>Omitir y cobrar</Button>}
+        {prompt && onSkip && <Button type="button" onClick={() => { onSkip(); close() }}>Omitir y cobrar</Button>}
       </>}>
       {creating ? <form id="pos-customer-create" className="space-y-4" onSubmit={createCustomer}>
         <InputGroupField autoFocus id="pos-customer-name" label="Nombre completo" required value={draft.fullName} onChange={(e) => setDraft((d) => ({ ...d, fullName: e.target.value }))} error={errors.fullName} />

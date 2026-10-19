@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { FormCombobox } from "@/components/base/form-combobox";
+import { GlossaryHint } from "@/components/shared/glossary";
 import { EXPENSE_CATEGORIES } from "@/lib/expenses/shared";
 import { usePosStore } from "@/stores/pos-store";
 import { money } from "@/lib/pos/money";
@@ -210,6 +211,10 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
                 <span className="font-bold tabular-nums">{money(expected)}</span>
               </div>
             </div>
+            <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <GlossaryHint term="esperado-en-caja">¿Qué es «Esperado en caja»?</GlossaryHint>
+              <GlossaryHint term="corte">¿Qué es el corte?</GlossaryHint>
+            </p>
             <div className="rounded-xl border bg-card p-3">
               {!withdrawOpen ? (
                 <Button type="button" variant="outline" className="w-full justify-start gap-2" onClick={() => setWithdrawOpen(true)}>
@@ -298,6 +303,10 @@ export function CashRegisterPanel({ open, onClose }: CashRegisterPanelProps) {
                 placeholder="0.00"
                 inputMode="decimal"
               />
+              <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <GlossaryHint term="fondo-inicial">¿Qué es el fondo inicial?</GlossaryHint>
+                <GlossaryHint term="caja">¿Qué es la caja registradora?</GlossaryHint>
+              </p>
             </div>
           </div>
           )}

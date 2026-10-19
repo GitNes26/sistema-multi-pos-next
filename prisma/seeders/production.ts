@@ -799,6 +799,16 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     permissionKey: "organizations.manage",
     sortOrder: 8.3,
   },
+  {
+    id: "menu-kit",
+    parentId: "menu-plataforma",
+    type: "item",
+    label: "Kit POS",
+    icon: "Boxes",
+    href: "/admin/settings/kit",
+    permissionKey: "kit.manage",
+    sortOrder: 8.4,
+  },
 ]
 
 export async function seedProduction() {
@@ -1090,6 +1100,22 @@ export async function seedProduction() {
       const add = ["kds.operate", "appointments.view", "appointments.manage", "reservations.view", "reservations.manage", "delivery.manage"]
       const next = [...new Set([...saved.permissions.map(String), ...add])]
       if (next.length !== saved.permissions.length) await prisma.subscriptionPlan.update({ where: { id: saved.id }, data: { permissions: next } })
+    }
+  }
+
+  // Kit POS de la landing: se crea por nombre solo si falta, así no pisa lo que edite el superadmin.
+  const kitDefaults = [
+    { name: "Tablet / Computadora", description: "Para operar tu punto de venta: elige tablet, computadora o las dos.", imageUrl: "/kit/tablet.webp", options: ["Tablet", "Computadora"], internalMinPrice: 3000, sortOrder: 1 },
+    { name: "Báscula", description: "Para vender a granel por peso, conectada al punto de venta.", imageUrl: "/kit/bascula.webp", options: null, internalMinPrice: 1500, sortOrder: 2 },
+    { name: "Impresora", description: "Tickets de venta en papel térmico.", imageUrl: "/kit/impresora.webp", options: null, internalMinPrice: 400, sortOrder: 3 },
+    { name: "Etiquetadora", description: "Etiquetas con código de barras y precio para tus productos.", imageUrl: "/kit/etiquetadora.webp", options: null, internalMinPrice: 400, sortOrder: 4 },
+    { name: "Caja registradora", description: "Cajón de dinero que se abre al cobrar.", imageUrl: "/kit/caja.webp", options: null, internalMinPrice: 1300, sortOrder: 5 },
+    { name: "Lector de código de barras", description: "Escanea y cobra en segundos.", imageUrl: "/kit/lector.webp", options: null, internalMinPrice: 400, sortOrder: 6 },
+  ]
+  for (const item of kitDefaults) {
+    const exists = await prisma.kitComponent.findFirst({ where: { name: item.name }, select: { id: true } })
+    if (!exists) {
+      await prisma.kitComponent.create({ data: { ...item, options: item.options ?? undefined } })
     }
   }
 

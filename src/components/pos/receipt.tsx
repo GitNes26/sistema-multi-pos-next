@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, type CSSProperties } from "react"
+import { groupByGuest } from "@/lib/guests";
 import QRCode from "qrcode"
 
 import type { PosCustomer, PosSalePayload } from "@/types/pos"
@@ -124,8 +125,9 @@ export function Receipt({
         </>
       )}
 
-      {payload.items.map((i, idx) => (
+      {groupByGuest(payload.items, (i) => i.guestName).flatMap((group) => group.items.map((i) => ({ i, guest: group.guest, first: group.items[0] === i }))).map(({ i, guest, first }, idx) => (
         <div key={idx} className="mb-1">
+          {guest !== null && first && <p className="mt-1 text-[11px] font-extrabold uppercase">Para: {guest}</p>}
           <p className="font-semibold leading-tight">{i.productName}</p>
           {i.bulkQuantityDisplay && (
             <p className="text-[9px] text-black/70">{i.bulkQuantityDisplay}</p>

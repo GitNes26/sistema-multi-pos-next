@@ -309,7 +309,11 @@ export function PaymentDialog({
     } catch (err) {
       playSound("error")
       setError(
-        err instanceof Error ? err.message : "Error al registrar la venta"
+        err instanceof TypeError
+          ? "No hay conexión con el servidor. Revisa tu internet: tu ticket sigue aquí y no se cobró nada."
+          : err instanceof Error
+            ? err.message
+            : "No pudimos guardar la venta. Tu ticket sigue aquí; reintenta."
       )
     } finally {
       setLoading(false)

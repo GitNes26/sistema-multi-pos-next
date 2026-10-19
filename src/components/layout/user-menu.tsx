@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  BookOpen,
   KeyRound,
   LogOut,
   Settings2,
@@ -19,6 +20,7 @@ import {
 import type { AppRole } from "@/lib/auth/permissions";
 import { COARSE_ROLE_LABELS } from "@/components/shared/role-badge";
 import { logout } from "@/lib/auth/logout";
+import { GlossaryDialog } from "@/components/shared/glossary";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,6 +63,7 @@ export function UserMenu({ user }: { user: UserMenuUser }) {
   const router = useRouter();
   const pathname = usePathname();
   const orgId = user.activeOrganizationId ?? user.organizationId ?? null;
+  const [glossaryOpen, setGlossaryOpen] = React.useState(false);
 
   const showWelcomeGuide = () => {
     // Restaura la guía de bienvenida del dashboard (si fue ocultada por error).
@@ -73,6 +76,7 @@ export function UserMenu({ user }: { user: UserMenuUser }) {
   };
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -129,6 +133,10 @@ export function UserMenu({ user }: { user: UserMenuUser }) {
               Preferencias
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setGlossaryOpen(true)}>
+            <BookOpen className="size-4" />
+            ¿Qué significa cada cosa?
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={showWelcomeGuide}>
             <Sparkles className="size-4" />
             Mostrar guía de bienvenida
@@ -144,5 +152,7 @@ export function UserMenu({ user }: { user: UserMenuUser }) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <GlossaryDialog open={glossaryOpen} onOpenChange={setGlossaryOpen} />
+    </>
   );
 }

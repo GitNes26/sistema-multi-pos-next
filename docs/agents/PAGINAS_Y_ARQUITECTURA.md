@@ -38,6 +38,14 @@ Orden obligatorio:
 
 No copies el `organizationId` enviado por el navegador como filtro de autoridad. No hagas cálculos financieros finales en el route handler si ya existe un motor de dominio.
 
+## Sin permiso: nunca un redirect silencioso
+
+Si el usuario abre una pantalla para la que no tiene permiso, la página devuelve `<AccessDenied permission="…" />` (`src/components/shared/access-denied.tsx`), que explica el permiso que falta y a quién pedirlo. `redirect()` queda para sesión inexistente, rutas bloqueadas por plan (middleware → «Mi plan») o desajustes de modo de negocio.
+
+## Errores del servidor entendibles
+
+Los 500 de operaciones críticas (cobro, pedidos) se traducen con `friendlyServerError` (`src/lib/errors/friendly.ts`): qué pasó, qué no se perdió y qué hacer, más un código de soporte que también se escribe en el log. No devuelvas mensajes técnicos de Prisma al usuario.
+
 ## Server y client components
 
 - Prefiere Server Component para shell, autorización y primera carga.

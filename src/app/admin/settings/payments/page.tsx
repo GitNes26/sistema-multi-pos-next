@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { CreditCard } from "lucide-react";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { PageHeader } from "@/components/layout/page-header";
 import { PaymentsForm } from "@/components/admin/settings/payments-form";
 import { TransferInfoSection } from "@/components/admin/settings/transfer-info-section";
@@ -14,9 +14,7 @@ export const metadata: Metadata = { title: "Pasarelas de pago" };
 
 export default async function PaymentsSettingsPage() {
   const session = await getServerSession(authOptions);
-  if (!hasPermission(session, "settings.manage")) {
-    redirect("/admin");
-  }
+  if (!hasPermission(session, "settings.manage")) return <AccessDenied permission="settings.manage" />
 
   return (
     <div className="w-full">

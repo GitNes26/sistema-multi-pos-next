@@ -116,6 +116,8 @@ export interface CrudUiConfig {
   fields: CrudField[]
   /** Nombre en singular para títulos: "Editar categoría". */
   singular?: string
+  /** Id de `lib/glossary.ts` para mostrar «¿Qué significa?» junto al título. */
+  glossary?: string
   /** Texto del botón de alta: "Nueva categoría" (respeta el género). */
   newLabel?: string
   /** Columnas que se muestran como línea secundaria bajo el nombre (y salen de la tabla). */
@@ -206,6 +208,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
 
   units: {
     module: "units",
+    glossary: "medidas",
     title: "Unidades de medida",
     singular: "unidad",
     newLabel: "Nueva unidad",
@@ -466,6 +469,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
 
   positions: {
     module: "positions",
+    glossary: "puestos",
     title: "Puestos",
     singular: "puesto",
     newLabel: "Nuevo puesto",
@@ -753,6 +757,7 @@ export const CRUD_UI: Record<string, CrudUiConfig> = {
 
   cedis: {
     module: "cedis",
+    glossary: "cedis",
     title: "CEDIS",
     singular: "CEDIS",
     newLabel: "Nuevo CEDIS",

@@ -90,7 +90,11 @@ export function PortalShell({
   const lastTenant = useRef(tenantKey);
   useEffect(() => {
     if (lastTenant.current === tenantKey) return;
+    const previous = lastTenant.current;
     lastTenant.current = tenantKey;
+    // La primera carga de la sesión ("none" → tienda) no es un cambio de tienda: limpiar aquí
+    // escribía el estado vacío sobre el carrito guardado antes de recuperarlo.
+    if (previous === "none") return;
     const s = usePortalStore.getState();
     s.setStorefront([], []);
     s.setFavorites([]);

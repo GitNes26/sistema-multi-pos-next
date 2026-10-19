@@ -33,3 +33,13 @@ export function planWhatsappUrl(plan: PlanContact) {
     `Hola, me interesa contratar el plan ${plan.name} de Multi-POS (${price} al mes), que incluye ${plan.includedLocations} sucursal(es) y ${plan.includedEmployees} empleado(s). ¿Podrían explicarme el proceso de contratación y ayudarme a confirmar si es el plan adecuado para mi negocio?`,
   )
 }
+
+export type KitSelection = { name: string; option: string | null; quantity: number }
+
+/** Cotización del Kit POS: lista de componentes y cantidades (sin precios, que se dan al cotizar). */
+export function kitWhatsappUrl(items: KitSelection[]) {
+  const lines = items.map((i) => `• ${i.quantity} × ${i.option ? `${i.option} (${i.name})` : i.name}`)
+  return whatsappUrl(
+    `Hola, me interesa armar mi Kit POS de Multi-POS. Quisiera cotizar:\n${lines.join("\n")}\n¿Podrían darme la cotización y decirme cómo seguimos?`,
+  )
+}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { groupByGuest } from "@/lib/guests";
 import { useRouter } from "next/navigation"
 import {
   ChefHat,
@@ -480,7 +481,10 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
       <BottomSheet open={detailsOpen} onOpenChange={setDetailsOpen} title={`Pedido #${order.orderNumber}`} description="Productos, cobro, entrega y seguimiento">
         <div className="space-y-5 pb-8">
           <section className="space-y-2">
-            {order.items.map((item) => (
+            {groupByGuest(order.items, (i) => i.guestName).map((group) => (
+              <div key={group.guest ?? "todos"} className="space-y-2">
+                {group.guest !== null && <p className="px-1 pt-1 text-xs font-bold uppercase tracking-wide text-primary">Para {group.guest}</p>}
+                {group.items.map((item) => (
               <div key={item.id} className="flex justify-between gap-3 rounded-xl bg-muted/50 p-3 text-sm">
                 <div className="min-w-0">
                   <p className="font-medium">
@@ -491,6 +495,8 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
                   {item.comment && <p className="text-xs text-muted-foreground italic">“{item.comment}”</p>}
                 </div>
                 <span className="font-semibold tabular-nums">{money(item.lineTotal)}</span>
+              </div>
+                ))}
               </div>
             ))}
           </section>

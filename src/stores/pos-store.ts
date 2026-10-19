@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { cleanGuestName } from "@/lib/guests"
 import type {
   PosCatalog,
   PosCustomer,
@@ -41,6 +42,37 @@ export interface HeldTicket {
   heldAt: number
 }
 
+const GUEST_SEP = "::g::"
+const withGuestKey = (key: string, guest: string | null) => (guest ? `${key}${GUEST_SEP}${guest}` : key)
+const baseKey = (key: string) => key.split(GUEST_SEP)[0]
+
+/** Reasigna un renglón a otra persona (o a nadie), fusionando con el renglón gemelo si existe. */
+function assignGuest(items: PosLineItem[], key: string, guest: string | null): PosLineItem[] {
+  const line = items.find((i) => i.key === key)
+  if (!line || (line.sentQty ?? 0) > 0) return items
+  const name = cleanGuestName(guest)
+  const newKey = withGuestKey(baseKey(line.key), name)
+  if (newKey === line.key) return items
+  const twin = items.find((i) => i.key === newKey)
+  if (twin) {
+    if (line.kind === "bulk") return items
+    return items.filter((i) => i.key !== line.key).map((i) => (i.key === newKey ? { ...i, qty: round3(i.qty + line.qty) } : i))
+  }
+  return items.map((i) => (i.key === line.key ? { ...i, key: newKey, guestName: name ?? undefined } : i))
+}
+
+/** Nombres de las personas del ticket: los agregados a mano y los que ya tienen renglones. */
+export function guestNamesOf(state: Pick<PosState, "guestNames" | "items">): string[] {
+  const out: string[] = []
+  const add = (n: string | null | undefined) => {
+    const name = cleanGuestName(n)
+    if (name && !out.some((o) => o.toLowerCase() === name.toLowerCase())) out.push(name)
+  }
+  state.guestNames.forEach(add)
+  state.items.forEach((i) => add(i.guestName))
+  return out
+}
+
 interface PosState extends PosCatalog {
   registerId: string
   activeCategory: string | null
@@ -48,6 +80,10 @@ interface PosState extends PosCatalog {
   scanRefocus: number
   keyboardOpen: boolean
   items: PosLineItem[]
+  /** «Pedir para varias personas»: lo que se agrega se asigna a `activeGuest`. */
+  guestMode: boolean
+  guestNames: string[]
+  activeGuest: string | null
   customerId: string | null
   selectedTable: { id: string; number: number; name?: string | null } | null
   /** Comer aquí (con mesa) o para llevar; aplica a negocios con mesas/cocina. */
@@ -95,6 +131,11 @@ interface PosState extends PosCatalog {
       quantity: number
     }
   ) => void
+  setGuestMode: (on: boolean) => void
+  addGuest: (name: string) => void
+  setActiveGuest: (name: string | null) => void
+  /** Cambia a quién pertenece un renglón (no aplica a lo ya enviado a cocina). */
+  setItemGuest: (key: string, name: string | null) => void
   editItem: (key: string, patch: Partial<PosLineItem>) => void
   setQty: (key: string, qty: number) => void
   removeItem: (key: string) => void
@@ -182,6 +223,9 @@ export const usePosStore = create<PosState>()((set, get) => ({
   scanRefocus: 0,
   keyboardOpen: false,
   items: [],
+  guestMode: false,
+  guestNames: [],
+  activeGuest: null,
   customerId: null,
   selectedTable: null,
   serviceType: "dine_in",
@@ -209,7 +253,8 @@ export const usePosStore = create<PosState>()((set, get) => ({
   addProduct: (product, opts) => {
     set((s) => {
       const v = opts?.variant
-      const key = v ? v.id : product.id
+      const guest = s.guestMode ? cleanGuestName(s.activeGuest) : null
+      const key = withGuestKey(v ? v.id : product.id, guest)
       const existing = s.items.find((i) => i.key === key)
       if (existing) {
         return {
@@ -241,6 +286,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
         unitId: null,
         trackInventory: product.trackInventory,
         stock: v ? v.stock : product.stock,
+        guestName: guest ?? undefined,
       }
       return { items: [...s.items, line] }
     })
@@ -249,7 +295,8 @@ export const usePosStore = create<PosState>()((set, get) => ({
 
   addBulk: (product, opts) => {
     set((s) => {
-      const key = lineKey(product, opts.unitId)
+      const guest = s.guestMode ? cleanGuestName(s.activeGuest) : null
+      const key = withGuestKey(lineKey(product, opts.unitId), guest)
       const qty = round3(opts.qty)
       const line: PosLineItem = {
         key,
@@ -267,6 +314,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
         trackInventory: product.trackInventory,
         stock: product.stock,
         bulkQuantityDisplay: bulkDisplay(qty, opts.abbrev, opts.pricePerUnit),
+        guestName: guest ?? undefined,
       }
       const existing = s.items.find((i) => i.key === key)
       return {
@@ -281,6 +329,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
   addConfiguredItem: (product, config) => {
     set((s) => {
       const key = `${product.id}-${Date.now()}`
+      const guest = s.guestMode ? cleanGuestName(s.activeGuest) : null
       // Los tópicos se muestran en su propia leyenda; el nombre queda limpio.
       const displayName = product.name
       const line: PosLineItem = {
@@ -307,11 +356,35 @@ export const usePosStore = create<PosState>()((set, get) => ({
           extraPrice: o.values.reduce((s, v) => s + v.extraPrice, 0),
         })),
         extraPrice: config.totalExtraPrice,
+        guestName: guest ?? undefined,
       }
       return { items: [...s.items, line] }
     })
     playSound("scan")
   },
+
+  setGuestMode: (on) =>
+    set((s) => {
+      if (on) {
+        const names = guestNamesOf(s)
+        return { guestMode: true, activeGuest: s.activeGuest ?? names[0] ?? null }
+      }
+      // Al apagarlo, lo no enviado vuelve a ser un solo pedido.
+      let items = s.items
+      for (const line of s.items) if (line.guestName && !(line.sentQty ?? 0)) items = assignGuest(items, line.key, null)
+      return { guestMode: false, activeGuest: null, guestNames: [], items }
+    }),
+
+  addGuest: (name) =>
+    set((s) => {
+      const clean = cleanGuestName(name)
+      if (!clean || guestNamesOf(s).some((n) => n.toLowerCase() === clean.toLowerCase())) return s
+      return { guestNames: [...s.guestNames, clean] }
+    }),
+
+  setActiveGuest: (activeGuest) => set({ activeGuest: cleanGuestName(activeGuest) }),
+
+  setItemGuest: (key, name) => set((s) => ({ items: assignGuest(s.items, key, name) })),
 
   editItem: (key, patch) =>
     set((s) => ({
@@ -339,6 +412,9 @@ export const usePosStore = create<PosState>()((set, get) => ({
       delete held[ticketContextKey(s)]
       return {
         items: [],
+        guestMode: false,
+        guestNames: [],
+        activeGuest: null,
         customerId: null,
         selectedTable: null,
         kitchenOrderId: null,
@@ -378,6 +454,9 @@ export const usePosStore = create<PosState>()((set, get) => ({
   resetWorkingTicket: () =>
     set({
       items: [],
+      guestMode: false,
+      guestNames: [],
+      activeGuest: null,
       customerId: null,
       selectedTable: null,
       kitchenOrderId: null,

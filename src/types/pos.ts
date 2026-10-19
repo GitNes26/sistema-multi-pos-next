@@ -275,6 +275,8 @@ export interface PosLineItem {
     extraPrice: number
   }[]
   extraPrice?: number
+  /** «Varias personas»: a quién pertenece el renglón (se imprime en el plato/bolsa). */
+  guestName?: string
   /** Cantidad ya enviada a cocina (mesas · food_service/hybrid). */
   sentQty?: number
 }
@@ -304,6 +306,7 @@ export interface PosSalePayload {
       extraPrice: number
     }[]
     extraPrice?: number
+    guestName?: string | null
   }[]
   customerId?: string
   subtotal: number

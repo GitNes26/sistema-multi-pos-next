@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyServerError } from "@/lib/errors/friendly";
 import { createSale, PosError } from "@/lib/pos/server";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
@@ -68,7 +69,8 @@ export async function POST(req: Request) {
     if (err instanceof Error && /Point|Mercado Pago/i.test(err.message)) {
       return NextResponse.json({ ok: false, error: err.message }, { status: 409 });
     }
-    console.error("[pos/sales]", err);
-    return NextResponse.json({ ok: false, error: "Error al registrar la venta" }, { status: 500 });
+    const friendly = friendlyServerError(err, "guardar la venta", "Tu ticket sigue aquí y no se cobró nada.");
+    console.error("[pos/sales]", friendly.code, err);
+    return NextResponse.json({ ok: false, error: friendly.message, code: friendly.code }, { status: friendly.status });
   }
 }

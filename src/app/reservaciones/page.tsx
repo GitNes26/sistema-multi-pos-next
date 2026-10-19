@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { hasPermission } from "@/lib/auth/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { prisma } from "@/lib/db";
 import { getAppSettings } from "@/lib/db/app-settings";
 import { RESERVATION_MODES } from "@/lib/reservations/server";
@@ -32,7 +33,7 @@ export default async function ReservacionesPage() {
     select: { businessMode: true, name: true },
   });
   if (!org || !RESERVATION_MODES.includes(org.businessMode)) redirect("/admin");
-  if (!hasPermission(session, "reservations.view")) redirect("/admin");
+  if (!hasPermission(session, "reservations.view")) return <AccessDenied permission="reservations.view" />
 
   const canManage = hasPermission(session, "reservations.manage");
   const tenant = await getAppSettings(organizationId);

@@ -1,5 +1,6 @@
 import { announceOrderChange } from "@/lib/orders/live"
 import { nextCustomerCode } from "@/lib/crud/modules/customers"
+import { cleanGuestName } from "@/lib/guests"
 import { prisma } from "@/lib/db"
 import { getStoreStatus } from "@/lib/store-status"
 import { Prisma, type $Enums } from "@prisma/client"
@@ -794,6 +795,8 @@ export interface PortalOrderInput {
     categoryId?: string | null
     bulkQuantityDisplay?: string | null
     comment?: string | null
+    /** «Pedir para varias personas»: a quién pertenece el renglón. */
+    guestName?: string | null
     selectedOptions?: {
       optionId: string
       optionName: string
@@ -898,6 +901,7 @@ export interface PortalOrderDetail {
     lineTotal: number
     bulkQuantityDisplay: string | null
     comment: string | null
+    guestName: string | null
   }[]
   history: {
     status: string
@@ -976,6 +980,7 @@ export async function getPortalOrder(
       lineTotal: toNum(i.lineTotal),
       bulkQuantityDisplay: i.bulkQuantityDisplay,
       comment: i.comment,
+      guestName: i.guestName,
     })),
     history: order.statusHistory.map((h) => ({
       status: h.status,
@@ -1661,6 +1666,7 @@ export async function createPortalOrder(
           lineTotal: round2(i.lineTotal),
           bulkQuantityDisplay: i.bulkQuantityDisplay ?? null,
           comment: i.comment ?? null,
+          guestName: cleanGuestName(i.guestName),
           selectedOptions: i.selectedOptions
             ? JSON.parse(JSON.stringify(i.selectedOptions))
             : undefined,

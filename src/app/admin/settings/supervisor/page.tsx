@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { PageHeader } from "@/components/layout/page-header";
 import { SupervisorForm } from "@/components/admin/settings/supervisor-form";
 
@@ -13,9 +13,7 @@ export const metadata: Metadata = { title: "Aprobación de supervisor" };
 
 export default async function SupervisorSettingsPage() {
   const session = await getServerSession(authOptions);
-  if (!hasPermission(session, "settings.manage")) {
-    redirect("/admin");
-  }
+  if (!hasPermission(session, "settings.manage")) return <AccessDenied permission="settings.manage" />
 
   return (
     <div className="w-full">

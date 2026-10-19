@@ -25,6 +25,30 @@ export interface AppSidebarProps {
   orgActiveId?: string | null;
 }
 
+// Menú «Básico»: lo que un negocio nuevo usa a diario. El resto se despliega con
+// «Más herramientas» (la elección se recuerda en este equipo).
+const ESSENTIAL_HREFS = new Set([
+  "/admin",
+  "/pos",
+  "/admin/profit",
+  "/admin/sales",
+  "/admin/reports",
+  "/admin/notifications",
+  "/admin/products",
+  "/admin/inventory",
+  "/admin/customers",
+  "/admin/orders",
+  "/admin/expenses",
+  "/admin/settings/company",
+  "/admin/settings/my-plan",
+]);
+const NAV_ALL_KEY = "mp.nav.all";
+
+const isEssential = (item: NavItem): boolean =>
+  (item.href ? ESSENTIAL_HREFS.has(item.href) : false) || (item.children ?? []).some(isEssential);
+const countItems = (items: NavItem[]): number =>
+  items.reduce((n, i) => n + (i.href ? 1 : 0) + countItems(i.children ?? []), 0);
+
 // FASE 5.5 / 14.7 — Sidebar agrupada por secciones colapsables + items multinivel.
 function NavNode({ item, depth }: { item: NavItem; depth: number }) {
   const pathname = usePathname();
@@ -80,6 +104,37 @@ export function AppSidebar({
 }: AppSidebarProps & { onOrgSwitched?: () => void }) {
   const pathname = usePathname();
   const [expanded, setExpanded] = React.useState(true);
+  const [showAll, setShowAll] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      setShowAll(localStorage.getItem(NAV_ALL_KEY) === "1");
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, []);
+  const toggleAll = () =>
+    setShowAll((v) => {
+      try {
+        localStorage.setItem(NAV_ALL_KEY, v ? "0" : "1");
+      } catch {
+        /* best-effort */
+      }
+      return !v;
+    });
+  // Modo básico: solo lo esencial (y siempre la pantalla donde estás).
+  const visibleSections = React.useMemo(() => {
+    if (showAll) return sections;
+    return sections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => isEssential(item) || isNavActive(item, pathname)),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [sections, showAll, pathname]);
+  const hiddenCount = React.useMemo(
+    () => Math.max(0, countItems(sections.flatMap((s) => s.items)) - countItems(visibleSections.flatMap((s) => s.items))),
+    [sections, visibleSections]
+  );
 
   React.useEffect(() => {
     const update = () => {
@@ -103,7 +158,7 @@ export function AppSidebar({
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
-        {sections.map((section, si) => {
+        {visibleSections.map((section, si) => {
           const openedByDefault =
             section.items.some((item) => isNavActive(item, pathname)) ||
             si === 0;
@@ -129,6 +184,19 @@ export function AppSidebar({
             </Collapsible>
           );
         })}
+        {(hiddenCount > 0 || showAll) && (
+          <button
+            type="button"
+            onClick={toggleAll}
+            className={cn(
+              "mt-1 flex h-9 w-full cursor-pointer items-center justify-between rounded-md px-2 text-xs font-semibold text-sidebar-foreground/55 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
+              !expanded && "justify-center"
+            )}
+          >
+            {expanded ? <span>{showAll ? "Menos opciones" : `Más herramientas (${hiddenCount})`}</span> : <span aria-hidden>…</span>}
+            {expanded && <ChevronDown className={cn("size-3.5 transition-transform", showAll && "rotate-180")} />}
+          </button>
+        )}
       </nav>
 
       {/* Pie: selector de organización (convención móvil) + versión. */}

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { Megaphone } from "lucide-react";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { PageHeader } from "@/components/layout/page-header";
 import { PublicationsManager } from "@/components/admin/publications/publications-manager";
 
@@ -13,9 +13,7 @@ export const metadata: Metadata = { title: "Publicaciones" };
 
 export default async function AdminPublicationsPage() {
   const session = await getServerSession(authOptions);
-  if (!hasPermission(session, "publications.manage")) {
-    redirect("/admin");
-  }
+  if (!hasPermission(session, "publications.manage")) return <AccessDenied permission="publications.manage" />
 
   return (
     <div className="mx-auto max-w-6xl">

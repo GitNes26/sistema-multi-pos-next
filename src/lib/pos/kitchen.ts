@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import type { $Enums } from "@prisma/client";
+import { cleanGuestName } from "@/lib/guests";
 import { prisma } from "@/lib/db";
 import { round2, round3 } from "@/lib/pos/money";
 import { broadcastKdsUpdate } from "@/lib/kds/live";
@@ -44,6 +45,8 @@ export interface KitchenLineInput {
   notes?: string | null;
   selectedOptions?: { optionName: string; value: string; extraPrice: number }[] | null;
   extraPrice?: number;
+  /** «Varias personas»: a quién pertenece el renglón. */
+  guestName?: string | null;
 }
 
 export interface SendToKitchenInput {
@@ -148,6 +151,7 @@ export async function sendTicketToKitchen(
         lineTotal: round2(it.quantity * it.unitPrice),
         bulkQuantityDisplay: it.bulkQuantityDisplay ?? null,
         comment: it.notes ?? null,
+        guestName: cleanGuestName(it.guestName),
         selectedOptions: it.selectedOptions
           ? (JSON.parse(JSON.stringify(it.selectedOptions)) as Prisma.InputJsonValue)
           : Prisma.JsonNull,

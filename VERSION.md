@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.48.0.0] — 2026-10-19
+- **Tipo:** `feat` (Minor)
+- feat: pedir para varias personas (POS y portal) con nombre por producto en cocina, ticket y pedidos, Kit POS en la landing con modulo de edicion, y P1 de flujo: aviso de caja, glosario relajado, menu basico, pantalla sin acceso, errores claros y carrito que no se pierde
+
 ### [0.47.0.0] — 2026-10-18
 - **Tipo:** `feat` (Minor)
 - feat: convencion de campo obligatorio con asterisco rojo aplicada a los formularios, documentada en AGENTS y guia de formularios, con prueba que protege el asterisco

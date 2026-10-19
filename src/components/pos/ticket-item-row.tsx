@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Minus, Package, Plus, Scale, StickyNote, Trash2 } from "lucide-react";
+import { Check, Minus, Package, Plus, Scale, StickyNote, Trash2, UserRound } from "lucide-react";
 import type { PosLineItem } from "@/types/pos";
 import { money } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,8 @@ interface TicketItemRowProps {
   /** Fija la cantidad escrita (50 piezas sin sumar de 1 en 1). */
   onSetQty?: (key: string, qty: number) => void;
   onEdit?: (item: PosLineItem) => void;
+  /** Modo «varias personas»: abre el selector de persona del renglón. */
+  onAssignGuest?: (item: PosLineItem) => void;
   itemRef?: (el: HTMLDivElement | null) => void;
   flashNonce?: number;
 }
@@ -33,6 +35,7 @@ export const TicketItemRow = memo(function TicketItemRow({
   onRemove,
   onSetQty,
   onEdit,
+  onAssignGuest,
   itemRef,
   flashNonce,
 }: TicketItemRowProps) {
@@ -121,6 +124,19 @@ export const TicketItemRow = memo(function TicketItemRow({
               {item.selectedOptions.map((o) => o.value).join(" · ")}
               {item.extraPrice ? <span className="font-medium"> +{money(item.extraPrice)}</span> : null}
             </p>
+          )}
+          {onAssignGuest && (
+            <button
+              type="button"
+              onClick={() => onAssignGuest(item)}
+              className={cn(
+                "inline-flex min-h-7 max-w-full cursor-pointer items-center gap-1 rounded-full border px-2 text-xs font-semibold transition hover:border-primary/60",
+                item.guestName ? "border-primary/40 bg-primary/10 text-primary" : "border-dashed text-muted-foreground"
+              )}
+            >
+              <UserRound className="size-3 shrink-0" />
+              <span className="truncate">{item.guestName ?? "¿Para quién?"}</span>
+            </button>
           )}
           {item.notes && (
             <p className="flex items-start gap-1 text-xs text-warning-ink">

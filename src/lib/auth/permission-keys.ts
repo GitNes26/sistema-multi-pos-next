@@ -52,6 +52,7 @@ export const PERMISSIONS = [
   { key: "users.manage", module: "users", action: "manage", label: "Administrar usuarios, roles y permisos" },
   { key: "publications.manage", module: "publications", action: "manage", label: "Gestionar publicaciones" },
   { key: "supervisor.approve", module: "supervisor", action: "approve", label: "Aprobar acciones" },
+  { key: "kit.manage", module: "kit", action: "manage", label: "Editar el Kit POS que se ofrece en la landing", superAdminOnly: true },
   { key: "organizations.manage", module: "organizations", action: "manage", label: "Gestionar organizaciones y asignar admins", superAdminOnly: true },
 ] as const;
 
@@ -85,6 +86,7 @@ export const PERMISSION_MODULE_LABELS: Record<string, string> = {
   publications: "Publicaciones",
   supervisor: "Supervisor",
   organizations: "Organizaciones",
+  kit: "Kit POS (plataforma)",
 };
 
 /** Permisos agrupados por módulo, en el orden del catálogo. */

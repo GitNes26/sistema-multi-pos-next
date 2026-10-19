@@ -1,5 +1,7 @@
 "use client"
 
+import { GlossaryHint } from "@/components/shared/glossary"
+
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useSession } from "next-auth/react"
@@ -57,6 +59,7 @@ export function LiveStrip() {
   if (tiles.length === 0) return null
 
   return (
+    <div className="space-y-1.5">
     <section aria-label="Operación ahora" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
       {tiles.map((t) => (
         <Link
@@ -77,6 +80,11 @@ export function LiveStrip() {
         </Link>
       ))}
     </section>
+    <p className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1">
+      <GlossaryHint term="bajo-minimo">¿Qué es «Bajo mínimo»?</GlossaryHint>
+      <GlossaryHint term="caja">¿Qué es una caja abierta?</GlossaryHint>
+    </p>
+    </div>
   )
 }
 

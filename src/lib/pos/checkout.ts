@@ -44,6 +44,7 @@ export function buildSalePayload(
       bulkQuantityDisplay: i.bulkQuantityDisplay,
       trackInventory: i.trackInventory,
       notes: i.notes,
+      guestName: i.guestName ?? null,
       selectedOptions: i.selectedOptions,
       extraPrice: i.extraPrice,
     };

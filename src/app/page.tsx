@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils"
 import packageJson from "../../package.json"
 import { prisma } from "@/lib/db"
 import { planWhatsappUrl, whatsappUrl } from "@/lib/whatsapp"
+import { KitQuote } from "@/components/landing/kit-quote"
 
 // Los planes se administran en la base de datos. La portada debe resolverlos
 // al atender la petición, cuando Dokploy ya inyectó DATABASE_URL al contenedor,
@@ -160,15 +161,20 @@ const SECTIONS = [
   { id: "funciones", label: "Funciones" },
   { id: "negocios", label: "Tipos de negocio" },
   { id: "planes", label: "Planes" },
+  { id: "kit", label: "Kit POS" },
   { id: "preguntas", label: "Preguntas" },
 ]
 
 export default async function LandingPage() {
   const plans = await prisma.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
+  // Componentes del Kit POS (sin el precio estimado interno: nunca llega al navegador).
+  const kitItems = (
+    await prisma.kitComponent.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }).catch(() => [])
+  ).map((k) => ({ id: k.id, name: k.name, description: k.description, imageUrl: k.imageUrl, options: Array.isArray(k.options) ? (k.options as string[]) : [] }))
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <SmoothAnchors />
-      <SiteHeader sections={plans.length > 0 ? SECTIONS : SECTIONS.filter((x) => x.id !== "planes")} />
+      <SiteHeader sections={SECTIONS.filter((x) => (x.id !== "planes" || plans.length > 0) && (x.id !== "kit" || kitItems.length > 0))} />
 
       {/* ── Hero: el producto en uso ─────────────────────────── */}
       <section className="relative overflow-hidden">
@@ -411,6 +417,21 @@ export default async function LandingPage() {
                 </Reveal>
               ))}
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Kit POS ──────────────────────────────────────────── */}
+      {kitItems.length > 0 && (
+        <section id="kit" className="scroll-mt-20 border-t bg-surface-sunken">
+          <div className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+            <Reveal className="max-w-2xl">
+              <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Arma tu Kit POS</h2>
+              <p className="mt-3 text-muted-foreground">
+                Además del sistema, te conseguimos el equipo: elige lo que necesitas, cuántas piezas de cada uno, y te mandamos tu cotización por WhatsApp.
+              </p>
+            </Reveal>
+            <KitQuote items={kitItems} />
           </div>
         </section>
       )}

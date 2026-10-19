@@ -325,6 +325,12 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: "organizations.manage",
       },
       {
+        href: "/admin/settings/kit",
+        label: "Kit POS",
+        icon: Boxes,
+        permission: "kit.manage",
+      },
+      {
         href: "/admin/settings/menus",
         label: "Menú",
         icon: Menu,

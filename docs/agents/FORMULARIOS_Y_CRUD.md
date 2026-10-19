@@ -25,6 +25,14 @@ Todo campo que el formulario exija —por Yup, por una validación manual o porq
 - No escribas el `*` dentro del texto de la etiqueta ni lo pongas en campos opcionales; los opcionales pueden llevar «(opcional)» en el texto.
 - Al agregar un campo con validación nueva, revisa que su etiqueta lleve `required`; al volver opcional un campo, quítalo. `tests/unit/required-marker.test.mjs` protege que los componentes base sigan pintando el asterisco.
 
+## Palabras técnicas: glosario relajado (obligatorio)
+
+Una palabra del sistema que un negocio nuevo no entendería (fondo inicial, corte, bajo mínimo, BI, CEDIS…) **se queda tal cual** en la pantalla y se explica en un modal, no se reemplaza.
+
+- Agrega la entrada a `src/lib/glossary.ts` (qué es en una frase, explicación en tono relajado y un ejemplo cotidiano).
+- Junto a la palabra pon `<GlossaryHint term="id" />` (solo icono) o `<GlossaryHint term="id">¿Qué es…?</GlossaryHint>`; en un encabezado de página usa `PageHeader glossary="id"` (en el CRUD, `glossary` de `crud-config.ts`).
+- El glosario completo se abre desde el menú de usuario («¿Qué significa cada cosa?»).
+
 ## Campos
 
 | Necesidad | Componente |

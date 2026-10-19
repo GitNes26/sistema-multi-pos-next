@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { resolveBulkUnitPrice } from "@/lib/pos/bulk-pricing"
 import { resolveUnitCosts } from "@/lib/pos/cost"
+import { cleanGuestName } from "@/lib/guests"
 import type { Prisma, $Enums } from "@prisma/client"
 import type {
   PosCashRegister,
@@ -1165,6 +1166,7 @@ export async function createSale(
           lineTotal: i.lineTotal,
           bulkQuantityDisplay: i.bulkQuantityDisplay,
           notes: i.notes ?? undefined,
+          guestName: cleanGuestName(i.guestName),
           selectedOptions: i.selectedOptions
             ? JSON.parse(JSON.stringify(i.selectedOptions))
             : undefined,

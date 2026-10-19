@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { Users } from "lucide-react";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { PageHeader } from "@/components/layout/page-header";
 import { UsersManager } from "@/components/admin/settings/users-manager";
 
@@ -13,9 +13,7 @@ export const metadata: Metadata = { title: "Usuarios y permisos" };
 
 export default async function UsersSettingsPage() {
   const session = await getServerSession(authOptions);
-  if (!hasPermission(session, "users.manage")) {
-    redirect("/admin");
-  }
+  if (!hasPermission(session, "users.manage")) return <AccessDenied permission="users.manage" />
 
   return (
     <div className="w-full">

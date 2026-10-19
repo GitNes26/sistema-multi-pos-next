@@ -754,6 +754,7 @@ export function CrudPage({
             : meta.title
         }
         description={meta.description}
+        glossary={"glossary" in meta ? meta.glossary : undefined}
         actions={
           canManage && (
             <div className="flex flex-wrap items-center gap-2">

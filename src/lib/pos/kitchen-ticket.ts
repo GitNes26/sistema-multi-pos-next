@@ -9,6 +9,7 @@ export interface KitchenOrderItemDto {
   unitPrice: number
   unitId: string | null
   comment: string | null
+  guestName?: string | null
   selectedOptions: unknown
   extraPrice: number
   bulkQuantityDisplay: string | null
@@ -45,6 +46,7 @@ export function rebuildKitchenLines(items: KitchenOrderItemDto[], products: PosP
         stock: product?.stock ?? 0,
         bulkQuantityDisplay: i.bulkQuantityDisplay ?? undefined,
         notes: i.comment ?? undefined,
+        guestName: i.guestName ?? undefined,
         selectedOptions: options && options.length ? options : undefined,
         extraPrice: i.extraPrice || undefined,
         sentQty: i.quantity,

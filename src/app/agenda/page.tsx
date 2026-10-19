@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { hasPermission } from "@/lib/auth/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { prisma } from "@/lib/db";
 import { getAppSettings } from "@/lib/db/app-settings";
 import { AGENDA_MODES } from "@/lib/agenda/server";
@@ -32,7 +33,7 @@ export default async function AgendaPage() {
     select: { businessMode: true, name: true },
   });
   if (!org || !AGENDA_MODES.includes(org.businessMode)) redirect("/admin");
-  if (!hasPermission(session, "appointments.view")) redirect("/admin");
+  if (!hasPermission(session, "appointments.view")) return <AccessDenied permission="appointments.view" />
 
   const canManage = hasPermission(session, "appointments.manage");
   const tenant = await getAppSettings(organizationId);

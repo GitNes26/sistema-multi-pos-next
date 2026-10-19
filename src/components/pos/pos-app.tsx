@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Printer } from "lucide-react";
+import { CheckCircle2, LockKeyhole, Printer } from "lucide-react";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -189,7 +189,23 @@ export function PosApp({
   useEffect(() => {
     if (ticketEmpty) setCustomerSkipped(false);
   }, [ticketEmpty]);
-  const startCheckout = (go: () => void) => {
+  // Sin caja abierta no se puede cobrar: se avisa de entrada (no al final) y se retoma el cobro al abrirla.
+  const cashSession = usePosStore((s) => s.session);
+  const [cashPrompt, setCashPrompt] = useState(false);
+  const pendingAfterCash = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    if (!cashSession || !pendingAfterCash.current) return;
+    const resume = pendingAfterCash.current;
+    pendingAfterCash.current = null;
+    setCashPrompt(false);
+    resume();
+  }, [cashSession]);
+  const startCheckout = (go: () => void): void => {
+    if (!usePosStore.getState().session) {
+      pendingAfterCash.current = () => startCheckout(go);
+      setCashPrompt(true);
+      return;
+    }
     if (loyaltyOn && !usePosStore.getState().customerId && !customerSkipped) {
       pendingCheckout.current = go;
       setCustomerPrompt(true);
@@ -459,7 +475,43 @@ export function PosApp({
           });
         }}
       />
-      <CashRegisterPanel open={cashOpen} onClose={() => setCashOpen(false)} />
+      <CashRegisterPanel
+        open={cashOpen}
+        onClose={() => {
+          setCashOpen(false);
+          if (!usePosStore.getState().session) pendingAfterCash.current = null;
+        }}
+      />
+      <DialogComponent
+        open={cashPrompt}
+        onOpenChange={(open) => {
+          if (open) return;
+          setCashPrompt(false);
+          pendingAfterCash.current = null;
+        }}
+        icon={<LockKeyhole className="size-5 text-primary" />}
+        title="Primero abre tu caja"
+        description="Para cobrar necesitas tener la caja abierta. Tu ticket se queda como está."
+        className="sm:max-w-md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => { setCashPrompt(false); pendingAfterCash.current = null; }}>Ahora no</Button>
+            <Button
+              onClick={() => {
+                setCashPrompt(false);
+                setCashOpen(true);
+              }}
+            >
+              Abrir caja
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Abrir la caja es decir con cuánto dinero empiezas el día (el <strong>fondo</strong> para dar cambio). Al terminar, la cierras y el sistema te dice si el dinero cuadra.
+          Si no te deja abrirla, pídele a tu encargado que lo haga o que te dé el permiso.
+        </p>
+      </DialogComponent>
       <CatalogsModal open={catalogsOpen} onClose={() => setCatalogsOpen(false)} onSelectProduct={selectProduct} />
 
       <DialogComponent

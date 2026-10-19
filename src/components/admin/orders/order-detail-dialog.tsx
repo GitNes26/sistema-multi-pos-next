@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { groupByGuest } from "@/lib/guests";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
@@ -343,7 +344,15 @@ export function OrderDetailDialog({ orderId, canManage, onChanged, onUpdated }: 
                   {order.items.length} producto{order.items.length === 1 ? "" : "s"}
                 </h4>
                 <ul className="divide-y">
-                  {order.items.map((it) => (
+                  {groupByGuest(order.items, (i) => i.guestName).flatMap((group) => [
+                    ...(group.guest !== null
+                      ? [
+                          <li key={`guest-${group.guest}`} className="bg-primary/5 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-primary">
+                            Para {group.guest}
+                          </li>,
+                        ]
+                      : []),
+                    ...group.items.map((it) => (
                     <li key={it.id} className="flex items-start gap-3 px-4 py-2.5 text-sm">
                       <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-xs font-bold tabular-nums">
                         {it.bulkQuantityDisplay ? "⚖" : `${it.quantity}×`}
@@ -358,7 +367,8 @@ export function OrderDetailDialog({ orderId, canManage, onChanged, onUpdated }: 
                       </div>
                       <span className="shrink-0 font-semibold tabular-nums">{money(it.lineTotal)}</span>
                     </li>
-                  ))}
+                    )),
+                  ])}
                 </ul>
                 <dl className="space-y-1 border-t px-4 py-3 text-sm">
                   <Row label="Subtotal" value={order.subtotal} />

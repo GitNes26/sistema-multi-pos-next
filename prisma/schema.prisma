@@ -935,6 +935,24 @@ model CashRegister {
   @@map("cash_registers")
 }
 
+/// Componente del Kit POS que se ofrece en la landing (plataforma, sin empresa).
+model KitComponent {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  imageUrl         String?
+  /// Variantes entre las que el cliente elige («Tablet», «Computadora»); null = sin opciones.
+  options          Json?
+  /// Precio mínimo estimado: uso interno, nunca se muestra al cliente.
+  internalMinPrice Decimal  @default(0) @db.Decimal(12, 2)
+  sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("kit_components")
+}
+
 /// De dónde salió el dinero de un gasto.
 enum ExpensePaidFrom {
   cash_register
@@ -1589,6 +1607,8 @@ model SaleItem {
   lineTotal           Decimal?    @db.Decimal(12, 2)
   bulkQuantityDisplay String?
   notes               String?
+  /// «Pedir para varias personas»: a quién pertenece el renglón.
+  guestName           String?
   selectedOptions     Json?
   extraPrice          Decimal     @default(0) @db.Decimal(12, 2)
 
@@ -1855,6 +1875,8 @@ model OrderItem {
   lineTotal           Decimal?        @db.Decimal(12, 2)
   bulkQuantityDisplay String?
   comment             String?
+  /// «Pedir para varias personas»: a quién pertenece el renglón (se imprime en el plato/bolsa).
+  guestName           String?
   selectedOptions     Json?
   extraPrice          Decimal         @default(0) @db.Decimal(12, 2)
   itemStatus          OrderItemStatus @default(pending)

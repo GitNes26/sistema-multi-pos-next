@@ -185,6 +185,7 @@ export interface OrderDetail {
     lineTotal: number;
     bulkQuantityDisplay: string | null;
     comment: string | null;
+    guestName: string | null;
   }[];
   history: {
     id: string;
@@ -258,6 +259,7 @@ export async function getOrderDetail(organizationId: string, id: string): Promis
       lineTotal: toNum(i.lineTotal),
       bulkQuantityDisplay: i.bulkQuantityDisplay,
       comment: i.comment,
+      guestName: i.guestName,
     })),
     history: order.statusHistory.map((h) => ({
       id: h.id,

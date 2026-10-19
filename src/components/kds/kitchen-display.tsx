@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { groupByGuest } from "@/lib/guests";
 import { useSession } from "next-auth/react";
 import {
   AlertTriangle,
@@ -16,6 +17,7 @@ import {
   MapPin,
   ShoppingBag,
   StickyNote,
+  UserRound,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -59,6 +61,7 @@ interface KDSOrder {
     itemStatus: string;
     selectedOptions: { optionName: string; values: { value: string }[] }[] | null;
     comment: string | null;
+    guestName?: string | null;
   }[];
   preparation: { id: string; startedAt: string | null; generalNotes: string | null } | null;
 }
@@ -205,7 +208,14 @@ function OrderCard({ order, now, onUpdate }: { order: KDSOrder; now: number; onU
       </header>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
-        {order.items.map((item) => {
+        {groupByGuest(order.items, (i) => i.guestName).map((group) => (
+          <div key={group.guest ?? "todos"} className="flex flex-col gap-2">
+            {group.guest !== null && (
+              <p className="flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-base font-extrabold tracking-wide text-primary-foreground uppercase">
+                <UserRound className="size-4" /> Para {group.guest}
+              </p>
+            )}
+            {group.items.map((item) => {
           const isReady = item.itemStatus === "ready" || item.itemStatus === "served";
           const isPreparing = item.itemStatus === "preparing";
           return (
@@ -278,7 +288,9 @@ function OrderCard({ order, now, onUpdate }: { order: KDSOrder; now: number; onU
               )}
             </div>
           );
-        })}
+            })}
+          </div>
+        ))}
       </div>
 
       {/* Acción principal de la orden */}
@@ -498,6 +510,7 @@ export function KitchenDisplay({ locationId, refreshInterval = 10000 }: KitchenD
                         ...i,
                         selectedOptions: known.get(i.id)?.selectedOptions ?? null,
                         comment: known.get(i.id)?.comment ?? null,
+                        guestName: known.get(i.id)?.guestName ?? null,
                       }))
                     : current?.items ?? [],
                   preparation: current?.preparation ?? null,

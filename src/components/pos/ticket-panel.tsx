@@ -1,6 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { GuestModeBar, GuestPicker } from "@/components/shared/guest-picker"
+import { groupByGuest } from "@/lib/guests"
+import { DialogComponent as GuestDialog } from "@/components/ui/dialog"
 import {
   CheckCircle2,
   ChefHat,
@@ -8,6 +11,7 @@ import {
   RotateCcw,
   TicketPercent,
   UserRound,
+  Users,
   Wallet,
   Sparkles,
   Split,
@@ -18,7 +22,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { swalToast } from "@/lib/swal"
-import { usePosStore, selectCustomer } from "@/stores/pos-store"
+import { usePosStore, selectCustomer, guestNamesOf } from "@/stores/pos-store"
 import { usePosTotals } from "@/hooks/use-pos-totals"
 import type { PosLineItem } from "@/types/pos"
 import { money } from "@/lib/pos/money"
@@ -66,6 +70,17 @@ export function TicketPanel({
   const kitchenOrderId = usePosStore((s) => s.kitchenOrderId)
   const setKitchenOrderId = usePosStore((s) => s.setKitchenOrderId)
   const prependSentLines = usePosStore((s) => s.prependSentLines)
+  // «Pedir para varias personas»
+  const guestMode = usePosStore((s) => s.guestMode)
+  const guestNamesState = usePosStore((s) => s.guestNames)
+  const activeGuest = usePosStore((s) => s.activeGuest)
+  const setGuestMode = usePosStore((s) => s.setGuestMode)
+  const setActiveGuest = usePosStore((s) => s.setActiveGuest)
+  const addGuest = usePosStore((s) => s.addGuest)
+  const setItemGuest = usePosStore((s) => s.setItemGuest)
+  const guestNames = guestNamesOf({ guestNames: guestNamesState, items })
+  const guestOn = guestMode || items.some((i) => i.guestName)
+  const [assigning, setAssigning] = useState<PosLineItem | null>(null)
   const takeaway = serviceType === "takeaway"
   const canSend = takeaway || (selectedTable != null && !selectedTable.id.startsWith("manual-"))
 
@@ -139,6 +154,7 @@ export function TicketPanel({
             bulkQuantityDisplay: i.bulkQuantityDisplay,
             taxRate: i.taxRate,
             notes: i.notes,
+            guestName: i.guestName,
             selectedOptions: i.selectedOptions,
             extraPrice: i.extraPrice,
           })),
@@ -270,6 +286,25 @@ export function TicketPanel({
         ref={listRef}
         className="scrollbar-none flex-1 space-y-2 overflow-y-auto p-3"
       >
+        {guestOn ? (
+          <GuestModeBar
+            compact
+            on={guestOn}
+            onToggle={setGuestMode}
+            names={guestNames}
+            active={activeGuest}
+            onSelect={setActiveGuest}
+            onAdd={addGuest}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setGuestMode(true)}
+            className="flex min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed text-xs font-medium text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+          >
+            <Users className="size-3.5" /> Pedir para varias personas
+          </button>
+        )}
         <AnimatePresence mode="popLayout">
           {items.length === 0 ? (
             <motion.div
@@ -290,7 +325,19 @@ export function TicketPanel({
               </div>
             </motion.div>
           ) : (
-            items.map((item) => (
+            groupByGuest(items, (i) => i.guestName).flatMap((group) => [
+              ...(group.guest !== null
+                ? [
+                    <motion.div
+                      key={`guest-${group.guest}`}
+                      layout
+                      className="flex items-center gap-1.5 px-1 pt-1 text-xs font-bold uppercase tracking-wide text-primary"
+                    >
+                      <UserRound className="size-3.5" /> Para {group.guest}
+                    </motion.div>,
+                  ]
+                : []),
+              ...group.items.map((item) => (
               <motion.div
                 key={item.key}
                 layout
@@ -301,6 +348,7 @@ export function TicketPanel({
               >
                 <TicketItemRow
                   item={item}
+                  onAssignGuest={guestOn && (item.sentQty ?? 0) === 0 ? setAssigning : undefined}
                   itemRef={(el) => {
                     rowRefs.current[item.key] = el
                   }}
@@ -312,7 +360,8 @@ export function TicketPanel({
                   onEdit={onEditBulk}
                 />
               </motion.div>
-            ))
+              )),
+            ])
           )}
         </AnimatePresence>
       </div>
@@ -629,6 +678,28 @@ export function TicketPanel({
           </AnimatePresence>
         </Button>
       </div>
+      <GuestDialog
+        open={assigning !== null}
+        onOpenChange={(o) => !o && setAssigning(null)}
+        icon={<UserRound className="size-5 text-primary" />}
+        title="¿Para quién es?"
+        description={assigning?.name}
+        className="sm:max-w-md"
+        footer={<Button onClick={() => setAssigning(null)}>Listo</Button>}
+      >
+        {assigning && (
+          <GuestPicker
+            names={guestNames}
+            value={items.find((i) => i.key === assigning.key)?.guestName ?? null}
+            onChange={(name) => {
+              setItemGuest(assigning.key, name)
+              setAssigning(null)
+            }}
+            onAdd={addGuest}
+            allowNone
+          />
+        )}
+      </GuestDialog>
     </div>
   )
 }

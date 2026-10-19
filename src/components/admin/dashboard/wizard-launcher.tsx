@@ -45,6 +45,7 @@ import {
   WELCOME_GUIDE_RESTORE_EVENT,
 } from "@/lib/welcome-guide"
 import { cn } from "@/lib/utils"
+import { GlossaryHint } from "@/components/shared/glossary"
 import type { BusinessMode } from "@/lib/auth/options"
 
 // FASE — Guía de bienvenida del dashboard: asistentes que llevan al usuario
@@ -80,6 +81,8 @@ const MODE_ICONS: Record<BusinessMode, LucideIcon> = {
   rental: Car,
   hybrid: Layers,
 }
+
+const VISIBLE_STEPS = 3
 
 interface WizardLauncherProps {
   productCount?: number
@@ -146,6 +149,9 @@ export function WizardLauncher({
   const canKds = usePermission("orders.view")
   const canPromotion = usePermission("promotions.manage")
   const canSettings = usePermission("settings.manage")
+  const canExpenses = usePermission("expenses.manage")
+  // Solo los primeros pasos a la vista; el resto se despliega para no abrumar.
+  const [showAll, setShowAll] = useState(false)
 
   const permissionFor = (kind: WizardActionKind): boolean => {
     switch (kind) {
@@ -169,6 +175,8 @@ export function WizardLauncher({
         return canSettings
       case "promotion":
         return canPromotion
+      case "expenses":
+        return canExpenses
       default:
         return true // portal: sin permiso
     }
@@ -284,6 +292,7 @@ export function WizardLauncher({
               <RefreshCcw className="size-3.5" />
               Cambiar tipo de negocio
             </button>
+            <GlossaryHint term="tipo-negocio">¿Qué es esto?</GlossaryHint>
           </div>
 
           {/* Chips de características del modo */}
@@ -299,7 +308,7 @@ export function WizardLauncher({
           </div>
 
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-            {actions.map((a, i) => {
+            {(showAll ? actions : actions.slice(0, VISIBLE_STEPS)).map((a, i) => {
               const Icon = ACTION_ICONS[a.kind]
               return (
                 <button
@@ -329,6 +338,15 @@ export function WizardLauncher({
               )
             })}
           </div>
+          {actions.length > VISIBLE_STEPS && (
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              className="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-primary hover:underline"
+            >
+              {showAll ? "Ver menos pasos" : `Ver los ${actions.length - VISIBLE_STEPS} pasos restantes`}
+            </button>
+          )}
         </CardContent>
       </Card>
     </>

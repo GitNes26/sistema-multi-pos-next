@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { PortalCategory, PortalCombo, PortalProduct, PortalVariantOption } from "@/lib/portal/server";
 import { round2, round3 } from "@/lib/pos/money";
+import { cleanGuestName } from "@/lib/guests";
 import type { NavItemIdIncludingCombos } from "@/components/portal/portal-shell";
 
 // FASE 13 — Store del portal: catálogo + carrito (13.5) + favoritos.
@@ -56,6 +57,39 @@ export interface PortalCartItem {
   comboId?: string;
   comboItems?: PortalCombo["items"];
   comboTax?: number;
+  /** «Pedir para varias personas»: a quién pertenece el renglón. */
+  guestName?: string;
+}
+
+const GUEST_SEP = "::g::";
+const withGuestKey = (key: string, guest: string | null) => (guest ? `${key}${GUEST_SEP}${guest}` : key);
+const baseKey = (key: string) => key.split(GUEST_SEP)[0];
+
+/** Reasigna un renglón a otra persona (o a nadie), fusionando con el gemelo si existe. */
+function assignGuest(items: PortalCartItem[], key: string, guest: string | null): PortalCartItem[] {
+  const line = items.find((i) => i.key === key);
+  if (!line) return items;
+  const name = cleanGuestName(guest);
+  const newKey = withGuestKey(baseKey(line.key), name);
+  if (newKey === line.key) return items;
+  const twin = items.find((i) => i.key === newKey);
+  if (twin) {
+    if (line.kind === "bulk") return items;
+    return items.filter((i) => i.key !== line.key).map((i) => (i.key === newKey ? { ...i, qty: round3(i.qty + line.qty) } : i));
+  }
+  return items.map((i) => (i.key === line.key ? { ...i, key: newKey, guestName: name ?? undefined } : i));
+}
+
+/** Nombres de las personas del pedido: los agregados a mano y los que ya tienen renglones. */
+export function portalGuestNames(state: { guestNames: string[]; items: PortalCartItem[] }): string[] {
+  const out: string[] = [];
+  const add = (n: string | null | undefined) => {
+    const name = cleanGuestName(n);
+    if (name && !out.some((o) => o.toLowerCase() === name.toLowerCase())) out.push(name);
+  };
+  state.guestNames.forEach(add);
+  state.items.forEach((i) => add(i.guestName));
+  return out;
 }
 
 interface PortalState {
@@ -64,6 +98,10 @@ interface PortalState {
   activeCategory: string | null;
   search: string;
   items: PortalCartItem[];
+  /** «Pedir para varias personas»: lo que se agrega se asigna a `activeGuest`. */
+  guestMode: boolean;
+  guestNames: string[];
+  activeGuest: string | null;
   /** Cliente + empresa dueños del carrito guardado (evita mezclar cuentas en un mismo navegador). */
   cartOwner: string | null;
   favorites: Set<string>;
@@ -97,6 +135,10 @@ interface PortalState {
   addBulk: (product: PortalProduct, opts: BulkInputOptions) => { added: number; limited: boolean };
   addCombo: (combo: PortalCombo) => void;
   reorderItems: (items: ReorderItem[]) => number;
+  setGuestMode: (on: boolean) => void;
+  addGuest: (name: string) => void;
+  setActiveGuest: (name: string | null) => void;
+  setItemGuest: (key: string, name: string | null) => void;
   setQty: (key: string, qty: number) => void;
   setComment: (key: string, comment: string) => void;
   removeItem: (key: string) => void;
@@ -125,6 +167,9 @@ export const usePortalStore = create<PortalState>()(
   activeCategory: null,
   search: "",
   items: [],
+  guestMode: false,
+  guestNames: [],
+  activeGuest: null,
   cartOwner: null,
   favorites: new Set(),
   cartOpen: false,
@@ -148,9 +193,11 @@ export const usePortalStore = create<PortalState>()(
   addStandard: (product, variant, qty = 1, extraPerUnit = 0, optionKey, notes, selectedOptions) => {
     // Dos configuraciones distintas de la misma variante conviven como líneas
     // separadas (solo se fusionan cuando son idénticas).
-    const key = optionKey
-      ? `${standardKey(variant.id)}::${optionKey}`
-      : standardKey(variant.id);
+    const guest = get().guestMode ? cleanGuestName(get().activeGuest) : null;
+    const key = withGuestKey(
+      optionKey ? `${standardKey(variant.id)}::${optionKey}` : standardKey(variant.id),
+      guest
+    );
     const existing = get().items.find((i) => i.key === key);
     const variantName = variant.name === "Estándar" ? null : variant.name;
     const track = product.trackInventory;
@@ -188,6 +235,7 @@ export const usePortalStore = create<PortalState>()(
         extraPrice: extra,
         selectedOptions,
         comment: notes?.trim() || undefined,
+        guestName: guest ?? undefined,
       };
       return { items: [...s.items, line] };
     });
@@ -195,7 +243,8 @@ export const usePortalStore = create<PortalState>()(
   },
 
   addBulk: (product, opts) => {
-    const key = bulkKey(product.productId, opts.unitId);
+    const guest = get().guestMode ? cleanGuestName(get().activeGuest) : null;
+    const key = withGuestKey(bulkKey(product.productId, opts.unitId), guest);
     const existing = get().items.find((i) => i.key === key);
     const track = product.trackInventory;
     const already = existing ? existing.qty : 0;
@@ -223,6 +272,7 @@ export const usePortalStore = create<PortalState>()(
         stock: track ? product.stock : 0,
         step: product.bulk?.step ?? 0.01,
         bulkQuantityDisplay: `${round3(already + addQty)} ${opts.unitAbbrev} × ${opts.pricePerUnit.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}/${opts.unitAbbrev}`,
+        guestName: guest ?? undefined,
       };
       return {
         items: existing ? s.items.map((i) => (i.key === key ? line : i)) : [...s.items, line],
@@ -232,7 +282,8 @@ export const usePortalStore = create<PortalState>()(
   },
 
   addCombo: (combo) => set((state) => {
-    const key = `combo::${combo.id}`;
+    const guest = state.guestMode ? cleanGuestName(state.activeGuest) : null;
+    const key = withGuestKey(`combo::${combo.id}`, guest);
     const existing = state.items.find((item) => item.key === key);
     if (existing) {
       return { items: state.items.map((item) => item.key === key ? { ...item, qty: item.qty + 1 } : item) };
@@ -262,6 +313,7 @@ export const usePortalStore = create<PortalState>()(
         comboId: combo.id,
         comboItems: combo.items,
         comboTax,
+        guestName: guest ?? undefined,
       }],
     };
   }),
@@ -308,6 +360,26 @@ export const usePortalStore = create<PortalState>()(
     return addedCount;
   },
 
+  setGuestMode: (on) =>
+    set((s) => {
+      if (on) return { guestMode: true, activeGuest: s.activeGuest ?? portalGuestNames(s)[0] ?? null };
+      // Al apagarlo, todo vuelve a ser un solo pedido.
+      let items = s.items;
+      for (const line of s.items) if (line.guestName) items = assignGuest(items, line.key, null);
+      return { guestMode: false, activeGuest: null, guestNames: [], items };
+    }),
+
+  addGuest: (name) =>
+    set((s) => {
+      const clean = cleanGuestName(name);
+      if (!clean || portalGuestNames(s).some((n) => n.toLowerCase() === clean.toLowerCase())) return s;
+      return { guestNames: [...s.guestNames, clean] };
+    }),
+
+  setActiveGuest: (activeGuest) => set({ activeGuest: cleanGuestName(activeGuest) }),
+
+  setItemGuest: (key, name) => set((s) => ({ items: assignGuest(s.items, key, name) })),
+
   setQty: (key, qty) =>
     set((s) => ({
       items: s.items.map((i) => {
@@ -324,7 +396,7 @@ export const usePortalStore = create<PortalState>()(
 
   removeItem: (key) => set((s) => ({ items: s.items.filter((i) => i.key !== key) })),
 
-  clearCart: () => set({ items: [] }),
+  clearCart: () => set({ items: [], guestMode: false, guestNames: [], activeGuest: null }),
 
   setFavorites: (ids) => set({ favorites: new Set(ids) }),
 
@@ -341,7 +413,13 @@ export const usePortalStore = create<PortalState>()(
       version: 1,
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
-      partialize: (state) => ({ items: state.items, cartOwner: state.cartOwner }),
+      partialize: (state) => ({
+        items: state.items,
+        cartOwner: state.cartOwner,
+        guestMode: state.guestMode,
+        guestNames: state.guestNames,
+        activeGuest: state.activeGuest,
+      }),
     }
   )
 );

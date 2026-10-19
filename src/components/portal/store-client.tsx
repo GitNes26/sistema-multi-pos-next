@@ -1,6 +1,7 @@
 "use client";
 
 import { matchesSearch } from "@/lib/search"
+import { PortalGuestBar } from "@/components/portal/guest-bar"
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -95,6 +96,8 @@ export function StoreClient() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+
+      {!listId && <PortalGuestBar />}
 
       <div className={cn("grid grid-cols-2 gap-2", listId && "hidden")}>
         <Link href="/portal/favorites" className="flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-card text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"><Heart className="size-4 text-primary" /> Favoritos</Link>

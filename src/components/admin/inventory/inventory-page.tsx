@@ -649,6 +649,7 @@ export function InventoryPage({ canManage, canRevise, canPurchase, transfers = {
       <PageHeader
         icon={icon}
         title="Inventario"
+        glossary="bajo-minimo"
         description="Existencias, movimientos, mínimos y transferencias."
         actions={
           tab === "stock" && locationId ? (

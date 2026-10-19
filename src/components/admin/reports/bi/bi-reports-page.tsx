@@ -139,6 +139,7 @@ export function BiReportsPage({ canView }: { canView: boolean }) {
       <PageHeader
         icon={<BarChart3 className="size-5" />}
         title="Inteligencia de negocio"
+        glossary="bi"
         description="Indicadores de ventas, clientes, inventario y operación con comparación contra el periodo anterior."
         actions={
           <DropdownMenu>

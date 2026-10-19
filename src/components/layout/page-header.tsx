@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { InfoTooltip } from "@/components/base/info-tooltip";
+import { GlossaryHint } from "@/components/shared/glossary";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,6 +19,8 @@ export interface PageHeaderProps {
   actions?: React.ReactNode;
   breadcrumb?: { label: string; href?: string }[];
   className?: string;
+  /** Id de `lib/glossary.ts`: agrega «¿Qué significa?» junto al título. */
+  glossary?: string;
 }
 
 // FASE 5.2 — Encabezado de página consistente (título, breadcrumb, acciones).
@@ -28,6 +31,7 @@ export function PageHeader({
   actions,
   breadcrumb,
   className,
+  glossary,
 }: PageHeaderProps) {
   return (
     <div className={cn("mb-5 space-y-3", className)}>
@@ -67,6 +71,7 @@ export function PageHeader({
             <h1 className="flex items-center gap-1.5 font-heading text-xl font-semibold leading-tight tracking-tight">
               {title}
               {description && <InfoTooltip text={description} className="align-middle" />}
+              {glossary && <GlossaryHint term={glossary} />}
             </h1>
             {description && (
               <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>

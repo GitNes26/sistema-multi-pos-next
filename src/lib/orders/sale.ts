@@ -132,6 +132,7 @@ export async function recordOrderSale(organizationId: string, orderId: string, c
           lineTotal: i.lineTotal,
           bulkQuantityDisplay: i.bulkQuantityDisplay,
           notes: i.comment ?? undefined,
+          guestName: i.guestName,
           selectedOptions: (i.selectedOptions ?? undefined) as Prisma.InputJsonValue | undefined,
           extraPrice: i.extraPrice,
         })),

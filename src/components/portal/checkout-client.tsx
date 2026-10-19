@@ -1,10 +1,11 @@
 "use client";
 
 import { TextareaField } from "@/components/base/textarea-field"
+import { groupByGuest } from "@/lib/guests";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Banknote, CreditCard, Globe, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, Home, Plus, Trash2, Sparkles, Navigation, Package } from "lucide-react";
+import { ArrowLeft, Banknote, CreditCard, Globe, MapPin, Store, Truck, Clock, AlertTriangle, ShoppingBag, Home, Plus, Trash2, Sparkles, Navigation, Package, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePortalStore, cartSubtotal, cartTax } from "@/stores/portal-store";
 import { portalApi, type LoyaltyData, type PortalPromotionPreview } from "@/lib/portal/client";
@@ -112,6 +113,7 @@ export function CheckoutClient() {
         comboItemId: comboItem.id,
         comboQuantity: item.qty,
         comment: `Combo: ${item.name}`,
+        guestName: item.guestName ?? null,
       }));
     }
     return [{
@@ -127,6 +129,7 @@ export function CheckoutClient() {
       categoryId: item.categoryId,
       bulkQuantityDisplay: item.bulkQuantityDisplay ?? null,
       comment: item.comment ?? null,
+      guestName: item.guestName ?? null,
       selectedOptions: item.selectedOptions,
       extraPrice: item.extraPrice ?? 0,
     }];
@@ -860,15 +863,24 @@ export function CheckoutClient() {
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
               <ShoppingBag className="size-4 text-primary" /> Resumen
             </h2>
-            <ul className="divide-y">
-              {items.map((i) => (
-                <li key={i.key}>
-                  <SwipeableRow onDelete={() => removeItem(i.key)}>
-                    <SummaryLine item={i} />
-                  </SwipeableRow>
-                </li>
-              ))}
-            </ul>
+            {groupByGuest(items, (i) => i.guestName).map((group) => (
+              <div key={group.guest ?? "todos"}>
+                {group.guest !== null && (
+                  <p className="mt-2 flex items-center gap-1.5 border-b pb-1 text-xs font-bold uppercase tracking-wide text-primary">
+                    <Users className="size-3.5" /> Para {group.guest}
+                  </p>
+                )}
+                <ul className="divide-y">
+                  {group.items.map((i) => (
+                    <li key={i.key}>
+                      <SwipeableRow onDelete={() => removeItem(i.key)}>
+                        <SummaryLine item={i} />
+                      </SwipeableRow>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
 
             <div className="mt-2 space-y-1.5 border-t pt-2 text-sm">
               <div className="flex justify-between text-muted-foreground">

@@ -79,6 +79,7 @@ export async function GET(req: Request) {
             itemStatus: true,
             selectedOptions: true,
             comment: true,
+            guestName: true,
             extraPrice: true,
           },
         },

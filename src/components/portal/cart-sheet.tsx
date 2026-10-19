@@ -15,6 +15,8 @@ import { ThumbImage } from "@/components/base/thumb-image"
 import { haptic } from "@/lib/haptics"
 import { QtyControl } from "@/components/portal/qty-control"
 import { cn } from "@/lib/utils"
+import { CartGuestChip, PortalGuestBar } from "@/components/portal/guest-bar"
+import { groupByGuest } from "@/lib/guests"
 
 function CartLine({ item, onEdit }: { item: PortalCartItem; onEdit?: () => void }) {
   const setQty = usePortalStore((s) => s.setQty)
@@ -56,6 +58,7 @@ function CartLine({ item, onEdit }: { item: PortalCartItem; onEdit?: () => void 
               </p>
             )}
             </div>
+            <CartGuestChip item={item} />
             {onEdit && (
               <button type="button" onClick={onEdit} className="mt-1 inline-flex min-h-8 items-center gap-1 text-xs font-semibold text-primary hover:underline">
                 <Pencil className="size-3.5" /> Editar
@@ -140,8 +143,14 @@ export function CartSheet() {
         <Button variant="outline" className="mt-2 h-11" onClick={() => { setCartOpen(false); router.push("/portal/store") }}><ShoppingBag className="size-4" /> Ir a la tienda</Button>
       </div> : <>
         <div className="flex items-center justify-between gap-2 pb-1"><p className="text-xs text-muted-foreground">Revisa cantidades y productos</p><button type="button" className="text-xs font-semibold text-primary underline-offset-4 hover:underline" onClick={() => setCartOpen(false)}>Seguir comprando</button></div>
-        {items.map((item) => (
-          <CartLine key={item.key} item={item} onEdit={item.kind === "custom" ? () => void startEdit(item) : undefined} />
+        <PortalGuestBar />
+        {groupByGuest(items, (i) => i.guestName).map((group) => (
+          <section key={group.guest ?? "todos"} className="space-y-3">
+            {group.guest !== null && <h3 className="flex items-center gap-1.5 pt-1 text-sm font-semibold text-primary">Para {group.guest}</h3>}
+            {group.items.map((item) => (
+              <CartLine key={item.key} item={item} onEdit={item.kind === "custom" ? () => void startEdit(item) : undefined} />
+            ))}
+          </section>
         ))}
       </>}
     </BottomSheet>

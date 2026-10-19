@@ -1,5 +1,6 @@
 import { cleanItemName } from "@/lib/pos/item-name";
 import PDFDocument from "pdfkit";
+import { groupByGuest } from "@/lib/guests";
 import { prisma } from "@/lib/db";
 import type { $Enums } from "@prisma/client";
 import bwipjs from "bwip-js/node";
@@ -40,7 +41,7 @@ export interface TicketModel {
   customer?: { name: string; code?: string | null } | null;
   /** Líneas de contexto bajo el encabezado (venta original, tipo, estado…). */
   meta?: string[];
-  items: { title: string; details: string[]; qty: string; amount: string; note?: string }[];
+  items: { title: string; details: string[]; qty: string; amount: string; note?: string; guest?: string }[];
   itemsHeading?: string;
   totals: { label: string; amount: string; strong?: boolean; big?: boolean }[];
   payments: { label: string; amount: string }[];
@@ -127,7 +128,15 @@ function draw(doc: PDFKit.PDFDocument, m: TicketModel, logo: TicketLogo | null, 
     doc.font("Courier-Bold").fontSize(small).text(m.itemsHeading, margin);
     doc.moveDown(0.2);
   }
+  let lastGuest: string | undefined
   for (const i of m.items) {
+    // «Varias personas»: encabezado con el nombre al cambiar de persona.
+    if (i.guest !== undefined && i.guest !== lastGuest) {
+      doc.moveDown(0.3)
+      doc.font("Courier-Bold").fontSize(small + 1).text(`PARA: ${i.guest.toUpperCase()}`, margin, doc.y, { width: contentWidth })
+      doc.fontSize(small)
+      lastGuest = i.guest
+    }
     doc.font("Courier-Bold").fontSize(small).text(i.title, margin, doc.y, { width: contentWidth });
     doc.font("Courier").fontSize(7);
     for (const d of i.details) doc.text(d, margin + 4, doc.y, { width: contentWidth - 4 });
@@ -335,7 +344,7 @@ export async function generateTicketPdf(
     cashier: sale.cashier?.fullName,
     meta: order ? [order.deliveryMethod === "delivery" ? "Entrega: a domicilio" : "Entrega: recoger en sucursal"] : sale.tableLabel ? [sale.tableLabel] : [],
     customer: sale.customer ? { name: sale.customer.fullName, code: sale.customer.customerCode } : null,
-    items: sale.items.map((i) => {
+    items: groupByGuest(sale.items, (i) => i.guestName).flatMap((group) => group.items.map((i) => ({ i, guest: group.guest }))).map(({ i, guest }) => {
       const details: string[] = [];
       if (i.bulkQuantityDisplay) details.push(i.bulkQuantityDisplay);
       if (Array.isArray(i.selectedOptions)) {
@@ -353,6 +362,7 @@ export async function generateTicketPdf(
         qty: `${Number(i.quantity)} x ${MXN(Number(i.unitPrice))}`,
         amount: MXN(Number(i.lineTotal ?? 0)),
         note: i.notes ?? undefined,
+        guest: guest ?? undefined,
       };
     }),
     totals,

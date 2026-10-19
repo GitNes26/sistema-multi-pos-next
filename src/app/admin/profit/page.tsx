@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
+import { AccessDenied } from "@/components/shared/access-denied";
 import { getServerSession } from "next-auth"
 import { TrendingUp } from "lucide-react"
 import { authOptions } from "@/lib/auth/options"
@@ -10,6 +10,6 @@ export const metadata: Metadata = { title: "Ganancias" }
 
 export default async function Page() {
   const session = await getServerSession(authOptions)
-  if (!hasPermission(session, "expenses.view")) redirect("/admin")
+  if (!hasPermission(session, "expenses.view")) return <AccessDenied permission="expenses.view" />
   return <ProfitPage icon={<TrendingUp className="size-5" />} canManageExpenses={hasPermission(session, "expenses.manage")} />
 }

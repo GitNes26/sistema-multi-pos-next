@@ -33,6 +33,15 @@ Pendiente de datos: los productos a granel sembrados en la empresa de pruebas ti
 | Cliente antes de cobrar con lealtad activa | Hecho. |
 | Asistentes (wizards) | Actualizados: producto (precio, existencias y mínimo) y nuevo «Anota tus gastos y mira tu ganancia». |
 
+| P1-4 Cobrar sin caja abierta | Hecho: al tocar «Cobrar» avisa «Primero abre tu caja» con botón y retoma el cobro al abrirla. |
+| P1-5 Jerga sin explicación | Hecho a su manera: las palabras se quedan y junto a ellas hay «¿Qué significa?» que abre un modal relajado (`lib/glossary.ts`); glosario completo desde el menú de usuario. |
+| P1-6 Panel que abruma | Hecho: la guía de bienvenida muestra 3 pasos y «Ver los N pasos restantes». |
+| P1-7 Menú con 35 opciones | Hecho: menú «Básico» con «Más herramientas» (se recuerda la elección). |
+| P1-8 Redirecciones silenciosas | Hecho: `AccessDenied` explica el permiso que falta en vez de mandar al panel. |
+| P1-9 Errores genéricos | Hecho en el cobro del POS: mensajes por causa y código de soporte (`lib/errors/friendly.ts`). |
+| P1-10 Alta en autoservicio | Descartado por decisión del equipo. |
+| P2-21 Carrito que se pierde al recargar | Hecho: era un borrado del almacenamiento al cargar la sesión. |
+
 Los demás puntos siguen pendientes.
 
 ## Mejoras propuestas, por prioridad

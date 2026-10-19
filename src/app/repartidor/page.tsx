@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { AppearanceSync } from "@/components/appearance/appearance-sync";
 import { DriverApp } from "@/components/driver/driver-app";
 
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: "Mis entregas" };
 export default async function DriverPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user || session.user.scope === "portal") redirect("/auth/login?callbackUrl=/repartidor");
-  if (!hasPermission(session, "delivery.manage")) redirect("/admin");
+  if (!hasPermission(session, "delivery.manage")) return <AccessDenied permission="delivery.manage" />
   return (
     <>
       <AppearanceSync tenant={null} />

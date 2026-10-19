@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { Building2 } from "lucide-react";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { PageHeader } from "@/components/layout/page-header";
 import { OrganizationsManager } from "@/components/admin/settings/organizations-manager";
 
@@ -14,9 +14,7 @@ export const metadata: Metadata = { title: "Organizaciones y roles" };
 
 export default async function OrganizationsSettingsPage() {
   const session = await getServerSession(authOptions);
-  if (!hasPermission(session, "organizations.manage")) {
-    redirect("/admin");
-  }
+  if (!hasPermission(session, "organizations.manage")) return <AccessDenied permission="organizations.manage" />
 
   return (
     <div className="w-full">
