@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.51.0.0] — 2026-10-21
+- **Tipo:** `feat` (Minor)
+- feat: flyers en una url corta y facil de recordar (/flyers) en el dominio de produccion
+
 ### [0.50.0.0] — 2026-10-21
 - **Tipo:** `feat` (Minor)
 - feat: flyers servidos desde una ruta no listada del dominio de produccion, sin indexar

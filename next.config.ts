@@ -14,7 +14,11 @@ const nextConfig: NextConfig = {
   async rewrites() {
     // Los registros anteriores guardaron /uploads/...; en standalone los archivos
     // agregados después del build se sirven de forma fiable por la ruta dinámica.
-    return [{ source: "/uploads/:organizationId/:fileName", destination: "/api/media/:organizationId/:fileName" }]
+    return [
+      { source: "/uploads/:organizationId/:fileName", destination: "/api/media/:organizationId/:fileName" },
+      // Flyers de presentación: /flyers abre el menú de public/flyers.
+      { source: "/flyers", destination: "/flyers/index.html" },
+    ]
   },
   async headers() {
     return [
@@ -35,8 +39,8 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Material de presentación en una ruta no listada: que no se indexe.
-        source: "/p/:path*",
+        // Material de presentación: que no se indexe.
+        source: "/flyers/:path*",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
       },
       {
