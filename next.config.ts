@@ -35,6 +35,11 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Material de presentación en una ruta no listada: que no se indexe.
+        source: "/p/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
         source: "/api/sse/:path*",
         headers: [
           { key: "Cache-Control", value: "no-cache, no-transform" },

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Multi-POS · Flyers</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --muted: #475569;
+    --line: #e2e8f0;
+    --paper: #ffffff;
+    --soft: #f8fafc;
+    --c1: #4f46e5; /* administrativa */
+    --c2: #0d9488; /* operativa */
+    --c3: #ea580c; /* portal */
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; background: #cbd5e1; color: var(--ink); font-family: "Segoe UI", Inter, Arial, sans-serif; }
+  @page { size: letter; margin: 0; }
+
+  .page {
+    width: 8.5in; height: 11in; margin: 24px auto; background: var(--paper); position: relative; overflow: hidden;
+    display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(15, 23, 42, .25); page-break-after: always;
+  }
+  .page.admin { --accent: var(--c1); --accent-soft: #eef2ff; }
+  .page.ops { --accent: var(--c2); --accent-soft: #f0fdfa; }
+  .page.portal { --accent: var(--c3); --accent-soft: #fff7ed; }
+
+  header.hero {
+    padding: 0.38in 0.55in 0.28in; color: #fff; position: relative;
+    background:
+      radial-gradient(circle at 85% 10%, rgba(255,255,255,.22), transparent 45%),
+      linear-gradient(135deg, var(--accent), #0f172a 130%);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .02em; font-size: 15px; opacity: .95; }
+  .brand .dot { width: 30px; height: 30px; border-radius: 9px; background: rgba(255,255,255,.2); display: grid; place-items: center; font-weight: 800; }
+  .tag { margin-left: auto; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; background: rgba(255,255,255,.18); padding: 6px 12px; border-radius: 999px; }
+  h1 { font-size: 35px; line-height: 1.05; margin: 14px 0 8px; letter-spacing: -.02em; }
+  .lead { font-size: 14.5px; line-height: 1.45; max-width: 6.3in; opacity: .95; margin: 0; }
+
+  .grid { padding: 0.22in 0.55in 0.14in; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; flex: 1; align-content: start; }
+  .card { border: 1px solid var(--line); border-radius: 14px; padding: 9px 12px 9px; background: var(--soft); break-inside: avoid; }
+  .card h3 { margin: 0 0 6px; font-size: 14.5px; display: flex; align-items: center; gap: 8px; }
+  .card h3 i { font-style: normal; width: 26px; height: 26px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); display: inline-grid; place-items: center; font-size: 14px; }
+  .card ul { margin: 0; padding-left: 16px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .card li::marker { color: var(--accent); }
+  .wide { grid-column: 1 / -1; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 0 0.55in 0.14in; }
+  .stat { text-align: center; background: var(--accent-soft); border-radius: 12px; padding: 7px 6px; }
+  .stat b { display: block; font-size: 22px; color: var(--accent); }
+  .stat span { font-size: 11px; color: var(--muted); }
+
+  footer { margin-top: auto; padding: 0.16in 0.55in; background: var(--ink); flex-shrink: 0; color: #e2e8f0; display: flex; align-items: center; gap: 16px; font-size: 12.5px; }
+  footer b { color: #fff; font-size: 14px; }
+  footer .cta { margin-left: auto; background: var(--accent); color: #fff; padding: 9px 16px; border-radius: 10px; font-weight: 700; }
+
+  .screen-note { text-align: center; color: #334155; font-size: 13px; padding: 12px; }
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; }
+    .screen-note { display: none; }
+  }
+</style>
+</head>
+<body>
+<p class="screen-note">Para guardar como PDF: Imprimir → destino «Guardar como PDF» → tamaño Carta, márgenes ninguno y activar «Gráficos de fondo».</p>
+
+<!-- ══════════════ 1 · ADMINISTRATIVA ══════════════ -->
+<section class="page admin">
+  <header class="hero">
+    <div class="brand"><span class="dot">M</span> Multi-POS <span class="tag">1 · Parte administrativa</span></div>
+    <h1>Controla todo tu negocio<br />desde un solo panel</h1>
+    <p class="lead">Catálogo, inventario, compras, equipo, clientes y reportes de todas tus sucursales, con permisos por rol y la identidad de tu marca.</p>
+  </header>
+
+  <div class="grid">
+    <div class="card"><h3><i>▦</i> Catálogo flexible</h3><ul>
+      <li>Productos estándar, a granel y personalizados</li><li>Variantes, tópicos, recetas y combos</li><li>Categorías, imágenes y precios por variante</li></ul></div>
+    <div class="card"><h3><i>▤</i> Inventario real</h3><ul>
+      <li>Existencias por sucursal y CEDIS</li><li>Revisiones físicas y alertas de stock bajo</li><li>Aviso de productos sin costo y Excel</li></ul></div>
+    <div class="card"><h3><i>⇄</i> Traslados con seguimiento</h3><ul>
+      <li>Solicitud, preparación y despacho</li><li>Chofer trabajador o externo con ubicación</li><li>Recepción con conteo y diferencias</li></ul></div>
+    <div class="card"><h3><i>✎</i> Proveedores y compras</h3><ul>
+      <li>Cotizaciones, órdenes y recepciones</li><li>Aprobación por permiso</li><li>Documentos listos para imprimir con tu logo</li></ul></div>
+    <div class="card"><h3><i>%</i> Promociones y lealtad</h3><ul>
+      <li>Descuentos, 2x1, cupones y por cliente</li><li>Puntos con política de conversión</li><li>Publicaciones programadas</li></ul></div>
+    <div class="card"><h3><i>$</i> Clientes y crédito</h3><ul>
+      <li>Ficha, historial y número de cliente</li><li>Límite de crédito, saldos y abonos</li><li>Segmentación automática</li></ul></div>
+    <div class="card"><h3><i>☺</i> Equipo y nómina</h3><ul>
+      <li>Empleados, puestos y comisiones</li><li>Periodos de nómina y recibos con logo</li><li>Percepciones y deducciones editables</li></ul></div>
+    <div class="card"><h3><i>⚿</i> Seguridad por roles</h3><ul>
+      <li>Roles de sistema y propios, «Trabajador completo»</li><li>Permisos limitados por el plan: de Miscelánea a multi-sucursal</li><li>Aprobación de supervisor configurable</li></ul></div>
+    <div class="card wide"><h3><i>◔</i> Reportes y análisis</h3><ul>
+      <li>Ventas, inventario, caja, devoluciones, gastos y ganancias con el costo real de lo vendido en PDF o Excel</li>
+      <li>Análisis de producto, cohortes, pronóstico y segmentación de clientes</li>
+      <li>Filtros por sucursal, empleado y periodo con un botón para limpiarlos</li></ul></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>N</b><span>sucursales y CEDIS</span></div>
+    <div class="stat"><b>1</b><span>catálogo compartido</span></div>
+    <div class="stat"><b>PDF · XLSX</b><span>exportaciones</span></div>
+    <div class="stat"><b>24/7</b><span>en la nube</span></div>
+  </div>
+  <footer><div><b>Multi-POS</b><br />Panel administrativo multi-sucursal</div><span class="cta">multipos.nessik.net</span></footer>
+</section>
+
+<!-- ══════════════ 2 · OPERATIVA ══════════════ -->
+<section class="page ops">
+  <header class="hero">
+    <div class="brand"><span class="dot">M</span> Multi-POS <span class="tag">2 · Parte operativa</span></div>
+    <h1>Vende, cocina y entrega<br />sin fricción</h1>
+    <p class="lead">Pantallas táctiles pensadas para el ritmo del día: caja, mesas, cocina, reparto, citas y reservaciones conectados en tiempo real.</p>
+  </header>
+
+  <div class="grid">
+    <div class="card"><h3><i>⌗</i> Punto de venta táctil</h3><ul>
+      <li>Escáner, venta a granel con báscula y propinas</li><li>Cliente con lealtad antes de cobrar, pagos divididos y crédito</li><li>Ticket 58/80 mm con logo y QR de tu portal</li></ul></div>
+    <div class="card"><h3><i>◉</i> Caja y supervisión</h3><ul>
+      <li>Apertura, corte y gastos con retiro de caja</li><li>Aprobación de supervisor</li><li>Devoluciones: dinero, cupón, puntos, crédito o cambio</li></ul></div>
+    <div class="card"><h3><i>⌂</i> Mesas y cuentas abiertas</h3><ul>
+      <li>Plano de sala (con escaleras) o lista</li><li>Varias cuentas y pedidos para varias personas</li><li>Nombre de quien pidió en cocina y ticket</li></ul></div>
+    <div class="card"><h3><i>♨</i> Cocina en tiempo real</h3><ul>
+      <li>Comandas con tiempos y avisos</li><li>Lo enviado no se quita sin supervisor</li><li>Menú QR: cada comensal pide desde su mesa</li></ul></div>
+    <div class="card"><h3><i>▣</i> Pedidos en línea</h3><ul>
+      <li>Tablero en vivo y lista con filtros</li><li>Preparación con lista de verificación</li><li>Entrega segura con PIN o QR</li></ul></div>
+    <div class="card"><h3><i>➤</i> Reparto y traslados</h3><ul>
+      <li>Interfaz del repartidor con mapa y cobro</li><li>Ubicación compartida en vivo</li><li>Traslados entre sucursales con chofer</li></ul></div>
+    <div class="card"><h3><i>◷</i> Agenda de citas</h3><ul>
+      <li>Asigna personal y confirma</li><li>Cobra desde la misma pantalla</li><li>Servicios por empleado</li></ul></div>
+    <div class="card"><h3><i>▭</i> Reservaciones</h3><ul>
+      <li>Mesas con plano y lista de espera</li><li>Rentas por unidad y periodo</li><li>Aviso de llegada al equipo</li></ul></div>
+    <div class="card wide"><h3><i>♪</i> Todo conectado</h3><ul>
+      <li>Notificaciones y sonidos en vivo de ventas, pedidos, stock bajo y cuentas por pagar</li>
+      <li>Una venta mueve inventario, caja, puntos y reportes en un solo paso, sin duplicar capturas</li>
+      <li>Funciona en tablet, celular y escritorio; objetivos grandes para operar con una mano</li></ul></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>POS</b><span>táctil y escáner</span></div>
+    <div class="stat"><b>KDS</b><span>cocina en vivo</span></div>
+    <div class="stat"><b>GPS</b><span>reparto y traslados</span></div>
+    <div class="stat"><b>QR</b><span>mesa y entrega</span></div>
+  </div>
+  <footer><div><b>Multi-POS</b><br />Operación diaria, sin papel ni capturas dobles</div><span class="cta">multipos.nessik.net</span></footer>
+</section>
+
+<!-- ══════════════ 3 · PORTAL DE CLIENTES ══════════════ -->
+<section class="page portal">
+  <header class="hero">
+    <div class="brand"><span class="dot">M</span> Multi-POS <span class="tag">3 · Portal de clientes</span></div>
+    <h1>Tus clientes compran<br />desde su teléfono</h1>
+    <p class="lead">Una sola cuenta para todos los negocios, con tu logo y tus colores. Pide, reserva, acumula puntos y sigue su pedido sin descargar nada.</p>
+  </header>
+
+  <div class="grid">
+    <div class="card"><h3><i>☰</i> Tienda en línea</h3><ul>
+      <li>El mismo catálogo y precios del punto de venta</li><li>Favoritos, listas de compras y carrito que se conserva</li><li>Cantidad editable y productos a granel</li></ul></div>
+    <div class="card"><h3><i>⌖</i> Pide a domicilio o recoge</h3><ul>
+      <li>Direcciones guardadas con pin en el mapa</li><li>Cobertura, mínimo y costo de envío claros</li><li>Estado de la tienda abierto/cerrado</li></ul></div>
+    <div class="card"><h3><i>➤</i> Seguimiento en vivo</h3><ul>
+      <li>Cada etapa del pedido, al instante</li><li>Mapa con la ruta del repartidor</li><li>Entrega segura con PIN o QR</li></ul></div>
+    <div class="card"><h3><i>★</i> Puntos y crédito</h3><ul>
+      <li>Puntos por compra y recompensas</li><li>Saldo de crédito, adeudos y abonos</li><li>Cupones y promociones para ti</li></ul></div>
+    <div class="card"><h3><i>▭</i> Reserva tu mesa</h3><ul>
+      <li>Elige fecha, hora y lugar en el plano</li><li>Lista de espera con aviso en vivo</li><li>Reserva sin cuenta para invitados</li></ul></div>
+    <div class="card"><h3><i>⌗</i> Menú QR en la mesa</h3><ul>
+      <li>Escanea y pide con tu nombre en cada platillo</li><li>Mándalo a cocina y consulta tu cuenta</li><li>Pide la cuenta con un toque</li></ul></div>
+    <div class="card"><h3><i>◈</i> Una cuenta, varios negocios</h3><ul>
+      <li>Regístrate una vez y elige el negocio</li><li>Historial, puntos y crédito por negocio</li><li>Tu número de cliente y QR para caja</li></ul></div>
+    <div class="card"><h3><i>▱</i> Como una app</h3><ul>
+      <li>Se instala en el teléfono (PWA)</li><li>Notificaciones de tus pedidos</li><li>Diseño adaptado a cada negocio</li></ul></div>
+    <div class="card wide"><h3><i>✓</i> Sin fricción para empezar</h3><ul>
+      <li>Escanea el QR del ticket o entra al enlace y crea tu cuenta con nombre, teléfono y correo</li>
+      <li>Si ya compraste en tienda, el negocio te registra en caja y recibes tu número de cliente</li></ul></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>0</b><span>apps que descargar</span></div>
+    <div class="stat"><b>1</b><span>cuenta, muchos negocios</span></div>
+    <div class="stat"><b>GPS</b><span>seguimiento en vivo</span></div>
+    <div class="stat"><b>QR</b><span>mesa y caja</span></div>
+  </div>
+  <footer><div><b>Compra desde la app</b><br />multipos.nessik.net/portal/auth/login</div><span class="cta">Crea tu cuenta</span></footer>
+</section>
+</body>
+</html>

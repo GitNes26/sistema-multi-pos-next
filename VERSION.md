@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.50.0.0] — 2026-10-21
+- **Tipo:** `feat` (Minor)
+- feat: flyers servidos desde una ruta no listada del dominio de produccion, sin indexar
+
 ### [0.49.0.0] — 2026-10-21
 - **Tipo:** `feat` (Minor)
 - feat: landing y flyers actualizados con pedidos para varias personas, gastos con retiro de caja, ganancias con costo real, cliente con lealtad antes de cobrar y aclaracion de planes
