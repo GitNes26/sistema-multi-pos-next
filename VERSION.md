@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.49.0.0] — 2026-10-21
+- **Tipo:** `feat` (Minor)
+- feat: landing y flyers actualizados con pedidos para varias personas, gastos con retiro de caja, ganancias con costo real, cliente con lealtad antes de cobrar y aclaracion de planes
+
 ### [0.48.0.0] — 2026-10-19
 - **Tipo:** `feat` (Minor)
 - feat: pedir para varias personas (POS y portal) con nombre por producto en cocina, ticket y pedidos, Kit POS en la landing con modulo de edicion, y P1 de flujo: aviso de caja, glosario relajado, menu basico, pantalla sin acceso, errores claros y carrito que no se pierde

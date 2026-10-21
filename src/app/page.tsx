@@ -82,19 +82,20 @@ const DIFFERENTIATORS = [
 ]
 
 const FEATURES = [
-  { icon: ScanBarcode, title: "Punto de venta", text: "Escáner, venta a granel, pagos divididos y cierre de caja con aprobación de supervisor." },
+  { icon: ScanBarcode, title: "Punto de venta", text: "Escáner, venta a granel, pagos divididos, cliente con lealtad antes de cobrar y cierre de caja con aprobación de supervisor." },
   { icon: Boxes, title: "Inventario inteligente", text: "Productos con variantes, revisiones periódicas y alertas automáticas de stock bajo." },
   { icon: Truck, title: "Pedidos en línea", text: "Para recoger o a domicilio, con rastreo GPS en vivo y confirmación segura con QR o PIN." },
   { icon: Gift, title: "Lealtad y promociones", text: "Programa de puntos y publicaciones programadas para fidelizar a tus clientes." },
-  { icon: BarChart3, title: "Reportes y análisis", text: "Exporta ventas, inventario y reportes en PDF o Excel con un solo clic." },
+  { icon: BarChart3, title: "Reportes y análisis", text: "Ventas, inventario, gastos y ganancias con el costo real de lo vendido, en PDF o Excel con un solo clic." },
   { icon: Bell, title: "Notificaciones en vivo", text: "Entérate al instante de ventas, nuevos pedidos y stock bajo, en tiempo real." },
   { icon: ClipboardCheck, title: "Proveedores y compras", text: "Vincula productos, solicita cotizaciones, aprueba órdenes y registra recepciones en inventario." },
   { icon: CreditCard, title: "Crédito para clientes", text: "Configura límites por cliente, registra ventas a crédito y consulta saldos y abonos." },
-  { icon: QrCode, title: "Menú QR: mesero digital", text: "El comensal escanea su mesa, arma su pedido entre todos y lo manda a cocina; tu equipo lo ve en vivo." },
-  { icon: ChefHat, title: "Mesas y cuentas abiertas", text: "Plano de sala con escaleras, varias cuentas a la vez, cocina en tiempo real y cobro al final." },
+  { icon: QrCode, title: "Menú QR: mesero digital", text: "El comensal escanea su mesa, arma su pedido entre todos, con el nombre de quién pidió cada platillo, y lo manda a cocina; tu equipo lo ve en vivo." },
+  { icon: ChefHat, title: "Mesas y cuentas abiertas", text: "Plano de sala con escaleras, varias cuentas a la vez, pedidos para varias personas con su nombre en cocina y ticket, y cobro al final." },
   { icon: Truck, title: "Traslados con chofer", text: "Asigna a un trabajador o a un externo, comparte su ubicación y recibe con conteo y diferencias." },
   { icon: Building2, title: "Una cuenta, varios negocios", text: "El cliente usa la misma cuenta en cada negocio, con su historial, puntos y crédito por separado." },
   { icon: Users, title: "Equipo, roles y nómina", text: "Roles por área, permisos por plan, aprobación de supervisor y recibos de nómina con logo." },
+  { icon: CreditCard, title: "Gastos y caja", text: "Registra gastos con retiro de caja y cuadra el corte sin hojas aparte. Te avisa de productos sin costo para que tus ganancias sean reales." },
   { icon: FileSpreadsheet, title: "Devoluciones justas", text: "Se devuelve lo realmente pagado: dinero, cupón, puntos, crédito o cambio de producto." },
 ]
 
@@ -137,7 +138,7 @@ const FAQS = [
   },
   {
     q: "¿Sirve para restaurante, servicios o renta, no solo tienda?",
-    a: "Sí. Al configurar tu empresa eliges el tipo de negocio y el sistema activa las herramientas que corresponden: mesas y cocina, agenda de citas o reservaciones por periodo.",
+    a: "Sí. Al configurar tu empresa eliges el tipo de negocio y el sistema activa las herramientas que corresponden: mesas y cocina, agenda de citas o reservaciones por periodo. Cocina, agenda, reservaciones y entregas a domicilio ya vienen desde el plan Esencial.",
   },
   {
     q: "¿Cómo funciona el menú digital por QR?",
@@ -149,7 +150,7 @@ const FAQS = [
   },
   {
     q: "¿Cómo manejo traslados entre sucursales?",
-    a: "Solicitas, preparas y despachas la mercancía, asignas al chofer (trabajador o externo con enlace para compartir su ubicación) y el destino recibe contando lo que llegó; las diferencias quedan registradas.",
+    a: "Disponible en los planes que incluyen traslados (el plan Miscelánea no los trae). Solicitas, preparas y despachas la mercancía, asignas al chofer (trabajador o externo con enlace para compartir su ubicación) y el destino recibe contando lo que llegó; las diferencias quedan registradas.",
   },
   {
     q: "¿Cómo contrato un plan?",
