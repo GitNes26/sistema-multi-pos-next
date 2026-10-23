@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.53.0.0] — 2026-10-23
+- **Tipo:** `feat` (Minor)
+- feat: iconos y logo por defecto con fondo degradado azul-verde y la marca en blanco, sin perder el logo
+
 ### [0.52.1.0] — 2026-10-23
 - **Tipo:** `fix` (Patch)
 - fix: importacion de existencias por nombre para productos sin sku, cantidad vacia ya no deja el stock en cero, stock minimo opcional y busqueda sin acentos

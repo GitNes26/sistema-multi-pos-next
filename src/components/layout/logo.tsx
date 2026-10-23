@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { DEFAULT_LOGO_URL } from "@/lib/brand";
+import { DEFAULT_LOGO_WHITE_URL } from "@/lib/brand";
 
 // Logotipo reutilizable: logo de la empresa si existe; si no, el logo oficial de Multi-POS.
 
@@ -35,15 +35,15 @@ export function Logo({
     );
   }
 
-  // Sin logo propio: marca oficial de Multi-POS sobre fondo claro (se lee en ambos temas).
+  // Sin logo propio: marca oficial de Multi-POS en blanco sobre el degradado de la app (se lee en ambos temas).
   return (
     <span
-      className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white", className)}
+      className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-emerald-500", className)}
       style={{ width: boxSize, height: boxSize }}
       aria-hidden
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={DEFAULT_LOGO_URL} alt="Multi-POS" className="size-full object-contain p-1" draggable={false} />
+      <img src={DEFAULT_LOGO_WHITE_URL} alt="Multi-POS" className="size-full object-contain p-1" draggable={false} />
     </span>
   );
 }
