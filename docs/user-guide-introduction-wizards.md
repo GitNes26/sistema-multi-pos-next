@@ -17,8 +17,9 @@ recorrido cambia de sección.
 
 ## Recorridos disponibles
 
-- **Producto:** Productos, formulario, variantes, Inventario, movimientos, mínimo y
-  transferencias; termina con opciones para POS, otro producto o dashboard.
+- **Producto:** Productos, carga masiva con plantilla de Excel (las categorías se crean
+  solas), formulario con precio, costo y existencias iniciales, variantes, Inventario,
+  movimientos, mínimo y transferencias; termina con opciones para POS, otro producto o dashboard.
 - **Combo:** catálogo de combos, alta, productos incluidos, cantidades y precio.
 - **Inventario:** búsqueda, filtros, movimiento, mínimo y traslado por ubicación.
 - **Mesas y cocina:** plano, política, reservación, POS, comanda y KDS.

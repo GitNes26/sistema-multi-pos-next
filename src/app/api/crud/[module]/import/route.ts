@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const moduleKey = segments[segments.length - 2] as string;
   const guard = await guardCrud(moduleKey, "manage");
   if ("response" in guard) return guard.response;
-  const { organizationId } = guard;
+  const { organizationId, userId, canManageInventory } = guard;
 
   try {
     const form = await req.formData();
@@ -32,11 +32,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (form.get("preview") === "true") {
-      const result = await previewWorkbook(organizationId, moduleKey, buffer);
+      const result = await previewWorkbook(organizationId, moduleKey, buffer, { userId, canManageInventory });
       return NextResponse.json({ ok: true, result });
     }
 
-    const result = await importWorkbook(organizationId, moduleKey, buffer);
+    const result = await importWorkbook(organizationId, moduleKey, buffer, { userId, canManageInventory });
     return NextResponse.json({ ok: result.ok, result });
   } catch (err) {
     return NextResponse.json(

@@ -160,7 +160,7 @@ export const WIZARD_ACTIONS: Record<WizardActionKind, WizardActionDef> = {
   product: {
     kind: "product",
     title: "Agrega tu primer producto",
-    description: "Crea tu primer artículo en Catálogos → Productos",
+    description: "Crea tu primer artículo en Catálogos → Productos, o cárgalos todos desde Excel",
     href: "/admin/products",
     permission: "products.manage",
     modes: ["retail", "food_service", "services", "rental", "hybrid"],

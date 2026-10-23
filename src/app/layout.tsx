@@ -36,6 +36,7 @@ export const metadata: Metadata = {
     "Sistema Multi-POS: punto de venta multi-sucursal, panel administrativo y portal de clientes.",
   applicationName: "Multi-POS",
   manifest: "/manifest.json",
+  icons: { icon: "/favicon.ico", apple: "/brand/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

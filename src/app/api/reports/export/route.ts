@@ -1,3 +1,4 @@
+import { DEFAULT_LOGO_URL } from "@/lib/brand";
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { reportsGuard, reportsErrorResponse } from "../guard";
@@ -67,7 +68,7 @@ async function reportBranding(organizationId:string, locationId?:string) {
     locationId ? prisma.location.findFirst({ where:{id:locationId,organizationId}, select:{name:true,address:true,imageUrl:true} }) : null,
     prisma.appSettings.findUnique({ where:{organizationId}, select:{primaryHue:true,accentHue:true,theme:true,fontFamily:true,fontScale:true,density:true,borderRadius:true} }),
   ]);
-  let logo:Buffer|null=null; const logoUrl=location?.imageUrl||profile?.logoUrl;
+  let logo:Buffer|null=null; const logoUrl=location?.imageUrl||profile?.logoUrl||DEFAULT_LOGO_URL;
   if(logoUrl){try{const uploadedPath=resolveUploadedUrlPath(logoUrl);if(uploadedPath){const fs=await import("node:fs/promises");logo=await fs.readFile(uploadedPath);}else if(logoUrl.startsWith("/")){const fs=await import("node:fs/promises");const path=await import("node:path");logo=await fs.readFile(path.join(process.cwd(),"public",logoUrl.replace(/^\/+/,"")));}else{const response=await fetch(logoUrl);if(response.ok)logo=Buffer.from(await response.arrayBuffer());}}catch{/* encabezado textual si el recurso no está disponible */}}
   return {organization,profile,location,appearance,logo};
 }

@@ -53,6 +53,32 @@ const productGuide: GuideDef = {
     },
     {
       route: "/admin/products",
+      selector: "[data-guide='crud-template']",
+      title: "¿Tienes muchos productos? Cárgalos de golpe",
+      body: (
+        <div className="space-y-2">
+          <p>
+            Descarga la <strong>«Plantilla»</strong> de Excel, llena una fila por
+            producto y súbela con <strong>«Importar»</strong>. Antes de guardar
+            verás una vista previa con los errores marcados.
+          </p>
+          <ul className="list-disc space-y-1 pl-4">
+            <li>
+              <strong>Las categorías no tienen que existir:</strong> escribe el
+              nombre y se crean solas.
+            </li>
+            <li>
+              Puedes cargar también <strong>costo, existencia inicial y stock
+              mínimo</strong>.
+            </li>
+            <li>La hoja «Instrucciones» de la plantilla trae ejemplos.</li>
+          </ul>
+          <p>Si son pocos, sigue con el botón «Nuevo».</p>
+        </div>
+      ),
+    },
+    {
+      route: "/admin/products",
       selector: "[data-guide='crud-new']",
       title: "Crea tu primer producto",
       body: (
@@ -145,12 +171,15 @@ const productGuide: GuideDef = {
     },
     {
       route: "/admin/products",
-      selector: "#product-taxRate",
-      title: "Impuesto y datos comerciales",
+      selector: "#product-variantPrice",
+      title: "Precio y costo",
       body: (
         <p>
-          Confirma el impuesto aplicable. Después completa imagen, precio,
-          costo, SKU, código de barras y los campos propios del tipo elegido.
+          Pon el <strong>precio de venta</strong> (obligatorio y mayor que cero;
+          los precios ya incluyen impuestos). El <strong>costo</strong> es opcional
+          pero conviene capturarlo: con él calculamos cuánto ganas. Después puedes
+          agregar imagen, SKU, código de barras y los campos propios del tipo
+          elegido. En Granel el precio y el costo son por unidad.
         </p>
       ),
     },

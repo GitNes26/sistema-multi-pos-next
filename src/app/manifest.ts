@@ -14,12 +14,12 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     // Chrome: un enlace a la app abre su ventana ya instalada en lugar del navegador.
     ...({ launch_handler: { client_mode: ["navigate-existing", "auto"] } } as object),
-    background_color: "#0f172a",
+    background_color: "#ffffff",
     theme_color: "#0f172a",
     icons: [
-      { src: "/icon", sizes: "192x192", type: "image/png" },
-      { src: "/icon", sizes: "512x512", type: "image/png" },
-      { src: "/icon", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/brand/icon-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/brand/icon-512.png", sizes: "512x512", type: "image/png" },
+      { src: "/brand/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

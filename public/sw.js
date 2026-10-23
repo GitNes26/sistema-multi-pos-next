@@ -50,8 +50,8 @@ self.addEventListener("push", (event) => {
     const title = data.title || "Multi-POS";
     const options = {
       body: data.body || "",
-      icon: data.icon || "/icons/icon-192.png",
-      badge: data.badge || "/icons/icon-192.png",
+      icon: data.icon || "/brand/icon-192.png",
+      badge: data.badge || "/brand/icon-192.png",
       tag: data.tag || "multi-pos",
       renotify: true,
       vibrate: [200, 100, 200],

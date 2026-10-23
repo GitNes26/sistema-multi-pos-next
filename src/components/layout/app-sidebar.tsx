@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { isNavActive, type NavItem, type NavSection } from "@/lib/nav";
 import { NavLink } from "@/components/layout/nav-link";
 import { Logo } from "@/components/layout/logo";
+import { useNavUsage } from "@/hooks/use-nav-usage";
+import { pickFrequent } from "@/lib/nav-usage";
 import { OrgSwitcher } from "@/components/layout/org-switcher";
 import {
   Collapsible,
@@ -25,27 +27,13 @@ export interface AppSidebarProps {
   orgActiveId?: string | null;
 }
 
-// Menú «Básico»: lo que un negocio nuevo usa a diario. El resto se despliega con
-// «Más herramientas» (la elección se recuerda en este equipo).
-const ESSENTIAL_HREFS = new Set([
-  "/admin",
-  "/pos",
-  "/admin/profit",
-  "/admin/sales",
-  "/admin/reports",
-  "/admin/notifications",
-  "/admin/products",
-  "/admin/inventory",
-  "/admin/customers",
-  "/admin/orders",
-  "/admin/expenses",
-  "/admin/settings/company",
-  "/admin/settings/my-plan",
-]);
+// Menú reducido: el Panel (inicio) y las 4 pantallas que más usa esta persona; el resto
+// se despliega con «Más herramientas» (la elección se recuerda en este equipo). Las más
+// usadas se calculan con el historial de visitas (src/lib/nav-usage.ts) y se van ajustando.
+const HOME_HREF = "/admin";
 const NAV_ALL_KEY = "mp.nav.all";
 
-const isEssential = (item: NavItem): boolean =>
-  (item.href ? ESSENTIAL_HREFS.has(item.href) : false) || (item.children ?? []).some(isEssential);
+const navKey = (item: NavItem): string => item.href ?? item.label;
 const countItems = (items: NavItem[]): number =>
   items.reduce((n, i) => n + (i.href ? 1 : 0) + countItems(i.children ?? []), 0);
 
@@ -121,16 +109,27 @@ export function AppSidebar({
       }
       return !v;
     });
-  // Modo básico: solo lo esencial (y siempre la pantalla donde estás).
+  const { store, visit } = useNavUsage();
+  // Cada visita queda registrada para ajustar el menú la próxima vez.
+  React.useEffect(() => {
+    const current = sections.flatMap((section) => section.items).find((item) => item.href !== HOME_HREF && isNavActive(item, pathname));
+    if (current) visit(navKey(current));
+  }, [pathname, sections, visit]);
+  // Reducido: el inicio + las más usadas (y siempre la pantalla donde estás). La foto del
+  // historial se toma al abrir, así el menú no se reacomoda mientras navegas.
+  const frequent = React.useMemo(() => {
+    const keys = sections.flatMap((section) => section.items).filter((item) => item.href !== HOME_HREF).map(navKey);
+    return pickFrequent(keys, store, Date.now());
+  }, [sections, store]);
   const visibleSections = React.useMemo(() => {
     if (showAll) return sections;
     return sections
       .map((section) => ({
         ...section,
-        items: section.items.filter((item) => isEssential(item) || isNavActive(item, pathname)),
+        items: section.items.filter((item) => item.href === HOME_HREF || frequent.has(navKey(item)) || isNavActive(item, pathname)),
       }))
       .filter((section) => section.items.length > 0);
-  }, [sections, showAll, pathname]);
+  }, [sections, showAll, pathname, frequent]);
   const hiddenCount = React.useMemo(
     () => Math.max(0, countItems(sections.flatMap((s) => s.items)) - countItems(visibleSections.flatMap((s) => s.items))),
     [sections, visibleSections]

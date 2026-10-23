@@ -761,6 +761,7 @@ export interface ExcelImportResult {
   ok: boolean;
   imported: number;
   errors: { row: number; message: string }[];
+  createdCategories?: string[];
 }
 
 export interface CustomerActivityData {
@@ -804,6 +805,7 @@ export interface ExcelPreviewResult {
   sample: { line: number; cells: string[]; errors: string[] }[];
   valid: number;
   invalid: number;
+  notes?: string[];
 }
 
 export async function previewExcel(module: string, file: File): Promise<ExcelPreviewResult> {

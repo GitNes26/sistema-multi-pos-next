@@ -102,10 +102,20 @@ Para tiendas, restaurantes e híbridos. En una sola pantalla manejas:
   **Plantilla**, lee la hoja **Instrucciones**, copia los identificadores desde
   **Catálogo**, escribe la existencia final y después pulsa **Importar**. Descarga una
   plantilla nueva cada vez para incluir los productos actuales.
-- Las importaciones de Productos, Categorías y Clientes muestran primero una vista previa.
-  Las columnas dependientes —categoría, categoría padre y unidades— incluyen listas con
-  los valores vigentes. El sistema marca por fila campos faltantes, formatos inválidos,
-  dependencias inexistentes y códigos repetidos; corrige todos antes de confirmar.
+- Las importaciones de Productos, Categorías y Clientes muestran primero una vista previa
+  (las filas con error van primero). El sistema marca por fila campos faltantes, formatos
+  inválidos, unidades o sucursales inexistentes y nombres o códigos repetidos; corrige todos
+  antes de confirmar. Si repites una importación, lo que ya existe se marca como repetido y
+  no se duplica.
+- **Carga masiva de productos desde cero:** no necesitas crear categorías antes. Descarga la
+  **Plantilla** de Productos, escribe el nombre de la categoría en cada fila y al importar
+  las categorías nuevas se crean solas (la vista previa te avisa cuáles). Además de nombre,
+  tipo, precio y costo puedes cargar **Existencia inicial**, **Stock mínimo** y la
+  **Sucursal de la existencia** (requiere permiso de inventario). El precio de venta es
+  obligatorio y mayor que cero. Las unidades de granel y las sucursales sí deben existir.
+  La hoja «Instrucciones» trae ejemplos de cada tipo.
+- En Categorías importadas, la **categoría padre** puede existir ya o venir escrita en el mismo
+  archivo, aunque aparezca después de su hija.
 - Para Inventario, **Captura rápida** permite buscar y editar existencia y mínimo de
   muchos productos en una cuadrícula y guardar únicamente las filas modificadas. Para
   lotes mayores usa la plantilla Excel: también se valida completa antes de reemplazar

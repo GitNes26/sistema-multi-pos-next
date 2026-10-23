@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
+import { DEFAULT_LOGO_URL } from "@/lib/brand";
 
-// Logotipo reutilizable: muestra el logo de la empresa si está disponible,否则 el SVG por defecto.
+// Logotipo reutilizable: logo de la empresa si existe; si no, el logo oficial de Multi-POS.
 
 export function Logo({
   className,
@@ -34,28 +35,15 @@ export function Logo({
     );
   }
 
+  // Sin logo propio: marca oficial de Multi-POS sobre fondo claro (se lee en ambos temas).
   return (
     <span
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground",
-        className
-      )}
+      className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white", className)}
       style={{ width: boxSize, height: boxSize }}
       aria-hidden
     >
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <path
-          d="M3 9.5 12 4l9 5.5-9 5.5-9-5.5Z"
-          fill="currentColor"
-          opacity="0.9"
-        />
-        <path
-          d="M6 12v4.5l6 3.5 6-3.5V12"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinejoin="round"
-        />
-      </svg>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={DEFAULT_LOGO_URL} alt="Multi-POS" className="size-full object-contain p-1" draggable={false} />
     </span>
   );
 }

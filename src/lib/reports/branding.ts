@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { DEFAULT_LOGO_URL } from "@/lib/brand";
 import type { ExecutivePdfBranding } from "@/lib/reports/pdf";
 import { resolveUploadedUrlPath } from "@/lib/uploads/storage";
 
@@ -10,7 +11,7 @@ export async function getExecutivePdfBranding(organizationId: string, locationId
     prisma.appSettings.findUnique({ where: { organizationId }, select: { primaryHue: true, accentHue: true, theme: true, fontFamily: true, fontScale: true, density: true, borderRadius: true } }),
   ]);
   let logo: Buffer | null = null;
-  const logoUrl = location?.imageUrl || profile?.logoUrl;
+  const logoUrl = location?.imageUrl || profile?.logoUrl || DEFAULT_LOGO_URL;
   if (logoUrl) try {
     const uploadedPath = resolveUploadedUrlPath(logoUrl);
     if (uploadedPath) {

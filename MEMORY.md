@@ -47,3 +47,4 @@ Actualizada: 1 de octubre de 2026.
 - Clientes: cuenta compartida, un `Customer` por negocio; menú QR público con carrito por mesa; POS alterna cuentas abiertas (ver `CONTEXTO_SISTEMA.md`).
 - Overlays cierran con «atrás» (`OverlayBackGuard`); cambio de negocio remonta las vistas del portal; artículos ya llevados a la mesa requieren supervisor.
 - Skill `.agents/skills/plan-plantilla-administrativa`: crea o planea la plantilla administrativa de un proyecto nuevo con la esencia de este sistema (modo Crear/Planear/Sincronizar). Cuando cambien el núcleo, las tablas base o las guías de diseño/formularios, sincronizar sus referencias.
+- Marca: logo oficial en `public/brand/` (`DEFAULT_LOGO_URL`); el logo de la empresa lo reemplaza en pantalla, tickets y reportes. Menú lateral reducido = Panel + 4 más usadas por persona (`lib/nav-usage.ts`). Importar productos crea solas las categorías nuevas.

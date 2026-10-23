@@ -577,7 +577,12 @@ export function CrudPage({
           `Se importaron ${result.imported} de ${result.imported + errors.length}. ${first}${extra}`
         )
       } else {
-        swalToast(`${result.imported} registros importados`)
+        const created = result.createdCategories?.length ?? 0
+        swalToast(
+          created > 0
+            ? `${result.imported} registros importados y ${created} categoría(s) nueva(s) creadas`
+            : `${result.imported} registros importados`
+        )
       }
       setPreview(null)
       setPendingFile(null)
@@ -788,7 +793,8 @@ export function CrudPage({
                     {excelBusy === "export" ? "Exportando…" : "Exportar"}
                   </Button>
                   <TooltipButton
-                    label="Plantilla vacía con instrucciones y catálogos (descárgala cada vez que vayas a importar)"
+                    label="Plantilla vacía con instrucciones, ejemplos y listas desplegables"
+                    data-guide="crud-template"
                     variant="outline"
                     size="sm"
                     onClick={handleTemplate}
@@ -798,7 +804,8 @@ export function CrudPage({
                     {excelBusy === "export" ? "Descargando…" : "Plantilla"}
                   </TooltipButton>
                   <TooltipButton
-                    label="1) Descarga la plantilla · 2) llena las filas · 3) sube el archivo para ver la vista previa · 4) confirma. Descarga la plantilla cada vez, por si se agregaron valores nuevos a los catálogos."
+                    label="1) Descarga la plantilla · 2) llena las filas · 3) sube el archivo para ver la vista previa · 4) confirma. En productos, las categorías nuevas se crean solas."
+                    data-guide="crud-import"
                     variant="outline"
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
@@ -1094,14 +1101,22 @@ export function CrudPage({
         }
       >
         <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning-ink">
-          Descarga la plantilla cada vez que vayas a importar: los catálogos
-          (categorías, unidades, etc.) pueden tener valores nuevos que no están
-          en una plantilla descargada anteriormente.
+          Usa la plantilla descargada aquí mismo. En productos puedes escribir
+          categorías que aún no existen: se crean solas al importar. Las
+          unidades y sucursales sí deben existir.
         </div>
 
         {preview && preview.missingColumns.length > 0 && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
             Faltan columnas requeridas: {preview.missingColumns.join(", ")}
+          </div>
+        )}
+
+        {preview && (preview.notes?.length ?? 0) > 0 && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+            {preview.notes!.map((note) => (
+              <p key={note}>{note}</p>
+            ))}
           </div>
         )}
 
