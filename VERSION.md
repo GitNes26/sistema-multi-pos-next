@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.52.1.0] — 2026-10-23
+- **Tipo:** `fix` (Patch)
+- fix: importacion de existencias por nombre para productos sin sku, cantidad vacia ya no deja el stock en cero, stock minimo opcional y busqueda sin acentos
+
 ### [0.52.0.0] — 2026-10-23
 - **Tipo:** `feat` (Minor)
 - feat: logo e iconos oficiales del sistema (la empresa con logo propio lo reemplaza en pantalla, tickets y reportes), carga masiva de productos que crea sola las categorias y acepta existencia inicial, stock minimo y costo, menu lateral con las pantallas mas usadas de cada persona y guia de producto actualizada

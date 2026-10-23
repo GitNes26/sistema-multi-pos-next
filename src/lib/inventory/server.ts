@@ -725,13 +725,45 @@ export async function exportInventoryXlsx(
   return { buffer, filename: `inventario-${new Date().toISOString().slice(0, 10)}.xlsx` };
 }
 
+/** Texto comparable: sin mayúsculas, acentos ni espacios repetidos. */
+const normText = (value: unknown) => String(value ?? "").normalize("NFD").replace(/\p{M}/gu, "").replace(/\s+/g, " ").trim().toLowerCase();
+
+/** Nombre con el que un producto estándar se identifica en Excel: el del producto, o «Producto - Variante» si tiene varias. */
+const importNameOf = (product: string, variant: string, variantCount: number) => (variantCount > 1 ? `${product} - ${variant}` : product);
+
+/** Celda de ExcelJS → texto simple (fórmulas, hipervínculos y texto con formato). */
+function cellText(value: unknown): string {
+  if (value == null) return "";
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === "object") {
+    const v = value as { result?: unknown; text?: unknown; richText?: { text: string }[] };
+    if (v.richText) return v.richText.map((part) => part.text).join("").trim();
+    if (v.result !== undefined) return cellText(v.result);
+    if (v.text !== undefined) return cellText(v.text);
+    return "";
+  }
+  return String(value).trim();
+}
+
+/** «12», «$1,200.50» o «9,5» → número; vacío → null; inválido → NaN. */
+function parseQuantityCell(raw: string): number | null {
+  let text = raw.replace(/[$\s]/g, "");
+  if (text === "") return null;
+  const comma = text.lastIndexOf(",");
+  const dot = text.lastIndexOf(".");
+  if (comma >= 0 && dot >= 0) text = comma > dot ? text.replace(/\./g, "").replace(",", ".") : text.replace(/,/g, "");
+  else if (comma >= 0) text = /^\d+,\d{1,3}$/.test(text) ? text.replace(",", ".") : text.replace(/,/g, "");
+  const n = Number(text);
+  return Number.isFinite(n) ? n : Number.NaN;
+}
+
 /** Plantilla guiada para ajustar existencias desde Excel. */
 export async function exportInventoryImportTemplate(organizationId: string) {
   const [variants, bulkProducts] = await Promise.all([
     prisma.productVariant.findMany({
       where: { organizationId, isActive: true, product: { isActive: true, trackInventory: true } },
       orderBy: [{ product: { name: "asc" } }, { name: "asc" }],
-      select: { sku: true, barcode: true, name: true, product: { select: { name: true } } },
+      select: { sku: true, barcode: true, name: true, productId: true, product: { select: { name: true } } },
     }),
     prisma.product.findMany({
       where: { organizationId, isActive: true, trackInventory: true, productType: "bulk" },
@@ -748,9 +780,10 @@ export async function exportInventoryImportTemplate(organizationId: string) {
     { header: "Código de barras", width: 24 },
     { header: "Nombre", width: 34 },
     { header: "Cantidad", width: 16 },
+    { header: "Stock mínimo", width: 16 },
   ];
   input.views = [{ state: "frozen", ySplit: 1 }];
-  input.autoFilter = "A1:D1";
+  input.autoFilter = "A1:E1";
   input.getRow(1).height = 24;
   input.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
   input.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
@@ -771,9 +804,9 @@ export async function exportInventoryImportTemplate(organizationId: string) {
   instructions.columns = [{ width: 24 }, { width: 100 }];
   instructions.addRows([
     ["PLANTILLA DE INVENTARIO", "Descarga una plantilla nueva antes de cada importación para tener el catálogo actualizado."],
-    ["1. Identifica", "Para productos estándar usa SKU o Código de barras. Basta con llenar uno de los dos."],
+    ["1. Identifica", "Usa SKU o Código de barras (basta uno). Si el producto no tiene ninguno, copia su «Nombre para importar» de la hoja Catálogo en la columna Nombre."],
     ["2. Productos a granel", "Deja SKU y Código de barras vacíos y copia exactamente el Nombre desde la hoja Catálogo."],
-    ["3. Cantidad", "Escribe la existencia final deseada, no la cantidad que se suma. Admite hasta tres decimales y nunca valores negativos."],
+    ["3. Cantidad", "Escribe la existencia final deseada, no la cantidad que se suma. Es obligatoria en cada fila (para dejar en cero escribe 0). Admite hasta tres decimales y nunca valores negativos. «Stock mínimo» es opcional: si lo dejas vacío no se cambia."],
     ["4. Revisa", "No cambies los encabezados ni el nombre de la primera hoja. Elimina filas de ejemplo antes de subir el archivo."],
     ["5. Importa", "Selecciona primero la sucursal o CEDIS correcto en Multi-POS y luego sube este archivo."],
   ]);
@@ -791,8 +824,10 @@ export async function exportInventoryImportTemplate(organizationId: string) {
     { header: "Código de barras", width: 24 },
     { header: "Nombre para importar", width: 34 },
   ];
+  const variantsPerProduct = new Map<string, number>();
+  for (const variant of variants) variantsPerProduct.set(variant.productId, (variantsPerProduct.get(variant.productId) ?? 0) + 1);
   for (const variant of variants) {
-    catalog.addRow(["Estándar", variant.product.name, variant.name, variant.sku ?? "", variant.barcode ?? "", ""]);
+    catalog.addRow(["Estándar", variant.product.name, variant.name, variant.sku ?? "", variant.barcode ?? "", importNameOf(variant.product.name, variant.name, variantsPerProduct.get(variant.productId) ?? 1)]);
   }
   for (const product of bulkProducts) {
     catalog.addRow(["Granel", product.name, "", "", "", product.name]);
@@ -1158,62 +1193,83 @@ export async function importInventoryStock(
 
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer as unknown as ExcelJS.Buffer);
-  const ws = wb.worksheets[0];
+  const ws = wb.getWorksheet("Importar existencias") ?? wb.worksheets[0];
   if (!ws) throw new CrudError("El archivo no contiene hojas", 400);
   if (ws.rowCount > 5001) throw new CrudError("El archivo supera el límite de 5000 productos", 400);
 
   const headers: string[] = [];
-  type ParsedRow = { sku: string; barcode: string; name: string; quantity: number; line: number };
+  type ParsedRow = { sku: string; barcode: string; name: string; quantity: number | null; minThreshold: number | null; line: number };
   const items: ParsedRow[] = [];
 
   ws.eachRow((row, rowNumber) => {
-    const values = (row.values as unknown[]).slice(1);
+    const values = (row.values as unknown[]).slice(1).map(cellText);
     if (rowNumber === 1) {
-      headers.push(...values.map((v) => String(v ?? "").trim().toLowerCase()));
+      headers.push(...values.map((v) => normText(v)));
       return;
     }
-    if (!values.some((v) => v != null && String(v).trim() !== "")) return;
-    const cell = (label: string) => {
-      const i = headers.findIndex((h) => h === label);
-      return i >= 0 ? String(values[i] ?? "") : "";
+    if (!values.some((v) => v !== "")) return;
+    const cell = (...labels: string[]) => {
+      for (const label of labels) {
+        const i = headers.findIndex((h) => h === label);
+        if (i >= 0 && values[i] !== undefined && values[i] !== "") return values[i];
+      }
+      return "";
     };
-    const quantity = Number(cell("cantidad"));
     items.push({
       sku: cell("sku"),
-      barcode: cell("código de barras") || cell("codigo de barras") || cell("barcode"),
-      name: cell("nombre") || cell("producto"),
-      quantity,
+      barcode: cell("codigo de barras", "barcode"),
+      name: cell("nombre", "producto"),
+      quantity: parseQuantityCell(cell("cantidad")),
+      minThreshold: parseQuantityCell(cell("stock minimo", "minimo")),
       line: rowNumber,
     });
   });
   if (!headers.includes("cantidad")) throw new CrudError("Falta la columna requerida «Cantidad»", 400);
-  if (!["sku", "código de barras", "codigo de barras", "barcode", "nombre", "producto"].some((header) => headers.includes(header))) {
+  if (!["sku", "codigo de barras", "barcode", "nombre", "producto"].some((header) => headers.includes(header))) {
     throw new CrudError("Incluye al menos una columna para identificar el producto: SKU, Código de barras o Nombre", 400);
   }
   if (items.length === 0) throw new CrudError("El archivo no contiene filas de inventario", 400);
 
   const variants = await prisma.productVariant.findMany({
     where: { organizationId },
-    select: { id: true, productId: true, sku: true, barcode: true },
+    select: { id: true, productId: true, name: true, sku: true, barcode: true, product: { select: { name: true } } },
   });
-  const like = (s: string | null) => s?.toLowerCase() ?? "";
+  const like = (s: string | null) => normText(s);
   const variantBySku = new Map(variants.map((v) => [like(v.sku), v.id]));
   const variantByBarcode = new Map(variants.map((v) => [like(v.barcode), v.id]));
   const variantProduct = new Map(variants.map((v) => [v.id, v.productId]));
+  // Productos sin SKU ni código: se identifican por nombre («Producto» o «Producto - Variante»).
+  const perProduct = new Map<string, number>();
+  for (const v of variants) perProduct.set(v.productId, (perProduct.get(v.productId) ?? 0) + 1);
+  const variantByName = new Map<string, string | null>();
+  for (const v of variants) {
+    const key = normText(importNameOf(v.product.name, v.name, perProduct.get(v.productId) ?? 1));
+    // Un nombre repetido entre productos distintos no es identificable: se pide SKU.
+    variantByName.set(key, variantByName.has(key) ? null : v.id);
+  }
 
   const bulk = await prisma.product.findMany({
     where: { organizationId, productType: "bulk", trackInventory: true },
     select: { id: true, name: true },
   });
-  const bulkByName = new Map(bulk.map((p) => [p.name.toLowerCase(), p.id]));
+  const bulkByName = new Map(bulk.map((p) => [normText(p.name), p.id]));
 
   const employee = await performerFor(userId);
   const result: ImportResult = { ok: true, imported: 0, errors: [] };
   const seenTargets = new Set<string>();
 
   for (const item of items) {
+    if (item.quantity === null) {
+      // Una celda vacía no debe dejar el producto en cero sin que nadie lo note.
+      result.errors.push({ row: item.line, message: "Falta la cantidad (para dejar en cero escribe 0)" });
+      continue;
+    }
     if (!Number.isFinite(item.quantity) || item.quantity < 0) {
       result.errors.push({ row: item.line, message: "Cantidad inválida" });
+      continue;
+    }
+    if (item.minThreshold !== null && (!Number.isFinite(item.minThreshold) || item.minThreshold < 0)) {
+      result.errors.push({ row: item.line, message: "Stock mínimo inválido" });
       continue;
     }
 
@@ -1221,8 +1277,8 @@ export async function importInventoryStock(
     let productId: string | null = null;
     if (item.sku || item.barcode) {
       variantId =
-        (item.sku ? variantBySku.get(item.sku.toLowerCase()) : undefined) ??
-        (item.barcode ? variantByBarcode.get(item.barcode.toLowerCase()) : undefined) ??
+        (item.sku ? variantBySku.get(like(item.sku)) : undefined) ??
+        (item.barcode ? variantByBarcode.get(like(item.barcode)) : undefined) ??
         null;
       if (!variantId) {
         result.errors.push({ row: item.line, message: "SKU/código de barras no encontrado" });
@@ -1230,13 +1286,22 @@ export async function importInventoryStock(
       }
       productId = variantProduct.get(variantId) ?? null;
     } else if (item.name) {
-      const pid = bulkByName.get(item.name.toLowerCase()) ?? null;
-      if (!pid) {
-        result.errors.push({ row: item.line, message: "Producto a granel no encontrado" });
+      const key = normText(item.name);
+      const bulkId = bulkByName.get(key) ?? null;
+      if (bulkId) {
+        productId = bulkId;
+        variantId = null;
+      } else if (variantByName.has(key)) {
+        variantId = variantByName.get(key) ?? null;
+        if (!variantId) {
+          result.errors.push({ row: item.line, message: "Hay varios productos con ese nombre: identifícalo con SKU o código de barras" });
+          continue;
+        }
+        productId = variantProduct.get(variantId) ?? null;
+      } else {
+        result.errors.push({ row: item.line, message: "Producto no encontrado: copia el «Nombre para importar» de la hoja Catálogo" });
         continue;
       }
-      productId = pid;
-      variantId = null;
     } else {
       result.errors.push({ row: item.line, message: "Faltan SKU, código de barras o nombre" });
       continue;
@@ -1281,7 +1346,7 @@ export async function importInventoryStock(
       const delta = Math.round((quantity - current) * 1000) / 1000;
 
       await prisma.$transaction([
-        prisma.inventory.update({ where: { id: row.id }, data: { quantity } }),
+        prisma.inventory.update({ where: { id: row.id }, data: { quantity, ...(item.minThreshold !== null ? { minThreshold: Math.round(item.minThreshold * 1000) / 1000 } : {}) } }),
         prisma.inventoryMovement.create({
           data: {
             organizationId,

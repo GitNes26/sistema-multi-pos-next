@@ -100,8 +100,10 @@ Para tiendas, restaurantes e híbridos. En una sola pantalla manejas:
 - **Revisiones:** contar el inventario real y cuadrar diferencias.
 - **Exportar/Importar:** descarga tu listado en Excel o PDF. Para importar, pulsa
   **Plantilla**, lee la hoja **Instrucciones**, copia los identificadores desde
-  **Catálogo**, escribe la existencia final y después pulsa **Importar**. Descarga una
-  plantilla nueva cada vez para incluir los productos actuales.
+  **Catálogo**, escribe la existencia final y después pulsa **Importar**. Si un producto no
+  tiene SKU ni código de barras, copia su «Nombre para importar» en la columna Nombre.
+  La cantidad es obligatoria en cada fila (para dejar en cero escribe 0) y el «Stock mínimo»
+  es opcional. Descarga una plantilla nueva cada vez para incluir los productos actuales.
 - Las importaciones de Productos, Categorías y Clientes muestran primero una vista previa
   (las filas con error van primero). El sistema marca por fila campos faltantes, formatos
   inválidos, unidades o sucursales inexistentes y nombres o códigos repetidos; corrige todos
