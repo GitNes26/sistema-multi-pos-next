@@ -15,6 +15,7 @@ import { TransferStatusPill, TransferStepper } from "./transfer-status"
 import { TransferFlowMini } from "./transfer-flow"
 import { NewTransferWizard } from "./new-transfer-wizard"
 import { useRouter } from "next/navigation"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 type Filter = "active" | "pending" | "in_transit" | "received" | "all"
 
@@ -49,10 +50,9 @@ export function TransfersBoard({ canManage, locationId }: { canManage: boolean; 
 
   useEffect(() => {
     void load()
-    // Los traslados en camino cambian solos: refresco suave cada 20 s.
-    const id = window.setInterval(() => void load(), 20_000)
-    return () => window.clearInterval(id)
   }, [load])
+  // Los traslados en camino cambian solos: refresco suave cada 20 s.
+  useVisibleInterval(() => void load(), 20_000)
 
   const counts = useMemo(() => {
     const c = { active: 0, pending: 0, in_transit: 0, received: 0, all: rows?.length ?? 0 }

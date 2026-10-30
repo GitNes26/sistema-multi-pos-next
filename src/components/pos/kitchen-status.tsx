@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronDown, Flame, Loader2, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { swalConfirm, swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 // Sección "Cocina" del ticket del POS: muestra la orden abierta de la mesa
 // seleccionada (número, estado en vivo del KDS, artículos y tiempo transcurrido)
@@ -110,12 +111,7 @@ export function KitchenStatus({
   }, [load, refreshKey])
 
   // Polling en vivo (15 s): el estado de cocina avanza sin recargar el ticket.
-  useEffect(() => {
-    const timer = setInterval(() => {
-      void load()
-    }, 15000)
-    return () => clearInterval(timer)
-  }, [load])
+  useVisibleInterval(() => void load(), 15000)
 
   if ((!tableId || tableId.startsWith("manual-")) && !orderId) return null
 

@@ -13,6 +13,7 @@ import { hasPermission } from "@/lib/auth/permissions"
 import { swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
 import type { CloseMode, StoreStatus } from "@/lib/store-status"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 // Abierto/Cerrado del negocio: switch con opciones de reapertura (panel y POS)
 // y badge + aviso visibles todo el tiempo en el portal del cliente.
@@ -34,13 +35,12 @@ export function useStoreStatus(pollMs = 60_000, withOptions = false) {
       /* sin red: se conserva el último estado */
     }
   }, [withOptions])
+  useVisibleInterval(() => void load(), pollMs)
   useEffect(() => {
     void load()
-    const t = setInterval(load, pollMs)
     const onFocus = () => void load()
     window.addEventListener("focus", onFocus)
     return () => {
-      clearInterval(t)
       window.removeEventListener("focus", onFocus)
     }
   }, [load, pollMs])

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { playSound } from "@/lib/sounds"
 import { STAGGER } from "@/lib/animation-tokens"
 import { PortalHero } from "./portal-hero";
+import { useVisibleInterval } from "@/hooks/use-visible-interval";
 
 interface PortalNotification {
   id: string
@@ -93,12 +94,9 @@ export function NotificationsClient() {
   }, [load, tab])
 
   // Polling cada 30 segundos con sonido
-  useEffect(() => {
-    const interval = setInterval(() => {
-      load(tab === "unread" ? "unread" : undefined, true)
-    }, 30_000)
-    return () => clearInterval(interval)
-  }, [load, tab])
+  useVisibleInterval(() => {
+    load(tab === "unread" ? "unread" : undefined, true)
+  }, 30_000)
 
   const markAsRead = async (id: string) => {
     try {

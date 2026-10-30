@@ -605,6 +605,22 @@
   }
 }
 
+/* === Barra de carga indeterminada (cambio de pantalla) y latido de la marca === */
+@keyframes loading-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+@keyframes brand-breathe {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgb(16 185 129 / 0.35); }
+  50% { transform: scale(1.06); box-shadow: 0 0 0 14px rgb(16 185 129 / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-bar-run,
+  .brand-breathe {
+    animation: none !important;
+  }
+}
+
 /* === Shimmer animation for skeleton loading === */
 @keyframes shimmer {
   100% {

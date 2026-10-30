@@ -7,6 +7,7 @@ import { usePosStore } from "@/stores/pos-store"
 import { rebuildKitchenLines, type KitchenOrderItemDto } from "@/lib/pos/kitchen-ticket"
 import { money } from "@/lib/pos/money"
 import { swalToast } from "@/lib/swal"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 interface CartLine {
   key: string
@@ -40,9 +41,8 @@ export function TableCartBanner({ tableId }: { tableId: string }) {
 
   useEffect(() => {
     void load()
-    const t = setInterval(() => void load(), 5000)
-    return () => clearInterval(t)
   }, [load])
+  useVisibleInterval(() => void load(), 5000)
 
   if (lines.length === 0) return null
   const count = lines.reduce((s, l) => s + l.quantity, 0)

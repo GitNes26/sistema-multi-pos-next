@@ -9,6 +9,7 @@ import { LiveBadge } from "@/components/shared/live-badge"
 import { useSseStore } from "@/stores/sse-store"
 import { PlanNodeElement, PlanTableElement, type PlanNode } from "@/components/admin/tables/plan-elements"
 import { cn } from "@/lib/utils"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 interface Table {
   id: string
@@ -104,6 +105,9 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
   const esRef = useRef<EventSource | null>(null)
   const retriesRef = useRef(0)
   const closedRef = useRef(false)
+  const pollRef = useRef<(() => void) | null>(null)
+  // El avance de cocina → mesa cambia sin eventos de mesa: refresco suave.
+  useVisibleInterval(() => pollRef.current?.(), 10_000)
 
   // Estado SSE reportado al badge "En vivo" compartido.
   const registerSse = useSseStore((s) => s.register)
@@ -214,16 +218,15 @@ export function TableSelector({ open, onClose, onSelect, locationId }: Props) {
     // Open SSE stream for live updates.
     registerSse("tables")
     connectSse()
-    // El avance de cocina → mesa cambia sin eventos de mesa: refresco suave.
-    const poll = window.setInterval(() => {
+    pollRef.current = () => {
       fetch(`/api/tables?${params}`)
         .then((r) => r.json())
         .then((d) => Array.isArray(d.tables) && setTables(d.tables))
         .catch(() => undefined)
-    }, 10_000)
+    }
 
     return () => {
-      window.clearInterval(poll)
+      pollRef.current = null
       closedRef.current = true
       esRef.current?.close()
       esRef.current = null

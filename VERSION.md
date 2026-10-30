@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.55.0.0] — 2026-10-30
+- **Tipo:** `feat` (Minor)
+- feat: purga diaria de notificaciones en segundo plano, sondeos que se pausan con la pestana oculta y pantallas de carga con marca (splash con barra de avance y esqueletos al cambiar de pantalla)
+
 ### [0.54.0.1] — 2026-10-30
 - **Tipo:** `refactor` (Revision)
 - refactor: avisos en vivo (KDS, notificaciones, portal y mesas) centralizados en un modulo realtime con punto de enlace para Redis, sin cambiar el comportamiento actual

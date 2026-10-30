@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils"
 import { TransferStatusPill, TransferStepper } from "./transfer-status"
 import { TransferFlow } from "./transfer-flow"
 import { TransferDocument } from "./transfer-document"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null
@@ -79,11 +80,7 @@ export function TransferDetailView({ id, perms }: { id: string; perms: TransferP
   }, [load])
 
   // En camino: el mapa y la última posición se actualizan cada 5 s.
-  useEffect(() => {
-    if (t?.status !== "in_transit") return
-    const iv = window.setInterval(() => void load(), 5000)
-    return () => window.clearInterval(iv)
-  }, [t?.status, load])
+  useVisibleInterval(() => void load(), t?.status === "in_transit" ? 5000 : null)
 
   const run = async (body: Record<string, unknown>, ok: string) => {
     setBusy(true)

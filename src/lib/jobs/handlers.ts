@@ -3,6 +3,7 @@ import path from "node:path"
 import { invalidateOrg } from "@/lib/cache"
 import { importWorkbook } from "@/lib/excel/spreadsheet"
 import { uploadsRoot } from "@/lib/uploads/storage"
+import { purgeNotifications } from "@/lib/notifications/retention"
 import { registerJobHandler } from "./queue"
 
 /** Carpeta de archivos que esperan a ser procesados en segundo plano. */
@@ -27,4 +28,9 @@ registerJobHandler("excel.import", async (payload, { job, progress }) => {
   // Con un error de infraestructura se reintenta; un resultado con filas inválidas es una respuesta final.
   await rm(filePath, { force: true })
   return JSON.parse(JSON.stringify(result))
+})
+
+/** Mantenimiento diario: elimina notificaciones antiguas (ver `notifications/retention.ts`). */
+registerJobHandler("maintenance.notifications", async () => {
+  return await purgeNotifications()
 })

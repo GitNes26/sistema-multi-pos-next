@@ -116,9 +116,12 @@ implementar `CacheDriver` con Redis y llamar `setCacheDriver`.
    (193 ms en la empresa grande). Usar `DailySalesSummary`/instantáneas o caché por rango cerrado, y una réplica
    de lectura para reportes.
 3. **Ventas más vendidas** (`topSellingProductIds`): 2 s en la empresa grande, ya con caché de 5 min.
-4. **Notificaciones por venta**: una fila por venta; definir retención/purga.
-5. **Polling del cliente**: más de 20 `setInterval` (POS cada 20 s, tableros, repartidor 12 s…). Pausar con la
-   pestaña oculta y usar SSE donde ya exista.
+4. ~~Notificaciones por venta~~ **Resuelto:** la tarea diaria `maintenance.notifications` (`ensureDailyJobs` en
+   `lib/jobs/queue.ts`, `lib/notifications/retention.ts`) borra en lotes las leídas con más de 60 días y todas las de
+   más de 180 (`NOTIFICATIONS_READ_DAYS`, `NOTIFICATIONS_UNREAD_DAYS`); índice `notifications(createdAt)`.
+5. ~~Polling del cliente~~ **Mitigado:** `useVisibleInterval` (`src/hooks/use-visible-interval.ts`) pausa los
+   sondeos con la pestaña oculta y refresca al volver; úsalo en lugar de `setInterval` para datos. Los relojes de
+   interfaz, animaciones y el sondeo de pago (2.5 s, vida corta) siguen con `setInterval`.
 6. **MySQL**: ajustar `innodb_buffer_pool_size` (≈ 60–70 % de la RAM del servidor de BD), `max_connections` y
    activar el log de consultas lentas; con ≈ 100 peticiones/s el motor consumió ≈ 6 núcleos del equipo de prueba.
 7. Importar productos tarda ≈ 100 ms por fila (cada alta recorre `productsModule.create`); es aceptable en

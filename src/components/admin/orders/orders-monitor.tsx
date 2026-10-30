@@ -26,6 +26,7 @@ import {
 } from "@/lib/orders/client"
 import type { OrderRow } from "@/lib/orders/server"
 import { OrderDetailDialog } from "./order-detail-dialog"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 const MONITOR_STATUSES = [
   "pending",
@@ -121,10 +122,7 @@ export function OrdersMonitor({
   useEffect(() => {
     load()
   }, [load])
-  useEffect(() => {
-    const t = setInterval(() => load(true), 30_000)
-    return () => clearInterval(t)
-  }, [load])
+  useVisibleInterval(() => load(true), 30_000)
   useOrdersLive(() => void load(true))
 
   const activeTotal = MONITOR_STATUSES.reduce(

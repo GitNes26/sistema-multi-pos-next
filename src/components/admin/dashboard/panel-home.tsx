@@ -3,12 +3,13 @@
 import { GlossaryHint } from "@/components/shared/glossary"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSession } from "next-auth/react"
 import { ArrowRight, ArrowLeftRight, Boxes, Banknote, ClipboardList, Undo2 } from "lucide-react"
 import { NAV_SECTIONS, filterNavSectionsByUserAndFeature } from "@/lib/nav"
 import type { BusinessMode, } from "@/lib/auth/options"
 import { cn } from "@/lib/utils"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 interface Live {
   orders: number | null
@@ -33,20 +34,18 @@ export function PanelBackdrop({ logoUrl }: { logoUrl: string | null }) {
 /** Pulso operativo: lo que pide atención ahora, solo con lo que el usuario puede ver. */
 export function LiveStrip() {
   const [live, setLive] = useState<Live | null>(null)
-  useEffect(() => {
-    let alive = true
-    const load = () =>
+  const loadLive = useCallback(
+    () =>
       fetch("/api/panel/live")
         .then((r) => r.json())
-        .then((d) => alive && d.ok && setLive(d.live))
-        .catch(() => undefined)
-    void load()
-    const t = window.setInterval(load, 60_000)
-    return () => {
-      alive = false
-      window.clearInterval(t)
-    }
-  }, [])
+        .then((d) => d.ok && setLive(d.live))
+        .catch(() => undefined),
+    [],
+  )
+  useEffect(() => {
+    void loadLive()
+  }, [loadLive])
+  useVisibleInterval(() => void loadLive(), 60_000)
   if (!live) return null
 
   const tiles = [

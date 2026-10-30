@@ -9,6 +9,7 @@ import { fetchOpenAccounts, startNewTakeaway, switchTicket, type OpenAccount, ty
 import { money } from "@/lib/pos/money"
 import { swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 /**
  * Cuentas abiertas del local: el cajero o host alterna entre mesas y pedidos para llevar,
@@ -32,9 +33,8 @@ export function OpenAccounts({ refreshKey = 0 }: { refreshKey?: number }) {
 
   useEffect(() => {
     void load()
-    const t = setInterval(() => void load(), 20_000)
-    return () => clearInterval(t)
   }, [load, refreshKey])
+  useVisibleInterval(() => void load(), 20_000)
   useEffect(() => {
     if (open) void load()
   }, [open, load])

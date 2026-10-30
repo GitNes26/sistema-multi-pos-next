@@ -29,6 +29,7 @@ import { ordersApi, type OrderDetail } from "@/lib/orders/client"
 import { money } from "@/lib/pos/money"
 import { swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 // Interfaz del repartidor: sus entregas (asignadas) y las disponibles. Aceptar,
 // salir en camino (comparte el GPS), avisar que llegó y confirmar con PIN/QR.
@@ -97,9 +98,8 @@ export function DriverApp() {
 
   useEffect(() => {
     void load()
-    const t = setInterval(() => void load(), 12_000)
-    return () => clearInterval(t)
   }, [load])
+  useVisibleInterval(() => void load(), 12_000)
 
   const deliveries = useMemo(() => rows.filter((r) => r.deliveryMethod === "delivery" && ACTIVE.includes(r.status)), [rows])
   const mine = deliveries.filter((r) => r.driverEmployeeId && r.driverEmployeeId === me)

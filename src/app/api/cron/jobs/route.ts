@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { recoverStaleJobs, runDueJobs } from "@/lib/jobs"
+import { ensureDailyJobs, recoverStaleJobs, runDueJobs } from "@/lib/jobs"
 
 /**
  * GET /api/cron/jobs — respaldo del ejecutor interno: reencola trabajos interrumpidos y procesa
@@ -14,6 +14,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })
   }
   const recovered = await recoverStaleJobs()
+  await ensureDailyJobs()
   const started = await runDueJobs()
   return NextResponse.json({ ok: true, recovered, started, timestamp: new Date().toISOString() })
 }

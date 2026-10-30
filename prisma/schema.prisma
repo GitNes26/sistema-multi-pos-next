@@ -2408,6 +2408,7 @@ model Notification {
   employee     Employee?    @relation(fields: [employeeId], references: [id])
 
   @@index([organizationId, recipientUserId, createdAt])
+  @@index([createdAt])
   @@map("notifications")
 }
 

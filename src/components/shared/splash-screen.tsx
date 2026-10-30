@@ -164,9 +164,9 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
                       delay: 0.1,
                     }
               }
-              className="drop-shadow-[0_0_2.5rem_rgba(16,185,129,0.35)]"
+              className="rounded-2xl drop-shadow-[0_0_2.5rem_rgba(16,185,129,0.35)]"
             >
-              <Logo logoUrl={logoUrl} className="h-20 w-auto" size={48} />
+              <Logo logoUrl={logoUrl} className="brand-breathe animate-[brand-breathe_2s_ease-in-out_infinite]" size={72} />
             </motion.div>
 
             {/* Brand name — mismo tratamiento de gradiente que el hero */}
@@ -193,43 +193,27 @@ export function SplashScreen({ logoUrl }: { logoUrl?: string | null }) {
               </p>
             </motion.div>
 
-            {/* Progreso real: hidratado → recursos → listo */}
+            {/* Progreso real: hidratado → recursos → listo (barra + mensaje de la etapa) */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, transition: { duration: 0.3 } }}
               transition={{ delay: prefersReduced ? 0.1 : 0.4 }}
-              className="flex items-center gap-1.5"
-              aria-hidden
+              className="flex w-56 flex-col items-center gap-2.5"
+              role="status"
+              aria-live="polite"
             >
-              {[hydrated, loaded, ready].map((done, i) => {
-                // El punto de la etapa en curso late; los cumplidos quedan fijos.
-                const active = !done && (i === 0 || (i === 1 && hydrated) || (i === 2 && hydrated && loaded));
-                return (
-                  <motion.span
-                    key={i}
-                    className={
-                      done
-                        ? "size-1.5 rounded-full bg-success"
-                        : active
-                          ? "size-1.5 rounded-full bg-success/50"
-                          : "size-1.5 rounded-full bg-slate-700"
-                    }
-                    animate={
-                      prefersReduced
-                        ? undefined
-                        : active
-                          ? { opacity: [0.35, 1, 0.35], scale: [0.9, 1.15, 0.9] }
-                          : { opacity: done ? 1 : 0.5 }
-                    }
-                    transition={
-                      active
-                        ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" }
-                        : { duration: 0.2 }
-                    }
-                  />
-                );
-              })}
+              <div className="h-1 w-full overflow-hidden rounded-full bg-white/10" aria-hidden>
+                <motion.div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-400"
+                  initial={{ width: "8%" }}
+                  animate={{ width: ready ? "100%" : loaded ? "80%" : hydrated ? "50%" : "18%" }}
+                  transition={{ duration: prefersReduced ? 0.1 : 0.5, ease: "easeOut" }}
+                />
+              </div>
+              <p className="text-xs text-slate-400">
+                {ready ? "Todo listo" : loaded ? "Preparando tu espacio…" : hydrated ? "Cargando recursos…" : "Iniciando…"}
+              </p>
             </motion.div>
           </div>
         </motion.div>

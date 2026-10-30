@@ -157,6 +157,17 @@ export async function jobStats() {
   return { ...counts, runningHere: state.running }
 }
 
+/** Tareas de mantenimiento que se registran una vez al día (la purga es idempotente). */
+const DAILY_JOBS = ["maintenance.notifications"]
+
+export async function ensureDailyJobs(now = new Date()) {
+  const since = new Date(now.getTime() - 20 * 3_600_000)
+  for (const type of DAILY_JOBS) {
+    const recent = await prisma.backgroundJob.findFirst({ where: { type, createdAt: { gte: since } }, select: { id: true } })
+    if (!recent) await enqueueJob({ type, payload: {}, maxAttempts: 2 })
+  }
+}
+
 /** Arranca el sondeo periódico (reintentos y recuperación) una sola vez por proceso. */
 export function startJobRunner(intervalMs = 5_000) {
   const gg = globalThis as unknown as { __mpJobTimer?: ReturnType<typeof setInterval> }
@@ -166,6 +177,8 @@ export function startJobRunner(intervalMs = 5_000) {
     tick += 1
     void (async () => {
       if (tick % 12 === 0) await recoverStaleJobs()
+      // Al arrancar (con un minuto de margen) y luego cada hora se revisa si toca el mantenimiento diario.
+      if (tick === 12 || tick % 720 === 0) await ensureDailyJobs()
       await runDueJobs()
     })().catch((err) => console.error("[jobs] sondeo:", err))
   }, intervalMs)

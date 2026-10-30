@@ -9,6 +9,7 @@ import { BottomSheet } from "@/components/portal/bottom-sheet"
 import type { TransferDetail } from "@/lib/inventory/transfers-client"
 import { swalError, swalToast } from "@/lib/swal"
 import { cn } from "@/lib/utils"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 interface Row {
   id: string
@@ -62,9 +63,8 @@ export function TransfersTab({ onCount }: { onCount?: (n: number) => void }) {
 
   useEffect(() => {
     void load()
-    const t = setInterval(() => void load(), 12_000)
-    return () => clearInterval(t)
   }, [load])
+  useVisibleInterval(() => void load(), 12_000)
 
   // GPS: mientras lleva traslados en camino, reporta su posición a cada uno.
   const transitKey = (rows ?? []).filter((r) => r.mine && r.status === "in_transit").map((r) => r.id).join(",")

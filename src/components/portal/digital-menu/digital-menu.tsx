@@ -26,6 +26,7 @@ import { ProductBuilder } from "@/components/pos/product-builder";
 import type { PortalProduct } from "@/lib/portal/server";
 import { money } from "@/lib/pos/money";
 import { cn } from "@/lib/utils";
+import { useVisibleInterval } from "@/hooks/use-visible-interval";
 
 // Mesero digital: el comensal escanea el QR de su mesa, arma un carrito COMPARTIDO con sus
 // acompañantes (el cajero/host lo ve en vivo) y lo manda a cocina. Lo ya enviado no se puede
@@ -125,10 +126,7 @@ export function DigitalMenu({ tableId, tableToken }: { tableId?: string; tableTo
     void load(true);
   }, [load]);
   // Refresco suave: carrito compartido y estado de lo enviado (preparando/listo).
-  useEffect(() => {
-    const t = setInterval(() => void load(false), 6000);
-    return () => clearInterval(t);
-  }, [load]);
+  useVisibleInterval(() => void load(false), 6000);
 
   // Guarda el carrito en el servidor (con debounce) para que la mesa y el cajero lo vean.
   const persist = useCallback(

@@ -16,6 +16,7 @@ import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import { StoreStatusBadge } from "@/components/shared/store-status"
 import type { StoreStatus } from "@/lib/store-status"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 const PAGE_TITLES: Record<string, string> = {
   "/portal": "",
@@ -63,6 +64,7 @@ export function PortalHeader({
   const [unreadCount, setUnreadCount] = useState(0)
   const prevIdsRef = useRef<Set<string>>(new Set())
   const initialLoadDone = useRef(false)
+  const fetchUnreadRef = useRef<() => Promise<void>>(async () => {})
 
   useEffect(() => {
     let active = true
@@ -89,13 +91,13 @@ export function PortalHeader({
         if (active) setUnreadCount(unread.length)
       } catch {}
     }
-    fetchUnread()
-    const interval = setInterval(fetchUnread, 30_000)
+    fetchUnreadRef.current = fetchUnread
+    void fetchUnread()
     return () => {
       active = false
-      clearInterval(interval)
     }
   }, [])
+  useVisibleInterval(() => void fetchUnreadRef.current(), 30_000)
 
   // Barra "large title" nativa: sin borde arriba del todo; al desplazar,
   // aparece la línea divisoria para separar el contenido que pasa por debajo.

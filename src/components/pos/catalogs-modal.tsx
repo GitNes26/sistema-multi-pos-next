@@ -24,6 +24,7 @@ import { PosOrderDetail } from "./pos-order-detail"
 import { usePosTotals } from "@/hooks/use-pos-totals"
 import { InputGroupField } from "../base"
 import { OrderStatusPill } from "@/components/shared/order-status-pill"
+import { useVisibleInterval } from "@/hooks/use-visible-interval"
 
 interface CatalogsModalProps {
   open: boolean
@@ -205,12 +206,11 @@ export function CatalogsModal({
   useEffect(() => {
     aliveRef.current = true
     void loadOrders()
-    const timer = setInterval(loadOrders, 15000)
     return () => {
       aliveRef.current = false
-      clearInterval(timer)
     }
   }, [open, loadOrders])
+  useVisibleInterval(() => void loadOrders(), 15000)
 
   // Buscador genérico por tab
   const searchInput = (
