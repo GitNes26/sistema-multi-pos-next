@@ -8,6 +8,7 @@ Lee `AGENTS.md` primero. Después carga solo lo necesario:
 | Crear/editar formularios, catálogos, tablas o validación | [FORMULARIOS_Y_CRUD.md](FORMULARIOS_Y_CRUD.md) |
 | Diseñar/rediseñar, animar, adaptar móvil/POS o safe areas | [DISENO_E_INTERACCION.md](DISENO_E_INTERACCION.md) |
 | Migrar datos, probar, seedear, entregar o versionar | [DESARROLLO_Y_VERIFICACION.md](DESARROLLO_Y_VERIFICACION.md) |
+| Rendimiento: índices, caché, trabajos en segundo plano o pruebas de carga | [ESCALABILIDAD.md](ESCALABILIDAD.md) |
 | Resolver reglas de negocio o impactos entre módulos | [`../../CONTEXTO_SISTEMA.md`](../../CONTEXTO_SISTEMA.md) |
 
 Principio de economía: no cargues todos los manuales para una corrección local. Busca primero con `rg`, abre la implementación canónica y compara al menos un consumidor real.

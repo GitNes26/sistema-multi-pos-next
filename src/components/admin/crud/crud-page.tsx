@@ -194,6 +194,8 @@ export function CrudPage({
   const [resendingId, setResendingId] = useState<string | null>(null)
   const [excelBusy, setExcelBusy] = useState<"export" | "import" | null>(null)
   const [preview, setPreview] = useState<ExcelPreviewResult | null>(null)
+  // Avance de una importación grande que corre en segundo plano (null = no aplica).
+  const [importPct, setImportPct] = useState<number | null>(null)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [activity, setActivity] = useState<CustomerActivityData | null>(null)
   const [activityLoading, setActivityLoading] = useState(false)
@@ -564,7 +566,8 @@ export function CrudPage({
     if (!pendingFile) return
     setExcelBusy("import")
     try {
-      const result = await importExcel(moduleKey, pendingFile)
+      setImportPct(0)
+      const result = await importExcel(moduleKey, pendingFile, setImportPct)
       const errors = result.errors
       if (errors.length > 0) {
         const first = errors
@@ -594,6 +597,7 @@ export function CrudPage({
       )
     } finally {
       setExcelBusy(null)
+      setImportPct(null)
     }
   }
 
@@ -1095,7 +1099,7 @@ export function CrudPage({
               ) : (
                 <Upload className="size-4" />
               )}
-              Confirmar importación
+              {excelBusy === "import" && importPct !== null && importPct > 0 ? `Importando… ${importPct}%` : "Confirmar importación"}
             </Button>
           </>
         }

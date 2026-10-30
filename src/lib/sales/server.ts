@@ -1,3 +1,4 @@
+import { saleItemCounts } from "@/lib/db/counts";
 import { prisma } from "@/lib/db";
 import { parseTicketCode } from "@/lib/sales/ticket-code";
 import ExcelJS from "exceljs";
@@ -142,7 +143,6 @@ export async function listSales(
         cashier: { select: { fullName: true } },
         employee: { select: { fullName: true } },
         customer: { select: { fullName: true } },
-        _count: { select: { items: true } },
         orders: { select: { orderNumber: true }, take: 1 },
         returns: { where: { status: { not: "rejected" } }, select: { id: true, returnNumber: true, returnType: true, status: true }, orderBy: { createdAt: "desc" }, take: 1 },
       },
@@ -152,6 +152,8 @@ export async function listSales(
     }),
     prisma.sale.count({ where }),
   ]);
+
+  const itemCounts = await saleItemCounts(rows.map((s) => s.id));
 
   return {
     rows: rows.map((s) => ({
@@ -163,7 +165,7 @@ export async function listSales(
       cashierName: s.cashier?.fullName ?? null,
       employeeName: s.employee?.fullName ?? null,
       customerName: s.customer?.fullName ?? null,
-      itemCount: s._count.items,
+      itemCount: itemCounts.get(s.id) ?? 0,
       subtotal: toNum(s.subtotal),
       discount: toNum(s.discount),
       tax: toNum(s.tax),

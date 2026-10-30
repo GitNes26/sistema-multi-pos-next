@@ -1,4 +1,6 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
+import { cached } from "@/lib/cache";
 import { getMenuTree, createMenu } from "@/lib/menus/server";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
 import { menusReadGuard, menusAdminGuard, menusErrorResponse } from "./guard";
@@ -15,7 +17,10 @@ export async function GET() {
     const { session } = guard;
     const isAdmin = session.user.role === "superadmin" || session.user.role === "owner" || session.user.role === "admin";
     const permissions = (session.user.permissions ?? []) as PermissionKey[];
-    const menu = await getMenuTree(permissions, isAdmin, session.user.role, (session.user.planDenied ?? []) as PermissionKey[]);
+    const planDenied = (session.user.planDenied ?? []) as PermissionKey[];
+    // El árbol de menús es el mismo para todos los que comparten rol, permisos y plan: se guarda 60 s.
+    const signature = createHash("sha1").update(JSON.stringify([isAdmin, session.user.role, [...permissions].sort(), [...planDenied].sort()])).digest("hex");
+    const menu = await cached(`menus:${signature}`, { ttlMs: 60_000, tags: ["menus"] }, () => getMenuTree(permissions, isAdmin, session.user.role, planDenied));
     return NextResponse.json({ ok: true, menu });
   } catch (err) {
     return menusErrorResponse(err);

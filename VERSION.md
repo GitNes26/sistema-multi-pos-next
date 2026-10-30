@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.54.0.0] — 2026-10-30
+- **Tipo:** `feat` (Minor)
+- feat: escalabilidad con indices compuestos, cache con single-flight, cola de trabajos en segundo plano, pool de conexiones, conteos sin _count y pruebas de carga con trafico simulado
+
 ### [0.53.0.0] — 2026-10-23
 - **Tipo:** `feat` (Minor)
 - feat: iconos y logo por defecto con fondo degradado azul-verde y la marca en blanco, sin perder el logo

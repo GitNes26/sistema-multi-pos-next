@@ -97,6 +97,17 @@ switch (mode) {
       { NODE_ENV: "development" }
     )
     break
+  case "build-prod":
+    // Compilación de producción sobre la base de pruebas (para medir carga con el mismo código que se despliega).
+    run("next/dist/bin/next", ["build"], { NODE_ENV: "production" })
+    break
+  case "serve-prod":
+    run("next/dist/bin/next", ["start", "--port", process.env.LOADTEST_PORT ?? new URL(env.TEST_BASE_URL).port], {
+      NODE_ENV: "production",
+      // Secreto propio de la prueba: nunca se reutiliza el CRON_SECRET real del entorno.
+      CRON_SECRET: process.env.LOADTEST_CRON_SECRET ?? "loadtest-secret",
+    })
+    break
   case "integration":
     {
       const r = spawnSync(
@@ -122,6 +133,6 @@ switch (mode) {
     break
   default:
     throw new Error(
-      "Use prepare, serve, integration, purchasing-integration or e2e."
+      "Use prepare, serve, build-prod, serve-prod, integration, purchasing-integration or e2e."
     )
 }

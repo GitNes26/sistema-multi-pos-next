@@ -1,3 +1,4 @@
+import { cached, orgTag } from "@/lib/cache"
 import type { NextAuthOptions } from "next-auth"
 import { $Enums } from "@prisma/client"
 import CredentialsProvider from "next-auth/providers/credentials"
@@ -153,11 +154,18 @@ export async function resolveLoginUser(
   // Los teléfonos se guardan con formato libre ("871 000 0000"): se filtran
   // candidatos por los últimos 4 dígitos y se comparan normalizados.
   const tail = key.slice(-4)
-  const [users, employees, customers] = await Promise.all([
-    prisma.user.findMany({ where: { phone: { contains: tail } }, select: { ...loginUserSelect, phone: true }, take: 50 }),
-    prisma.employee.findMany({ where: { phone: { contains: tail }, isActive: true }, select: { phone: true, user: { select: loginUserSelect } }, take: 50 }),
-    prisma.customer.findMany({ where: { phone: { contains: tail }, isActive: true }, select: { phone: true, user: { select: loginUserSelect } }, take: 50 }),
-  ])
+  // Primero la búsqueda exacta con índice (el formato normal: 10 dígitos, con o sin lada de país);
+  // recorrer las tablas con `contains` en cada inicio de sesión no escala con miles de clientes.
+  const exact = { in: [key, `52${key}`, `+52${key}`] }
+  const lookup = (phone: typeof exact | { contains: string }) =>
+    Promise.all([
+      prisma.user.findMany({ where: { phone }, select: { ...loginUserSelect, phone: true }, take: 50 }),
+      prisma.employee.findMany({ where: { phone, isActive: true }, select: { phone: true, user: { select: loginUserSelect } }, take: 50 }),
+      prisma.customer.findMany({ where: { phone, isActive: true }, select: { phone: true, user: { select: loginUserSelect } }, take: 50 }),
+    ])
+  let [users, employees, customers] = await lookup(exact)
+  // Teléfonos guardados con espacios o guiones ("871 000 0000"): respaldo por los últimos 4 dígitos.
+  if (users.length + employees.length + customers.length === 0) [users, employees, customers] = await lookup({ contains: tail })
   const candidates = new Map<string, ResolvedLoginUser>()
   for (const u of users) if (u.phone && phoneKey(u.phone) === key && u.isActive) candidates.set(u.id, u)
   for (const r of [...employees, ...customers]) if (r.phone && phoneKey(r.phone) === key && r.user.isActive) candidates.set(r.user.id, r.user)
@@ -477,11 +485,14 @@ export const authOptions: NextAuthOptions = {
             where: { id: token.id },
             select: { id: true, isActive: true, authVersion: true },
           }),
+          // Nombre/modo de la empresa: igual para todos sus usuarios; se comparte 30 s.
           activeOrganizationId
-            ? prisma.organization.findUnique({
-                where: { id: activeOrganizationId },
-                select: { name: true, businessMode: true },
-              })
+            ? cached(`org:snapshot:${activeOrganizationId}`, { ttlMs: 30_000, tags: [orgTag(activeOrganizationId)] }, () =>
+                prisma.organization.findUnique({
+                  where: { id: activeOrganizationId },
+                  select: { name: true, businessMode: true },
+                })
+              )
             : Promise.resolve(null),
         ])
         token.authCheckedAt = Date.now()
@@ -491,7 +502,7 @@ export const authOptions: NextAuthOptions = {
           token.organizationName = activeOrganization.name
           token.businessMode = activeOrganization.businessMode
           // Si el superAdmin cambia el plan, la sesión lo refleja en ~1 minuto.
-          if (token.scope === "app") token.planDenied = await planDeniedPermissions(activeOrganizationId)
+          if (token.scope === "app") token.planDenied = await cached(`org:plan-denied:${activeOrganizationId}`, { ttlMs: 30_000, tags: [orgTag(activeOrganizationId!)] }, () => planDeniedPermissions(activeOrganizationId))
         } else if (activeOrganizationId) {
           token.activeOrganizationId = null
           token.organizationName = null

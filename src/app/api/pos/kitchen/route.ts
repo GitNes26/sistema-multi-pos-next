@@ -1,3 +1,4 @@
+import { orderItemCounts } from "@/lib/db/counts";
 import { NextResponse } from "next/server";
 import { $Enums } from "@prisma/client";
 import { prisma } from "@/lib/db";
@@ -57,9 +58,9 @@ export async function GET(req: Request) {
         total: true,
         createdAt: true,
         table: { select: { id: true, number: true, name: true } },
-        _count: { select: { items: true } },
       },
     });
+    const itemCounts = await orderItemCounts(rows.map((o) => o.id));
     // Carritos armados por los comensales desde el QR (aún sin enviar a cocina).
     const carts = await prisma.tableCart.findMany({
       where: { organizationId },
@@ -87,7 +88,7 @@ export async function GET(req: Request) {
         status: o.status,
         serviceType: o.serviceType,
         total: Number(o.total),
-        items: o._count.items,
+        items: itemCounts.get(o.id) ?? 0,
         createdAt: o.createdAt.toISOString(),
         table: o.table ? { id: o.table.id, number: o.table.number, name: o.table.name } : null,
       })),

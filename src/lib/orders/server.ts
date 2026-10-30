@@ -1,3 +1,4 @@
+import { orderItemCounts } from "@/lib/db/counts";
 import { prisma } from "@/lib/db";
 import { recordOrderSale } from "@/lib/orders/sale";
 import type { $Enums, Prisma } from "@prisma/client";
@@ -106,7 +107,6 @@ export async function listOrders(
         customer: { select: { fullName: true } },
         location: { select: { name: true } },
         driver: { select: { fullName: true } },
-        _count: { select: { items: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
@@ -116,6 +116,8 @@ export async function listOrders(
     getOrderReportCounts(organizationId),
   ]);
 
+  const itemCounts = await orderItemCounts(rows.map((o) => o.id));
+
   return {      rows: rows.map((o) => ({
         id: o.id,
         orderNumber: Number(o.orderNumber),
@@ -124,7 +126,7 @@ export async function listOrders(
         customerName: o.customer?.fullName ?? null,
         locationName: o.location?.name ?? null,
         address: o.address,
-        itemsCount: o._count.items,
+        itemsCount: itemCounts.get(o.id) ?? 0,
         total: toNum(o.total),
         createdAt: o.createdAt.toISOString(),
         driverEmployeeId: o.driverEmployeeId,

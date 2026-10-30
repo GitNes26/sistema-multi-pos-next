@@ -1,3 +1,4 @@
+import { employeeSalesCounts } from "@/lib/db/counts";
 import { $Enums } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
@@ -70,7 +71,7 @@ type EmployeeRow = {
   position: { name: string } | null;
   location: { name: string } | null;
   user: { email: string | null; memberships: { role: string; roleId: string | null; roleRef: { name: string } | null }[] } | null;
-  _count: { sales: number };
+  _count?: { sales: number };
 };
 
 function serialize(e: EmployeeRow): EmployeeDto {
@@ -93,8 +94,14 @@ function serialize(e: EmployeeRow): EmployeeDto {
     salaryAmount: Number(e.salaryAmount) || 0,
     paymentFrequency: e.paymentFrequency || "biweekly",
     isActive: e.isActive,
-    salesCount: e._count.sales,
+    salesCount: e._count?.sales ?? 0,
   };
+}
+
+/** Ventas por empleado solo para los ids pedidos (ver lib/db/counts.ts). */
+async function withSalesCount<T extends { id: string }>(rows: T[]): Promise<(T & { _count: { sales: number } })[]> {
+  const counts = await employeeSalesCounts(rows.map((r) => r.id));
+  return rows.map((r) => ({ ...r, _count: { sales: counts.get(r.id) ?? 0 } }));
 }
 
 async function nextEmployeeCode(organizationId: string): Promise<string> {
@@ -144,7 +151,6 @@ export const employeesModule: CrudModule<EmployeeDto> = {
           position: { select: { name: true } },
           location: { select: { name: true } },
           user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true, roleId: true, roleRef: { select: { name: true } } } } } },
-          _count: { select: { sales: true } },
         },
         orderBy: [{ isActive: "desc" }, { fullName: "asc" }],
         skip: (page - 1) * pageSize,
@@ -154,7 +160,7 @@ export const employeesModule: CrudModule<EmployeeDto> = {
     ]);
 
     return {
-      rows: rows.map((e) => serialize(e as EmployeeRow)),
+      rows: (await withSalesCount(rows)).map((e) => serialize(e as EmployeeRow)),
       total,
     };
   },
@@ -166,11 +172,10 @@ export const employeesModule: CrudModule<EmployeeDto> = {
         position: { select: { name: true } },
         location: { select: { name: true } },
         user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true, roleId: true, roleRef: { select: { name: true } } } } } },
-        _count: { select: { sales: true } },
       },
     });
     if (!e) throw new CrudError("Empleado no encontrado", 404);
-    return serialize(e as EmployeeRow);
+    return serialize((await withSalesCount([e]))[0] as EmployeeRow);
   },
 
   async create(organizationId, input, ctx) {
@@ -241,11 +246,10 @@ export const employeesModule: CrudModule<EmployeeDto> = {
           position: { select: { name: true } },
           location: { select: { name: true } },
           user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true, roleId: true, roleRef: { select: { name: true } } } } } },
-          _count: { select: { sales: true } },
         },
       });
       if (emailRaw && mailConfigured()) await sendOrganizationWelcomeLink(emailRaw, organizationId, { fullName, accountType: "empleado", locationName: employee.location?.name });
-      return serialize(employee as EmployeeRow);
+      return serialize((await withSalesCount([employee]))[0] as EmployeeRow);
     } catch (err) {
       // Cleanup orphaned user/membership on create failure
       await prisma.employee.deleteMany({ where: { userId: user.id, organizationId } }).catch((cleanupErr) => console.error("[employees] cleanup employee failed:", cleanupErr));
@@ -375,10 +379,9 @@ export const employeesModule: CrudModule<EmployeeDto> = {
         position: { select: { name: true } },
         location: { select: { name: true } },
         user: { select: { email: true, memberships: { where: { organizationId }, select: { role: true, roleId: true, roleRef: { select: { name: true } } } } } },
-        _count: { select: { sales: true } },
       },
     });
-    return serialize(employee as EmployeeRow);
+    return serialize((await withSalesCount([employee]))[0] as EmployeeRow);
   },
 
   async remove(organizationId, id) {

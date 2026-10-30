@@ -781,18 +781,40 @@ export async function getCustomerActivity(customerId: string): Promise<CustomerA
   return res.activity;
 }
 
-export async function importExcel(module: string, file: File): Promise<ExcelImportResult> {
+/** Espera a un trabajo en segundo plano consultando su avance (hasta 30 min). */
+async function waitForJob(jobId: string, onProgress?: (pct: number) => void): Promise<ExcelImportResult> {
+  const deadline = Date.now() + 30 * 60_000;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const res = await fetch(`/api/jobs/${jobId}`, { cache: "no-store" });
+    const data = (await res.json().catch(() => null)) as {
+      job?: { status: string; progress: number; result?: ExcelImportResult | null; error?: string | null };
+      error?: string;
+    } | null;
+    if (!res.ok || !data?.job) throw new ApiError(data?.error ?? "No se pudo consultar la importación", res.status);
+    onProgress?.(data.job.progress);
+    if (data.job.status === "done" && data.job.result) return data.job.result;
+    if (data.job.status === "failed") throw new ApiError(data.job.error ?? "La importación falló", 500);
+  }
+  throw new ApiError("La importación sigue en curso; revisa el catálogo en unos minutos", 504);
+}
+
+export async function importExcel(module: string, file: File, onProgress?: (pct: number) => void): Promise<ExcelImportResult> {
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`/api/crud/${module}/import`, { method: "POST", body: form });
   const data = (await res.json().catch(() => null)) as {
     ok?: boolean;
     error?: string;
+    async?: boolean;
+    jobId?: string;
     result?: ExcelImportResult;
   } | null;
   if (!res.ok) {
     throw new ApiError(data?.error ?? "Error al importar", res.status);
   }
+  // Archivo grande: el servidor lo procesa en segundo plano y aquí se espera el resultado.
+  if (data?.async && data.jobId) return waitForJob(data.jobId, onProgress);
   if (!data?.result) throw new ApiError("Respuesta inválida del servidor", 500);
   return data.result;
 }

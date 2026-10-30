@@ -26,6 +26,7 @@ Si documentación y código difieren, comprueba el comportamiento y actualiza la
 
 ## Reglas de implementación
 
+- **Escala (miles de usuarios)**: consulta de negocio = filtra por `organizationId` y, si ordena o filtra por fecha/estado/sucursal, tiene índice compuesto en `schema.prisma`. En listas no uses `include: { _count }` de relaciones grandes (usa `src/lib/db/counts.ts`). Lecturas iguales para toda la empresa pasan por `cached()` (`src/lib/cache`) con etiqueta `orgTag`; trabajo que tarda segundos va a `enqueueJob` (`src/lib/jobs`) o a `runAfterResponse`. Detalle y cifras en [`docs/agents/ESCALABILIDAD.md`](docs/agents/ESCALABILIDAD.md).
 - Reutiliza primero componentes y servicios existentes. No crees una segunda abstracción si `src/components/base`, `src/components/ui`, CRUD genérico o `src/lib/*/server.ts` ya resuelven el patrón.
 - Página nueva: autorización y carga inicial en servidor; interacción en un cliente de módulo; estados loading/empty/error; navegación y feature gates coherentes. Consulta [`docs/agents/PAGINAS_Y_ARQUITECTURA.md`](docs/agents/PAGINAS_Y_ARQUITECTURA.md).
 - Formularios: React Hook Form + Yup + `useFocusInvalid`; `InputGroupField`, `FormCombobox`/`OptionSelect`, pickers y `Attachment`. No uses `<select>` ni fechas nativas; hora = `TimePicker`, fecha = `DatePicker`, y el teclado debe coincidir con el dato (`tel`, `numeric`/`decimal`, `email`, `url`, `search`). Consulta [`docs/agents/FORMULARIOS_Y_CRUD.md`](docs/agents/FORMULARIOS_Y_CRUD.md).

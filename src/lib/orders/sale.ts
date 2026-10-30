@@ -78,8 +78,6 @@ export async function recordOrderSale(organizationId: string, orderId: string, c
 
   try {
     return await prisma.$transaction(async (tx) => {
-      const loc = await tx.location.update({ where: { id: locationId }, data: { saleSeq: { increment: 1 } }, select: { saleSeq: true } })
-
       const sale = await tx.sale.create({
         data: {
           organizationId,
@@ -89,7 +87,6 @@ export async function recordOrderSale(organizationId: string, orderId: string, c
           cashierId: ctx.userId ?? null,
           employeeId: ctx.employeeId ?? null,
           customerId: order.customerId,
-          locationSaleNumber: loc.saleSeq,
           subtotal,
           discount,
           tax,
@@ -173,6 +170,9 @@ export async function recordOrderSale(organizationId: string, orderId: string, c
           data: { organizationId, customerId: order.customerId, saleId: sale.id, kind: "earn", points: pointsEarned, note: `Pedido ${folio}` },
         })
       }
+      // Folio de la sucursal al final: la fila de la sucursal queda bloqueada solo un instante.
+      const { saleSeq } = await tx.location.update({ where: { id: locationId }, data: { saleSeq: { increment: 1 } }, select: { saleSeq: true } })
+      await tx.sale.update({ where: { id: sale.id }, data: { locationSaleNumber: saleSeq } })
       return sale.id
     })
   } catch (err) {

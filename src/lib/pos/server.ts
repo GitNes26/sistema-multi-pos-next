@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db"
+import { cached, invalidateOrg, orgTag } from "@/lib/cache"
+import { runAfterResponse } from "@/lib/jobs/after-response"
 import { resolveBulkUnitPrice } from "@/lib/pos/bulk-pricing"
 import { resolveUnitCosts } from "@/lib/pos/cost"
 import { cleanGuestName } from "@/lib/guests"
@@ -91,6 +93,32 @@ export async function getPosCatalog(
   organizationId: string,
   userId: string
 ): Promise<PosCatalog> {
+  // Lo que es igual para todas las cajas de la empresa (catálogo, categorías, clientes,
+  // promociones…) se guarda 30 s y se comparte: con cientos de cajas refrescando cada 20 s
+  // la base de datos recibe una consulta por empresa, no una por caja. Se descarta al editar
+  // productos, clientes, promociones o ajustes (`invalidateOrg`). Existencias, caja abierta
+  // y usuario se siguen leyendo en cada petición.
+  const [employee, userData, cashSession] = await Promise.all([
+    prisma.employee.findFirst({
+      where: { organizationId, userId: { equals: userId } },
+      select: { id: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { fullName: true },
+    }),
+    prisma.cashSession.findFirst({
+      where: { organizationId, status: "open" },
+      include: { cashRegister: { select: { id: true, name: true } } },
+      orderBy: { openedAt: "desc" },
+    }),
+  ])
+  const shared = await cached(`pos:catalog:${organizationId}`, { ttlMs: 30_000, staleMs: 60_000, tags: [orgTag(organizationId)] }, () => loadSharedCatalog(organizationId))
+  const { locations, productsRaw, bulkRaw, categories, customers, promotions, registers, companyProfile, orgLoyalty, combosRaw, promotionUses } = shared
+  return buildPosCatalog(organizationId, userId, { employee, userData, cashSession }, { locations, productsRaw, bulkRaw, categories, customers, promotions, registers, companyProfile, orgLoyalty, combosRaw, promotionUses })
+}
+
+async function loadSharedCatalog(organizationId: string) {
   const [
     locations,
     productsRaw,
@@ -99,9 +127,6 @@ export async function getPosCatalog(
     customers,
     promotions,
     registers,
-    employee,
-    userData,
-    cashSession,
     companyProfile,
     orgLoyalty,
     combosRaw,
@@ -170,19 +195,6 @@ export async function getPosCatalog(
       orderBy: { name: "asc" },
       select: { id: true, name: true, folioPrefix: true },
     }),
-    prisma.employee.findFirst({
-      where: { organizationId, userId: { equals: userId } },
-      select: { id: true },
-    }),
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { fullName: true },
-    }),
-    prisma.cashSession.findFirst({
-      where: { organizationId, status: "open" },
-      include: { cashRegister: { select: { id: true, name: true } } },
-      orderBy: { openedAt: "desc" },
-    }),
     prisma.companyProfile.findUnique({
       where: { organizationId },
       select: {
@@ -234,6 +246,23 @@ export async function getPosCatalog(
       })
     : []
 
+  return { locations, productsRaw, bulkRaw, categories, customers, promotions, registers, companyProfile, orgLoyalty, combosRaw, promotionUses }
+}
+
+type SharedCatalog = Awaited<ReturnType<typeof loadSharedCatalog>>
+
+async function buildPosCatalog(
+  organizationId: string,
+  userId: string,
+  fresh: {
+    employee: { id: string } | null
+    userData: { fullName: string } | null
+    cashSession: Awaited<ReturnType<typeof prisma.cashSession.findFirst<{ include: { cashRegister: { select: { id: true; name: true } } } }>>>
+  },
+  shared: SharedCatalog
+): Promise<PosCatalog> {
+  const { employee, userData, cashSession } = fresh
+  const { locations, productsRaw, bulkRaw, categories, customers, promotions, registers, companyProfile, orgLoyalty, combosRaw, promotionUses } = shared
   const location = firstActiveLocation(locations)
   if (!location) {
     throw new PosError(
@@ -1077,15 +1106,9 @@ export async function createSale(
     })
     if (!loc) throw new PosError("Sucursal no encontrada", 400)
 
-    // Reservar secuencia de ticket por sucursal (6.12 – folio).
-    await tx.location.update({
-      where: { id: locationId },
-      data: { saleSeq: { increment: 1 } },
-    })
-    const updated = await tx.location.findUniqueOrThrow({
-      where: { id: locationId },
-    })
-    const locationSaleNumber = updated.saleSeq
+    // El folio por sucursal (6.12) se reserva al FINAL de la transacción: incrementar la fila de la
+    // sucursal la bloquea hasta confirmar, y al inicio serializaba todas las cajas de la sucursal
+    // durante toda la venta (y frenaba hasta las notificaciones que referencian esa fila).
 
     // Validar y descontar inventario (6.12 – ticket correcto/posible error de stock).
     for (const item of payload.items) {
@@ -1131,7 +1154,6 @@ export async function createSale(
         cashierId: ctx.userId,
         employeeId: ctx.employeeId,
         customerId: payload.customerId,
-        locationSaleNumber,
         subtotal: payload.subtotal,
         discount: payload.discount,
         tax: payload.tax,
@@ -1428,7 +1450,11 @@ export async function createSale(
       }
     }
 
-    return { sale, locationName: loc.name, touchedInventoryIds }
+    // Folio de la sucursal: bloqueo de la fila durante un instante, no durante toda la venta.
+    const { saleSeq } = await tx.location.update({ where: { id: locationId }, data: { saleSeq: { increment: 1 } }, select: { saleSeq: true } })
+    const numbered = await tx.sale.update({ where: { id: sale.id }, data: { locationSaleNumber: saleSeq } })
+
+    return { sale: numbered, locationName: loc.name, touchedInventoryIds }
   })
 
   await Promise.all(
@@ -1482,19 +1508,25 @@ export async function createSale(
     await closeKitchenOrderOnSale(organizationId, null, result.sale.id, { userId: ctx.userId, employeeId: ctx.employeeId }, payload.kitchenOrderId)
   }
 
-  // Notificar venta completada por SSE (11.6) — fuera de la transacción.
-  await notifySaleCompleted(organizationId, result.sale.locationId, ctx, {
-    locationSaleNumber:
-      result.sale.locationSaleNumber == null
-        ? null
-        : Number(result.sale.locationSaleNumber),
-    saleNumber: String(result.sale.saleNumber),
-    total: toNum(result.sale.total),
-    locationName: result.locationName,
+  // Los puntos del cliente cambiaron: las cajas deben ver el dato nuevo en su siguiente refresco.
+  invalidateOrg(organizationId)
+
+  // Avisos de venta (SSE, notificaciones, crédito): la venta ya está guardada, así que se envían
+  // después de responder; el cajero no espera por ellos.
+  runAfterResponse("pos:sale-notifications", async () => {
+    await notifySaleCompleted(organizationId, result.sale.locationId, ctx, {
+      locationSaleNumber:
+        result.sale.locationSaleNumber == null
+          ? null
+          : Number(result.sale.locationSaleNumber),
+      saleNumber: String(result.sale.saleNumber),
+      total: toNum(result.sale.total),
+      locationName: result.locationName,
+    })
+    if (payload.payments?.some((payment) => payment.method === "credit")) {
+      await notifyStaff(organizationId, "orders.view", { kind: "credit_charge", title: "Nueva venta a crédito", body: `Venta ${result.sale.saleNumber} · ${toNum(result.sale.total).toFixed(2)}`, link: "/admin/credits", excludeUserId: ctx.userId ?? undefined }).catch((error) => console.error("[credit/notification]", error))
+    }
   })
-  if (payload.payments?.some((payment) => payment.method === "credit")) {
-    await notifyStaff(organizationId, "orders.view", { kind: "credit_charge", title: "Nueva venta a crédito", body: `Venta ${result.sale.saleNumber} · ${toNum(result.sale.total).toFixed(2)}`, link: "/admin/credits", excludeUserId: ctx.userId ?? undefined }).catch((error) => console.error("[credit/notification]", error))
-  }
 
   return {
     id: result.sale.id,

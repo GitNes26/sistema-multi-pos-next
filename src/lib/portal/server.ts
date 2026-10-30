@@ -1,3 +1,5 @@
+import { orderItemCounts } from "@/lib/db/counts"
+import { cached, orgTag } from "@/lib/cache"
 import { announceOrderChange } from "@/lib/orders/live"
 import { nextCustomerCode } from "@/lib/crud/modules/customers"
 import { cleanGuestName } from "@/lib/guests"
@@ -201,8 +203,10 @@ export async function getStorefront(
   organizationId: string,
   customerId: string | null
 ): Promise<{ categories: PortalCategory[]; products: PortalProduct[] }> {
-  const [variantsRaw, bulkRaw, categories, favorites, orgRow] =
-    await Promise.all([
+  // Catálogo, categorías y sucursales son iguales para todos los clientes del negocio: se guardan
+  // 30 s y se comparten. Favoritos y existencias se siguen leyendo en cada petición.
+  const shared = await cached(`portal:storefront:${organizationId}`, { ttlMs: 30_000, staleMs: 60_000, tags: [orgTag(organizationId)] }, async () => {
+    const [variantsRaw, bulkRaw, categories, orgRow, locations] = await Promise.all([
       prisma.productVariant.findMany({
         where: { organizationId, isActive: true, product: { isActive: true } },
         include: {
@@ -231,18 +235,25 @@ export async function getStorefront(
         orderBy: { name: "asc" },
         select: { id: true, parentId: true, name: true, imageUrl: true },
       }),
-      customerId
-        ? prisma.customerFavorite.findMany({
-            where: { customerId },
-            select: { variantId: true },
-          })
-        : Promise.resolve([]),
       // Las opciones/constructor son de restaurantes; retail no las consume.
       prisma.organization.findUnique({
         where: { id: organizationId },
         select: { businessMode: true },
       }),
+      prisma.location.findMany({
+        where: { organizationId, isActive: true },
+        select: { id: true },
+      }),
     ])
+    return { variantsRaw, bulkRaw, categories, orgRow, locationIds: locations.map((l) => l.id) }
+  })
+  const { variantsRaw, bulkRaw, categories, orgRow, locationIds } = shared
+  const favorites = customerId
+    ? await prisma.customerFavorite.findMany({
+        where: { customerId },
+        select: { variantId: true },
+      })
+    : []
 
   const favoriteIds = new Set(favorites.map((f) => f.variantId))
   // El constructor de producto es de restaurantes Y solo se abre para
@@ -253,12 +264,6 @@ export async function getStorefront(
     builderMode && productType === "custom"
 
   // Stock total de la org (suma de todas las sucursales activas).
-  const locationIds = (
-    await prisma.location.findMany({
-      where: { organizationId, isActive: true },
-      select: { id: true },
-    })
-  ).map((l) => l.id)
   const inventoryRows = await prisma.inventory.findMany({
     where: { organizationId, locationId: { in: locationIds } },
     select: { variantId: true, productId: true, quantity: true },
@@ -567,7 +572,6 @@ export async function getPortalHome(
         status: { in: ["pending", "confirmed", "preparing", "ready"] },
       },
       orderBy: { createdAt: "desc" },
-      include: { _count: { select: { items: true } } },
       take: 10,
     }),
     prisma.product.findMany({
@@ -643,9 +647,7 @@ export async function getPortalHome(
     ).map((prod) => [prod.id, prod.imageUrl])
   )
 
-  console.log(
-    `[portal/home] org=${organizationId} promos=${promotions.length} orders=${activeOrders.length} products=${newProducts.length} pubs=${publications.length} combos=${combosRaw.length}`
-  )
+  const activeItemCounts = await orderItemCounts(activeOrders.map((o) => o.id))
 
   return {
     businessMode: bm,
@@ -667,7 +669,7 @@ export async function getPortalHome(
       status: o.status,
       deliveryMethod: o.deliveryMethod,
       total: toNum(o.total),
-      itemsCount: o._count.items,
+      itemsCount: activeItemCounts.get(o.id) ?? 0,
       createdAt: o.createdAt.toISOString(),
     })),
     newProducts: newProducts.map((p) => {
@@ -842,18 +844,20 @@ export async function listPortalOrders(
   organizationId: string,
   customerId: string
 ): Promise<PortalOrderRow[]> {
+  // Los últimos 100: un cliente con años de historial no debe cargar todos sus pedidos en cada visita.
   const orders = await prisma.order.findMany({
     where: { organizationId, customerId },
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { items: true } } },
+    take: 100,
   })
+  const itemCounts = await orderItemCounts(orders.map((o) => o.id))
   return orders.map((o) => ({
     id: o.id,
     orderNumber: Number(o.orderNumber),
     status: o.status,
     deliveryMethod: o.deliveryMethod,
     total: toNum(o.total),
-    itemsCount: o._count.items,
+    itemsCount: itemCounts.get(o.id) ?? 0,
     createdAt: o.createdAt.toISOString(),
   }))
 }

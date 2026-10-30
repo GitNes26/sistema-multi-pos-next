@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { invalidateOrg } from "@/lib/cache";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
 import { effectiveOrgId } from "@/lib/auth/org-context";
@@ -19,6 +20,21 @@ export function permissionForAction(
   if (action === "delete") return entry.permissionDelete ?? entry.permissionManage;
   if (action === "manage") return entry.permissionManage;
   return entry.permissionView;
+}
+
+/**
+ * Un cambio de catálogo, clientes o promociones descarta lo guardado de esa empresa: una vez al
+ * entrar (por si algo lo vuelve a leer) y otra al terminar la respuesta, cuando el cambio ya está en BD.
+ */
+export function discardOrgCache(organizationId: string) {
+  invalidateOrg(organizationId);
+  try {
+    after(() => {
+      invalidateOrg(organizationId);
+    });
+  } catch {
+    /* fuera de una petición (pruebas): basta con la primera */
+  }
 }
 
 export async function guardCrud(
@@ -46,6 +62,8 @@ export async function guardCrud(
   if (!hasPermission(session, permissionForAction(entry, action))) {
     return { response: NextResponse.json({ ok: false, error: "No tienes permiso para esta acción" }, { status: 403 }) };
   }
+
+  if (action !== "view") discardOrgCache(organizationId);
 
   return { entry, organizationId, userId: session.user.id, canManageInventory: hasPermission(session, "inventory.manage") };
 }

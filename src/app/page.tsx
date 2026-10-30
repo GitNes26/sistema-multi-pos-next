@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils"
 import packageJson from "../../package.json"
 import { prisma } from "@/lib/db"
 import { planWhatsappUrl, whatsappUrl } from "@/lib/whatsapp"
+import { cached } from "@/lib/cache"
 import { KitQuote } from "@/components/landing/kit-quote"
 
 // Los planes se administran en la base de datos. La portada debe resolverlos
@@ -167,11 +168,15 @@ const SECTIONS = [
 ]
 
 export default async function LandingPage() {
-  const plans = await prisma.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
-  // Componentes del Kit POS (sin el precio estimado interno: nunca llega al navegador).
-  const kitItems = (
-    await prisma.kitComponent.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }).catch(() => [])
-  ).map((k) => ({ id: k.id, name: k.name, description: k.description, imageUrl: k.imageUrl, options: Array.isArray(k.options) ? (k.options as string[]) : [] }))
+  // La portada recibe el tráfico público: planes y Kit POS se leen una vez por minuto, no por visita.
+  const { plans, kitItems } = await cached("landing:content", { ttlMs: 60_000, staleMs: 300_000, tags: ["landing"] }, async () => {
+    const plans = await prisma.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
+    // Componentes del Kit POS (sin el precio estimado interno: nunca llega al navegador).
+    const kitItems = (
+      await prisma.kitComponent.findMany({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }).catch(() => [])
+    ).map((k) => ({ id: k.id, name: k.name, description: k.description, imageUrl: k.imageUrl, options: Array.isArray(k.options) ? (k.options as string[]) : [] }))
+    return { plans, kitItems }
+  })
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <SmoothAnchors />

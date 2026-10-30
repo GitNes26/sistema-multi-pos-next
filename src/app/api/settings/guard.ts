@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { discardOrgCache } from "@/app/api/crud/guard";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
 import { effectiveOrgId, isSuperadminSession } from "@/lib/auth/org-context";
@@ -29,6 +30,8 @@ export async function settingsManageGuard(): Promise<GuardResult> {
   if (!hasPermission(g.session, "settings.manage")) {
     return { response: NextResponse.json({ ok: false, error: "Sin permisos" }, { status: 403 }) };
   }
+  // Empresa, lealtad y pagos alimentan el catálogo del POS: se descarta su caché.
+  discardOrgCache(g.organizationId);
   return g;
 }
 

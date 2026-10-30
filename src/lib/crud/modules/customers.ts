@@ -1,3 +1,4 @@
+import { customerActivityCounts } from "@/lib/db/counts";
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { hashPassword, setMembership } from "@/lib/auth/users";
@@ -34,8 +35,14 @@ type CustomerRow = {
   longitude: { toNumber(): number } | number | null;
   isActive: boolean;
   user: { email: string | null; activationRequired: boolean; emailVerified: Date | null } | null;
-  _count: { sales: number; orders: number };
+  _count?: { sales: number; orders: number };
 };
+
+/** Agrega ventas/pedidos por cliente solo para los ids pedidos (ver lib/db/counts.ts). */
+async function withCounts<T extends { id: string }>(rows: T[]): Promise<(T & { _count: { sales: number; orders: number } })[]> {
+  const counts = await customerActivityCounts(rows.map((r) => r.id));
+  return rows.map((r) => ({ ...r, _count: counts.get(r.id) ?? { sales: 0, orders: 0 } }));
+}
 
 const num = (v: { toNumber(): number } | number): number => (typeof v === "number" ? v : v.toNumber());
 
@@ -58,8 +65,8 @@ function serialize(c: CustomerRow): CustomerDto {
     latitude: decimalOrNull(c.latitude),
     longitude: decimalOrNull(c.longitude),
     isActive: c.isActive,
-    salesCount: c._count.sales,
-    ordersCount: c._count.orders,
+    salesCount: c._count?.sales ?? 0,
+    ordersCount: c._count?.orders ?? 0,
     accessStatus: !c.email ? "not_invited" : c.user?.activationRequired ? "pending" : "active",
   };
 }
@@ -105,7 +112,7 @@ export const customersModule: CrudModule<CustomerDto> = {
     const [rows, total] = await Promise.all([
       prisma.customer.findMany({
         where,
-        include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true, activationRequired: true, emailVerified: true } } },
+        include: { user: { select: { email: true, activationRequired: true, emailVerified: true } } },
         orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -113,16 +120,16 @@ export const customersModule: CrudModule<CustomerDto> = {
       prisma.customer.count({ where }),
     ]);
 
-    return { rows: rows.map(serialize), total };
+    return { rows: (await withCounts(rows)).map(serialize), total };
   },
 
   async get(organizationId, id) {
     const c = await prisma.customer.findFirst({
       where: { id, organizationId },
-      include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true, activationRequired: true, emailVerified: true } } },
+      include: { user: { select: { email: true, activationRequired: true, emailVerified: true } } },
     });
     if (!c) throw new CrudError("Cliente no encontrado", 404);
-    return serialize(c);
+    return serialize((await withCounts([c]))[0]);
   },
 
   async create(organizationId, input, _ctx) {
@@ -186,7 +193,7 @@ export const customersModule: CrudModule<CustomerDto> = {
           isActive: data.isActive !== false,
           ...(data.points !== undefined ? { points: Number(data.points) || 0 } : {}),
         },
-        include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true, activationRequired: true, emailVerified: true } } },
+        include: { user: { select: { email: true, activationRequired: true, emailVerified: true } } },
       });
       if (emailRaw && !sharedUser && mailConfigured()) {
         const registrationLocation = data.registrationLocationId
@@ -277,14 +284,14 @@ export const customersModule: CrudModule<CustomerDto> = {
           ? { customerCode: data.customerCode ? String(data.customerCode).trim().toUpperCase() : null }
           : {}),
       },
-      include: { _count: { select: { sales: true, orders: true } }, user: { select: { email: true, activationRequired: true, emailVerified: true } } },
+      include: { user: { select: { email: true, activationRequired: true, emailVerified: true } } },
     });
     // Cambiar el correo invalida las sesiones, actualiza primero ambas fuentes
     // y luego invita a confirmar la dirección nueva.
     if (emailChanged && emailRaw && mailConfigured()) {
       await sendOrganizationWelcomeLink(emailRaw, organizationId, { fullName: fullName ?? existing.fullName, accountType: "cliente" });
     }
-    return serialize(customer);
+    return serialize((await withCounts([customer]))[0]);
   },
 
   async remove(organizationId, id) {

@@ -1,3 +1,4 @@
+import { orderItemCounts, saleItemCounts } from "@/lib/db/counts";
 import { prisma } from "@/lib/db";
 import { localDay } from "@/lib/reports/bi-server";
 
@@ -253,7 +254,6 @@ export async function getSalesReport(organizationId: string, f: ReportFilters) {
         cashRegister: { select: { name: true } },
         employee: { select: { fullName: true } },
         customer: { select: { fullName: true } },
-        _count: { select: { items: true } },
       },
       orderBy: { createdAt: "desc" },
       take: Math.min(5000, f.limit ?? 2000),
@@ -305,6 +305,7 @@ export async function getSalesReport(organizationId: string, f: ReportFilters) {
     .map((p) => ({ method: p.method, amount: round2(toNum(p._sum.amount)), count: p._count }))
     .sort((a, b) => b.amount - a.amount);
 
+  const saleItemTotals = await saleItemCounts(rows.map((s) => s.id));
   const mapped: SalesReportRow[] = rows.map((s) => ({
     id: s.id,
     folio: s.locationSaleNumber == null ? Number(s.saleNumber) : Number(s.locationSaleNumber),
@@ -313,7 +314,7 @@ export async function getSalesReport(organizationId: string, f: ReportFilters) {
     registerName: s.cashRegister?.name ?? null,
     employeeName: s.employee?.fullName ?? null,
     customerName: s.customer?.fullName ?? null,
-    itemCount: s._count.items,
+    itemCount: saleItemTotals.get(s.id) ?? 0,
     subtotal: toNum(s.subtotal),
     discount: toNum(s.discount),
     tax: toNum(s.tax),
@@ -444,11 +445,11 @@ export async function getOrdersReport(organizationId: string, f: ReportFilters) 
     include: {
       customer: { select: { fullName: true } },
       location: { select: { name: true } },
-      _count: { select: { items: true } },
     },
     orderBy: { createdAt: "desc" },
     take: Math.min(5000, f.limit ?? 2000),
   });
+  const orderItemTotals = await orderItemCounts(orders.map((o) => o.id));
 
   const rows: OrdersReportRow[] = orders.map((o) => ({
     id: o.id,
@@ -457,7 +458,7 @@ export async function getOrdersReport(organizationId: string, f: ReportFilters) 
     deliveryMethod: o.deliveryMethod,
     customerName: o.customer?.fullName ?? null,
     locationName: o.location?.name ?? null,
-    itemsCount: o._count.items,
+    itemsCount: orderItemTotals.get(o.id) ?? 0,
     total: toNum(o.total),
     createdAt: o.createdAt.toISOString(),
   }));

@@ -251,6 +251,7 @@ model User {
   invitationsSent               UserInvitation[]        @relation("UserInvitationInvitedBy")
   pushSubscriptions             PushSubscription[]
 
+  @@index([phone])
   @@map("users")
 }
 
@@ -712,6 +713,7 @@ model Employee {
 
   @@unique([organizationId, employeeCode])
   @@unique([organizationId, userId])
+  @@index([phone])
   @@map("employees")
 }
 
@@ -757,6 +759,8 @@ model Customer {
   // Teléfono único por org: en MySQL, UNIQUE permite múltiples NULL,
   // replicando el partial index del plan (UNIQUE WHERE phone IS NOT NULL)
   @@unique([organizationId, phone])
+  @@index([organizationId, fullName])
+  @@index([phone])
   @@map("customers")
 }
 
@@ -1016,6 +1020,8 @@ model CashSession {
   saleReturns  SaleReturn[]
   expenses     Expense[]
 
+  @@index([organizationId, locationId, status])
+  @@index([organizationId, openedAt])
   @@map("cash_sessions")
 }
 
@@ -1037,6 +1043,7 @@ model Category {
   children     Category[]   @relation("CategoryHierarchy")
   products     Product[]
 
+  @@index([organizationId, isActive])
   @@map("categories")
 }
 
@@ -1109,6 +1116,8 @@ model Product {
   transferItems          TransferItem[]
   shoppingListItems      ShoppingListItem[]
 
+  @@index([organizationId, isActive, name])
+  @@index([organizationId, categoryId])
   @@map("products")
 }
 
@@ -1181,6 +1190,8 @@ model ProductVariant {
   reservationItems       ReservationItem[]
 
   @@index([barcode])
+  @@index([organizationId, isActive])
+  @@index([organizationId, sku])
   @@map("product_variants")
 }
 
@@ -1277,6 +1288,7 @@ model Inventory {
   // CHECK sobre columnas con FK ON DELETE SET NULL / ON UPDATE CASCADE.
   // Ver migración 20260811050000_customer_phone_unique_inventory_check.
   @@unique([variantId, locationId, locationType])
+  @@index([organizationId, locationId, locationType])
   @@map("inventory")
 }
 
@@ -1303,6 +1315,9 @@ model InventoryMovement {
   employee     Employee?       @relation(fields: [employeeId], references: [id])
   user         User?           @relation(fields: [userId], references: [id])
 
+  @@index([organizationId, createdAt])
+  @@index([organizationId, locationId, createdAt])
+  @@index([variantId, createdAt])
   @@map("inventory_movements")
 }
 
@@ -1586,6 +1601,9 @@ model Sale {
   returns             SaleReturn[]
   commissions         EmployeeCommission[]
 
+  @@index([organizationId, createdAt])
+  @@index([organizationId, locationId, createdAt])
+  @@index([organizationId, status, createdAt])
   @@map("sales")
 }
 
@@ -1790,6 +1808,7 @@ model LoyaltyTransaction {
   customer     Customer     @relation(fields: [customerId], references: [id])
   sale         Sale?        @relation(fields: [saleId], references: [id])
 
+  @@index([organizationId, customerId, createdAt])
   @@map("loyalty_transactions")
 }
 
@@ -1858,6 +1877,9 @@ model Order {
   @@unique([organizationId, customerId, idempotencyKey])
   @@index([promotionId])
   @@index([organizationId, source, status])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, locationId, status])
+  @@index([organizationId, customerId, createdAt])
   @@map("orders")
 }
 
@@ -2451,6 +2473,7 @@ model SaleReturn {
 
   @@index([organizationId])
   @@index([saleId])
+  @@index([organizationId, createdAt])
   @@map("sale_returns")
 }
 
@@ -2845,4 +2868,33 @@ model PayrollEntry {
   @@unique([periodId, employeeId])
   @@index([organizationId, employeeId])
   @@map("payroll_entries")
+}
+
+/// Cola de trabajos en segundo plano (importaciones grandes, envíos, recálculos).
+/// Sin relaciones a propósito: es una bitácora operativa que no debe bloquear borrados.
+model BackgroundJob {
+  id             String    @id @default(cuid())
+  organizationId String?
+  userId         String?
+  /// Tipo registrado en lib/jobs/handlers (p. ej. "excel.import").
+  type           String    @db.VarChar(40)
+  /// queued | running | done | failed
+  status         String    @default("queued") @db.VarChar(12)
+  payload        Json
+  result         Json?
+  /// 0–100 para mostrar avance al usuario.
+  progress       Int       @default(0)
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(3)
+  error          String?   @db.VarChar(500)
+  runAt          DateTime  @default(now())
+  lockedAt       DateTime?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status, runAt])
+  @@index([organizationId, createdAt])
+  @@map("background_jobs")
 }

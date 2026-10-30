@@ -34,7 +34,12 @@ export type ImportResult = {
 };
 
 /** Contexto de quien importa: lo que puede hacer y quién es (para el historial de inventario). */
-export type ImportActor = { userId: string; canManageInventory?: boolean };
+export type ImportActor = {
+  userId: string;
+  canManageInventory?: boolean;
+  /** Avance al crear registros (para mostrarlo en importaciones en segundo plano). */
+  onProgress?: (done: number, total: number) => Promise<void> | void;
+};
 
 const FIELD_KEYS: Record<string, string[]> = {
   categories: ["name", "parentName", "imageUrl", "isActive"],
@@ -779,6 +784,7 @@ export async function importWorkbook(orgId: string, module: string, buffer: Buff
         continue;
       }
       result.imported += 1;
+      if (actor.onProgress) await actor.onProgress(result.imported, parsed.items.length);
       const row = await prisma.category.findFirst({ where: { organizationId: orgId, name: String(item.record.name).trim() }, select: { id: true } });
       if (row) idByName.set(norm(item.record.name), row.id);
     }
@@ -786,6 +792,7 @@ export async function importWorkbook(orgId: string, module: string, buffer: Buff
     return result;
   }
 
+  let done = 0;
   for (const item of parsed.items) {
     const error = await spec.create(orgId, item.record, crudCtx);
     if (error) {
@@ -793,6 +800,8 @@ export async function importWorkbook(orgId: string, module: string, buffer: Buff
     } else {
       result.imported += 1;
     }
+    done += 1;
+    if (actor.onProgress && (done % 10 === 0 || done === parsed.items.length)) await actor.onProgress(done, parsed.items.length);
   }
   result.ok = result.errors.length === 0;
   return result;

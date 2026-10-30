@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { invalidateTag } from "@/lib/cache";
 import { authOptions } from "@/lib/auth/options";
 import { hasPermission } from "@/lib/auth/permissions";
 import type { Session } from "next-auth";
@@ -25,6 +26,15 @@ export async function menusAdminGuard(): Promise<GuardResult> {
   // El menú es global (todas las empresas): solo el superadministrador lo edita.
   if (g.session.user.role !== "superadmin" || !hasPermission(g.session, "organizations.manage")) {
     return { response: NextResponse.json({ ok: false, error: "No tienes permiso para esta acción" }, { status: 403 }) };
+  }
+  // Se va a editar el menú global: se descarta lo guardado, antes y después del cambio.
+  invalidateTag("menus");
+  try {
+    after(() => {
+      invalidateTag("menus");
+    });
+  } catch {
+    /* fuera de una petición */
   }
   return g;
 }
