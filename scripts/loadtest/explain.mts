@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, no-var -- script de pruebas de carga */
 /**
  * Mide el efecto de los índices nuevos: ejecuta las consultas típicas de una empresa CON los
  * índices y otra vez ignorándolos (el plan que existía antes), y muestra filas revisadas y tiempo.

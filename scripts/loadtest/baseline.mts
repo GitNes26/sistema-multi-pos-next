@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, no-var -- script de pruebas de carga */
 /**
  * Comparación honesta de índices: deja solo el índice simple de la llave foránea (organizationId),
  * que es lo que había antes, mide las consultas típicas y luego restaura los índices compuestos.

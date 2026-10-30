@@ -16,32 +16,14 @@ export interface TableUpdatePayload {
   upcomingReservation?: { guests: number; startsAt: string } | null;
 }
 
-// Singleton en globalThis (misma razón que lib/kds/live.ts en dev).
-const globalForTablesLive = globalThis as unknown as {
-  tableChannels: Map<string, Set<Controller>> | undefined;
-};
-const channels = globalForTablesLive.tableChannels ?? new Map<string, Set<Controller>>();
-if (process.env.NODE_ENV !== "production") globalForTablesLive.tableChannels = channels;
-const encoder = new TextEncoder();
-
 import { safeJson } from "@/lib/api-helpers";
+import { publish, subscribe } from "@/lib/realtime";
 
-function okChunk(obj: unknown) {
-  return encoder.encode(`data: ${JSON.stringify(safeJson(obj))}\n\n`);
-}
+const channel = (organizationId: string) => `tables:${organizationId}`;
 
 /** Subscribe a controller to the org's table-update channel. Returns an unsubscribe function. */
 export function openTableChannel(organizationId: string, controller: Controller) {
-  let set = channels.get(organizationId);
-  if (!set) {
-    set = new Set();
-    channels.set(organizationId, set);
-  }
-  set.add(controller);
-  return () => {
-    set?.delete(controller);
-    if (set?.size === 0) channels.delete(organizationId);
-  };
+  return subscribe(channel(organizationId), controller);
 }
 
 /** Broadcast a table update to all subscribers of the given organization. */
@@ -64,14 +46,5 @@ export function broadcastTableUpdate(organizationId: string, payload: TableUpdat
       .catch((err) => console.error("[waitlist] reclaim failed:", err));
   }
 
-  const set = channels.get(organizationId);
-  if (!set || set.size === 0) return;
-  const chunk = okChunk(payload);
-  for (const ctrl of set) {
-    try {
-      ctrl.enqueue(chunk);
-    } catch {
-      set.delete(ctrl);
-    }
-  }
+  publish(channel(organizationId), safeJson(payload));
 }

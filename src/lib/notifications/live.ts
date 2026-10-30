@@ -1,5 +1,7 @@
 // FASE 8.9/11 — Registro en memoria de canales SSE por organización (pub/sub).
 
+import { publish, subscribe, subscriberCount } from "@/lib/realtime";
+
 type Controller = ReadableStreamDefaultController<Uint8Array>;
 
 /** payload de notificación tal como lo espera el hook cliente. */
@@ -14,32 +16,10 @@ export interface LiveNotificationPayload {
   createdAt: string;
 }
 
-// Singleton en globalThis (misma razón que lib/kds/live.ts en dev).
-const globalForNotificationsLive = globalThis as unknown as {
-  notificationChannels: Map<string, Set<Controller>> | undefined;
-};
-const channels =
-  globalForNotificationsLive.notificationChannels ?? new Map<string, Set<Controller>>();
-if (process.env.NODE_ENV !== "production")
-  globalForNotificationsLive.notificationChannels = channels;
-
-const encoder = new TextEncoder();
-
-function okChunk(obj: unknown) {
-  return encoder.encode(`data: ${JSON.stringify(obj)}\n\n`);
-}
+const channel = (key: string) => `notifications:${key}`;
 
 export function openOrgChannel(organizationId: string, controller: Controller) {
-  let set = channels.get(organizationId);
-  if (!set) {
-    set = new Set();
-    channels.set(organizationId, set);
-  }
-  set.add(controller);
-  return () => {
-    set?.delete(controller);
-    if (set?.size === 0) channels.delete(organizationId);
-  };
+  return subscribe(channel(organizationId), controller);
 }
 
 export function openUserChannel(organizationId: string, userId: string, controller: Controller) {
@@ -50,36 +30,21 @@ export function broadcastToUser(organizationId: string, userId: string, payload:
   broadcastToOrg(`${organizationId}:${userId}`, payload);
 }
 
+/** Envía solo a esta conexión (instantánea inicial al conectar). */
 export function sendItems(controller: Controller, items: LiveNotificationPayload[]) {
-  controller.enqueue(okChunk({ items }));
+  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ items })}
+
+`));
 }
 
 export function broadcastToOrg(organizationId: string, payload: LiveNotificationPayload) {
-  const set = channels.get(organizationId);
-  if (!set || set.size === 0) return;
-  const chunk = okChunk(payload);
-  for (const ctrl of set) {
-    try {
-      ctrl.enqueue(chunk);
-    } catch {
-      set.delete(ctrl);
-    }
-  }
+  publish(channel(organizationId), payload);
 }
 
 export function broadcastItems(organizationId: string, items: LiveNotificationPayload[]) {
-  const set = channels.get(organizationId);
-  if (!set || set.size === 0) return;
-  const chunk = okChunk({ items });
-  for (const ctrl of set) {
-    try {
-      ctrl.enqueue(chunk);
-    } catch {
-      set.delete(ctrl);
-    }
-  }
+  publish(channel(organizationId), { items });
 }
 
 export function orgChannelCount(organizationId: string): number {
-  return channels.get(organizationId)?.size ?? 0;
+  return subscriberCount(channel(organizationId));
 }

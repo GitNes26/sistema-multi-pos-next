@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, no-var -- script de pruebas de carga */
 /**
  * Prueba de carga con tráfico simulado de VERDAD contra un servidor de pruebas.
  *

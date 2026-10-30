@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.54.0.1] — 2026-10-30
+- **Tipo:** `refactor` (Revision)
+- refactor: avisos en vivo (KDS, notificaciones, portal y mesas) centralizados en un modulo realtime con punto de enlace para Redis, sin cambiar el comportamiento actual
+
 ### [0.54.0.0] — 2026-10-30
 - **Tipo:** `feat` (Minor)
 - feat: escalabilidad con indices compuestos, cache con single-flight, cola de trabajos en segundo plano, pool de conexiones, conteos sin _count y pruebas de carga con trafico simulado

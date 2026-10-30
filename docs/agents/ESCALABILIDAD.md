@@ -104,7 +104,10 @@ implementar `CacheDriver` con Redis y llamar `setCacheDriver`.
 
 ## 6. Pendientes y riesgos (lo que NO escala todavía)
 
-1. **SSE y avisos en memoria** (`kds/live`, `notifications/live`, `portal/live`, `tables/live`): con más de una
+1. **SSE y avisos en memoria** (`kds/live`, `notifications/live`, `portal/live`, `tables/live`): los cuatro ya
+   publican y se suscriben por `src/lib/realtime` (registro único; hoy en memoria). Para varias réplicas basta
+   implementar `RealtimeDriver` con Redis (publicar, y al recibir llamar `deliverLocal`) y `setRealtimeDriver`;
+   no hay que tocar pantallas ni rutas. Mientras tanto, con más de una
    instancia, un evento solo llega a los clientes conectados a la instancia que lo generó. Antes de poner un
    balanceador con varias réplicas hace falta pub/sub compartido (Redis) o sticky sessions + broadcast por BD.
    Cada instancia Node llegó a ≈ 90 peticiones/s con un núcleo al 100 %, así que escalar horizontalmente es el
