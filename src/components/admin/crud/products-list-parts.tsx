@@ -2,13 +2,7 @@
 
 import { CalendarClock, CookingPot, Copy, Layers, Package, PackagePlus, Pencil, Scale, Sparkles, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { FormCombobox } from "@/components/base/form-combobox"
 import { EntityCell, RowActions, SegmentedFilter, StatusPill } from "@/components/base"
 import { categoryAccent } from "@/lib/catalog/placeholder"
 import { money } from "@/lib/pos/money"
@@ -67,55 +61,43 @@ export function ProductFilters({
         ]}
       />
 
-      <Select
-        value={value.productType || "all"}
-        onValueChange={(v) => onChange({ ...value, productType: (v === "all" ? "" : v) as ProductTypeFilter })}
-      >
-        <SelectTrigger className="w-auto min-w-40" aria-label="Tipo de producto">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {TYPE_OPTIONS.map((opt) => (
-            <SelectItem key={opt.value || "all"} value={opt.value || "all"}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <FormCombobox
+        ariaLabel="Tipo de producto"
+        className="min-w-44 space-y-0"
+        options={TYPE_OPTIONS.filter((o) => o.value).map((o) => ({ value: o.value, label: o.label }))}
+        value={value.productType}
+        onChange={(v) => onChange({ ...value, productType: v as ProductTypeFilter })}
+        onClear={() => onChange({ ...value, productType: "" })}
+        placeholder="Todos los tipos"
+        searchable={false}
+      />
 
-      <Select
-        value={value.variants || "all"}
-        onValueChange={(v) => onChange({ ...value, variants: (v === "all" ? "" : v) as ProductVariantsFilter })}
-      >
-        <SelectTrigger className="w-auto min-w-40" aria-label="Variantes">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Con y sin variantes</SelectItem>
-          <SelectItem value="with">Con variantes</SelectItem>
-          <SelectItem value="without">Sin variantes</SelectItem>
-        </SelectContent>
-      </Select>
+      <FormCombobox
+        ariaLabel="Variantes"
+        className="min-w-44 space-y-0"
+        options={[
+          { value: "with", label: "Con variantes" },
+          { value: "without", label: "Sin variantes" },
+        ]}
+        value={value.variants}
+        onChange={(v) => onChange({ ...value, variants: v as ProductVariantsFilter })}
+        onClear={() => onChange({ ...value, variants: "" })}
+        placeholder="Con y sin variantes"
+        searchable={false}
+      />
 
       {categories.length > 0 && (
-        <Select
-          value={value.categoryId || "all"}
-          onValueChange={(v) => onChange({ ...value, categoryId: v === "all" ? "" : v })}
-        >
-          <SelectTrigger className="w-auto min-w-44" aria-label="Categoría">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las categorías</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FormCombobox
+          ariaLabel="Categoría"
+          className="min-w-52 space-y-0"
+          options={categories.map((c) => ({ value: c.id, label: c.name }))}
+          value={value.categoryId}
+          onChange={(v) => onChange({ ...value, categoryId: v })}
+          onClear={() => onChange({ ...value, categoryId: "" })}
+          placeholder="Todas las categorías"
+          searchPlaceholder="Buscar categoría…"
+        />
       )}
-
     </div>
   )
 }

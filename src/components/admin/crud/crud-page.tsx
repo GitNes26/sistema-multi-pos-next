@@ -81,6 +81,19 @@ function isProducts(moduleKey: string) {
   return moduleKey === "products"
 }
 
+/** «Bebidas › Frías»: etiqueta con la ruta completa, ordenada para que cada padre quede junto a sus hijas. */
+function categoryPaths(rows: Record<string, unknown>[]) {
+  const byId = new Map(rows.map((r) => [String(r.id), r]))
+  const pathOf = (r: Record<string, unknown>, depth = 0): string => {
+    const parent = r.parentId ? byId.get(String(r.parentId)) : undefined
+    const name = String(r.name ?? "")
+    return parent && depth < 8 ? `${pathOf(parent, depth + 1)} › ${name}` : name
+  }
+  return rows
+    .map((r) => ({ id: String(r.id), name: pathOf(r) }))
+    .sort((a, b) => a.name.localeCompare(b.name, "es"))
+}
+
 const EXCEL_MODULES = ["products", "categories", "customers"]
 const isExcelModule = (m: string) => EXCEL_MODULES.includes(m)
 
@@ -263,11 +276,7 @@ export function CrudPage({
     crudApi
       .list("categories", { page: 1, pageSize: 200 })
       .then((res) =>
-        setProductCategories(
-          res.rows
-            .filter((r) => r.isActive !== false)
-            .map((r) => ({ id: String(r.id), name: String(r.name ?? "") }))
-        )
+        setProductCategories(categoryPaths(res.rows.filter((r) => r.isActive !== false)))
       )
       .catch(() => setProductCategories([]))
   }, [moduleKey])

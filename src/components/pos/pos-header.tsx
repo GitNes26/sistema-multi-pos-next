@@ -19,6 +19,7 @@ import type { BusinessMode } from "@/lib/auth/options";
 import packageJson from "../../../package.json";
 import { ScaleStatusButton } from "./scale-panel";
 import { StoreStatusSwitch } from "@/components/shared/store-status";
+import { ServicesToggle } from "./services-toggle";
 
 interface PosHeaderProps {
   /** true si la sesión puede abrir/cerrar caja (cash.open/cash.close). */
@@ -103,6 +104,7 @@ export function PosHeader({
 
       <div className="scrollbar-none ml-auto flex min-w-0 items-center gap-1.5 overflow-x-auto">
         <StoreStatusSwitch compact className="h-11 rounded-xl" />
+        <ServicesToggle />
         <ScaleStatusButton />
         {canOperateCash && (
         <button

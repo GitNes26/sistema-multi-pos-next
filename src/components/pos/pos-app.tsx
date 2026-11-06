@@ -11,6 +11,7 @@ import type { PosCatalog, PosCombo, PosLineItem, PosProduct, PosSalePayload } fr
 import { swalToast, swalError } from "@/lib/swal";
 import { bulkDisplay } from "@/stores/pos-store";
 import { usePosRefresh } from "@/hooks/use-pos-refresh";
+import { useCatalogLive } from "@/hooks/use-catalog-live";
 import { PosRoleGuide } from "./pos-role-guide";
 import { SupervisorProvider } from "./supervisor-gate";
 import { PosHeader } from "./pos-header";
@@ -167,6 +168,8 @@ export function PosApp({
   const editItem = usePosStore((s) => s.editItem);
   const clearTicket = usePosStore((s) => s.clearTicket);
   const refresh = usePosRefresh();
+  // Un servicio activado/desactivado desde otra caja (o la propia) se refleja al instante.
+  useCatalogLive(() => void refresh());
   const router = useRouter();
 
   // Layout sensible a la pantalla: en pantallas anchas el POS es de dos

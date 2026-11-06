@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.56.0.0] — 2026-11-06
+- **Tipo:** `feat` (Minor)
+- feat: filtros de productos con selector, categoria padre incluye subcategorias, alta de valores en lote con flechas, boton maximo en toppings, interruptor de servicios en el POS en tiempo real con permiso propio y directorio de negocios con sucursales, filtros y orden por cercania
+
 ### [0.55.0.0] — 2026-10-30
 - **Tipo:** `feat` (Minor)
 - feat: purga diaria de notificaciones en segundo plano, sondeos que se pausan con la pestana oculta y pantallas de carga con marca (splash con barra de avance y esqueletos al cambiar de pantalla)

@@ -842,6 +842,7 @@ export async function seedProduction() {
   const hadPayrollPermission = !!(await prisma.permission.findUnique({ where: { key: "payroll.manage" } }))
   const hadExpensePermissions = !!(await prisma.permission.findUnique({ where: { key: "expenses.view" } }))
   const hadPanelStats = !!(await prisma.permission.findUnique({ where: { key: "panel.stats" } }))
+  const hadToggleServices = !!(await prisma.permission.findUnique({ where: { key: "pos.toggle_services" } }))
 
   // Permisos
   for (const p of PERMISSIONS) {
@@ -908,6 +909,24 @@ export async function seedProduction() {
       const keys = plan.permissions.map(String)
       if (keys.includes("reports.view") && !keys.includes("panel.stats")) {
         await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: [...keys, "panel.stats"] } })
+      }
+    }
+  }
+  // Respaldo único de pos.toggle_services: quien ya administraba productos puede activar/desactivar servicios.
+  if (!hadToggleServices) {
+    const withProducts = await prisma.rolePermission.findMany({
+      where: { permissionKey: "products.manage", role: { isSystem: false } },
+      select: { organizationId: true, roleId: true, allowed: true },
+    })
+    for (const rp of withProducts) {
+      const dup = await prisma.rolePermission.findFirst({ where: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: "pos.toggle_services" } })
+      if (!dup) await prisma.rolePermission.create({ data: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: "pos.toggle_services", allowed: rp.allowed } })
+    }
+    for (const plan of await prisma.subscriptionPlan.findMany({ select: { id: true, permissions: true } })) {
+      if (!Array.isArray(plan.permissions)) continue
+      const keys = plan.permissions.map(String)
+      if (!keys.includes("pos.toggle_services") && (keys.includes("products.manage") || keys.includes("pos.use"))) {
+        await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: [...keys, "pos.toggle_services"] } })
       }
     }
   }

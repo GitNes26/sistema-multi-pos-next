@@ -22,6 +22,7 @@ import { swalToast } from "@/lib/swal"
 import { ProductBuilder, selectedOptionsKey } from "@/components/pos/product-builder"
 import type { PortalProduct, PortalVariantOption as PortalVariant } from "@/lib/portal/server"
 import { categoryBranchIds } from "@/lib/catalog/categories"
+import { useCatalogLive } from "@/hooks/use-catalog-live";
 
 export function StoreClient() {
   const router = useRouter();
@@ -69,6 +70,14 @@ export function StoreClient() {
       active = false;
     };
   }, [setStorefront, setFavorites]);
+
+  // Un servicio pausado o reanudado desde el POS se refleja en la tienda sin recargar la página.
+  useCatalogLive(() => {
+    portalApi
+      .storefront()
+      .then((store) => setStorefront(store.categories, store.products))
+      .catch(() => undefined);
+  });
 
   const filtered = useMemo(() => {
     let list = products;

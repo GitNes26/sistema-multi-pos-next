@@ -277,6 +277,29 @@ async function restoreProduct(organizationId: string, id: string) {
   ]);
 }
 
+/** La categoría elegida más todas las subcategorías anidadas (a cualquier profundidad). */
+export async function categoryWithDescendants(organizationId: string, categoryId: string): Promise<string[]> {
+  const all = await prisma.category.findMany({ where: { organizationId }, select: { id: true, parentId: true } });
+  const byParent = new Map<string, string[]>();
+  for (const c of all) {
+    if (!c.parentId) continue;
+    const list = byParent.get(c.parentId) ?? [];
+    list.push(c.id);
+    byParent.set(c.parentId, list);
+  }
+  const out = new Set<string>([categoryId]);
+  const queue = [categoryId];
+  while (queue.length) {
+    for (const child of byParent.get(queue.pop()!) ?? []) {
+      if (!out.has(child)) {
+        out.add(child);
+        queue.push(child);
+      }
+    }
+  }
+  return [...out];
+}
+
 export const productsModule: CrudModule<ProductDto> = {
   key: "products",
 
@@ -320,11 +343,12 @@ export const productsModule: CrudModule<ProductDto> = {
       variantsWhere = variantsParam === "with" ? { id: { in: ids } } : { id: { notIn: ids } };
     }
 
+    const categoryIds = categoryId ? await categoryWithDescendants(organizationId, categoryId) : undefined;
     const where: Prisma.ProductWhereInput = {
       organizationId,
       ...statusWhere,
       ...variantsWhere,
-      ...(categoryId ? { categoryId } : {}),
+      ...(categoryIds ? { categoryId: { in: categoryIds } } : {}),
       ...typeWhere,
       ...(q
         ? {

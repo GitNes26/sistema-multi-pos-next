@@ -101,6 +101,67 @@ function numOrEmpty(v: string): number | "" {
   return v === "" || v === undefined || v === null ? "" : Number(v)
 }
 
+/** Campos de texto/número de una lista de valores (sin switches ni casillas). */
+const VALUE_INPUTS = "input:not([type=checkbox]):not([role=switch])"
+
+/**
+ * Flechas ↑/↓ (y Enter) pasan al mismo campo de la fila siguiente o anterior dentro de una lista de
+ * valores; así se captura una lista larga sin tocar el ratón. Se engancha al contenedor de la lista.
+ */
+function navKeyDown(e: React.KeyboardEvent<HTMLElement>) {
+  const key = e.key
+  if (key !== "ArrowDown" && key !== "ArrowUp" && key !== "Enter") return
+  const target = e.target as HTMLInputElement
+  if (target.tagName !== "INPUT" || target.matches("[role=switch],[type=checkbox]")) return
+  const column = Array.from(e.currentTarget.querySelectorAll<HTMLInputElement>(VALUE_INPUTS)).filter((el) => el.type === target.type)
+  const at = column.indexOf(target)
+  if (at < 0) return
+  e.preventDefault()
+  const next = column[key === "ArrowUp" ? at - 1 : at + 1]
+  if (next) {
+    next.focus()
+    next.select?.()
+  }
+}
+
+/** «Agregar N» valores de golpe; el foco queda en el primero nuevo. */
+function BulkAddValues({ onAdd, label = "Agregar" }: { onAdd: (count: number) => void; label?: string }) {
+  const [count, setCount] = useState("5")
+  const root = useRef<HTMLSpanElement>(null)
+  const n = Math.min(50, Math.max(1, Math.floor(Number(count)) || 1))
+  const textInputs = (group: Element | null | undefined) =>
+    group ? Array.from(group.querySelectorAll<HTMLInputElement>(VALUE_INPUTS)).filter((el) => el.type === "text") : []
+  const add = () => {
+    const group = root.current?.closest("[data-values]")
+    const before = textInputs(group).length
+    onAdd(n)
+    requestAnimationFrame(() => textInputs(group)[before]?.focus())
+  }
+  return (
+    <span ref={root} className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <Input
+        type="number"
+        inputMode="numeric"
+        min={1}
+        max={50}
+        value={count}
+        onChange={(e) => setCount(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault()
+            add()
+          }
+        }}
+        aria-label="Cuántos valores agregar"
+        className="h-6 w-12 px-1.5 text-center text-xs"
+      />
+      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={add}>
+        <Plus className="size-3" /> {label} {n}
+      </Button>
+    </span>
+  )
+}
+
 const optionalNumber = () =>
   yup
     .number()
@@ -634,6 +695,14 @@ export function ProductsForm({
   const removeOption = (i: number) => {
     setOptions((prev) => prev.filter((_, idx) => idx !== i))
   }
+  const addVariantValues = (index: number, count: number) =>
+    setVariantOptions((prev) => prev.map((option, current) => current === index
+      ? { ...option, values: [...option.values, ...Array.from({ length: count }, () => ({ value: "" }))] }
+      : option))
+  const addOptionValues = (i: number, count: number) =>
+    setOptions((prev) => prev.map((o, idx) => idx === i
+      ? { ...o, values: [...o.values, ...Array.from({ length: count }, () => ({ value: "", extraPrice: 0 }))] }
+      : o))
   const addOptionValue = (i: number) => {
     updateOption(i, {
       values: [...options[i].values, { value: "", extraPrice: 0 }],
@@ -734,6 +803,8 @@ export function ProductsForm({
               if (productType === "standard" && !trackInventory) setTrackInventory(true)
               setProductType(kind)
             }
+            // Elegido el tipo, lo siguiente es el nombre.
+            requestAnimationFrame(() => document.getElementById("product-name")?.focus())
           }}
           showCustom={isFoodService || businessMode === "services"}
         />
@@ -1028,6 +1099,7 @@ export function ProductsForm({
                       <Trash2 className="size-4" />
                     </Button>
                   </div>
+                  <div data-values onKeyDown={navKeyDown} className="space-y-2">
                   <div className="grid gap-2 sm:grid-cols-2">
                     {option.values.map((item, valueIndex) => (
                       <div key={item.id ?? valueIndex} className="flex items-center gap-1.5">
@@ -1045,9 +1117,13 @@ export function ProductsForm({
                       </div>
                     ))}
                   </div>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => addVariantValue(index)}>
-                    <Plus className="size-3.5" /> Agregar valor
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => addVariantValue(index)}>
+                      <Plus className="size-3.5" /> Agregar valor
+                    </Button>
+                    <BulkAddValues onAdd={(n) => addVariantValues(index, n)} />
+                  </div>
+                  </div>
                 </div>
               ))}
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1132,6 +1208,19 @@ export function ProductsForm({
                         aria-label="Máximo de selección"
                         className="h-7 w-14 text-xs"
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        title="Poner el máximo igual al número de valores de este tópico"
+                        disabled={opt.values.filter((v) => v.value.trim()).length < 1}
+                        onClick={() =>
+                          updateOption(i, { maxSelect: Math.max(1, opt.values.filter((v) => v.value.trim()).length) })
+                        }
+                      >
+                        Todos ({opt.values.filter((v) => v.value.trim()).length})
+                      </Button>
                     </span>
                     <Button
                       type="button"
@@ -1143,7 +1232,7 @@ export function ProductsForm({
                       <Trash2 className="size-3.5" />
                     </Button>
                   </div>
-                  <div className="space-y-1.5">
+                  <div data-values onKeyDown={navKeyDown} className="space-y-1.5">
                     {opt.values.map((v, vi) => (
                       <div
                         key={vi}
@@ -1191,15 +1280,18 @@ export function ProductsForm({
                         </Button>
                       </div>
                     ))}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={() => addOptionValue(i)}
-                    >
-                      <Plus className="size-3" /> Valor
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => addOptionValue(i)}
+                      >
+                        <Plus className="size-3" /> Valor
+                      </Button>
+                      <BulkAddValues onAdd={(n) => addOptionValues(i, n)} />
+                    </div>
                   </div>
                   {saleVariants.length > 0 && (
                     <div className="space-y-2 rounded-lg border bg-muted/20 p-2.5">
@@ -1410,7 +1502,7 @@ export function ProductsForm({
                       <Trash2 className="size-3.5" />
                     </Button>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div data-values onKeyDown={navKeyDown} className="flex flex-wrap items-center gap-1.5">
                     {opt.values.map((v, vi) => (
                       <div
                         key={vi}
@@ -1443,6 +1535,7 @@ export function ProductsForm({
                     >
                       <Plus className="size-3" /> Valor
                     </Button>
+                    <BulkAddValues onAdd={(n) => addOptionValues(i, n)} />
                   </div>
                 </div>
               ))}
