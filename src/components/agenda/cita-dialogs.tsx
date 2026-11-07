@@ -5,10 +5,15 @@ import {
   Banknote,
   CalendarPlus,
   Check,
+  Car,
   CreditCard,
+  History,
   Loader2,
+  LogIn,
+  MapPin,
   MessageSquareText,
   Plus,
+  ShieldAlert,
   UserRound,
   X,
 } from "lucide-react";
@@ -52,6 +57,8 @@ interface CreateDialogProps {
   defaultEmployeeId?: string | null;
   defaultTime?: string;
   staff: AgendaStaff[];
+  canOverride?: boolean;
+  canManageAssets?: boolean;
   onCreated: () => void;
 }
 
@@ -62,6 +69,8 @@ export function CitaCreateDialog({
   defaultEmployeeId,
   defaultTime,
   staff,
+  canOverride = false,
+  canManageAssets = false,
   onCreated,
 }: CreateDialogProps) {
   const [employeeId, setEmployeeId] = useState<string>("");
@@ -78,6 +87,15 @@ export function CitaCreateDialog({
   const [savingNew, setSavingNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stations, setStations] = useState<{ id: string; name: string }[]>([]);
+  const [stationId, setStationId] = useState("");
+  const [assets, setAssets] = useState<{ id: string; label: string; reference: string | null; size: string | null }[]>([]);
+  const [assetId, setAssetId] = useState("");
+  const [creatingAsset, setCreatingAsset] = useState(false);
+  const [newAsset, setNewAsset] = useState({ label: "", reference: "", size: "" });
+  const [savingAsset, setSavingAsset] = useState(false);
+  // Cuando la política lo permite, quien administra puede continuar dejando un motivo.
+  const [overrideReason, setOverrideReason] = useState<string | null>(null);
 
   const loadCustomers = useCallback(async (q: string) => {
     try {
@@ -115,8 +133,32 @@ export function CitaCreateDialog({
     setDuration("30");
     setCustomerId("");
     setCustomers([]);
+    setStationId("");
+    setAssetId("");
+    setAssets([]);
+    setCreatingAsset(false);
+    setNewAsset({ label: "", reference: "", size: "" });
+    setOverrideReason(null);
     void loadCustomers("");
+    fetch("/api/crud/stations?pageSize=100")
+      .then((r) => r.json())
+      .then((d) => setStations((d.rows ?? []).filter((s: { isActive?: boolean }) => s.isActive !== false)))
+      .catch(() => setStations([]));
   }, [open, day, defaultEmployeeId, defaultTime, staff, loadCustomers]);
+
+  // Los vehículos o fichas son del cliente elegido: al cambiar de cliente se recargan.
+  useEffect(() => {
+    setAssetId("");
+    setCreatingAsset(false);
+    if (!customerId) {
+      setAssets([]);
+      return;
+    }
+    fetch(`/api/crud/assets?customerId=${encodeURIComponent(customerId)}&pageSize=50`)
+      .then((r) => r.json())
+      .then((d) => setAssets((d.rows ?? []).filter((a: { isActive?: boolean }) => a.isActive !== false)))
+      .catch(() => setAssets([]));
+  }, [customerId]);
 
   const employee = staff.find((s) => s.id === employeeId);
   const services = employee?.services ?? [];
@@ -143,6 +185,7 @@ export function CitaCreateDialog({
     if (!customerId) return setError("Selecciona o crea el cliente");
     if (!employeeId) return setError("Selecciona al personal");
     if (!serviceVariantId) return setError("Selecciona el servicio");
+    if (overrideReason !== null && overrideReason.trim().length < 3) return setError("Escribe el motivo para continuar");
     const startsAt = fromDateInput(fromYMD(date), time);
     const durationMin = Number(duration);
     if (!Number.isFinite(durationMin) || durationMin < 5 || durationMin > 480) {
@@ -160,10 +203,16 @@ export function CitaCreateDialog({
           startsAt: startsAt.toISOString(),
           durationMin,
           notes: notes || null,
+          stationId: stationId || null,
+          assetId: assetId || null,
+          ...(overrideReason !== null ? { overrideReason: overrideReason.trim() } : {}),
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error ?? "No se pudo crear la cita");
+      if (!res.ok || !data.ok) {
+        if (data.overridable && canOverride) setOverrideReason((r) => r ?? "");
+        throw new Error(data.error ?? "No se pudo crear la cita");
+      }
       toast.success("Cita agendada");
       onCreated();
       onOpenChange(false);
@@ -171,6 +220,29 @@ export function CitaCreateDialog({
       setError(err instanceof Error ? err.message : "No se pudo crear la cita");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const createAsset = async () => {
+    setSavingAsset(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/crud/assets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId, kind: "vehicle", label: newAsset.label, reference: newAsset.reference, size: newAsset.size }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "No se pudo guardar el vehículo");
+      setAssets((prev) => [data.row, ...prev]);
+      setAssetId(data.row.id);
+      setCreatingAsset(false);
+      setNewAsset({ label: "", reference: "", size: "" });
+      toast.success("Vehículo guardado en el cliente");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar el vehículo");
+    } finally {
+      setSavingAsset(false);
     }
   };
 
@@ -214,7 +286,7 @@ export function CitaCreateDialog({
           </Button>
           <Button onClick={() => void submit()} disabled={saving}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : <CalendarPlus className="size-4" />}
-            Agendar
+            {overrideReason !== null ? "Agendar con motivo" : "Agendar"}
           </Button>
         </>
       }
@@ -266,6 +338,45 @@ export function CitaCreateDialog({
             onChange={(e) => setDuration(e.target.value)}
           />
 
+        {stations.length > 0 && (
+          <FormCombobox label="Lugar de atención" value={stationId} onChange={setStationId} onClear={() => setStationId("")} options={stations.map((s) => ({ value: s.id, label: s.name }))} placeholder="Silla, bahía… (opcional)" icon={<MapPin className="size-4" />} />
+        )}
+
+        {customerId && (
+          <div className="sm:col-span-2">
+            <FormCombobox
+              label="Vehículo o ficha del cliente"
+              value={assetId}
+              onChange={setAssetId}
+              onClear={() => setAssetId("")}
+              onCreate={canManageAssets ? () => setCreatingAsset((v) => !v) : undefined}
+              options={assets.map((a) => ({ value: a.id, label: a.label, meta: [a.reference, a.size].filter(Boolean).join(" · ") || undefined }))}
+              placeholder={assets.length ? "Elige uno de sus vehículos (opcional)" : "Este cliente aún no tiene vehículos registrados"}
+              icon={<Car className="size-4" />}
+            />
+            {creatingAsset && (
+              <div className="mt-2 grid gap-2 rounded-xl border bg-muted/40 p-2.5 sm:grid-cols-3">
+                <InputGroupField label="Nombre" value={newAsset.label} onChange={(e) => setNewAsset({ ...newAsset, label: e.target.value })} placeholder="Tsuru gris" containerClassName="sm:col-span-1" />
+                <InputGroupField label="Placa" value={newAsset.reference} onChange={(e) => setNewAsset({ ...newAsset, reference: e.target.value })} placeholder="ABC-123" />
+                <InputGroupField label="Tamaño" value={newAsset.size} onChange={(e) => setNewAsset({ ...newAsset, size: e.target.value })} placeholder="chico, mediano…" />
+                <div className="sm:col-span-3">
+                  <Button size="sm" onClick={() => void createAsset()} disabled={savingAsset || !(newAsset.label.trim() || newAsset.reference.trim())}>
+                    {savingAsset ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                    Guardar vehículo
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {overrideReason !== null && (
+          <div className="space-y-1.5 rounded-xl border border-warning/50 bg-warning/10 p-3 sm:col-span-2">
+            <p className="flex items-center gap-1.5 text-sm font-medium"><ShieldAlert className="size-4" /> La política no lo permite normalmente</p>
+            <Textarea value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} placeholder="Motivo para continuar de todos modos (queda en el historial)" rows={2} />
+          </div>
+        )}
+
         <div className="sm:col-span-2">
           <Label className="text-xs">Notas</Label>
           <Textarea
@@ -290,11 +401,13 @@ const METHODS = [
 interface DetailDialogProps {
   cita: AgendaCita | null;
   canManage: boolean;
+  canCheckIn?: boolean;
+  canOverride?: boolean;
   onOpenChange: (open: boolean) => void;
   onChanged: () => void;
 }
 
-export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: DetailDialogProps) {
+export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverride = false, onOpenChange, onChanged }: DetailDialogProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
@@ -304,6 +417,20 @@ export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: D
   const [date, setDate] = useState("");
   const [duration, setDuration] = useState("");
   const [rescheduling, setRescheduling] = useState(false);
+  const [overrideReason, setOverrideReason] = useState<string | null>(null);
+  const [overrideFor, setOverrideFor] = useState<"reschedule" | "checkin" | null>(null);
+  const [events, setEvents] = useState<CitaEvent[] | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const loadHistory = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/agenda/${id}/history`, { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok && data.ok) setEvents(data.events);
+    } catch {
+      /* el historial es de consulta: si falla, se deja vacío */
+    }
+  }, []);
 
   useEffect(() => {
     if (!cita) return;
@@ -311,13 +438,18 @@ export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: D
     setResult(null);
     setCheckingOut(false);
     setRescheduling(false);
+    setOverrideReason(null);
+    setOverrideFor(null);
+    setEvents(null);
+    setShowHistory(false);
+    void loadHistory(cita.id);
     const d = new Date(cita.startsAt);
     setTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
     setDate(
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
     );
     setDuration(String(cita.durationMin));
-  }, [cita]);
+  }, [cita, loadHistory]);
 
   if (!cita) return null;
   const meta = STATUS_META[cita.status];
@@ -350,6 +482,7 @@ export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: D
   };
 
   const saveReschedule = async () => {
+    if (overrideFor === "reschedule" && (overrideReason ?? "").trim().length < 3) return setError("Escribe el motivo para continuar");
     setBusy(true);
     setError(null);
     try {
@@ -357,15 +490,49 @@ export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: D
       const res = await fetch(`/api/agenda/${cita.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startsAt: startsAt.toISOString(), durationMin: Number(duration) }),
+        body: JSON.stringify({ startsAt: startsAt.toISOString(), durationMin: Number(duration), ...(overrideFor === "reschedule" ? { overrideReason: overrideReason!.trim() } : {}) }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error ?? "No se pudo reprogramar");
+      if (!res.ok || !data.ok) {
+        if (data.overridable && canOverride) {
+          setOverrideFor("reschedule");
+          setOverrideReason((r) => r ?? "");
+        }
+        throw new Error(data.error ?? "No se pudo reprogramar");
+      }
       toast.success("Cita reprogramada");
       onChanged();
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo reprogramar");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const checkIn = async () => {
+    if (overrideFor === "checkin" && (overrideReason ?? "").trim().length < 3) return setError("Escribe el motivo para continuar");
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/agenda/${cita.id}/check-in`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(overrideFor === "checkin" ? { overrideReason: overrideReason!.trim() } : {}),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        if (data.overridable && canOverride) {
+          setOverrideFor("checkin");
+          setOverrideReason((r) => r ?? "");
+        }
+        throw new Error(data.error ?? "No se pudo registrar la llegada");
+      }
+      toast.success("Llegada registrada");
+      onChanged();
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo registrar la llegada");
     } finally {
       setBusy(false);
     }
@@ -435,6 +602,19 @@ export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: D
           <p className="text-xs text-muted-foreground">Personal</p>
           <p className="font-semibold">{cita.employee.fullName}</p>
         </div>
+        {(cita.station || cita.asset) && (
+          <div className="col-span-2 flex flex-wrap gap-x-4 gap-y-1">
+            {cita.station && (
+              <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5 text-muted-foreground" /> {cita.station.name}</span>
+            )}
+            {cita.asset && (
+              <span className="inline-flex items-center gap-1.5"><Car className="size-3.5 text-muted-foreground" /> {cita.asset.label}{cita.asset.reference ? ` · ${cita.asset.reference}` : ""}</span>
+            )}
+          </div>
+        )}
+        {cita.checkedInAt && (
+          <p className="col-span-2 inline-flex items-center gap-1.5 text-xs font-medium text-success-ink"><LogIn className="size-3.5" /> Llegó a las {fmtTime(cita.checkedInAt)}</p>
+        )}
         <div className="col-span-2">
           <p className="text-xs text-muted-foreground">Contacto</p>
           <p>
@@ -486,8 +666,14 @@ export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: D
               </div>
               <Button size="sm" onClick={() => void saveReschedule()} disabled={busy}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-                Guardar
+                {overrideFor === "reschedule" ? "Guardar con motivo" : "Guardar"}
               </Button>
+              {overrideFor === "reschedule" && (
+                <div className="w-full space-y-1.5 rounded-lg border border-warning/50 bg-warning/10 p-2.5">
+                  <p className="flex items-center gap-1.5 text-sm font-medium"><ShieldAlert className="size-4" /> La política no lo permite normalmente</p>
+                  <Textarea value={overrideReason ?? ""} onChange={(e) => setOverrideReason(e.target.value)} placeholder="Motivo para continuar de todos modos (queda en el historial)" rows={2} />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -534,6 +720,48 @@ export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: D
         </p>
       ) : null}
 
+      {canCheckIn && !cita.checkedInAt && (cita.status === "pending" || cita.status === "confirmed" || cita.status === "no_show") && (
+        <div className="space-y-2">
+          {overrideFor === "checkin" && (
+            <div className="space-y-1.5 rounded-lg border border-warning/50 bg-warning/10 p-2.5">
+              <p className="flex items-center gap-1.5 text-sm font-medium"><ShieldAlert className="size-4" /> Pasó la tolerancia de llegada</p>
+              <Textarea value={overrideReason ?? ""} onChange={(e) => setOverrideReason(e.target.value)} placeholder="Motivo para recibirlo de todos modos (queda en el historial)" rows={2} />
+            </div>
+          )}
+          <Button variant="outline" className="w-full" onClick={() => void checkIn()} disabled={busy}>
+            <LogIn className="size-4" /> {overrideFor === "checkin" ? "Recibir con motivo" : "Llegó"}
+          </Button>
+        </div>
+      )}
+
+      {/* Historial */}
+      <div className="space-y-2">
+        <button type="button" className="flex w-full items-center justify-between text-sm font-semibold" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}>
+          <span className="inline-flex items-center gap-1.5"><History className="size-4" /> Historial{events ? ` (${events.length})` : ""}</span>
+          <span className="text-xs font-medium text-primary">{showHistory ? "Ocultar" : "Ver"}</span>
+        </button>
+        {showHistory && (
+          <ol className="space-y-2 rounded-xl border bg-muted/30 p-3 text-sm">
+            {events === null ? (
+              <li className="text-muted-foreground">Cargando…</li>
+            ) : events.length === 0 ? (
+              <li className="text-muted-foreground">Sin movimientos registrados.</li>
+            ) : (
+              events.map((e) => (
+                <li key={e.id} className="space-y-0.5">
+                  <p className="font-medium">{describeEvent(e)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(e.at).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    {e.actor ? ` · ${e.actor}` : " · Automático"}
+                  </p>
+                  {e.reason && <p className="text-xs">Motivo: {e.reason}</p>}
+                </li>
+              ))
+            )}
+          </ol>
+        )}
+      </div>
+
       {/* Acciones de estatus */}
       {canManage && cita.status === "pending" && (
         <div className="flex gap-2">
@@ -566,4 +794,40 @@ export function CitaDetailDialog({ cita, canManage, onOpenChange, onChanged }: D
       )}
     </DialogComponent>
   );
+}
+
+// ── Historial ────────────────────────────────────────────────────────────────
+
+interface CitaEvent {
+  id: string;
+  type: string;
+  fromStartsAt: string | null;
+  toStartsAt: string | null;
+  fromStatus: string | null;
+  toStatus: string | null;
+  reason: string | null;
+  at: string;
+  actor: string | null;
+}
+
+const when = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleString("es-MX", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
+
+const statusLabel = (s: string | null) => (s && s in STATUS_META ? STATUS_META[s as keyof typeof STATUS_META].label : (s ?? "—"));
+
+function describeEvent(e: CitaEvent): string {
+  switch (e.type) {
+    case "created":
+      return `Cita agendada para ${when(e.toStartsAt)}`;
+    case "rescheduled":
+      return `Reagendada de ${when(e.fromStartsAt)} a ${when(e.toStartsAt)}`;
+    case "checked_in":
+      return "El cliente llegó";
+    case "auto_no_show":
+      return "Cita perdida: no llegó dentro de la tolerancia";
+    case "override":
+      return e.toStartsAt ? `Agendada para ${when(e.toStartsAt)} saltando la política` : "Llegada recibida fuera de la tolerancia";
+    default:
+      return `Estado: ${statusLabel(e.fromStatus)} → ${statusLabel(e.toStatus)}`;
+  }
 }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { agendaErrorResponse, requireAgendaSession } from "./helpers";
+import { agendaErrorResponse, overrideFromBody, requireAgendaSession } from "./helpers";
 import {
   createAppointment,
+  sweepLateAppointments,
   getAgendaAppointments,
   getAgendaStaff,
   getBookableServices,
@@ -23,6 +24,8 @@ export async function GET(req: NextRequest) {
     if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to <= from) {
       return NextResponse.json({ ok: false, error: "Rango de fechas inválido" }, { status: 400 });
     }
+    // Pierde las citas vencidas antes de listar, para que la agenda siempre esté al día.
+    await sweepLateAppointments(organizationId).catch(() => 0);
     const [appointments, staff, services] = await Promise.all([
       getAgendaAppointments(organizationId, from, to),
       getAgendaStaff(organizationId),
@@ -38,7 +41,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const guard = await requireAgendaSession("appointments.manage");
   if ("response" in guard) return guard.response;
-  const { organizationId } = guard;
+  const { organizationId, session } = guard;
 
   try {
     const body = await req.json();
@@ -56,6 +59,10 @@ export async function POST(req: NextRequest) {
       startsAt,
       durationMin: body.durationMin ? Number(body.durationMin) : undefined,
       notes: body.notes ? String(body.notes) : null,
+      stationId: body.stationId ? String(body.stationId) : null,
+      assetId: body.assetId ? String(body.assetId) : null,
+      actorUserId: session.user.id,
+      override: overrideFromBody(session, body),
     });
     return NextResponse.json({ ok: true, id: appointment.id }, { status: 201 });
   } catch (err) {

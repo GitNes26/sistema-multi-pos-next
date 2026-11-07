@@ -92,6 +92,12 @@ const ALL_ROUNDER_PERMISSIONS = [
   "appointments.manage",
   "reservations.view",
   "reservations.manage",
+  "appointments.checkin",
+  "assets.view",
+  "assets.manage",
+  "stations.view",
+  "service_orders.view",
+  "service_orders.manage",
 ] as const
 
 export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
@@ -139,6 +145,11 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
       "orders.view",
       "orders.manage",
       "locations.view",
+      "assets.view",
+      "assets.manage",
+      "stations.view",
+      "service_orders.view",
+      "service_orders.manage",
     ],
   },
   {
@@ -203,6 +214,12 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
       "locations.view",
       "appointments.view",
       "appointments.manage",
+      "appointments.checkin",
+      "assets.view",
+      "assets.manage",
+      "stations.view",
+      "service_orders.view",
+      "service_orders.manage",
     ],
   },
 
@@ -641,6 +658,36 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     sortOrder: 9,
   },
   {
+    id: "menu-ordenes-servicio",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Órdenes de servicio",
+    icon: "ClipboardList",
+    href: "/admin/service-orders",
+    permissionKey: "service_orders.view",
+    sortOrder: 10,
+  },
+  {
+    id: "menu-vehiculos",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Vehículos y fichas",
+    icon: "Car",
+    href: "/admin/assets",
+    permissionKey: "assets.view",
+    sortOrder: 11,
+  },
+  {
+    id: "menu-bahias",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Bahías y lugares",
+    icon: "LayoutGrid",
+    href: "/admin/stations",
+    permissionKey: "stations.view",
+    sortOrder: 12,
+  },
+  {
     id: "menu-reservaciones",
     parentId: "menu-operacion",
     type: "item",
@@ -843,6 +890,7 @@ export async function seedProduction() {
   const hadExpensePermissions = !!(await prisma.permission.findUnique({ where: { key: "expenses.view" } }))
   const hadPanelStats = !!(await prisma.permission.findUnique({ where: { key: "panel.stats" } }))
   const hadToggleServices = !!(await prisma.permission.findUnique({ where: { key: "pos.toggle_services" } }))
+  const hadVerticalPermissions = !!(await prisma.permission.findUnique({ where: { key: "assets.view" } }))
 
   // Permisos
   for (const p of PERMISSIONS) {
@@ -928,6 +976,36 @@ export async function seedProduction() {
       if (!keys.includes("pos.toggle_services") && (keys.includes("products.manage") || keys.includes("pos.use"))) {
         await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: [...keys, "pos.toggle_services"] } })
       }
+    }
+  }
+  // Respaldo único de los permisos de verticales (vehículos, lugares, política de citas, llegada, órdenes):
+  // quien ya podía hacer lo equivalente en un rol propio lo conserva, y los planes con lista guardada los incluyen.
+  if (!hadVerticalPermissions) {
+    const MAP: [string, string[]][] = [
+      ["customers.view", ["assets.view"]],
+      ["customers.manage", ["assets.manage"]],
+      ["locations.view", ["stations.view"]],
+      ["locations.manage", ["stations.manage"]],
+      ["appointments.manage", ["appointments.checkin"]],
+      ["settings.manage", ["appointments.policy", "appointments.override", "service_flows.manage"]],
+    ]
+    const existing = await prisma.rolePermission.findMany({
+      where: { permissionKey: { in: MAP.map(([k]) => k) }, role: { isSystem: false } },
+      select: { organizationId: true, roleId: true, permissionKey: true, allowed: true },
+    })
+    for (const rp of existing) {
+      for (const next of MAP.find(([k]) => k === rp.permissionKey)?.[1] ?? []) {
+        const dup = await prisma.rolePermission.findFirst({ where: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: next } })
+        if (!dup) await prisma.rolePermission.create({ data: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: next, allowed: rp.allowed } })
+      }
+    }
+    const NEW_KEYS = ["appointments.checkin", "appointments.override", "appointments.policy", "assets.view", "assets.manage", "stations.view", "stations.manage", "service_orders.view", "service_orders.manage", "service_flows.manage"]
+    for (const plan of await prisma.subscriptionPlan.findMany({ select: { id: true, permissions: true } })) {
+      if (!Array.isArray(plan.permissions)) continue
+      const keys = plan.permissions.map(String)
+      if (!keys.includes("pos.use")) continue
+      const next = [...new Set([...keys, ...NEW_KEYS])]
+      if (next.length !== keys.length) await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: next } })
     }
   }
   // Respaldo único de payroll.manage: la nómina colgaba de employees.manage.

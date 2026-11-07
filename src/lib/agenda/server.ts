@@ -3,6 +3,17 @@ import { prisma } from "@/lib/db";
 import { round2 } from "@/lib/pos/money";
 import { createSale, PosError } from "@/lib/pos/server";
 import type { PosSalePayload } from "@/types/pos";
+import {
+  assertBookingWindow,
+  assertCanReschedule,
+  assertWithinBusinessHours,
+  getAppointmentPolicy,
+  humanMinutes,
+  PolicyError,
+  recordAppointmentEvent,
+  sweepLateAppointments,
+  type PolicyOverride,
+} from "./policy";
 
 // ── Agenda / citas (services / hybrid) ──────────────────────────────────────
 // Modelo: un empleado (Employee) ofrece servicios (variantes de producto sin
@@ -49,6 +60,10 @@ export interface AgendaAppointment {
   durationMin: number;
   notes: string | null;
   saleId: string | null;
+  checkedInAt: string | null;
+  rescheduleCount: number;
+  station: { id: string; name: string } | null;
+  asset: { id: string; label: string; reference: string | null } | null;
   customer: { id: string; fullName: string; phone: string | null } | null;
   employee: { id: string; fullName: string };
   service: { variantId: string; name: string; price: number };
@@ -113,7 +128,7 @@ export async function getBookableServices(organizationId: string) {
       name: true,
       variants: {
         where: { isActive: true },
-        select: { id: true, price: true },
+        select: { id: true, name: true, price: true },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -124,6 +139,7 @@ export async function getBookableServices(organizationId: string) {
       variantId: v.id,
       productId: p.id,
       name: p.name,
+      variantName: v.name && v.name !== "Default" ? v.name : null,
       price: Number(v.price),
     }))
   );
@@ -148,6 +164,10 @@ export async function getAgendaAppointments(
       durationMin: true,
       notes: true,
       saleId: true,
+      checkedInAt: true,
+      rescheduleCount: true,
+      station: { select: { id: true, name: true } },
+      asset: { select: { id: true, label: true, reference: true } },
       customer: { select: { id: true, fullName: true, phone: true } },
       employee: { select: { id: true, fullName: true } },
       variant: { select: { id: true, price: true, product: { select: { name: true } } } },
@@ -162,6 +182,10 @@ export async function getAgendaAppointments(
     durationMin: r.durationMin,
     notes: r.notes,
     saleId: r.saleId,
+    checkedInAt: r.checkedInAt?.toISOString() ?? null,
+    rescheduleCount: r.rescheduleCount,
+    station: r.station,
+    asset: r.asset,
     customer: r.customer ? { id: r.customer.id, fullName: r.customer.fullName, phone: r.customer.phone } : null,
     employee: { id: r.employee.id, fullName: r.employee.fullName },
     service: { variantId: r.variant.id, name: r.variant.product.name, price: Number(r.variant.price) },
@@ -202,6 +226,29 @@ export async function hasTimeConflict(
   return Boolean(clash);
 }
 
+/** Conflicto de lugar: otra cita activa en la misma silla/bahía en el rango. */
+export async function hasStationConflict(
+  organizationId: string,
+  stationId: string,
+  startsAt: Date,
+  endsAt: Date,
+  excludeId?: string,
+  db: Prisma.TransactionClient | typeof prisma = prisma
+): Promise<boolean> {
+  const clash = await db.appointment.findFirst({
+    where: {
+      organizationId,
+      stationId,
+      status: { notIn: ["cancelled", "no_show"] },
+      id: excludeId ? { not: excludeId } : undefined,
+      startsAt: { lt: endsAt },
+      endsAt: { gt: startsAt },
+    },
+    select: { id: true },
+  });
+  return Boolean(clash);
+}
+
 export interface AppointmentCreateInput {
   customerId: string;
   employeeId: string;
@@ -209,15 +256,30 @@ export interface AppointmentCreateInput {
   startsAt: Date;
   durationMin?: number;
   notes?: string | null;
+  stationId?: string | null;
+  assetId?: string | null;
+  /** Quién la registra (historial). */
+  actorUserId?: string | null;
+  /** Saltarse la anticipación mínima (queda registrado con su motivo). */
+  override?: PolicyOverride | null;
 }
 
-/** Crea una cita validando personal, asignación y conflicto de horario. */
+/** Crea una cita validando horario del negocio, política, personal, asignación y conflicto de horario. */
 export async function createAppointment(organizationId: string, input: AppointmentCreateInput) {
   const customer = await prisma.customer.findFirst({
     where: { id: input.customerId, organizationId },
     select: { id: true },
   });
   if (!customer) throw new AgendaError("Cliente no encontrado en esta organización", 404);
+
+  if (input.assetId) {
+    const asset = await prisma.customerAsset.findFirst({ where: { id: input.assetId, organizationId, customerId: input.customerId, isActive: true }, select: { id: true } });
+    if (!asset) throw new AgendaError("El vehículo o ficha no pertenece a este cliente", 404);
+  }
+  if (input.stationId) {
+    const station = await prisma.serviceStation.findFirst({ where: { id: input.stationId, organizationId, isActive: true }, select: { id: true } });
+    if (!station) throw new AgendaError("Lugar de atención no encontrado", 404);
+  }
 
   const employee = await prisma.employee.findFirst({
     where: { id: input.employeeId, organizationId, isActive: true },
@@ -237,12 +299,19 @@ export async function createAppointment(organizationId: string, input: Appointme
     select: { id: true },
   });
 
+  const policy = await getAppointmentPolicy(organizationId);
+  assertBookingWindow(policy, input.startsAt, input.override);
+  await assertWithinBusinessHours(organizationId, location?.id ?? null, input.startsAt, endsAt, policy);
+
   try {
     return await prisma.$transaction(async (tx) => {
       if (await hasTimeConflict(organizationId, input.employeeId, input.startsAt, endsAt, undefined, tx)) {
         throw new AgendaError("El empleado ya tiene una cita en ese horario", 409);
       }
-      return tx.appointment.create({
+      if (input.stationId && (await hasStationConflict(organizationId, input.stationId, input.startsAt, endsAt, undefined, tx))) {
+        throw new AgendaError("Ese lugar de atención ya está ocupado en ese horario", 409);
+      }
+      const created = await tx.appointment.create({
         data: {
           organizationId,
           locationId: location?.id ?? null,
@@ -253,12 +322,24 @@ export async function createAppointment(organizationId: string, input: Appointme
           startsAt: input.startsAt,
           endsAt,
           durationMin,
+          stationId: input.stationId || null,
+          assetId: input.assetId || null,
           notes: input.notes?.trim() ? input.notes.trim() : null,
         },
       });
+      await recordAppointmentEvent(tx, {
+        organizationId,
+        appointmentId: created.id,
+        type: input.override ? "override" : "created",
+        toStartsAt: input.startsAt,
+        toStatus: "pending",
+        actorUserId: input.actorUserId,
+        reason: input.override?.reason ?? null,
+      });
+      return created;
     }, { isolationLevel: "Serializable" });
   } catch (err) {
-    if (err instanceof AgendaError) throw err;
+    if (err instanceof AgendaError || err instanceof PolicyError) throw err;
     if ((err as { code?: string })?.code === "P2034") {
       throw new AgendaError("El empleado ya tiene una cita en ese horario", 409);
     }
@@ -269,7 +350,17 @@ export async function createAppointment(organizationId: string, input: Appointme
 export async function updateAppointment(
   organizationId: string,
   id: string,
-  changes: { status?: $Enums.AppointmentStatus; startsAt?: Date; durationMin?: number; notes?: string | null }
+  changes: {
+    status?: $Enums.AppointmentStatus;
+    startsAt?: Date;
+    durationMin?: number;
+    notes?: string | null;
+    stationId?: string | null;
+    /** Quién hace el cambio (historial). */
+    actorUserId?: string | null;
+    /** Saltarse el tiempo mínimo o el límite de reagendas (queda registrado con su motivo). */
+    override?: PolicyOverride | null;
+  }
 ) {
   if (changes.status === "completed") {
     throw new AgendaError("Usa el cobro para completar la cita", 400);
@@ -281,6 +372,7 @@ export async function updateAppointment(
     throw new AgendaError("Duración inválida (5–480 min)", 400);
   }
 
+  const policy = await getAppointmentPolicy(organizationId);
   try {
     return await prisma.$transaction(async (tx) => {
       const appointment = await tx.appointment.findFirst({ where: { id, organizationId } });
@@ -294,10 +386,20 @@ export async function updateAppointment(
       const durationMin = changes.durationMin ?? appointment.durationMin;
       const endsAt = new Date(startsAt.getTime() + durationMin * 60000);
       const rescheduled = startsAt.getTime() !== appointment.startsAt.getTime() || durationMin !== appointment.durationMin;
+      const moved = startsAt.getTime() !== appointment.startsAt.getTime();
       if (rescheduled) {
         if (terminal) throw new AgendaError("No se puede reprogramar una cita cerrada", 409);
+        if (moved) {
+          // Reagendar: tiempo mínimo antes de la cita, límite de reagendas y horario del negocio.
+          assertCanReschedule(policy, appointment, changes.override);
+          assertBookingWindow(policy, startsAt, changes.override);
+          await assertWithinBusinessHours(organizationId, appointment.locationId, startsAt, endsAt, policy, tx);
+        }
         if (await hasTimeConflict(organizationId, appointment.employeeId, startsAt, endsAt, id, tx)) {
           throw new AgendaError("El empleado ya tiene una cita en ese horario", 409);
+        }
+        if (appointment.stationId && (await hasStationConflict(organizationId, appointment.stationId, startsAt, endsAt, id, tx))) {
+          throw new AgendaError("Ese lugar de atención ya está ocupado en ese horario", 409);
         }
       }
 
@@ -309,16 +411,39 @@ export async function updateAppointment(
           endsAt,
           durationMin,
           notes: changes.notes !== undefined ? (changes.notes?.trim() || null) : appointment.notes,
+          ...(moved ? { rescheduleCount: { increment: 1 } } : {}),
         },
       });
       if (updated.count !== 1) throw new AgendaError("La cita cambió mientras se actualizaba", 409);
+      const nextStatus = changes.status ?? appointment.status;
+      if (moved) {
+        await recordAppointmentEvent(tx, {
+          organizationId,
+          appointmentId: id,
+          type: "rescheduled",
+          fromStartsAt: appointment.startsAt,
+          toStartsAt: startsAt,
+          actorUserId: changes.actorUserId,
+          reason: changes.override?.reason ?? null,
+        });
+      }
+      if (nextStatus !== appointment.status) {
+        await recordAppointmentEvent(tx, {
+          organizationId,
+          appointmentId: id,
+          type: "status",
+          fromStatus: appointment.status,
+          toStatus: nextStatus,
+          actorUserId: changes.actorUserId,
+        });
+      }
       return tx.appointment.findUniqueOrThrow({
         where: { id },
         select: { id: true, status: true, startsAt: true, endsAt: true, durationMin: true, notes: true },
       });
     }, { isolationLevel: "Serializable" });
   } catch (err) {
-    if (err instanceof AgendaError) throw err;
+    if (err instanceof AgendaError || err instanceof PolicyError) throw err;
     if ((err as { code?: string })?.code === "P2034") throw new AgendaError("La cita cambió mientras se actualizaba", 409);
     throw err;
   }
@@ -351,8 +476,9 @@ export async function checkoutAppointment(
   });
   if (!appointment) throw new AgendaError("Cita no encontrada", 404);
   if (appointment.status === "completed") throw new AgendaError("La cita ya fue cobrada", 409);
-  if (appointment.status === "cancelled" || appointment.status === "no_show") {
-    throw new AgendaError("No se puede cobrar una cita cancelada o sin asistencia", 409);
+  if (appointment.status === "cancelled") throw new AgendaError("No se puede cobrar una cita cancelada", 409);
+  if (appointment.status === "no_show") {
+    throw new AgendaError("La cita se marcó como «No asistió» (pasó la tolerancia sin registrar la llegada). Usa «Llegó» con un motivo para recibirla y luego cóbrala.", 409);
   }
 
   // Reclamar el cobro antes de crear la venta para que dos solicitudes
@@ -362,6 +488,12 @@ export async function checkoutAppointment(
     data: { status: "completed" },
   });
   if (claimed.count !== 1) throw new AgendaError("La cita ya fue cobrada o cambió de estado", 409);
+
+  // Cobrar implica que el cliente está presente: si nadie pulsó «Llegó», se registra aquí (dentro de la tolerancia).
+  const arrival = await prisma.appointment.updateMany({ where: { id: appointment.id, organizationId, checkedInAt: null }, data: { checkedInAt: new Date() } });
+  if (arrival.count === 1) {
+    await recordAppointmentEvent(prisma, { organizationId, appointmentId: appointment.id, type: "checked_in", toStatus: "completed", actorUserId: ctx.userId, reason: "Registrada al cobrar" });
+  }
 
   const price = Number(appointment.variant.price);
   const taxRate = Number(appointment.variant.product.taxRate);
@@ -418,6 +550,15 @@ export async function checkoutAppointment(
   await prisma.appointment.updateMany({
     where: { id: appointment.id, organizationId, status: "completed", saleId: null },
     data: { status: "completed", saleId: sale.id },
+  });
+  await recordAppointmentEvent(prisma, {
+    organizationId,
+    appointmentId: appointment.id,
+    type: "status",
+    fromStatus: appointment.status,
+    toStatus: "completed",
+    actorUserId: ctx.userId,
+    reason: `Cobrada · venta ${sale.saleNumber}`,
   });
 
   return { saleId: sale.id, saleNumber: sale.saleNumber, locationName: sale.locationName, total };
@@ -476,3 +617,39 @@ export async function syncEmployeeServices(
   });
   return { count: created.count };
 }
+
+/**
+ * «Llegó»: el cliente se presentó. Debe ser antes de que termine la tolerancia; pasada, la cita ya se perdió
+ * (solo quien administra puede recibirlo con un motivo, y queda en el historial).
+ */
+export async function checkInAppointment(organizationId: string, id: string, opts: { actorUserId?: string | null; override?: PolicyOverride | null }) {
+  const appointment = await prisma.appointment.findFirst({ where: { id, organizationId } });
+  if (!appointment) throw new AgendaError("Cita no encontrada", 404);
+  if (appointment.checkedInAt) throw new AgendaError("El cliente ya fue registrado como llegado", 409);
+  if (appointment.status === "completed" || appointment.status === "cancelled") {
+    throw new AgendaError("La cita ya está cerrada", 409);
+  }
+  const policy = await getAppointmentPolicy(organizationId);
+  const limit = appointment.startsAt.getTime() + policy.toleranceMinutes * 60_000;
+  const late = Date.now() > limit;
+  if (late && !opts.override) {
+    throw new PolicyError(`Pasó la tolerancia de ${humanMinutes(policy.toleranceMinutes)}: la cita se perdió.`, "tolerance");
+  }
+  const claimed = await prisma.appointment.updateMany({
+    where: { id, organizationId, checkedInAt: null, status: { in: ["pending", "confirmed", "no_show"] } },
+    data: { checkedInAt: new Date(), status: "confirmed" },
+  });
+  if (claimed.count !== 1) throw new AgendaError("La cita cambió mientras se registraba la llegada", 409);
+  await recordAppointmentEvent(prisma, {
+    organizationId,
+    appointmentId: id,
+    type: late ? "override" : "checked_in",
+    fromStatus: appointment.status,
+    toStatus: "confirmed",
+    actorUserId: opts.actorUserId,
+    reason: late ? (opts.override?.reason ?? null) : null,
+  });
+  return { checkedInAt: new Date().toISOString() };
+}
+
+export { sweepLateAppointments };

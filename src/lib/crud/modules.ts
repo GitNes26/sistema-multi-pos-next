@@ -11,6 +11,8 @@ import { cashRegistersModule } from "./modules/cash-registers";
 import { cedisModule } from "./modules/cedis";
 import { promotionsModule } from "./modules/promotions";
 import { expensesModule } from "./modules/expenses";
+import { assetsModule } from "./modules/assets";
+import { stationsModule } from "./modules/stations";
 
 // FASE 7 — Registro central de módulos CRUD del admin.
 // El metadata de UI vive en components/admin/crud/crud-config.ts (lado cliente).
@@ -96,6 +98,20 @@ export const CRUD_MODULES: Record<string, CrudRegistryEntry> = {
     description: "Ofertas, descuentos y cupones.",
     permissionView: "promotions.view",
     permissionManage: "promotions.manage",
+  },
+  assets: {
+    module: assetsModule as CrudModule<unknown>,
+    title: "Vehículos y fichas",
+    description: "Lo que cada cliente lleva a atender: vehículos, fichas de estilo o equipos.",
+    permissionView: "assets.view",
+    permissionManage: "assets.manage",
+  },
+  stations: {
+    module: stationsModule as CrudModule<unknown>,
+    title: "Bahías y lugares",
+    description: "Sillas, bahías o cabinas donde se atiende a los clientes.",
+    permissionView: "stations.view",
+    permissionManage: "stations.manage",
   },
   expenses: {
     module: expensesModule as CrudModule<unknown>,

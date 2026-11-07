@@ -176,7 +176,12 @@ export function startJobRunner(intervalMs = 5_000) {
   gg.__mpJobTimer = setInterval(() => {
     tick += 1
     void (async () => {
-      if (tick % 12 === 0) await recoverStaleJobs()
+      if (tick % 12 === 0) {
+        await recoverStaleJobs()
+        // Citas cuya hora + tolerancia ya pasó sin que el cliente llegara: se pierden solas.
+        const { sweepLateAppointments } = await import("@/lib/agenda/policy")
+        await sweepLateAppointments().catch((err) => console.error("[jobs] citas:", err))
+      }
       // Al arrancar (con un minuto de margen) y luego cada hora se revisa si toca el mantenimiento diario.
       if (tick === 12 || tick % 720 === 0) await ensureDailyJobs()
       await runDueJobs()

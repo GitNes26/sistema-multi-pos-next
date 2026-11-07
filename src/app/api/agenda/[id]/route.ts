@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateAppointment } from "@/lib/agenda/server";
-import { agendaErrorResponse, requireAgendaSession } from "../helpers";
+import { agendaErrorResponse, overrideFromBody, requireAgendaSession } from "../helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const guard = await requireAgendaSession("appointments.manage");
   if ("response" in guard) return guard.response;
-  const { organizationId } = guard;
+  const { organizationId, session } = guard;
   const { id } = await ctx.params;
 
   try {
@@ -23,6 +23,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       startsAt: body.startsAt ? new Date(body.startsAt) : undefined,
       durationMin: body.durationMin !== undefined ? Number(body.durationMin) : undefined,
       notes: body.notes !== undefined ? String(body.notes) : undefined,
+      actorUserId: session.user.id,
+      override: overrideFromBody(session, body),
     });
     return NextResponse.json({ ok: true, appointment: updated });
   } catch (err) {

@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.57.0.0] — 2026-11-07
+- **Tipo:** `feat` (Minor)
+- feat: verticales fase 0 y 1 (vehiculos del cliente, bahias, politica de citas con horario, reagenda y tolerancia, ordenes de servicio con flujos por etapas, llavero, tablero en vivo y cobro ligado a venta), permisos propios por rol y avisos al cliente por canales intercambiables
+
 ### [0.56.0.0] — 2026-11-06
 - **Tipo:** `feat` (Minor)
 - feat: filtros de productos con selector, categoria padre incluye subcategorias, alta de valores en lote con flechas, boton maximo en toppings, interruptor de servicios en el POS en tiempo real con permiso propio y directorio de negocios con sucursales, filtros y orden por cercania

@@ -250,6 +250,9 @@ model User {
   recipientNotifications        Notification[]          @relation("NotificationRecipient")
   invitationsSent               UserInvitation[]        @relation("UserInvitationInvitedBy")
   pushSubscriptions             PushSubscription[]
+  appointmentEvents             AppointmentEvent[]
+  serviceOrdersCreated          ServiceOrder[]
+  serviceOrderEvents            ServiceOrderEvent[]
 
   @@index([phone])
   @@map("users")
@@ -345,7 +348,13 @@ model Organization {
   subscriptionPayments   SubscriptionPayment[]
   pointPaymentIntents    PointPaymentIntent[]
 
-  tableCarts             TableCart[]
+  tableCarts        TableCart[]
+  customerAssets    CustomerAsset[]
+  serviceStations   ServiceStation[]
+  appointmentPolicy AppointmentPolicy?
+  appointmentEvents AppointmentEvent[]
+  serviceFlows      ServiceFlow[]
+  serviceOrders     ServiceOrder[]
 
   @@map("organizations")
 }
@@ -450,21 +459,21 @@ model Profile {
 }
 
 model CompanyProfile {
-  id             String   @id @default(cuid())
-  organizationId String   @unique
-  legalName      String?
-  tradeName      String?
-  taxId          String?
-  logoUrl        String?
-  address        String?
-  city           String?
-  state          String?
-  postalCode     String?
-  country        String?
-  phone          String?
-  email          String?
-  website        String?
-  ticketFooter   String?
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  legalName       String?
+  tradeName       String?
+  taxId           String?
+  logoUrl         String?
+  address         String?
+  city            String?
+  state           String?
+  postalCode      String?
+  country         String?
+  phone           String?
+  email           String?
+  website         String?
+  ticketFooter    String?
   /// Datos para recibir transferencias; se muestran en el cobro del POS cuando están habilitados.
   transferEnabled Boolean  @default(false)
   transferBank    String?
@@ -473,8 +482,8 @@ model CompanyProfile {
   transferAccount String?
   transferCard    String?
   transferNote    String?  @db.VarChar(300)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
@@ -703,13 +712,15 @@ model Employee {
   inventoryMovements InventoryMovement[]
   inventoryRevisions InventoryRevision[]
   orderStatusHistory OrderStatusHistory[]
-  driverOrders       Order[]             @relation("OrderDriver")
+  driverOrders       Order[]              @relation("OrderDriver")
   orderPreparation   OrderPreparation[]
   notifications      Notification[]
   commissions        EmployeeCommission[]
   appointments       Appointment[]
   services           EmployeeService[]
   payrollEntries     PayrollEntry[]
+  stationsDefault    ServiceStation[]
+  serviceOrders      ServiceOrder[]
 
   @@unique([organizationId, employeeCode])
   @@unique([organizationId, userId])
@@ -753,6 +764,8 @@ model Customer {
   creditPaymentIntents  CreditPaymentIntent[]
   promotionCustomerUses PromotionCustomerUse[]
   segments              CustomerSegment[]
+  assets                CustomerAsset[]
+  serviceOrders         ServiceOrder[]
 
   @@unique([organizationId, customerCode])
   @@unique([organizationId, userId])
@@ -894,6 +907,8 @@ model Location {
   dailySalesSummaries  DailySalesSummary[]
   hourlySnapshots      HourlySalesSnapshot[]
   inventorySnapshots   InventorySnapshot[]
+  serviceStations      ServiceStation[]
+  serviceOrders        ServiceOrder[]
 
   @@map("locations")
 }
@@ -1115,6 +1130,7 @@ model Product {
   inventorySnapshots     InventorySnapshot[]
   transferItems          TransferItem[]
   shoppingListItems      ShoppingListItem[]
+  serviceFlows           ServiceFlowService[]
 
   @@index([organizationId, isActive, name])
   @@index([organizationId, categoryId])
@@ -1188,6 +1204,7 @@ model ProductVariant {
   appointments           Appointment[]
   employeeServices       EmployeeService[]
   reservationItems       ReservationItem[]
+  serviceOrderItems      ServiceOrderItem[]
 
   @@index([barcode])
   @@index([organizationId, isActive])
@@ -1600,6 +1617,7 @@ model Sale {
   reservations        Reservation[]
   returns             SaleReturn[]
   commissions         EmployeeCommission[]
+  serviceOrder        ServiceOrder?
 
   @@index([organizationId, createdAt])
   @@index([organizationId, locationId, createdAt])
@@ -2002,13 +2020,13 @@ model Table {
 /// Carrito compartido de una mesa, armado por los comensales desde el menú del QR.
 /// Lo ve el cajero/host en vivo; al enviarlo se convierte en comanda de cocina.
 model TableCart {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
-  tableId        String       @unique
+  tableId        String   @unique
   /// [{ key, productId, variantId, quantity, optionValueIds[], notes }]
   items          Json
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
   table        Table        @relation(fields: [tableId], references: [id], onDelete: Cascade)
@@ -2184,34 +2202,46 @@ enum AppointmentStatus {
 }
 
 model Appointment {
-  id             String            @id @default(cuid())
-  organizationId String
-  locationId     String?
-  customerId     String?
+  id              String            @id @default(cuid())
+  organizationId  String
+  locationId      String?
+  customerId      String?
   // Personal asignado (empleado que presta el servicio)
-  employeeId     String
+  employeeId      String
   // Servicio a realizar (variante del producto con precio)
-  variantId      String
-  status         AppointmentStatus @default(pending)
-  startsAt       DateTime
-  endsAt         DateTime
-  durationMin    Int               @default(30)
-  notes          String?
+  variantId       String
+  status          AppointmentStatus @default(pending)
+  startsAt        DateTime
+  endsAt          DateTime
+  durationMin     Int               @default(30)
+  notes           String?
   // Venta generada por el checkout (cobro de la cita)
-  saleId         String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  saleId          String?
+  // Silla / bahía / lugar asignado y el vehículo o ficha del cliente que se atiende (opcionales)
+  stationId       String?
+  assetId         String?
+  // Llegada del cliente («Llegó»); sin ella, pasada la tolerancia la cita se pierde (no_show)
+  checkedInAt     DateTime?
+  // Veces que se reagendó (la política puede limitarlas)
+  rescheduleCount Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
-  organization Organization   @relation(fields: [organizationId], references: [id])
-  location     Location?      @relation(fields: [locationId], references: [id])
-  customer     Customer?      @relation(fields: [customerId], references: [id])
-  employee     Employee       @relation(fields: [employeeId], references: [id])
-  variant      ProductVariant @relation(fields: [variantId], references: [id])
-  sale         Sale?          @relation(fields: [saleId], references: [id])
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  location     Location?          @relation(fields: [locationId], references: [id])
+  customer     Customer?          @relation(fields: [customerId], references: [id])
+  employee     Employee           @relation(fields: [employeeId], references: [id])
+  variant      ProductVariant     @relation(fields: [variantId], references: [id])
+  sale         Sale?              @relation(fields: [saleId], references: [id])
+  station      ServiceStation?    @relation(fields: [stationId], references: [id])
+  asset        CustomerAsset?     @relation(fields: [assetId], references: [id])
+  events       AppointmentEvent[]
 
   @@index([organizationId, startsAt])
   @@index([employeeId, startsAt])
   @@index([status])
+  @@index([organizationId, status, startsAt])
+  @@index([stationId, startsAt])
   @@map("appointments")
 }
 
@@ -2308,19 +2338,19 @@ model Permission {
 }
 
 model Role {
-  id             String        @id @default(cuid())
-  organizationId String?
+  id                String        @id @default(cuid())
+  organizationId    String?
   // Solo roles de sistema por modo de negocio (organizationId = null):
   // null = compartido a todas las organizaciones; el modo concreto para
   // roles específicos (mesero/cocina en food_service, agente en services…).
-  businessMode   BusinessMode?
-  name           String
-  description    String?
-  isSystem       Boolean       @default(false)
+  businessMode      BusinessMode?
+  name              String
+  description       String?
+  isSystem          Boolean       @default(false)
   /// El superAdmin ajustó los permisos de este rol de sistema: el seeder ya no los reescribe.
-  permissionsEdited Boolean     @default(false)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  permissionsEdited Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   organization Organization?    @relation(fields: [organizationId], references: [id])
   permissions  RolePermission[]
@@ -2648,44 +2678,44 @@ enum TransferStatus {
 }
 
 model Transfer {
-  id               String         @id @default(cuid())
-  organizationId   String
+  id                   String         @id @default(cuid())
+  organizationId       String
   /// Folio consecutivo por organización (T-0001).
-  number           Int            @default(0)
+  number               Int            @default(0)
   // Origen y destino pueden ser sucursal o CEDIS (sin FK: la tabla depende del tipo).
-  fromLocationId   String
-  fromLocationType LocationType   @default(location)
-  toLocationId     String
-  toLocationType   LocationType   @default(location)
-  status           TransferStatus @default(pending)
-  notes            String?        @db.Text
-  requestedById    String?
-  dispatchedById   String?
-  receivedById     String?
+  fromLocationId       String
+  fromLocationType     LocationType   @default(location)
+  toLocationId         String
+  toLocationType       LocationType   @default(location)
+  status               TransferStatus @default(pending)
+  notes                String?        @db.Text
+  requestedById        String?
+  dispatchedById       String?
+  receivedById         String?
   /// Quien recibió físicamente: empleado elegido y/o nombre escrito a mano.
   receivedByEmployeeId String?
   receivedByName       String?
-  driverName       String?
+  driverName           String?
   /// Trabajador asignado como chofer (con interfaz propia en /repartidor).
-  driverEmployeeId String?
-  driverAssignedAt DateTime?
-  driverAcceptedAt DateTime?
+  driverEmployeeId     String?
+  driverAssignedAt     DateTime?
+  driverAcceptedAt     DateTime?
   /// El chofer confirmó que llegó al destino: habilita la recepción.
-  driverArrivedAt  DateTime?
+  driverArrivedAt      DateTime?
   /// Enlace público para que un chofer sin cuenta comparta su ubicación.
-  trackToken       String?        @unique
-  vehicle          String?
-  expectedAt       DateTime?
-  dispatchedAt     DateTime?
-  receivedAt       DateTime?
-  receiveNotes     String?        @db.Text
-  hasDiscrepancy   Boolean        @default(false)
+  trackToken           String?        @unique
+  vehicle              String?
+  expectedAt           DateTime?
+  dispatchedAt         DateTime?
+  receivedAt           DateTime?
+  receiveNotes         String?        @db.Text
+  hasDiscrepancy       Boolean        @default(false)
   // Última posición reportada por el chofer (el historial vive en TransferTrackPoint).
-  lastLat          Decimal?       @db.Decimal(10, 8)
-  lastLng          Decimal?       @db.Decimal(11, 8)
-  lastLocationAt   DateTime?
-  createdAt        DateTime       @default(now())
-  completedAt      DateTime?
+  lastLat              Decimal?       @db.Decimal(10, 8)
+  lastLng              Decimal?       @db.Decimal(11, 8)
+  lastLocationAt       DateTime?
+  createdAt            DateTime       @default(now())
+  completedAt          DateTime?
 
   organization Organization         @relation(fields: [organizationId], references: [id])
   items        TransferItem[]
@@ -2898,4 +2928,244 @@ model BackgroundJob {
   @@index([status, runAt])
   @@index([organizationId, createdAt])
   @@map("background_jobs")
+}
+
+/// Lo que el cliente lleva a atender: vehículo, ficha de estilo, equipo… Un cliente puede tener varios.
+model CustomerAsset {
+  id             String   @id @default(cuid())
+  organizationId String
+  customerId     String
+  /// vehicle | profile | equipment | other
+  kind           String   @default("vehicle")
+  /// Nombre corto para reconocerlo («Tsuru gris 2012»).
+  label          String
+  /// Placa, número de serie o identificador (no es único: un bien puede cambiar de dueño).
+  reference      String?
+  brand          String?
+  model          String?
+  color          String?
+  /// Tamaño (chico, mediano, camioneta…): elige la variante de precio del servicio.
+  size           String?
+  notes          String?  @db.Text
+  attributes     Json?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  appointments  Appointment[]
+  serviceOrders ServiceOrder[]
+
+  @@index([organizationId, customerId])
+  @@index([organizationId, reference])
+  @@map("customer_assets")
+}
+
+/// Lugar de atención: silla, bahía, cajón, cabina.
+model ServiceStation {
+  id                String   @id @default(cuid())
+  organizationId    String
+  locationId        String?
+  name              String
+  /// bay | stall | lane | chair | booth | other
+  kind              String   @default("bay")
+  defaultEmployeeId String?
+  sortOrder         Int      @default(0)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  location        Location?      @relation(fields: [locationId], references: [id])
+  defaultEmployee Employee?      @relation(fields: [defaultEmployeeId], references: [id])
+  appointments    Appointment[]
+  serviceOrders   ServiceOrder[]
+
+  @@index([organizationId, locationId, isActive])
+  @@map("service_stations")
+}
+
+/// Reglas de las citas: horario, reagenda y tolerancia de llegada.
+model AppointmentPolicy {
+  id                         String   @id @default(cuid())
+  organizationId             String   @unique
+  /// Solo se agenda dentro del horario de la sucursal.
+  enforceBusinessHours       Boolean  @default(true)
+  /// Anticipación mínima para agendar (minutos desde ahora) y ventana máxima (días).
+  minNoticeMinutes           Int      @default(30)
+  maxAdvanceDays             Int      @default(60)
+  /// Tiempo mínimo antes de la cita actual para poder reagendarla.
+  rescheduleMinNoticeMinutes Int      @default(120)
+  /// Máximo de reagendas por cita (null = sin límite).
+  maxReschedules             Int?     @default(2)
+  /// Minutos de tolerancia tras la hora de la cita; pasado ese tiempo sin «Llegó» la cita se pierde.
+  toleranceMinutes           Int      @default(15)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("appointment_policies")
+}
+
+/// Historial de cada cita: alta, reagenda, cambio de estado, llegada, pérdida por tolerancia.
+model AppointmentEvent {
+  id             String    @id @default(cuid())
+  organizationId String
+  appointmentId  String
+  /// created | rescheduled | status | checked_in | auto_no_show | override
+  type           String
+  fromStartsAt   DateTime?
+  toStartsAt     DateTime?
+  fromStatus     String?
+  toStatus       String?
+  actorUserId    String?
+  /// Motivo (obligatorio al saltarse la política).
+  reason         String?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  appointment  Appointment  @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorUserId], references: [id])
+
+  @@index([appointmentId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("appointment_events")
+}
+
+/// Flujo de un tipo de servicio: etapas ordenadas (Recibido → Lavando → Listo…) y qué servicios lo usan.
+model ServiceFlow {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  /// El que se usa cuando el servicio elegido no pertenece a ningún flujo.
+  isDefault      Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id])
+  stages       ServiceFlowStage[]
+  services     ServiceFlowService[]
+  orders       ServiceOrder[]
+
+  @@index([organizationId, isActive])
+  @@map("service_flows")
+}
+
+model ServiceFlowStage {
+  id             String  @id @default(cuid())
+  flowId         String
+  label          String
+  sortOrder      Int     @default(0)
+  /// Avisar al cliente al llegar a esta etapa.
+  notifyCustomer Boolean @default(false)
+  /// «Listo para entregar»: marca la orden como lista y habilita el cobro.
+  isReady        Boolean @default(false)
+  isActive       Boolean @default(true)
+
+  flow   ServiceFlow    @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  orders ServiceOrder[]
+
+  @@index([flowId, sortOrder])
+  @@map("service_flow_stages")
+}
+
+/// Servicios (productos) que siguen un flujo.
+model ServiceFlowService {
+  id        String @id @default(cuid())
+  flowId    String
+  productId String
+
+  flow    ServiceFlow @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  product Product     @relation(fields: [productId], references: [id])
+
+  @@unique([flowId, productId])
+  @@index([productId])
+  @@map("service_flow_services")
+}
+
+/// Orden de servicio: un vehículo (u objeto) recibido, con su lugar, llavero, etapas y cobro ligado a una venta.
+model ServiceOrder {
+  id              String    @id @default(cuid())
+  organizationId  String
+  locationId      String?
+  /// Folio consecutivo por empresa.
+  number          Int
+  customerId      String?
+  assetId         String?
+  stationId       String?
+  employeeId      String?
+  flowId          String
+  stageId         String
+  /// open | ready | delivered | cancelled
+  status          String    @default("open")
+  /// Número de llavero o gancho del tablero.
+  keyTag          String?
+  indications     String?   @db.Text
+  promisedAt      DateTime?
+  readyAt         DateTime?
+  deliveredAt     DateTime?
+  total           Decimal   @default(0) @db.Decimal(12, 2)
+  saleId          String?   @unique
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  location     Location?           @relation(fields: [locationId], references: [id])
+  customer     Customer?           @relation(fields: [customerId], references: [id])
+  asset        CustomerAsset?      @relation(fields: [assetId], references: [id])
+  station      ServiceStation?     @relation(fields: [stationId], references: [id])
+  employee     Employee?           @relation(fields: [employeeId], references: [id])
+  flow         ServiceFlow         @relation(fields: [flowId], references: [id])
+  stage        ServiceFlowStage    @relation(fields: [stageId], references: [id])
+  sale         Sale?               @relation(fields: [saleId], references: [id])
+  createdBy    User?               @relation(fields: [createdByUserId], references: [id])
+  items        ServiceOrderItem[]
+  events       ServiceOrderEvent[]
+
+  @@unique([organizationId, number])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, customerId, createdAt])
+  @@index([organizationId, assetId, createdAt])
+  @@index([stationId, status])
+  @@map("service_orders")
+}
+
+model ServiceOrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  variantId   String
+  productName String
+  variantName String?
+  quantity    Int     @default(1)
+  unitPrice   Decimal @db.Decimal(12, 2)
+  lineTotal   Decimal @db.Decimal(12, 2)
+
+  order   ServiceOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
+  @@map("service_order_items")
+}
+
+/// Historial: ingreso, cambios de etapa, lugar, llavero, aviso al cliente, cobro, cancelación.
+model ServiceOrderEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  orderId        String
+  /// created | stage | station | key | note | notified | delivered | cancelled
+  type           String
+  detail         String?
+  actorUserId    String?
+  createdAt      DateTime @default(now())
+
+  order ServiceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actor User?        @relation(fields: [actorUserId], references: [id])
+
+  @@index([orderId, createdAt])
+  @@map("service_order_events")
 }

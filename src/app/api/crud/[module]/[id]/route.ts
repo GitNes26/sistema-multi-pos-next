@@ -15,6 +15,8 @@ const MODEL_MAP: Record<string, { table: string; userTable?: string }> = {
   cashRegisters: { table: "cashRegister" },
   cedis: { table: "cedi" },
   promotions: { table: "promotion" },
+  assets: { table: "customerAsset" },
+  stations: { table: "serviceStation" },
 };
 
 /** Generic restore: reactivate isActive + user if applicable. */

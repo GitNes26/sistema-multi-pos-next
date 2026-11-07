@@ -34,6 +34,9 @@ export type FeatureKey =
   // Services
   | "appointments"
   | "service_catalog"
+  | "assets"
+  | "stations"
+  | "service_orders"
   // Rental
   | "reservations"
   | "calendar"
@@ -129,6 +132,10 @@ export const FEATURE_FLAGS: Record<FeatureKey, FeatureFlag> = {
     modes: ["services", "hybrid"],
   },
 
+  assets: { label: "Vehículos y fichas del cliente", modes: ["services", "hybrid"] },
+  stations: { label: "Bahías y lugares de atención", modes: ["services", "hybrid"] },
+  service_orders: { label: "Órdenes de servicio", modes: ["services", "hybrid"] },
+
   // ── Rental ─────────────────────────────────────────────────────
   reservations: {
     label: "Reservaciones",
@@ -194,5 +201,8 @@ export const NAV_HREF_TO_FEATURE: Record<string, FeatureKey> = {
   "/admin/settings": "settings",
   "/kds": "kds",
   "/agenda": "appointments",
+  "/admin/assets": "assets",
+  "/admin/stations": "stations",
+  "/admin/service-orders": "service_orders",
   "/reservaciones": "reservations",
 }

@@ -44,6 +44,9 @@ const PLAN_AREAS: [string, PermissionKey[]][] = [
   ["/admin/cedis", ["cedis.manage"]],
   ["/kds", ["kds.operate", "delivery.manage"]],
   ["/agenda", ["appointments.view"]],
+  ["/admin/assets", ["assets.view"]],
+  ["/admin/stations", ["stations.view"]],
+  ["/admin/service-orders", ["service_orders.view"]],
   ["/reservaciones", ["reservations.view"]],
   ["/admin/reservations", ["reservations.view"]],
 ]

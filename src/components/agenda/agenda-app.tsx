@@ -13,6 +13,7 @@ import {
   Pencil,
   Plus,
   Scissors,
+  ScrollText,
   UsersRound,
   Wrench,
 } from "lucide-react";
@@ -43,6 +44,7 @@ import {
   STATUS_META,
 } from "./agenda-types";
 import { CitaCreateDialog, CitaDetailDialog } from "./cita-dialogs";
+import { AppointmentPolicyDialog } from "./appointment-policy-dialog";
 
 const TOTAL_MIN = (DAY_END_HOUR - DAY_START_HOUR) * 60;
 const GRID_HEIGHT = (TOTAL_MIN / SLOT_MIN) * ROW_HEIGHT;
@@ -51,11 +53,17 @@ interface AgendaAppProps {
   orgName: string;
   orgMode?: React.ComponentProps<typeof BusinessModeBadge>["mode"];
   canManage: boolean;
+  /** Puede cambiar las reglas de las citas (ajustes de la empresa). */
+  canManagePolicy?: boolean;
+  canCheckIn?: boolean;
+  canOverride?: boolean;
+  canManageAssets?: boolean;
 }
 
 type Tab = "agenda" | "staff";
 
-export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
+export function AgendaApp({ orgName, orgMode, canManage, canManagePolicy = false, canCheckIn = false, canOverride = false, canManageAssets = false }: AgendaAppProps) {
+  const [policyOpen, setPolicyOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("agenda");
   const [day, setDay] = useState<Date>(() => {
     const d = new Date();
@@ -159,6 +167,11 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <NotificationsBell />
           <ThemeToggle />
+          {canManagePolicy && (
+            <Button variant="outline" size="sm" onClick={() => setPolicyOpen(true)} title="Horario, reagenda y tolerancia de las citas">
+              <ScrollText className="size-4" /> <span className="hidden sm:inline">Políticas</span>
+            </Button>
+          )}
           {canManage && (
             <Button size="sm" data-guide="agenda-new" onClick={() => { setCreateSlot({ employeeId: null, time: "10:00" }); setCreateOpen(true); }}>
               <Plus className="size-4" /> <span className="hidden sm:inline">Nueva cita</span>
@@ -267,6 +280,7 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
         )}
       </Tabs>
 
+      <AppointmentPolicyDialog open={policyOpen} onOpenChange={setPolicyOpen} />
       <CitaCreateDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
@@ -274,11 +288,15 @@ export function AgendaApp({ orgName, orgMode, canManage }: AgendaAppProps) {
         defaultEmployeeId={createSlot.employeeId}
         defaultTime={createSlot.time}
         staff={data?.staff ?? []}
+        canOverride={canOverride}
+        canManageAssets={canManageAssets}
         onCreated={() => void reload()}
       />
       <CitaDetailDialog
         cita={selected}
         canManage={canManage}
+        canCheckIn={canCheckIn}
+        canOverride={canOverride}
         onOpenChange={(o) => !o && setSelected(null)}
         onChanged={() => void reload()}
       />

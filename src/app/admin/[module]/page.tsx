@@ -40,6 +40,8 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
   cashRegisters: <Banknote className="size-5" />,
   cedis: <Warehouse className="size-5" />,
   promotions: <Percent className="size-5" />,
+  assets: <Package className="size-5" />,
+  stations: <MapPin className="size-5" />,
   expenses: <Receipt className="size-5" />,
 };
 

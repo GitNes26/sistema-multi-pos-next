@@ -36,6 +36,10 @@ export default async function AgendaPage() {
   if (!hasPermission(session, "appointments.view")) return <AccessDenied permission="appointments.view" />
 
   const canManage = hasPermission(session, "appointments.manage");
+  const canManagePolicy = hasPermission(session, "appointments.policy");
+  const canCheckIn = hasPermission(session, "appointments.checkin");
+  const canOverride = hasPermission(session, "appointments.override");
+  const canManageAssets = hasPermission(session, "assets.manage");
   const tenant = await getAppSettings(organizationId);
 
   return (
@@ -47,7 +51,7 @@ export default async function AgendaPage() {
         businessMode={org.businessMode}
       />
       <Splash orgName={org.name} />
-      <AgendaApp orgName={org.name} orgMode={org.businessMode} canManage={canManage} />
+      <AgendaApp orgName={org.name} orgMode={org.businessMode} canManage={canManage} canManagePolicy={canManagePolicy} canCheckIn={canCheckIn} canOverride={canOverride} canManageAssets={canManageAssets} />
     </>
   );
 }
