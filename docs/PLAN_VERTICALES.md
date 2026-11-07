@@ -44,7 +44,7 @@ precios y descuentos recalculados en servidor; una orden cobrada se vincula a **
 | Fase | Contenido | Resultado |
 | --- | --- | --- |
 | 0 · Fundación (**hecha**, con la política de citas) | `CustomerAsset`, `ServiceStation`, interruptores por empresa (qué módulos usa) y presets de negocio | Se pueden registrar vehículos y lugares |
-| 1 · Orden y tablero (**servidor y tablero hechos**; falta portal del cliente) | `ServiceOrder`, flujos por servicio, tablero por etapas/bahías en vivo (SSE), llavero, cobro ligado a venta, aviso "listo" al cliente | Autolavado operable de punta a punta |
+| 1 · Orden y tablero (**hecha**, con portal del cliente) | `ServiceOrder`, flujos por servicio, tablero por etapas/bahías en vivo (SSE), llavero, cobro ligado a venta, aviso "listo" al cliente | Autolavado operable de punta a punta |
 | 2 · Revisiones | Listas de entrega/devolución con fotos y firma | Sirve a autolavado (daños previos) y renta |
 | 3 · Renta | Paquetes, depósito, entrega y devolución, penalizaciones, hoja imprimible | Renta completa |
 | 4 · Barbería | Silla en la cita, agenda por silla, ficha de estilo del cliente (asset `profile`), indicaciones del corte | Barbería cubierta |

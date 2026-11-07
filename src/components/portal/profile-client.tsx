@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
+  Car,
   ChevronRight,
   CreditCard,
   Heart,
@@ -48,7 +49,7 @@ interface ProfileStats {
   favorites: number;
 }
 
-export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) {
+export function ProfileClient({ canReserve = false, hasVehicles = false }: { canReserve?: boolean; hasVehicles?: boolean }) {
   const [customer, setCustomer] = useState<PortalCustomer | null>(null);
   const [form, setForm] = useState({
     fullName: "",
@@ -233,6 +234,7 @@ export function ProfileClient({ canReserve = false }: { canReserve?: boolean }) 
       <motion.div variants={item}>
         <SettingsGroup title="Tu actividad">
           <SettingsRow href="/portal/orders" icon={Receipt} label="Mis pedidos" value={stats.orders ? String(stats.orders) : undefined} />
+          {hasVehicles && <SettingsRow href="/portal/vehicles" icon={Car} label="Mis vehículos" description="Tus vehículos y el avance de tus servicios" />}
           <SettingsRow href="/portal/favorites" icon={Heart} label="Favoritos" value={stats.favorites ? String(stats.favorites) : undefined} />
           <SettingsRow href="/portal/loyalty" icon={Sparkles} label="Puntos y recompensas" />
           <SettingsRow href="/portal/credit" icon={Landmark} label="Mi crédito" description="Saldo, adeudos y abonos" />

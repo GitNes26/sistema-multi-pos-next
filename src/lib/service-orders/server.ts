@@ -22,9 +22,13 @@ export class ServiceOrderError extends Error {
 
 const channel = (organizationId: string) => `service-orders:${organizationId}`
 
-/** Avisa a los tableros abiertos de la empresa que algo cambió. */
-export function broadcastServiceOrderChange(organizationId: string, orderId: string, type: string) {
+/** Canal del cliente del portal: solo recibe los cambios de SUS órdenes. */
+export const portalOrdersChannel = (organizationId: string, customerId: string) => `portal-service-orders:${organizationId}:${customerId}`
+
+/** Avisa a los tableros abiertos de la empresa (y al cliente dueño de la orden) que algo cambió. */
+export function broadcastServiceOrderChange(organizationId: string, orderId: string, type: string, customerId?: string | null) {
   publish(channel(organizationId), { orderId, type })
+  if (customerId) publish(portalOrdersChannel(organizationId, customerId), { orderId, type })
 }
 export { channel as serviceOrdersChannel }
 
@@ -344,7 +348,7 @@ export async function createServiceOrder(organizationId: string, input: CreateOr
         await addEvent(tx, organizationId, order.id, "created", `Orden #${order.number} · ${lines.map((l) => l.productName).join(", ")}`, input.actorUserId)
         return order.id
       })
-      broadcastServiceOrderChange(organizationId, id, "created")
+      broadcastServiceOrderChange(organizationId, id, "created", input.customerId)
       return await getServiceOrder(organizationId, id)
     } catch (err) {
       if ((err as { code?: string })?.code === "P2002" && attempt < 3) continue
@@ -467,12 +471,12 @@ export async function updateServiceOrder(organizationId: string, id: string, inp
     if (Object.keys(data).length) await tx.serviceOrder.update({ where: { id }, data })
   })
 
-  broadcastServiceOrderChange(organizationId, id, "updated")
   const result = await getServiceOrder(organizationId, id)
+  broadcastServiceOrderChange(organizationId, id, "updated", result.customer?.id)
   if (notify) {
     const n = notify as { customerId: string; title: string; body: string; locationId: string | null }
     // El aviso no frena la operación: se envía después de guardar y su resultado queda en el historial.
-    void notifyCustomer({ organizationId, customerId: n.customerId, kind: "service_order", title: n.title, body: n.body, link: "/portal", locationId: n.locationId }).then((sent) =>
+    void notifyCustomer({ organizationId, customerId: n.customerId, kind: "service_order", title: n.title, body: n.body, link: "/portal/vehicles", locationId: n.locationId }).then((sent) =>
       addEvent(prisma, organizationId, id, "notified", sent.length ? `Aviso al cliente (${sent.join(", ")})` : "Aviso al cliente: sin canal disponible", input.actorUserId).catch(() => undefined)
     )
   }
@@ -480,10 +484,11 @@ export async function updateServiceOrder(organizationId: string, id: string, inp
 }
 
 export async function cancelServiceOrder(organizationId: string, id: string, opts: { reason?: string | null; actorUserId?: string | null }) {
+  const before = await prisma.serviceOrder.findFirst({ where: { id, organizationId }, select: { customerId: true } })
   const claimed = await prisma.serviceOrder.updateMany({ where: { id, organizationId, status: { in: ["open", "ready"] } }, data: { status: "cancelled", stationId: null } })
   if (claimed.count !== 1) throw new ServiceOrderError("La orden ya está cerrada o no existe", 409)
   await addEvent(prisma, organizationId, id, "cancelled", opts.reason?.trim() || "Orden cancelada", opts.actorUserId)
-  broadcastServiceOrderChange(organizationId, id, "cancelled")
+  broadcastServiceOrderChange(organizationId, id, "cancelled", before?.customerId)
 }
 
 /** Cobra la orden: crea UNA venta con todos sus servicios y la liga (ticket, caja y reportes). */
@@ -573,6 +578,6 @@ export async function checkoutServiceOrder(
 
   await prisma.serviceOrder.updateMany({ where: { id, status: "delivered", saleId: null }, data: { saleId: sale.id, total } })
   await addEvent(prisma, organizationId, id, "delivered", `Cobrada y entregada · venta ${sale.saleNumber}`, ctx.userId)
-  broadcastServiceOrderChange(organizationId, id, "delivered")
+  broadcastServiceOrderChange(organizationId, id, "delivered", order.customerId)
   return { saleId: sale.id, saleNumber: sale.saleNumber, locationName: sale.locationName, total }
 }

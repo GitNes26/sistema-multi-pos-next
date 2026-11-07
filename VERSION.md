@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.58.0.0] — 2026-11-07
+- **Tipo:** `feat` (Minor)
+- feat: portal del cliente con mis vehiculos y seguimiento en vivo de sus servicios, bahias como espacio cajon o carril que se liberan al quedar listo el vehiculo y tablero con ocupacion de bahias
+
 ### [0.57.0.0] — 2026-11-07
 - **Tipo:** `feat` (Minor)
 - feat: verticales fase 0 y 1 (vehiculos del cliente, bahias, politica de citas con horario, reagenda y tolerancia, ordenes de servicio con flujos por etapas, llavero, tablero en vivo y cobro ligado a venta), permisos propios por rol y avisos al cliente por canales intercambiables

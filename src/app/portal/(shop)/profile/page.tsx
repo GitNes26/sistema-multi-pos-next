@@ -11,5 +11,10 @@ export default async function PortalProfilePage() {
   const organization = session?.user?.organizationId
     ? await prisma.organization.findUnique({ where: { id: session.user.organizationId }, select: { businessMode: true } })
     : null;
-  return <ProfileClient canReserve={organization?.businessMode === "food_service" || organization?.businessMode === "hybrid"} />;
+  return (
+    <ProfileClient
+      canReserve={organization?.businessMode === "food_service" || organization?.businessMode === "hybrid"}
+      hasVehicles={organization?.businessMode === "services" || organization?.businessMode === "hybrid"}
+    />
+  );
 }

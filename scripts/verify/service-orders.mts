@@ -9,6 +9,7 @@ const { assertTestEnvironment } = await import("../test-safety.mjs")
 assertTestEnvironment(process.env as Record<string, string>)
 const { prisma } = await import("../../src/lib/db")
 const so = await import("../../src/lib/service-orders/server")
+const portal = await import("../../src/lib/service-orders/portal")
 
 const orgs = JSON.parse(fs.readFileSync(".loadtest/orgs.json", "utf8"))
 const orgId = orgs[4].orgId as string
@@ -81,6 +82,19 @@ try {
   const stages = flow.stages
   const moved = await so.updateServiceOrder(orgId, o1.id, { stageId: stages[1].id, actorUserId: anyUser.id })
   check("avanza a Lavando", moved.stage.label === "Lavando" && moved.status === "open")
+  const mine = await portal.listPortalOrders(orgId, customer.id)
+  const mineO1 = mine.find((o: any) => o.id === o1.id)
+  check("el cliente ve su orden con la barra de avance (Recibido listo, Lavando actual)", mineO1?.steps.map((x: any) => x.state).join() === "done,current,todo,todo", mineO1?.steps.map((x: any) => x.state).join())
+  if (other) check("otro cliente NO ve esa orden", !(await portal.listPortalOrders(orgId, other.id)).some((o: any) => o.id === o1.id))
+  const pa = await portal.createPortalAsset(orgId, customer.id, { label: "Moto azul", reference: "mt-001", size: "chico" })
+  created.assets.push(pa.id)
+  check("el cliente registra su vehículo (placa en mayúsculas)", pa.reference === "MT-001")
+  if (other) {
+    const denied = await portal.removePortalAsset(orgId, other.id, pa.id).then(() => false).catch(() => true)
+    check("otro cliente no puede quitar mi vehículo", denied)
+  }
+  await portal.removePortalAsset(orgId, customer.id, pa.id)
+  check("el cliente quita su vehículo (se desactiva, no se borra)", (await prisma.customerAsset.findUniqueOrThrow({ where: { id: pa.id } })).isActive === false)
   await expectErr("una etapa de otro flujo se rechaza", () => so.updateServiceOrder(orgId, o1.id, { stageId: initial[0].stages[0].id }), "no pertenece")
   const freed = await so.updateServiceOrder(orgId, o1.id, { stationId: bay2.id }).catch((e: any) => e)
   check("mover a una bahía ocupada se rechaza", freed instanceof so.ServiceOrderError)
