@@ -109,6 +109,7 @@ export function CitaCreateDialog({
 
   // Reinicia el formulario una sola vez por apertura (aunque staff o el día
   // cambien mientras el diálogo está cerrado, no se pisan los valores).
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevOpen = useRef(false);
   useEffect(() => {
     if (!open) prevOpen.current = false;
@@ -299,6 +300,10 @@ export function CitaCreateDialog({
             value={customerId}
             onChange={setCustomerId}
             onCreate={() => setCreatingNew((v) => !v)}
+            onSearchChange={(q) => {
+              if (searchTimer.current) clearTimeout(searchTimer.current);
+              searchTimer.current = setTimeout(() => void loadCustomers(q), 250);
+            }}
             options={customerOptions}
             placeholder="Buscar o crear cliente…"
             searchPlaceholder="Nombre, teléfono o nº de cliente…"

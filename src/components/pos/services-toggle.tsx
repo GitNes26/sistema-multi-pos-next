@@ -91,7 +91,7 @@ export function ServicesToggle({ onChanged }: { onChanged?: () => void }) {
           {paused > 0 && <span className="rounded-full bg-warning/20 px-1.5 text-xs">{paused} en pausa</span>}
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 space-y-2 p-3">
+      <PopoverContent align="end" collisionPadding={12} className="w-[min(20rem,calc(100vw-1.5rem))] space-y-2 overflow-x-hidden p-3">
         <div>
           <p className="text-sm font-medium">Servicios</p>
           <p className="text-xs text-muted-foreground">Al pausar uno deja de poder venderse en todas las cajas y en la tienda del portal.</p>

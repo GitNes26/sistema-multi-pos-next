@@ -30,6 +30,8 @@ export interface FormComboboxProps {
   onChange?: (value: string) => void
   onClear?: () => void
   onSync?: () => Promise<void> | void
+  /** Cuando la lista es solo una parte del total (clientes, productos…): avisa lo que se escribe para buscar en el servidor. */
+  onSearchChange?: (query: string) => void
   /** Abre un modal externo (CRUD completo) para crear un nuevo registro. */
   onCreate?: () => void
   id?: string
@@ -64,6 +66,7 @@ export function FormCombobox({
   onChange,
   onClear,
   onSync,
+  onSearchChange,
   onCreate,
   id,
   label,
@@ -193,7 +196,10 @@ export function FormCombobox({
                 <div className="border-b p-2">
                   <CommandPrimitive.Input
                     value={search}
-                    onValueChange={setSearch}
+                    onValueChange={(v) => {
+                      setSearch(v)
+                      onSearchChange?.(v)
+                    }}
                     placeholder={searchPlaceholder}
                     autoFocus
                     className="flex h-11 w-full items-center rounded-md bg-transparent px-3 text-base outline-none desk:h-8 desk:text-sm placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"

@@ -605,6 +605,15 @@
   }
 }
 
+/* === Salvavidas del splash: si el JavaScript no llega (red caída, recurso bloqueado), el HTML del splash no
+   puede dejar la pantalla tapada para siempre: a los 10 s se retira solo. === */
+@keyframes splash-failsafe {
+  to { opacity: 0; visibility: hidden; pointer-events: none; }
+}
+.splash-failsafe {
+  animation: splash-failsafe 0.3s ease 10s forwards;
+}
+
 /* === Barra de carga indeterminada (cambio de pantalla) y latido de la marca === */
 @keyframes loading-bar {
   0% { transform: translateX(-100%); }

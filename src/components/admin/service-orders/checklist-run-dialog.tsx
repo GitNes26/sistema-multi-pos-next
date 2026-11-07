@@ -78,10 +78,18 @@ export function ChecklistRunDialog({
 
   const save = async () => {
     setError(null);
+    // El mensaje sale en el pie; además se lleva la vista al punto con el problema.
+    const focusRow = (label: string) => requestAnimationFrame(() => document.getElementById(`chk-${rows.findIndex((r) => r.label === label)}`)?.scrollIntoView({ block: "center", behavior: "smooth" }));
     const missing = rows.find((r) => !r.status);
-    if (missing) return setError(`Falta revisar: ${missing.label}`);
+    if (missing) {
+      focusRow(missing.label);
+      return setError(`Falta revisar: ${missing.label}`);
+    }
     const noPhoto = rows.find((r) => r.status === "issue" && r.requirePhoto && !r.photoUrl);
-    if (noPhoto) return setError(`Agrega una foto del problema: ${noPhoto.label}`);
+    if (noPhoto) {
+      focusRow(noPhoto.label);
+      return setError(`Agrega una foto del problema: ${noPhoto.label}`);
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/service-orders/${orderId}/checklists`, {
@@ -154,7 +162,7 @@ export function ChecklistRunDialog({
         {canManage && (
           <ol className="space-y-3">
             {rows.map((r, i) => (
-              <li key={r.label} className="space-y-2 rounded-xl border p-3">
+              <li key={r.label} id={`chk-${i}`} className="space-y-2 rounded-xl border p-3">
                 <p className="text-sm font-medium">{r.label}</p>
                 <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={r.label}>
                   {STATUS_BUTTONS.map((b) => (

@@ -49,7 +49,7 @@ export function Splash({
           key="auth-splash"
           data-testid="auth-splash"
           initial={{ opacity: 1 }}
-          className="fixed inset-0 z-[100] overflow-hidden bg-slate-950 text-slate-50"
+          className="splash-failsafe fixed inset-0 z-[100] overflow-hidden bg-slate-950 text-slate-50"
         >
           {/* Fondo: se desvanece */}
           <motion.div

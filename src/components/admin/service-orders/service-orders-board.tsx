@@ -66,7 +66,13 @@ export function ServiceOrdersBoard({ canManage, canConfigure, canManageAssets }:
   }, 60_000);
 
   // Flujo visible: el elegido o, por defecto, el primero con órdenes (o el predeterminado).
-  const activeFlow = useMemo(() => flows.find((f) => f.id === flowId) ?? flows.find((f) => f.isDefault) ?? flows[0], [flows, flowId]);
+  // Mientras nadie elija uno, se muestra el flujo que tiene órdenes en curso.
+  const busiestFlowId = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const o of orders ?? []) if (o.status !== "delivered") count.set(o.flow.id, (count.get(o.flow.id) ?? 0) + 1);
+    return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  }, [orders]);
+  const activeFlow = useMemo(() => flows.find((f) => f.id === flowId) ?? flows.find((f) => f.id === busiestFlowId) ?? flows.find((f) => f.isDefault) ?? flows[0], [flows, flowId, busiestFlowId]);
   const flowOrders = useMemo(() => (orders ?? []).filter((o) => o.flow.id === activeFlow?.id), [orders, activeFlow]);
   const delivered = flowOrders.filter((o) => o.status === "delivered");
 
@@ -265,7 +271,7 @@ export function ServiceOrdersBoard({ canManage, canConfigure, canManageAssets }:
         </>
       )}
 
-      <ServiceOrderIntakeDialog open={intakeOpen} onOpenChange={setIntakeOpen} canManageAssets={canManageAssets} onCreated={() => void load()} />
+      <ServiceOrderIntakeDialog open={intakeOpen} onOpenChange={setIntakeOpen} canManageAssets={canManageAssets} onCreated={(created) => { setFlowId(created.flow.id); void load(); }} />
       <ServiceOrderDetailDialog
         order={selected}
         flow={flows.find((f) => f.id === selected?.flow.id) ?? null}

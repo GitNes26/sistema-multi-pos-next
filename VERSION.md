@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.59.1.0] — 2026-11-07
+- **Tipo:** `fix` (Patch)
+- fix: busqueda de clientes en el servidor en los selectores, tablero que abre el flujo con ordenes y salta al de la orden nueva, revision que lleva a la fila con error, panel de servicios del POS en pantallas angostas, salvavidas del splash si el JavaScript no llega y datos de apoyo para revisar pantallas
+
 ### [0.59.0.0] — 2026-11-07
 - **Tipo:** `feat` (Minor)
 - feat: listas de revision de ingreso y entrega con foto de los problemas, obligatorias opcionalmente antes de avanzar o cobrar, con motor reutilizable para rentas

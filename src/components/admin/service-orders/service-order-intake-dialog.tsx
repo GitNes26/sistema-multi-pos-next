@@ -40,7 +40,7 @@ export function ServiceOrderIntakeDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   canManageAssets: boolean;
-  onCreated: () => void;
+  onCreated: (order: { id: string; flow: { id: string } }) => void;
 }) {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [customerId, setCustomerId] = useState("");
@@ -77,6 +77,17 @@ export function ServiceOrderIntakeDialog({
       /* el diálogo muestra lo que alcanzó a cargar */
     }
   }, []);
+
+  // La lista trae solo una parte de los clientes: al escribir se busca en el servidor (con una pausa breve).
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchCustomers = useCallback(
+    (q: string) => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+      searchTimer.current = setTimeout(() => void loadCustomers(q), 250);
+    },
+    [loadCustomers]
+  );
+  useEffect(() => () => { if (searchTimer.current) clearTimeout(searchTimer.current); }, []);
 
   // Reinicia el formulario una vez por apertura.
   const prevOpen = useRef(false);
@@ -222,7 +233,7 @@ export function ServiceOrderIntakeDialog({
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error ?? "No se pudo crear la orden");
       toast.success(`Orden #${data.order.number} creada`);
-      onCreated();
+      onCreated(data.order);
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear la orden");
@@ -260,6 +271,7 @@ export function ServiceOrderIntakeDialog({
             value={customerId}
             onChange={setCustomerId}
             onClear={() => setCustomerId("")}
+            onSearchChange={searchCustomers}
             onCreate={() => setCreatingCustomer((v) => !v)}
             options={customers.map((c) => ({ value: c.id, label: c.fullName, meta: c.phone ?? c.customerCode ?? undefined }))}
             placeholder="Buscar por nombre o teléfono (vacío = cliente de mostrador)"
