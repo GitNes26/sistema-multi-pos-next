@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { round2 } from "@/lib/pos/money"
 import { createSale, PosError } from "@/lib/pos/server"
 import { notifyCustomer } from "@/lib/notifications/customer-channels"
+import { missingRequiredChecklist } from "@/lib/checklists/server"
 import { publish } from "@/lib/realtime"
 import type { PosSalePayload } from "@/types/pos"
 
@@ -445,6 +446,12 @@ export async function updateServiceOrder(organizationId: string, id: string, inp
     if (input.stageId && input.stageId !== order.stageId) {
       const stage = await tx.serviceFlowStage.findFirst({ where: { id: input.stageId, flowId: order.flowId, isActive: true } })
       if (!stage) throw new ServiceOrderError("Esa etapa no pertenece al flujo de la orden", 400)
+      // Si la revisión de ingreso es obligatoria, no se sale de la primera etapa sin hacerla.
+      const first = await tx.serviceFlowStage.findFirst({ where: { flowId: order.flowId, isActive: true }, orderBy: { sortOrder: "asc" }, select: { id: true } })
+      if (first?.id === order.stageId) {
+        const pending = await missingRequiredChecklist(organizationId, "service_order", id, "intake")
+        if (pending) throw new ServiceOrderError(`Antes de avanzar completa la ${pending.toLowerCase()}`, 409)
+      }
       // Reclamo atómico: si dos personas la mueven a la vez, solo una gana.
       const claimed = await tx.serviceOrder.updateMany({
         where: { id, organizationId, stageId: order.stageId, status: { in: ["open", "ready"] } },
@@ -513,6 +520,8 @@ export async function checkoutServiceOrder(
   if (order.status === "delivered") throw new ServiceOrderError("La orden ya fue cobrada", 409)
   if (order.status === "cancelled") throw new ServiceOrderError("La orden está cancelada", 409)
   if (order.status !== "ready") throw new ServiceOrderError("La orden aún no está lista: avánzala a «Listo para entregar» para cobrarla", 409)
+  const pendingDelivery = await missingRequiredChecklist(organizationId, "service_order", id, "delivery")
+  if (pendingDelivery) throw new ServiceOrderError(`Antes de cobrar completa la ${pendingDelivery.toLowerCase()}`, 409)
 
   // Reclamar el cobro antes de crear la venta para que dos solicitudes no generen ventas duplicadas.
   const claimed = await prisma.serviceOrder.updateMany({ where: { id, organizationId, status: "ready" }, data: { status: "delivered", deliveredAt: new Date(), stationId: null } })

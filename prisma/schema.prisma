@@ -253,6 +253,7 @@ model User {
   appointmentEvents             AppointmentEvent[]
   serviceOrdersCreated          ServiceOrder[]
   serviceOrderEvents            ServiceOrderEvent[]
+  checklistRuns                 ChecklistRun[]
 
   @@index([phone])
   @@map("users")
@@ -348,13 +349,15 @@ model Organization {
   subscriptionPayments   SubscriptionPayment[]
   pointPaymentIntents    PointPaymentIntent[]
 
-  tableCarts        TableCart[]
-  customerAssets    CustomerAsset[]
-  serviceStations   ServiceStation[]
-  appointmentPolicy AppointmentPolicy?
-  appointmentEvents AppointmentEvent[]
-  serviceFlows      ServiceFlow[]
-  serviceOrders     ServiceOrder[]
+  tableCarts         TableCart[]
+  customerAssets     CustomerAsset[]
+  serviceStations    ServiceStation[]
+  appointmentPolicy  AppointmentPolicy?
+  appointmentEvents  AppointmentEvent[]
+  serviceFlows       ServiceFlow[]
+  serviceOrders      ServiceOrder[]
+  checklistTemplates ChecklistTemplate[]
+  checklistRuns      ChecklistRun[]
 
   @@map("organizations")
 }
@@ -3168,4 +3171,78 @@ model ServiceOrderEvent {
 
   @@index([orderId, createdAt])
   @@map("service_order_events")
+}
+
+/// Lista de revisión de una fase (ingreso o entrega): una por empresa, tipo de objeto y fase.
+model ChecklistTemplate {
+  id             String   @id @default(cuid())
+  organizationId String
+  /// service_order | reservation
+  subjectType    String   @default("service_order")
+  /// intake | delivery | return
+  phase          String
+  name           String
+  /// Sin completarla no se avanza (ingreso) ni se cobra o cierra (entrega/devolución).
+  isRequired     Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization            @relation(fields: [organizationId], references: [id])
+  items        ChecklistTemplateItem[]
+  runs         ChecklistRun[]
+
+  @@unique([organizationId, subjectType, phase])
+  @@map("checklist_templates")
+}
+
+model ChecklistTemplateItem {
+  id           String  @id @default(cuid())
+  templateId   String
+  label        String
+  /// Pide foto cuando se marca «Problema» (daños, faltantes).
+  requirePhoto Boolean @default(true)
+  sortOrder    Int     @default(0)
+
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, sortOrder])
+  @@map("checklist_template_items")
+}
+
+/// Una revisión hecha: queda con el texto de cada punto tal como se revisó (aunque la lista cambie después).
+model ChecklistRun {
+  id              String   @id @default(cuid())
+  organizationId  String
+  templateId      String?
+  subjectType     String
+  subjectId       String
+  phase           String
+  notes           String?  @db.Text
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  template     ChecklistTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  createdBy    User?              @relation(fields: [createdByUserId], references: [id])
+  items        ChecklistRunItem[]
+
+  @@index([organizationId, subjectType, subjectId, phase])
+  @@map("checklist_runs")
+}
+
+model ChecklistRunItem {
+  id        String  @id @default(cuid())
+  runId     String
+  label     String
+  /// ok | issue | na
+  status    String
+  note      String?
+  photoUrl  String? @db.VarChar(500)
+  sortOrder Int     @default(0)
+
+  run ChecklistRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, sortOrder])
+  @@map("checklist_run_items")
 }

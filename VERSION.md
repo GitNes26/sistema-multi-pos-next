@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.59.0.0] — 2026-11-07
+- **Tipo:** `feat` (Minor)
+- feat: listas de revision de ingreso y entrega con foto de los problemas, obligatorias opcionalmente antes de avanzar o cobrar, con motor reutilizable para rentas
+
 ### [0.58.0.0] — 2026-11-07
 - **Tipo:** `feat` (Minor)
 - feat: portal del cliente con mis vehiculos y seguimiento en vivo de sus servicios, bahias como espacio cajon o carril que se liberan al quedar listo el vehiculo y tablero con ocupacion de bahias

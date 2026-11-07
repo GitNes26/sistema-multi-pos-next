@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, ClipboardList, Clock, KeyRound, Loader2, MapPin, Plus, Settings2, Car, UserRound } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardCheck, ClipboardList, Clock, KeyRound, Loader2, MapPin, Plus, Settings2, Car, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SegmentedFilter } from "@/components/base";
@@ -14,6 +14,7 @@ import { elapsed, money, type Flow, type ServiceOrder } from "./types";
 import { ServiceOrderIntakeDialog } from "./service-order-intake-dialog";
 import { ServiceOrderDetailDialog } from "./service-order-detail-dialog";
 import { ServiceFlowsDialog } from "./service-flows-dialog";
+import { ChecklistTemplatesDialog } from "./checklist-templates-dialog";
 
 interface BoardProps {
   canManage: boolean;
@@ -29,6 +30,7 @@ export function ServiceOrdersBoard({ canManage, canConfigure, canManageAssets }:
   const [error, setError] = useState<string | null>(null);
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [flowsOpen, setFlowsOpen] = useState(false);
+  const [checklistsOpen, setChecklistsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -112,6 +114,11 @@ export function ServiceOrdersBoard({ canManage, canConfigure, canManageAssets }:
           />
         )}
         <div className="ml-auto flex items-center gap-2">
+          {canConfigure && (
+            <Button variant="outline" size="sm" onClick={() => setChecklistsOpen(true)}>
+              <ClipboardCheck className="size-4" /> Listas de revisión
+            </Button>
+          )}
           {canConfigure && (
             <Button variant="outline" size="sm" onClick={() => setFlowsOpen(true)}>
               <Settings2 className="size-4" /> Flujos y etapas
@@ -267,6 +274,7 @@ export function ServiceOrdersBoard({ canManage, canConfigure, canManageAssets }:
         onChanged={() => void load()}
       />
       {canConfigure && <ServiceFlowsDialog open={flowsOpen} onOpenChange={setFlowsOpen} onSaved={() => void load()} />}
+      {canConfigure && <ChecklistTemplatesDialog open={checklistsOpen} onOpenChange={setChecklistsOpen} onSaved={() => void load()} />}
     </div>
   );
 }

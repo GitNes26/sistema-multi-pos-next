@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Banknote, Car, Check, CreditCard, History, KeyRound, Loader2, MapPin, MessageSquareText, UserRound, X } from "lucide-react";
+import { Banknote, Car, Check, ClipboardCheck, CreditCard, History, KeyRound, Loader2, MapPin, MessageSquareText, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { InputGroupField } from "@/components/base/input-group-field";
 import { swalConfirm, swalPrompt } from "@/lib/swal";
 import { cn } from "@/lib/utils";
 import { EVENT_LABEL, elapsed, money, type Flow, type OrderEvent, type ServiceOrder } from "./types";
+import { ChecklistRunDialog, type ChecklistRun, type ChecklistTemplate } from "./checklist-run-dialog";
 
 const METHODS = [
   { value: "cash", label: "Efectivo", icon: Banknote },
@@ -39,6 +40,9 @@ export function ServiceOrderDetailDialog({
   const [events, setEvents] = useState<OrderEvent[] | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [receipt, setReceipt] = useState<{ saleNumber: string; total: number } | null>(null);
+  const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
+  const [runs, setRuns] = useState<Record<string, ChecklistRun>>({});
+  const [reviewPhase, setReviewPhase] = useState<string | null>(null);
 
   const orderId = order?.id;
   const loadHistory = useCallback(async (id: string) => {
@@ -51,9 +55,26 @@ export function ServiceOrderDetailDialog({
     }
   }, []);
 
+  const loadChecklists = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/service-orders/${id}/checklists`, { cache: "no-store", credentials: "include" });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setTemplates(data.templates);
+        setRuns(data.runs);
+      }
+    } catch {
+      /* las revisiones son opcionales: si falla, no se muestran */
+    }
+  }, []);
+
   useEffect(() => {
     if (!orderId) return;
     setError(null);
+    setReviewPhase(null);
+    setTemplates([]);
+    setRuns({});
+    void loadChecklists(orderId);
     setReceipt(null);
     setShowHistory(false);
     setEvents(null);
@@ -62,7 +83,7 @@ export function ServiceOrderDetailDialog({
       .then((r) => r.json())
       .then((d) => setStations((d.rows ?? []).filter((s: { isActive?: boolean }) => s.isActive !== false)))
       .catch(() => setStations([]));
-  }, [orderId, loadHistory]);
+  }, [orderId, loadHistory, loadChecklists]);
   useEffect(() => {
     setKeyTag(order?.keyTag ?? "");
   }, [order?.keyTag, orderId]);
@@ -242,6 +263,45 @@ export function ServiceOrderDetailDialog({
           <UserRound className="size-3.5" /> Atiende {order.employee.fullName}
         </p>
       )}
+
+      {templates.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">Revisiones</p>
+          <ul className="space-y-1.5">
+            {templates.map((t) => {
+              const run = runs[t.phase];
+              const issues = run ? run.items.filter((i) => i.status === "issue").length : 0;
+              return (
+                <li key={t.id} className="flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm">
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <ClipboardCheck className="size-4 shrink-0 text-muted-foreground" /> <span className="truncate">{t.name}</span>
+                    </span>
+                    <span className={cn("block text-xs", run ? (issues ? "text-destructive" : "text-success-ink") : t.isRequired ? "text-warning-ink" : "text-muted-foreground")}>
+                      {run ? (issues ? `${issues} ${issues === 1 ? "problema" : "problemas"} registrado${issues === 1 ? "" : "s"}` : "Hecha, sin problemas") : t.isRequired ? "Pendiente · obligatoria" : "Pendiente"}
+                    </span>
+                  </span>
+                  <Button size="sm" variant={run ? "outline" : "default"} onClick={() => setReviewPhase(t.phase)} disabled={busy}>
+                    {run ? "Ver" : "Hacer revisión"}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      <ChecklistRunDialog
+        open={reviewPhase !== null}
+        onOpenChange={(o) => !o && setReviewPhase(null)}
+        orderId={order.id}
+        template={templates.find((t) => t.phase === reviewPhase) ?? null}
+        lastRun={reviewPhase ? (runs[reviewPhase] ?? null) : null}
+        canManage={editable}
+        onSaved={() => {
+          void loadChecklists(order.id);
+          void loadHistory(order.id);
+        }}
+      />
 
       {canManage && order.status === "ready" && (
         <div className="space-y-3 rounded-xl border p-3">
