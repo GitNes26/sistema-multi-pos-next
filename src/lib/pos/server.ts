@@ -29,6 +29,7 @@ import { notifyStaff } from "@/lib/notifications/staff"
 import { broadcastTableUpdate } from "@/lib/tables/live"
 import { closeKitchenOrderOnSale } from "./kitchen"
 import { categoryBranchIds } from "@/lib/catalog/categories"
+import { computeContainerDeposit, depositCashRefunds, DepositError, recordDepositCharges } from "@/lib/deposits/server"
 
 export class PosError extends Error {
   status: number
@@ -352,6 +353,7 @@ async function buildPosCatalog(
         trackInventory: p.trackInventory,
         isAvailable: p.isAvailable,
         availabilityNote: p.availabilityNote,
+        depositAmount: toNum(p.depositAmount),
         stock: variantStock.get(v.id) ?? 0,
         bulk: null,
         variantCount: 0,
@@ -717,6 +719,7 @@ export async function getSalesStats(
       },
     }),
   ])
+  const containerRefunds = session ? await depositCashRefunds(prisma, session.id) : 0
 
   const sessionCashData = session
     ? {
@@ -743,7 +746,7 @@ export async function getSalesStats(
                 0
               ),
             0
-          )
+          ) + containerRefunds
         ),
         cashExpenses: round2(
           session.expenses.reduce((sum, e) => sum + toNum(e.amount), 0)
@@ -1094,10 +1097,23 @@ export async function createSale(
 
   await validateSaleAmounts(organizationId, payload)
 
+  // Importe de envases: lo calcula el servidor; el cliente solo dice cuántos envases trae.
+  let deposit: Awaited<ReturnType<typeof computeContainerDeposit>>
+  try {
+    deposit = await computeContainerDeposit(prisma, organizationId, payload.items, payload.containers ?? [])
+  } catch (error) {
+    if (error instanceof DepositError) throw new PosError(error.message, error.status)
+    throw error
+  }
+
   const payable = round2(payload.total - payload.pointsRedeemedValue)
   const paid = round2(payload.payments.reduce((acc, p) => acc + p.amount, 0))
-  if (round2(paid - payable) < -0.01) {
-    throw new PosError("Los pagos no cubren el total", 400)
+  if (round2(paid - payable - deposit.total) < -0.01) {
+    throw new PosError(deposit.total > 0 ? "Los pagos no cubren el total y el importe de envases" : "Los pagos no cubren el total", 400)
+  }
+  if (deposit.total > 0) {
+    const onCredit = round2(payload.payments.filter((p) => p.method === "credit").reduce((acc, p) => acc + p.amount, 0))
+    if (onCredit > payable + 0.01) throw new PosError("El importe de envases no se puede dejar a crédito", 400)
   }
 
   const result = await prisma.$transaction(async (tx) => {
@@ -1159,6 +1175,7 @@ export async function createSale(
         tax: payload.tax,
         total: payload.total,
         tip: payload.tip ?? 0,
+        depositCharged: deposit.total,
         pointsEarned: payload.pointsEarned,
         pointsRedeemed: payload.pointsRedeemed,
         changeGiven: payload.changeGiven,
@@ -1167,6 +1184,12 @@ export async function createSale(
         tableLabel: payload.tableLabel?.trim().slice(0, 80) || null,
       },
     })
+
+    await recordDepositCharges(
+      tx,
+      { organizationId, locationId, saleId: sale.id, cashSessionId: payload.cashSessionId, customerId: payload.customerId, userId: ctx.userId },
+      deposit.lines
+    )
 
     if (payload.items.length) {
       const unitCosts = await resolveUnitCosts(tx, organizationId, payload.items)
@@ -1702,8 +1725,10 @@ export async function closeCashSession(
         )._sum.amount
       )
     )
+    // Efectivo regresado por envases devueltos: sale de la caja igual que una devolución.
+    const containerRefunds = await depositCashRefunds(tx, session.id)
     const expectedCash = round2(
-      toNum(session.openingCash) + cashPayments - changeGiven - cashRefunds - cashExpenses
+      toNum(session.openingCash) + cashPayments - changeGiven - cashRefunds - containerRefunds - cashExpenses
     )
 
     const updated = await tx.cashSession.update({
@@ -1723,7 +1748,7 @@ export async function closeCashSession(
       totalSales,
       cashPayments,
       changeGiven,
-      cashRefunds,
+      cashRefunds: round2(cashRefunds + containerRefunds),
       cashExpenses,
       openingCash: toNum(session.openingCash),
       systemCash: round2(expectedCash),

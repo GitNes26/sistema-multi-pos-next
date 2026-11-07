@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { round2 } from "@/lib/pos/money";
 import { createSale, PosError } from "@/lib/pos/server";
 import type { PosSalePayload } from "@/types/pos";
+import { missingRequiredChecklist } from "@/lib/checklists/server";
+import { computeLateFee, settleDeposit } from "./penalties";
 
 // ── Reservaciones (rental / hybrid) ──────────────────────────────────────────
 // Modelo: una reservación aparta N unidades de artículos rentables (variantes
@@ -47,6 +49,14 @@ export interface ReservationRow {
   customer: { id: string; fullName: string; phone: string | null } | null;
   items: { variantId: string; name: string; quantity: number; unitPrice: number; lineTotal: number }[];
   total: number;
+  depositAmount: number;
+  deliveredAt: string | null;
+  returnedAt: string | null;
+  lateFee: number;
+  damageFee: number;
+  penaltyNotes: string | null;
+  depositRefund: number | null;
+  balanceDue: number | null;
 }
 
 /** Artículos rentables = variantes de productos con unidades en inventario. */
@@ -113,6 +123,14 @@ export async function getReservations(
       endsAt: true,
       notes: true,
       saleId: true,
+      depositAmount: true,
+      deliveredAt: true,
+      returnedAt: true,
+      lateFee: true,
+      damageFee: true,
+      penaltyNotes: true,
+      depositRefund: true,
+      balanceDue: true,
       customer: { select: { id: true, fullName: true, phone: true } },
       items: {
         select: {
@@ -144,6 +162,14 @@ export async function getReservations(
       lineTotal: Number(i.lineTotal ?? 0),
     })),
     total: r.items.reduce((acc, i) => acc + Number(i.lineTotal ?? 0), 0),
+    depositAmount: Number(r.depositAmount),
+    deliveredAt: r.deliveredAt?.toISOString() ?? null,
+    returnedAt: r.returnedAt?.toISOString() ?? null,
+    lateFee: Number(r.lateFee),
+    damageFee: Number(r.damageFee),
+    penaltyNotes: r.penaltyNotes,
+    depositRefund: r.depositRefund === null ? null : Number(r.depositRefund),
+    balanceDue: r.balanceDue === null ? null : Number(r.balanceDue),
   }));
 }
 
@@ -241,6 +267,37 @@ export interface ReservationCreateInput {
   startsAt: Date;
   endsAt: Date;
   notes?: string | null;
+  /** Depósito en garantía; si no se manda se usa el sugerido por la política de rentas. */
+  depositAmount?: number | null;
+  depositNote?: string | null;
+}
+
+export interface RentalPolicyDto {
+  defaultDeposit: number;
+  lateFeePerDay: number;
+  graceMinutes: number;
+}
+
+export async function getRentalPolicy(organizationId: string): Promise<RentalPolicyDto> {
+  const p = await prisma.rentalPolicy.findUnique({ where: { organizationId } });
+  return p
+    ? { defaultDeposit: Number(p.defaultDeposit), lateFeePerDay: Number(p.lateFeePerDay), graceMinutes: p.graceMinutes }
+    : { defaultDeposit: 0, lateFeePerDay: 0, graceMinutes: 60 };
+}
+
+export async function saveRentalPolicy(organizationId: string, input: Partial<RentalPolicyDto>): Promise<RentalPolicyDto> {
+  const num = (v: unknown, label: string, max: number) => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0 || n > max) throw new ReservationError(`${label} no es válido`, 400);
+    return n;
+  };
+  const data = {
+    defaultDeposit: round2(num(input.defaultDeposit ?? 0, "El depósito", 1_000_000)),
+    lateFeePerDay: round2(num(input.lateFeePerDay ?? 0, "El cargo por retraso", 1_000_000)),
+    graceMinutes: Math.round(num(input.graceMinutes ?? 60, "La gracia", 1440)),
+  };
+  await prisma.rentalPolicy.upsert({ where: { organizationId }, create: { organizationId, ...data }, update: data });
+  return data;
 }
 
 export async function createReservation(organizationId: string, input: ReservationCreateInput) {
@@ -266,6 +323,12 @@ export async function createReservation(organizationId: string, input: Reservati
   try {
     return await prisma.$transaction(async (tx) => {
     const units = await getRentableUnits(organizationId, tx);
+    const policy = await tx.rentalPolicy.findUnique({ where: { organizationId }, select: { defaultDeposit: true } });
+    const requested = input.depositAmount;
+    if (requested != null && (!Number.isFinite(Number(requested)) || Number(requested) < 0)) {
+      throw new ReservationError("El depósito no es válido", 400);
+    }
+    const depositAmount = round2(requested != null ? Number(requested) : Number(policy?.defaultDeposit ?? 0));
     const priceByVariant = new Map(units.map((u) => [u.variantId, u.price]));
     await assertAvailability(organizationId, input.items, input.startsAt, input.endsAt, undefined, tx);
     const reservation = await tx.reservation.create({
@@ -277,6 +340,8 @@ export async function createReservation(organizationId: string, input: Reservati
         startsAt: input.startsAt,
         endsAt: input.endsAt,
         notes: input.notes?.trim() ? input.notes.trim() : null,
+        depositAmount,
+        depositNote: input.depositNote?.trim() ? input.depositNote.trim().slice(0, 190) : null,
         items: {
           create: input.items.map((it) => {
             const price = priceByVariant.get(it.variantId) ?? 0;
@@ -497,4 +562,66 @@ export async function updateReservation(
     if ((err as { code?: string })?.code === "P2034") throw new ReservationError("La reservación cambió mientras se actualizaba", 409);
     throw err;
   }
+}
+
+
+/** Entrega el equipo al cliente. Si la lista de entrega es obligatoria, debe estar hecha. */
+export async function deliverReservation(organizationId: string, id: string) {
+  const r = await prisma.reservation.findFirst({ where: { id, organizationId }, select: { id: true, status: true, deliveredAt: true } });
+  if (!r) throw new ReservationError("Reservación no encontrada", 404);
+  if (r.status === "cancelled") throw new ReservationError("La reservación está cancelada", 409);
+  if (r.status === "pending") throw new ReservationError("Confirma la reservación antes de entregar", 409);
+  if (r.deliveredAt) throw new ReservationError("El equipo ya fue entregado", 409);
+  const missing = await missingRequiredChecklist(organizationId, "reservation", id, "delivery");
+  if (missing) throw new ReservationError(`Antes de entregar completa la revisión «${missing}»`, 409);
+  const claimed = await prisma.reservation.updateMany({
+    where: { id, organizationId, deliveredAt: null, status: { in: ["confirmed", "completed"] } },
+    data: { deliveredAt: new Date() },
+  });
+  if (claimed.count !== 1) throw new ReservationError("La reservación cambió mientras se entregaba", 409);
+  return { id };
+}
+
+export interface ReturnInput {
+  damageFee?: number | null;
+  penaltyNotes?: string | null;
+  /** Para recepciones capturadas a posteriori. */
+  returnedAt?: Date | null;
+}
+
+/**
+ * Recibe el equipo: calcula el retraso con la política, suma el cargo por daños capturado y liquida
+ * contra el depósito (se regresa lo que sobra; si los cargos lo exceden queda un saldo por cobrar).
+ */
+export async function returnReservation(organizationId: string, id: string, input: ReturnInput) {
+  const damage = round2(Number(input.damageFee ?? 0));
+  if (!Number.isFinite(damage) || damage < 0 || damage > 10_000_000) throw new ReservationError("El cargo por daños no es válido", 400);
+  const r = await prisma.reservation.findFirst({
+    where: { id, organizationId },
+    select: { id: true, status: true, deliveredAt: true, returnedAt: true, endsAt: true, depositAmount: true },
+  });
+  if (!r) throw new ReservationError("Reservación no encontrada", 404);
+  if (!r.deliveredAt) throw new ReservationError("Primero registra la entrega del equipo", 409);
+  if (r.returnedAt) throw new ReservationError("El equipo ya fue devuelto", 409);
+  const missing = await missingRequiredChecklist(organizationId, "reservation", id, "return");
+  if (missing) throw new ReservationError(`Antes de recibir completa la revisión «${missing}»`, 409);
+
+  const returnedAt = input.returnedAt && !Number.isNaN(input.returnedAt.getTime()) ? input.returnedAt : new Date();
+  const policy = await getRentalPolicy(organizationId);
+  const lateFee = computeLateFee(r.endsAt, returnedAt, policy);
+  const { refund, balanceDue } = settleDeposit(Number(r.depositAmount), round2(lateFee + damage));
+
+  const claimed = await prisma.reservation.updateMany({
+    where: { id, organizationId, returnedAt: null, deliveredAt: { not: null } },
+    data: {
+      returnedAt,
+      lateFee,
+      damageFee: damage,
+      penaltyNotes: input.penaltyNotes?.trim() ? input.penaltyNotes.trim().slice(0, 190) : null,
+      depositRefund: refund,
+      balanceDue,
+    },
+  });
+  if (claimed.count !== 1) throw new ReservationError("La renta cambió mientras se recibía", 409);
+  return { id, lateFee, damageFee: damage, depositRefund: refund, balanceDue };
 }

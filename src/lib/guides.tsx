@@ -238,6 +238,36 @@ const productGuide: GuideDef = {
     },
     {
       route: "/admin/products",
+      selector: "[data-guide='service-availability']",
+      title: "Pausar un servicio al instante",
+      body: (
+        <p>
+          Si el producto es un <strong>servicio</strong> (sin controlar
+          inventario) y tu rol tiene el permiso de activar o desactivar
+          servicios, al abrirlo con el lápiz verás al pie, a la izquierda, el
+          interruptor <strong>«Disponible en venta»</strong>. Al apagarlo deja de
+          venderse en todas las cajas y en la tienda del portal, sin esperar a
+          «Guardar cambios».
+        </p>
+      ),
+    },
+    {
+      route: "/admin/products",
+      selector: "#product-depositAmount",
+      title: "Importe de envase retornable",
+      body: (
+        <p>
+          Si el producto viene en un envase que el cliente devuelve (refresco
+          retornable, garrafón), captura aquí su <strong>importe</strong>. En el
+          POS, al cobrar, aparece «Envases retornables»: indicas cuántos trae el
+          cliente a cambio y solo se cobra el importe de los que faltan. Ese
+          dinero no es ingreso ni lleva impuesto; se regresa en efectivo con el
+          botón de reciclaje del POS al devolver el envase.
+        </p>
+      ),
+    },
+    {
+      route: "/admin/products",
       selector: "[data-guide='variants-btn']",
       title: "Personaliza las variantes",
       body: (
@@ -725,6 +755,33 @@ const reservationGuide: GuideDef = {
           Esta pantalla muestra el <strong>calendario de disponibilidad</strong>{" "}
           por día y las reservaciones existentes. Es el mismo flujo que usa el
           cliente en el portal: elegir día → hora → asientos → sala/mesa.
+        </p>
+      ),
+    },
+    {
+      route: "/reservaciones",
+      selector: "[data-guide='rental-policy']",
+      title: "Depósito y retrasos",
+      body: (
+        <p>
+          Define el <strong>depósito sugerido</strong>, el cargo por{" "}
+          <strong>día de retraso</strong> y los minutos de gracia. Al devolver el
+          equipo el sistema calcula el retraso, suma los daños que captures y
+          descuenta del depósito; te dice cuánto regresar al cliente o si queda
+          saldo por cobrar.
+        </p>
+      ),
+    },
+    {
+      route: "/reservaciones",
+      selector: "[data-guide='rental-checklists']",
+      title: "Revisiones de entrega y devolución",
+      body: (
+        <p>
+          Arma las listas que se revisan al entregar y al recibir el equipo, con
+          foto de lo que esté mal. Si las marcas como <strong>obligatorias</strong>,
+          no se puede entregar ni recibir sin completarlas: queda constancia del
+          estado en que salió y regresó cada renta.
         </p>
       ),
     },

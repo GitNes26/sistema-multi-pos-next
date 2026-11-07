@@ -46,7 +46,7 @@ precios y descuentos recalculados en servidor; una orden cobrada se vincula a **
 | 0 · Fundación (**hecha**, con la política de citas) | `CustomerAsset`, `ServiceStation`, interruptores por empresa (qué módulos usa) y presets de negocio | Se pueden registrar vehículos y lugares |
 | 1 · Orden y tablero (**hecha**, con portal del cliente) | `ServiceOrder`, flujos por servicio, tablero por etapas/bahías en vivo (SSE), llavero, cobro ligado a venta, aviso "listo" al cliente | Autolavado operable de punta a punta |
 | 2 · Revisiones (**hecha para órdenes de servicio**; las rentas la reutilizarán) | Listas de entrega/devolución con fotos y firma | Sirve a autolavado (daños previos) y renta |
-| 3 · Renta | Paquetes, depósito, entrega y devolución, penalizaciones, hoja imprimible | Renta completa |
+| 3 · Renta (**base hecha**: depósito, entrega y devolución con revisiones, retraso y daños; faltan paquetes, hoja imprimible y movimiento de caja del depósito) | Paquetes, depósito, entrega y devolución, penalizaciones, hoja imprimible | Renta completa |
 | 4 · Barbería | Silla en la cita, agenda por silla, ficha de estilo del cliente (asset `profile`), indicaciones del corte | Barbería cubierta |
 | 5 · Fidelidad | Promociones por visitas, membresías o paquetes de lavados prepagados | Clientes frecuentes |
 | 6 · Comunicación | Landing, asistente de creación de empresa con presets (Autolavado, Barbería, Renta), guías, manual, datos demo y pruebas e2e por vertical | Se ofrece y se explica |
@@ -68,6 +68,8 @@ membresía mensual · pago adelantado por QR.
 5. Avisos al cliente **solo por app y notificación push**; el envío se diseña como canales intercambiables (`app`, `push`, y `whatsapp` como canal futuro sin implementar), con plantillas de mensaje por etapa y preferencia por cliente.
 
 ## 7. Importe de envases retornables (garantía)
+
+> **Estado (7 nov 2026):** hecha la versión simple desde el producto: importe por pieza, canje en el cobro, devolución en efectivo y corte. Sigue pendiente lo de abajo que dice «catálogo `ContainerType`», saldo por cliente, reporte, cancelaciones, portal y el uso compartido con el depósito de las rentas.
 
 Aplica a tiendas (refresco retornable) y se comparte con el depósito de las rentas. No todos los productos: solo los que se marquen.
 

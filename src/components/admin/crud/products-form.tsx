@@ -1,6 +1,9 @@
 "use client"
 
 import { CustomProductGuide, ProductKindPicker } from "./product-kind-guide"
+import { isServiceProduct } from "./service-availability-toggle"
+import { useSession } from "next-auth/react"
+import { hasPermission } from "@/lib/auth/permissions"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 import * as yup from "yup"
 import {
@@ -19,6 +22,7 @@ import {
   ImageIcon,
   ListTree,
   MessageSquareText,
+  Recycle,
   SlidersHorizontal,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -201,6 +205,14 @@ export function ProductsForm({
   const [isAvailable, setIsAvailable] = useState(
     (initial?.isAvailable as boolean) ?? true
   )
+  // Si el interruptor del pie (acción inmediata) cambia la disponibilidad, el formulario la sigue
+  // para que «Guardar cambios» no la revierta.
+  useEffect(() => {
+    if (typeof initial?.isAvailable === "boolean") setIsAvailable(initial.isAvailable)
+  }, [initial?.isAvailable])
+  const { data: authSession } = useSession()
+  // En un servicio ya creado, quien puede pausarlo lo hace desde el pie del modal (no se duplica aquí).
+  const availabilityInFooter = isEdit && isServiceProduct(initial) && hasPermission(authSession, "pos.toggle_services")
   const [availabilityNote, setAvailabilityNote] = useState(
     (initial?.availabilityNote as string) ?? ""
   )
@@ -208,6 +220,10 @@ export function ProductsForm({
     (initial?.trackInventory as boolean) ?? true
   )
   const [isNew, setIsNew] = useState((initial?.isNew as boolean) ?? false)
+  // Importe de envase o garantía por pieza (se cobra aparte de la venta y se regresa al devolver el envase).
+  const [depositAmount, setDepositAmount] = useState(
+    Number(initial?.depositAmount) > 0 ? String(initial?.depositAmount) : ""
+  )
 
   // Existencias iniciales (solo al crear y con control de inventario).
   const [initialStock, setInitialStock] = useState("")
@@ -460,6 +476,7 @@ export function ProductsForm({
       isAvailable,
       availabilityNote: availabilityNote.trim() || null,
       trackInventory,
+      depositAmount: productType === "standard" ? numOrEmpty(depositAmount) || 0 : 0,
       isNew,
       productType,
     }
@@ -879,19 +896,21 @@ export function ProductsForm({
             onCheckedChange={setTrackInventory}
             border={false}
           />
-          <SwitchField
-            id="prod-available"
-            label="Disponible para venta"
-            description={
-              isAvailable
-                ? "Puede agregarse en POS y portal"
-                : "Se muestra como «Ya no hay»"
-            }
-            checked={isAvailable}
-            onCheckedChange={setIsAvailable}
-            infoTooltip="Úsalo como pausa operativa cuando se termine un producto o preparación. No modifica el inventario contable."
-            border={false}
-          />
+          {!availabilityInFooter && (
+            <SwitchField
+              id="prod-available"
+              label="Disponible para venta"
+              description={
+                isAvailable
+                  ? "Puede agregarse en POS y portal"
+                  : "Se muestra como «Ya no hay»"
+              }
+              checked={isAvailable}
+              onCheckedChange={setIsAvailable}
+              infoTooltip="Úsalo como pausa operativa cuando se termine un producto o preparación. No modifica el inventario contable."
+              border={false}
+            />
+          )}
           <SwitchField
             id="prod-new"
             label="Producto nuevo"
@@ -901,6 +920,21 @@ export function ProductsForm({
             border={false}
           />
         </div>
+        {productType === "standard" && trackInventory && (
+          <InputGroupField
+            id="product-depositAmount"
+            label="Importe de envase (opcional)"
+            leftIcon={<Recycle className="size-4" />}
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={depositAmount}
+            onChange={(event) => setDepositAmount(event.target.value)}
+            placeholder="Ej. 12.00"
+            hint="Garantía por envase retornable. Se cobra aparte de la venta, sin impuesto ni ingreso, y se regresa al devolver el envase."
+          />
+        )}
         {!isAvailable && (
           <InputField
             id="product-availabilityNote"

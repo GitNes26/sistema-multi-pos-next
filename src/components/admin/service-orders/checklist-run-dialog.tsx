@@ -47,6 +47,7 @@ export function ChecklistRunDialog({
   open,
   onOpenChange,
   orderId,
+  endpoint,
   template,
   lastRun,
   canManage,
@@ -54,7 +55,10 @@ export function ChecklistRunDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  orderId: string;
+  /** Orden de servicio a la que pertenece la revisión (si no se manda `endpoint`). */
+  orderId?: string;
+  /** Ruta que guarda la revisión; por defecto la de la orden de servicio. */
+  endpoint?: string;
   template: ChecklistTemplate | null;
   lastRun: ChecklistRun | null;
   canManage: boolean;
@@ -92,7 +96,7 @@ export function ChecklistRunDialog({
     }
     setSaving(true);
     try {
-      const res = await fetch(`/api/service-orders/${orderId}/checklists`, {
+      const res = await fetch(endpoint ?? `/api/service-orders/${orderId}/checklists`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

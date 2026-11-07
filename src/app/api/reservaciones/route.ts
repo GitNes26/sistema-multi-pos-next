@@ -57,6 +57,8 @@ export async function POST(req: NextRequest) {
       startsAt,
       endsAt,
       notes: body.notes ? String(body.notes) : null,
+      depositAmount: body.depositAmount === undefined || body.depositAmount === "" || body.depositAmount === null ? undefined : Number(body.depositAmount),
+      depositNote: body.depositNote ? String(body.depositNote) : null,
     });
     return NextResponse.json({ ok: true, id: reservation.id }, { status: 201 });
   } catch (err) {

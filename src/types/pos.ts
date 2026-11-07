@@ -99,6 +99,8 @@ export interface PosProduct {
   trackInventory: boolean
   isAvailable: boolean
   availabilityNote: string | null
+  /** Importe de envase por pieza (0 / ausente = no aplica). */
+  depositAmount?: number
   stock: number
   bulk: PosBulkInfo | null
   variantCount: number
@@ -309,6 +311,10 @@ export interface PosSalePayload {
     guestName?: string | null
   }[]
   customerId?: string
+  /** Envases que el cliente trae a cambio, por producto con importe. El servidor recalcula el cobro. */
+  containers?: { productId: string; brought: number }[]
+  /** Solo para el ticket: importe de envases cobrado (el servidor lo recalcula). */
+  depositTotal?: number
   subtotal: number
   discount: number
   tax: number

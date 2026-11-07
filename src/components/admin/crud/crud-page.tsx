@@ -45,6 +45,7 @@ import { money } from "@/lib/pos/money"
 import { swalConfirm, swalError, swalToast } from "@/lib/swal"
 import { CrudForm } from "./crud-form"
 import { ProductsForm } from "./products-form"
+import { ServiceAvailabilityToggle } from "./service-availability-toggle"
 import { VariantsDialog } from "./variants-dialog"
 import { RecipeDialog, type RecipeProduct } from "./recipe-dialog"
 import { TooltipButton } from "@/components/shared/tooltip-button"
@@ -980,6 +981,15 @@ export function CrudPage({
         dataGuide={`${moduleKey}-dialog`}
         footer={
           <>
+            {isProducts(moduleKey) && editing && (
+              <ServiceAvailabilityToggle
+                product={editing}
+                onChanged={(isAvailable) => {
+                  setEditing((prev) => (prev ? { ...prev, isAvailable } : prev))
+                  void load()
+                }}
+              />
+            )}
             <Button
               type="button"
               variant="ghost"

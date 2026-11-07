@@ -321,6 +321,8 @@ model Organization {
   tableWaitlist          TableWaitlist[]
   planNodes              PlanNode[]
   reservationPolicy      ReservationPolicy?
+  rentalPolicy           RentalPolicy?
+  depositEntries         DepositEntry[]
   reservations           Reservation[]
   roles                  Role[]
   rolePermissions        RolePermission[]
@@ -1102,6 +1104,8 @@ model Product {
   isAvailable       Boolean     @default(true)
   availabilityNote  String?
   isNew             Boolean     @default(false)
+  /// Importe de envase o garantía por pieza (0 = no aplica). No es ingreso ni lleva impuesto.
+  depositAmount     Decimal     @default(0) @db.Decimal(12, 2)
   productType       ProductType @default(standard)
   bulkUnitId        String?
   bulkPricePerUnit  Decimal     @default(0) @db.Decimal(12, 2)
@@ -1597,6 +1601,8 @@ model Sale {
   pointsRedeemed     Decimal    @default(0) @db.Decimal(12, 2)
   changeGiven        Decimal    @default(0) @db.Decimal(12, 2)
   tip                Decimal    @default(0) @db.Decimal(12, 2)
+  /// Importe de envases cobrado con la venta: dinero en garantía, fuera de `total`.
+  depositCharged     Decimal    @default(0) @db.Decimal(12, 2)
   status             SaleStatus @default(completed)
   notes              String?
   /// Mesa donde se consumió («Mesa 5»); también las mesas escritas a mano.
@@ -2293,6 +2299,19 @@ model Reservation {
   notes          String?
   // Venta generada por el checkout (cobro de la reservación)
   saleId         String?
+  // Depósito en garantía: se retiene hasta la devolución y no es ingreso.
+  depositAmount  Decimal           @default(0) @db.Decimal(12, 2)
+  depositNote    String?
+  // Entrega y devolución del equipo (con sus revisiones en el motor de checklists).
+  deliveredAt    DateTime?
+  returnedAt     DateTime?
+  // Cargos calculados/capturados al devolver; se descuentan del depósito.
+  lateFee        Decimal           @default(0) @db.Decimal(12, 2)
+  damageFee      Decimal           @default(0) @db.Decimal(12, 2)
+  penaltyNotes   String?
+  // Lo que se regresa al cliente del depósito y lo que aún debe si los cargos lo exceden.
+  depositRefund  Decimal?          @db.Decimal(12, 2)
+  balanceDue     Decimal?          @db.Decimal(12, 2)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -2305,6 +2324,24 @@ model Reservation {
   @@index([organizationId, startsAt])
   @@index([organizationId, status])
   @@map("reservations")
+}
+
+/// Política de rentas por empresa: depósito sugerido y penalización por entregar tarde.
+model RentalPolicy {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  /// Depósito que se propone al crear una renta (editable por renta).
+  defaultDeposit Decimal  @default(0) @db.Decimal(12, 2)
+  /// Cargo por cada día (o fracción) de retraso, por renta.
+  lateFeePerDay  Decimal  @default(0) @db.Decimal(12, 2)
+  /// Minutos de gracia después de la hora de fin antes de cobrar retraso.
+  graceMinutes   Int      @default(60)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("rental_policies")
 }
 
 // Artículos rentados en una reservación: variante + unidades + precio de renta
@@ -3245,4 +3282,30 @@ model ChecklistRunItem {
 
   @@index([runId, sortOrder])
   @@map("checklist_run_items")
+}
+
+/// Libro de garantías: importe de envases cobrado (`charge`) o devuelto (`refund`) por producto.
+/// No forma parte de las ventas ni de sus impuestos; el efectivo sí entra al corte de caja.
+model DepositEntry {
+  id             String   @id @default(cuid())
+  organizationId String
+  locationId     String
+  kind           String   @db.VarChar(10)
+  productId      String
+  productName    String   @db.VarChar(191)
+  quantity       Int
+  unitAmount     Decimal  @db.Decimal(12, 2)
+  amount         Decimal  @db.Decimal(12, 2)
+  saleId         String?
+  cashSessionId  String?
+  customerId     String?
+  userId         String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, locationId, createdAt])
+  @@index([organizationId, productId, kind])
+  @@index([cashSessionId, kind])
+  @@map("deposit_entries")
 }

@@ -19,7 +19,8 @@ export function buildSalePayload(
   totals: ReturnType<typeof usePosTotals>,
   entries: PaymentEntry[],
   changeGiven: number,
-  tip: number = 0
+  tip: number = 0,
+  containers: { productId: string; brought: number; charged: number; amount: number }[] = []
 ): PosSalePayload {
   const state = usePosStore.getState();
   const customer = selectCustomer(state.customerId);
@@ -80,5 +81,7 @@ export function buildSalePayload(
           ? state.selectedTable.name?.trim() || `Mesa ${state.selectedTable.number}`
           : undefined,
     tip: tip > 0 ? tip : undefined,
+    containers: containers.length ? containers.map((c) => ({ productId: c.productId, brought: c.brought })) : undefined,
+    depositTotal: containers.length ? round2(containers.reduce((sum, c) => sum + c.amount, 0)) : undefined,
   };
 }

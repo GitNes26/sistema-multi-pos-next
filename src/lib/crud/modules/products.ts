@@ -58,6 +58,13 @@ function normalizeVariantRules(value: unknown): ProductOptionVariantRuleDto[] {
   });
 }
 
+/** Importe de envase: solo productos estándar; nunca negativo, con centavos. */
+function depositFrom(value: unknown, productType: string): number {
+  if (productType !== "standard") return 0;
+  const n = Math.round((Number(value) || 0) * 100) / 100;
+  return n > 0 && n <= 100000 ? n : 0;
+}
+
 export interface ProductDto {
   id: string;
   name: string;
@@ -70,6 +77,8 @@ export interface ProductDto {
   isAvailable: boolean;
   availabilityNote: string | null;
   trackInventory: boolean;
+  /** Importe de envase por pieza; 0 = no aplica. */
+  depositAmount: number;
   isNew: boolean;
   productType: "standard" | "bulk" | "custom";
   bulkUnitId: string | null;
@@ -101,6 +110,7 @@ type ProductRow = {
   isAvailable: boolean;
   availabilityNote: string | null;
   trackInventory: boolean;
+  depositAmount?: { toNumber(): number } | number;
   isNew: boolean;
   productType: "standard" | "bulk" | "custom";
   bulkUnitId: string | null;
@@ -202,6 +212,7 @@ function serialize(p: ProductRow): ProductDto {
     isAvailable: p.isAvailable,
     availabilityNote: p.availabilityNote,
     trackInventory: p.trackInventory,
+    depositAmount: num(p.depositAmount ?? 0),
     isNew: p.isNew,
     productType: p.productType,
     bulkUnitId: p.bulkUnitId,
@@ -420,6 +431,7 @@ export const productsModule: CrudModule<ProductDto> = {
         isAvailable: data.isAvailable !== false,
         availabilityNote: data.availabilityNote ? String(data.availabilityNote).trim() : null,
         trackInventory: data.trackInventory !== false,
+        depositAmount: depositFrom(data.depositAmount, productType),
         isNew,
         productType,
         bulkUnitId: productType === "bulk" && data.bulkUnitId ? String(data.bulkUnitId) : null,
@@ -562,6 +574,7 @@ export const productsModule: CrudModule<ProductDto> = {
         ...(data.isAvailable !== undefined ? { isAvailable: data.isAvailable !== false } : {}),
         ...(data.availabilityNote !== undefined ? { availabilityNote: data.availabilityNote ? String(data.availabilityNote).trim() : null } : {}),
         ...(data.trackInventory !== undefined ? { trackInventory: data.trackInventory !== false } : {}),
+        ...(data.depositAmount !== undefined ? { depositAmount: depositFrom(data.depositAmount, productType) } : {}),
         ...(data.isNew !== undefined ? { isNew: data.isNew === true } : {}),
         productType,
         // Granel
@@ -1298,6 +1311,7 @@ export async function duplicateProduct(organizationId: string, id: string): Prom
         taxRate: src.taxRate,
         isActive: true,
         trackInventory: src.trackInventory,
+        depositAmount: src.depositAmount,
         isAvailable: src.isAvailable,
         availabilityNote: src.availabilityNote,
         isNew: false,

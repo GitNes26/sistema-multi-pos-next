@@ -10,8 +10,11 @@ import {
   Copy,
   CreditCard,
   Landmark,
+  Minus,
   MoreHorizontal,
   PiggyBank,
+  Plus,
+  Recycle,
   ReceiptText,
   Split,
   Trash2,
@@ -112,6 +115,25 @@ export function PaymentDialog({
   const [pointStatus, setPointStatus] = useState("")
   const [pointBusy, setPointBusy] = useState(false)
   const features = usePosStore((s) => s.features)
+  const catalogProducts = usePosStore((s) => s.products)
+  // Envases con importe: por cada producto del ticket que lo maneje, cuántos trae el cliente a cambio.
+  const [brought, setBrought] = useState<Record<string, number>>({})
+  const containerLines = (() => {
+    const units = new Map<string, number>()
+    for (const item of t.items) units.set(item.productId, (units.get(item.productId) ?? 0) + item.qty)
+    const lines: { productId: string; name: string; unitAmount: number; units: number; brought: number; charged: number; amount: number }[] = []
+    for (const [productId, qty] of units) {
+      const product = catalogProducts.find((p) => p.productId === productId && (p.depositAmount ?? 0) > 0)
+      if (!product || product.kind !== "standard") continue
+      const whole = Math.floor(qty)
+      if (whole <= 0) continue
+      const b = Math.min(whole, Math.max(0, brought[productId] ?? 0))
+      const unitAmount = product.depositAmount ?? 0
+      lines.push({ productId, name: product.name, unitAmount, units: whole, brought: b, charged: whole - b, amount: round2((whole - b) * unitAmount) })
+    }
+    return lines
+  })()
+  const depositTotal = round2(containerLines.reduce((sum, line) => sum + line.amount, 0))
 
   const maxPoints = t.customer
     ? Math.max(
@@ -124,7 +146,7 @@ export function PaymentDialog({
     : 0
 
   const tipAmount = tipMode === "percent" ? round2(t.subtotal * (tipPercent / 100)) : tipMode === "custom" ? round2(parseFloat(tipCustom.replace(",", ".")) || 0) : 0
-  const totalWithTip = round2(t.payable + tipAmount)
+  const totalWithTip = round2(t.payable + tipAmount + depositTotal)
   const paid = round2(entries.reduce((s, e) => s + e.amount, 0))
   const remaining = round2(Math.max(0, totalWithTip - paid))
   const change = round2(Math.max(0, paid - totalWithTip))
@@ -142,6 +164,7 @@ export function PaymentDialog({
       setTipMode("none")
       setTipPercent(15)
       setTipCustom("")
+      setBrought({})
       setPointOrder(null)
       setPointStatus("")
       fetch("/api/pos/payments/mercadopago/point")
@@ -287,7 +310,7 @@ export function PaymentDialog({
     setLoading(true)
     setError("")
     try {
-      const payload = buildSalePayload(t, entries, change, tipAmount)
+      const payload = buildSalePayload(t, entries, change, tipAmount, containerLines)
       const res = await fetch("/api/pos/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -434,8 +457,12 @@ export function PaymentDialog({
               en puntos ·{" "}
             </>
           )}
-          {tipAmount > 0 ? (
-            <>Restante: {money(totalWithTip)} (incluye {money(tipAmount)} propina)</>
+          {tipAmount > 0 || depositTotal > 0 ? (
+            <>
+              Restante: {money(totalWithTip)}
+              {tipAmount > 0 && <> (incluye {money(tipAmount)} propina)</>}
+              {depositTotal > 0 && <> (incluye {money(depositTotal)} de envases)</>}
+            </>
           ) : (
             <>Restante: {money(t.payable)}</>
           )}
@@ -477,7 +504,7 @@ export function PaymentDialog({
           <div className="rounded-2xl border bg-surface-sunken p-4">
             <div className="flex items-end justify-between">
               <span className="text-sm text-muted-foreground">
-                Total a cobrar{tipAmount > 0 ? " + propina" : ""}
+                Total a cobrar{tipAmount > 0 ? " + propina" : ""}{depositTotal > 0 ? " + envases" : ""}
               </span>
               <AnimatedNumber
                 value={totalWithTip}
@@ -488,6 +515,11 @@ export function PaymentDialog({
             {tipAmount > 0 && (
               <p className="mt-1 text-right text-xs text-success-ink">
                 Subtotal: {money(t.payable)} + Propina: {money(tipAmount)}
+              </p>
+            )}
+            {depositTotal > 0 && (
+              <p className="mt-1 text-right text-xs text-muted-foreground">
+                Venta: {money(t.payable)} + Importe de envases: {money(depositTotal)} (se regresa al devolverlos)
               </p>
             )}
             <Progress value={progress} className="mt-3 h-2.5 rounded-full" />
@@ -509,6 +541,47 @@ export function PaymentDialog({
               )}
             </div>
           </div>
+
+          {containerLines.length > 0 && (
+            <div className="space-y-2 rounded-xl border border-dashed border-info/40 bg-info/5 p-3" data-guide="pos-containers">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-info-ink">
+                <Recycle className="size-4" /> Envases retornables
+              </p>
+              {containerLines.map((line) => (
+                <div key={line.productId} className="flex items-center gap-2 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{line.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {line.units} pza · {money(line.unitAmount)} de importe c/u
+                      {line.charged > 0 ? ` · cobra ${money(line.amount)}` : " · canje sin importe"}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">Trae envase</span>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label={`Menos envases de ${line.name}`}
+                      disabled={line.brought <= 0}
+                      onClick={() => setBrought((prev) => ({ ...prev, [line.productId]: Math.max(0, line.brought - 1) }))}
+                      className="press flex size-11 items-center justify-center rounded-xl border bg-card disabled:opacity-40"
+                    >
+                      <Minus className="size-4" />
+                    </button>
+                    <span className="w-8 text-center font-bold tabular-nums">{line.brought}</span>
+                    <button
+                      type="button"
+                      aria-label={`Más envases de ${line.name}`}
+                      disabled={line.brought >= line.units}
+                      onClick={() => setBrought((prev) => ({ ...prev, [line.productId]: Math.min(line.units, line.brought + 1) }))}
+                      className="press flex size-11 items-center justify-center rounded-xl border bg-card disabled:opacity-40"
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">

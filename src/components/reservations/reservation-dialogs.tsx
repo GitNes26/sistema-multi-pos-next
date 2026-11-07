@@ -24,6 +24,7 @@ import { InputGroupField } from "@/components/base/input-group-field";
 import { DatePicker } from "@/components/base/date-picker";
 import { ymdToDate, dateToYmd } from "@/lib/date-input";
 import { cn } from "@/lib/utils";
+import { RentalLifecycle } from "./rental-lifecycle";
 import {
   type RentUnit,
   type ReservationView,
@@ -66,6 +67,7 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
   const [endYmd, setEndYmd] = useState("");
   const [lines, setLines] = useState<LineDraft[]>([]);
   const [notes, setNotes] = useState("");
+  const [deposit, setDeposit] = useState("0");
   const [creatingNew, setCreatingNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
@@ -96,6 +98,13 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
     setError(null);
     setSaving(false);
     setNotes("");
+    setDeposit("0");
+    fetch("/api/reservaciones/policy", { cache: "no-store", credentials: "include" })
+      .then((r) => r.json())
+      .then((p) => {
+        if (p.ok) setDeposit(String(p.policy.defaultDeposit ?? 0));
+      })
+      .catch(() => undefined);
     setCreatingNew(false);
     setNewName("");
     setNewPhone("");
@@ -180,6 +189,7 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
           startsAt: startsAt.toISOString(),
           endsAt: endsAt.toISOString(),
           notes: notes || null,
+          depositAmount: deposit === "" ? 0 : Number(deposit),
         }),
       });
       const data = await res.json();
@@ -305,6 +315,16 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
           Total estimado {fmtMoney(estimated.total)}
         </span>
       </div>
+
+      <InputGroupField
+        label="Depósito en garantía"
+        type="number"
+        min="0"
+        step="0.01"
+        value={deposit}
+        onChange={(e) => setDeposit(e.target.value)}
+        hint="Se retiene hasta devolver el equipo y cubre retrasos o daños. 0 = sin depósito."
+      />
 
       <div>
         <Label className="text-xs">Notas</Label>
@@ -539,6 +559,8 @@ export function ReservationDetailDialog({ reservation, canManage, onOpenChange, 
           Reservación cobrada: venta registrada con puntos para el cliente.
         </p>
       ) : null}
+
+      <RentalLifecycle reservation={reservation} canManage={canManage} onChanged={onChanged} />
 
       {/* Acciones de estatus */}
       {canManage && reservation.status === "pending" && (

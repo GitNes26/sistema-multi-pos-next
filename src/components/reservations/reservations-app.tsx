@@ -10,7 +10,9 @@ import {
   ChevronRight,
   Loader2,
   PackageX,
+  ClipboardCheck,
   Plus,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -29,6 +31,8 @@ import {
   STATUS_META,
 } from "./reservation-types";
 import { ReservationCreateDialog, ReservationDetailDialog } from "./reservation-dialogs";
+import { RentalPolicyDialog } from "./rental-lifecycle";
+import { ChecklistTemplatesDialog } from "@/components/admin/service-orders/checklist-templates-dialog";
 
 interface ReservationsAppProps {
   orgName: string;
@@ -53,6 +57,8 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [listsOpen, setListsOpen] = useState(false);
   const [selected, setSelected] = useState<ReservationsData["reservations"][number] | null>(null);
   const router = useRouter();
 
@@ -141,6 +147,16 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <NotificationsBell />
           <ThemeToggle />
+          {canManage && (
+            <>
+              <Button variant="outline" size="sm" data-guide="rental-policy" onClick={() => setPolicyOpen(true)} title="Depósito y cargo por retraso">
+                <ShieldCheck className="size-4" /> <span className="hidden md:inline">Política</span>
+              </Button>
+              <Button variant="outline" size="sm" data-guide="rental-checklists" onClick={() => setListsOpen(true)} title="Listas de revisión de entrega y devolución">
+                <ClipboardCheck className="size-4" /> <span className="hidden md:inline">Revisiones</span>
+              </Button>
+            </>
+          )}
           {canManage && (
             <Button size="sm" data-guide="reservation-new" onClick={() => setCreateOpen(true)}>
               <Plus className="size-4" /> <span className="hidden sm:inline">Nueva reservación</span>
@@ -326,6 +342,8 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
         units={data?.units ?? []}
         onCreated={() => void reload(monthCursor)}
       />
+      <RentalPolicyDialog open={policyOpen} onOpenChange={setPolicyOpen} />
+      <ChecklistTemplatesDialog open={listsOpen} onOpenChange={setListsOpen} onSaved={() => undefined} subject="reservation" />
       <ReservationDetailDialog
         reservation={selected}
         canManage={canManage}

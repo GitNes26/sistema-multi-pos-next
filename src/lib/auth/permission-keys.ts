@@ -5,7 +5,7 @@ export const PERMISSIONS = [
   { key: "pos.use", module: "pos", action: "use", label: "Usar punto de venta" },
   { key: "pos.void", module: "pos", action: "void", label: "Cancelar ventas" },
   { key: "pos.discount", module: "pos", action: "discount", label: "Aplicar descuentos manuales" },
-  { key: "pos.toggle_services", module: "pos", action: "toggle_services", label: "Activar o desactivar servicios desde el POS" },
+  { key: "pos.toggle_services", module: "pos", action: "toggle_services", label: "Activar o desactivar productos sin inventario (servicios) desde su ficha" },
   { key: "products.view", module: "products", action: "view", label: "Ver productos" },
   { key: "products.manage", module: "products", action: "manage", label: "Crear/editar productos" },
   { key: "products.delete", module: "products", action: "delete", label: "Eliminar productos" },

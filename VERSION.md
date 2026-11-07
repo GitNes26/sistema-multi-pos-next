@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.60.0.0] — 2026-11-07
+- **Tipo:** `feat` (Minor)
+- feat: importe de envases retornables en el punto de venta (cobro aparte del total con canje, devolucion en efectivo y corte), interruptor de servicios en la ficha del producto y rentas con deposito, entrega y devolucion con revisiones y cargos por retraso o danos
+
 ### [0.59.1.1] — 2026-11-07
 - **Tipo:** `test` (Revision)
 - test: pruebas de agenda ajustadas a la politica de citas, conteo de wizards del modo hibrido y registro de la comparacion de regresion contra la version anterior

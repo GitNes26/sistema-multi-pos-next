@@ -19,6 +19,14 @@ export interface ReservationView {
   customer: { id: string; fullName: string; phone: string | null } | null;
   items: ReservationItemView[];
   total: number;
+  depositAmount: number;
+  deliveredAt: string | null;
+  returnedAt: string | null;
+  lateFee: number;
+  damageFee: number;
+  penaltyNotes: string | null;
+  depositRefund: number | null;
+  balanceDue: number | null;
 }
 
 export interface RentUnit {

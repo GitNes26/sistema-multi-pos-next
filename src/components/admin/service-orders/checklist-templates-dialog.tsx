@@ -11,7 +11,8 @@ import { SegmentedFilter } from "@/components/base/segmented-filter";
 import { cn } from "@/lib/utils";
 import type { ChecklistTemplate } from "./checklist-run-dialog";
 
-type Phase = "intake" | "delivery";
+type Phase = "intake" | "delivery" | "return";
+type Subject = "service_order" | "reservation";
 interface Item {
   label: string;
   requirePhoto: boolean;
@@ -21,16 +22,41 @@ interface Draft {
   items: Item[];
 }
 
-const PHASES: { value: Phase; label: string; hint: string; starter: string[] }[] = [
-  { value: "intake", label: "Ingreso", hint: "Se revisa al recibir el vehículo: daños previos y objetos dentro.", starter: ["Rayones o golpes", "Objetos de valor en el interior", "Cristales y espejos"] },
-  { value: "delivery", label: "Entrega", hint: "Se revisa antes de entregar y cobrar.", starter: ["Exterior limpio", "Interior limpio", "Sin daños nuevos"] },
-];
+interface PhaseMeta {
+  value: Phase;
+  label: string;
+  hint: string;
+  starter: string[];
+  requiredHint: string;
+}
 
-const emptyDraft = (): Record<Phase, Draft> => ({ intake: { isRequired: false, items: [] }, delivery: { isRequired: false, items: [] } });
+const PHASES_BY_SUBJECT: Record<Subject, { endpoint: string; phases: PhaseMeta[] }> = {
+  service_order: {
+    endpoint: "/api/service-orders/checklists",
+    phases: [
+      { value: "intake", label: "Ingreso", hint: "Se revisa al recibir el vehículo: daños previos y objetos dentro.", starter: ["Rayones o golpes", "Objetos de valor en el interior", "Cristales y espejos"], requiredHint: "Sin esta revisión la orden no sale de la primera etapa." },
+      { value: "delivery", label: "Entrega", hint: "Se revisa antes de entregar y cobrar.", starter: ["Exterior limpio", "Interior limpio", "Sin daños nuevos"], requiredHint: "Sin esta revisión no se cobra ni se entrega." },
+    ],
+  },
+  reservation: {
+    endpoint: "/api/reservaciones/checklists",
+    phases: [
+      { value: "delivery", label: "Entrega", hint: "Se revisa el estado del equipo antes de dárselo al cliente.", starter: ["Equipo completo y funcionando", "Sin daños visibles", "Accesorios incluidos"], requiredHint: "Sin esta revisión no se entrega el equipo." },
+      { value: "return", label: "Devolución", hint: "Se revisa al recibirlo de vuelta para detectar daños o faltantes.", starter: ["Equipo completo", "Sin daños nuevos", "Limpio"], requiredHint: "Sin esta revisión no se recibe el equipo ni se liquida el depósito." },
+    ],
+  },
+};
+
+const emptyDraft = (phases: PhaseMeta[]): Record<Phase, Draft> => {
+  const base = { intake: { isRequired: false, items: [] }, delivery: { isRequired: false, items: [] }, return: { isRequired: false, items: [] } } as Record<Phase, Draft>;
+  for (const p of phases) base[p.value] = { isRequired: false, items: [] };
+  return base;
+};
 
 /** Editor de las listas de revisión de ingreso y entrega. Sin puntos, la fase queda sin lista. */
-export function ChecklistTemplatesDialog({ open, onOpenChange, onSaved }: { open: boolean; onOpenChange: (open: boolean) => void; onSaved: () => void }) {
-  const [phase, setPhase] = useState<Phase>("intake");
+export function ChecklistTemplatesDialog({ open, onOpenChange, onSaved, subject = "service_order" }: { open: boolean; onOpenChange: (open: boolean) => void; onSaved: () => void; subject?: Subject }) {
+  const { endpoint, phases: PHASES } = PHASES_BY_SUBJECT[subject];
+  const [phase, setPhase] = useState<Phase>(PHASES[0].value);
   const [drafts, setDrafts] = useState<Record<Phase, Draft> | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,20 +65,22 @@ export function ChecklistTemplatesDialog({ open, onOpenChange, onSaved }: { open
     if (!open) return;
     setError(null);
     setDrafts(null);
-    fetch("/api/service-orders/checklists", { cache: "no-store" })
+    setPhase(PHASES[0].value);
+    fetch(endpoint, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
-        const next = emptyDraft();
+        const next = emptyDraft(PHASES);
         for (const t of (d.templates ?? []) as ChecklistTemplate[]) {
-          if (t.phase === "intake" || t.phase === "delivery") next[t.phase] = { isRequired: t.isRequired, items: t.items.map((i) => ({ label: i.label, requirePhoto: i.requirePhoto })) };
+          if (PHASES.some((p) => p.value === t.phase)) next[t.phase as Phase] = { isRequired: t.isRequired, items: t.items.map((i) => ({ label: i.label, requirePhoto: i.requirePhoto })) };
         }
         setDrafts(next);
       })
       .catch(() => {
-        setDrafts(emptyDraft());
+        setDrafts(emptyDraft(PHASES));
         setError("No se pudieron cargar las listas");
       });
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- PHASES/endpoint solo cambian con `subject`
+  }, [open, subject]);
 
   const meta = PHASES.find((p) => p.value === phase)!;
   const draft = drafts?.[phase];
@@ -72,7 +100,7 @@ export function ChecklistTemplatesDialog({ open, onOpenChange, onSaved }: { open
     setError(null);
     setSaving(true);
     try {
-      const res = await fetch("/api/service-orders/checklists", {
+      const res = await fetch(endpoint, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -95,7 +123,7 @@ export function ChecklistTemplatesDialog({ open, onOpenChange, onSaved }: { open
       onOpenChange={onOpenChange}
       icon={<ClipboardCheck className="size-5" />}
       title="Listas de revisión"
-      description="Puntos a verificar al recibir y al entregar, con foto de los problemas."
+      description={subject === "reservation" ? "Puntos a verificar al entregar y al recibir el equipo, con foto de los problemas." : "Puntos a verificar al recibir y al entregar, con foto de los problemas."}
       className="sm:max-w-xl"
       footer={
         <>
@@ -152,7 +180,7 @@ export function ChecklistTemplatesDialog({ open, onOpenChange, onSaved }: { open
           <SwitchField
             id={`SwitchRevisionObligatoria-${phase}`}
             label="Obligatoria"
-            description={phase === "intake" ? "Sin esta revisión la orden no sale de la primera etapa." : "Sin esta revisión no se cobra ni se entrega."}
+            description={meta.requiredHint}
             icon={<ClipboardCheck className="size-4" />}
             checked={draft.isRequired}
             onCheckedChange={(v) => set({ isRequired: v })}
