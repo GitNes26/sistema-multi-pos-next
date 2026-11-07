@@ -227,6 +227,20 @@ function subscribeKdsStream(cookie, label = "kds-sse") {
 
 /** Inicia sesión por el flujo real (CSRF + credentials) y devuelve el jar.
  *  `organizationId` elige la org en el picker del login (multi-org). */
+/**
+ * Estas pruebas crean citas a más de un año para no chocar con la demo; la política de citas (ventana de
+ * agenda, horario del negocio) las rechazaría. Se relaja solo para su empresa y se restaura al terminar.
+ */
+async function relaxAppointmentPolicy(organizationId) {
+  const before = await prisma.appointmentPolicy.findUnique({ where: { organizationId } });
+  const relaxed = { enforceBusinessHours: false, maxAdvanceDays: 365, minNoticeMinutes: 0 };
+  await prisma.appointmentPolicy.upsert({ where: { organizationId }, create: { organizationId, ...relaxed }, update: relaxed });
+  return async () => {
+    if (before) await prisma.appointmentPolicy.update({ where: { organizationId }, data: { enforceBusinessHours: before.enforceBusinessHours, maxAdvanceDays: before.maxAdvanceDays, minNoticeMinutes: before.minNoticeMinutes } });
+    else await prisma.appointmentPolicy.deleteMany({ where: { organizationId } });
+  };
+}
+
 async function login(email, organizationId) {
   // 1) CSRF: hay que devolver la cookie que emite /api/auth/csrf (double-submit).
   const csrfRes = await fetch(`${BASE}/api/auth/csrf`);
@@ -871,7 +885,7 @@ test("agenda y rentas: creación concurrente no sobreasigna horario ni unidades"
   const rentalAgent = await login(ACCOUNTS.rentalAgent.email);
   const appointmentFixture = await prisma.appointment.findFirst({
     where: { organization: { businessMode: "services" }, customerId: { not: null } },
-    select: { customerId: true, employeeId: true, variantId: true, durationMin: true },
+    select: { organizationId: true, customerId: true, employeeId: true, variantId: true, durationMin: true },
   });
   const reservationFixture = await prisma.reservation.findFirst({
     where: { organization: { businessMode: "rental" }, customerId: { not: null }, items: { some: {} } },
@@ -896,13 +910,14 @@ test("agenda y rentas: creación concurrente no sobreasigna horario ni unidades"
   assert.ok(rentableInventory, "el artículo demo debe tener unidades rentables");
 
   const marker = Date.now();
-  const appointmentStart = new Date(Date.now() + 400 * 24 * 60 * 60 * 1000);
+  const appointmentStart = new Date(Date.now() + 300 * 24 * 60 * 60 * 1000);
   appointmentStart.setUTCHours(16, marker % 50, 0, 0);
   const rentalStart = new Date(Date.now() + 410 * 24 * 60 * 60 * 1000);
   rentalStart.setUTCHours(12, marker % 50, 0, 0);
   const rentalEnd = new Date(rentalStart.getTime() + 24 * 60 * 60 * 1000);
   const createdAppointmentIds = [];
   const createdReservationIds = [];
+  const restorePolicy = await relaxAppointmentPolicy(appointmentFixture.organizationId);
 
   try {
     const appointmentBody = {
@@ -936,6 +951,7 @@ test("agenda y rentas: creación concurrente no sobreasigna horario ni unidades"
     assert.equal(createdAppointmentIds.length, 1);
     assert.equal(createdReservationIds.length, 1);
   } finally {
+    await restorePolicy();
     if (createdReservationIds.length) {
       await prisma.reservationItem.deleteMany({ where: { reservationId: { in: createdReservationIds } } });
       await prisma.reservation.deleteMany({ where: { id: { in: createdReservationIds } } });
@@ -951,7 +967,7 @@ test("agenda y rentas: estados terminales y reprogramación respetan el flujo", 
   const rentalAgent = await login(ACCOUNTS.rentalAgent.email);
   const appointmentFixture = await prisma.appointment.findFirst({
     where: { organization: { businessMode: "services" }, customerId: { not: null } },
-    select: { customerId: true, employeeId: true, variantId: true, durationMin: true },
+    select: { organizationId: true, customerId: true, employeeId: true, variantId: true, durationMin: true },
   });
   const reservationFixture = await prisma.reservation.findFirst({
     where: { organization: { businessMode: "rental" }, customerId: { not: null }, items: { some: {} } },
@@ -961,7 +977,7 @@ test("agenda y rentas: estados terminales y reprogramación respetan el flujo", 
   assert.ok(reservationFixture?.customerId && reservationFixture.items[0]);
 
   const marker = Date.now();
-  const firstStart = new Date(Date.now() + 430 * 86400000);
+  const firstStart = new Date(Date.now() + 330 * 86400000);
   firstStart.setUTCHours(14, marker % 40, 0, 0);
   const occupiedStart = new Date(firstStart.getTime() + 3 * 60 * 60 * 1000);
   const rentalStart = new Date(Date.now() + 440 * 86400000);
@@ -969,6 +985,7 @@ test("agenda y rentas: estados terminales y reprogramación respetan el flujo", 
   const rentalEnd = new Date(rentalStart.getTime() + 86400000);
   const appointmentIds = [];
   const reservationIds = [];
+  const restorePolicy = await relaxAppointmentPolicy(appointmentFixture.organizationId);
 
   try {
     const baseAppointment = {
@@ -1046,6 +1063,7 @@ test("agenda y rentas: estados terminales y reprogramación respetan el flujo", 
     });
     assert.equal(chargeCancelled.status, 409, "una renta cancelada no debe cobrarse");
   } finally {
+    await restorePolicy();
     if (reservationIds.length) {
       await prisma.reservationItem.deleteMany({ where: { reservationId: { in: reservationIds } } });
       await prisma.reservation.deleteMany({ where: { id: { in: reservationIds } } });
@@ -2317,7 +2335,7 @@ test("imágenes: subida round-trip con org-scoping y guardas de permisos", async
   //   depende de eso para las aserciones (el estado queda verificado arriba).
 });
 
-test("seed híbrido: owner con businessMode=hybrid y launcher de 11 wizards", async () => {
+test("seed híbrido: owner con businessMode=hybrid y launcher de 14 wizards", async () => {
   // El seed debe dejar Híbrido Demo lista para demostrar el modo completo:
   // owner que entra directo a la org (picker de login) con sesión hybrid y
   // el set de wizards del dashboard completo (MODE_WIZARDS.hybrid = 11).
@@ -2336,7 +2354,7 @@ test("seed híbrido: owner con businessMode=hybrid y launcher de 11 wizards", as
   assert.equal(user?.user?.businessMode, "hybrid", "la sesión debe llevar businessMode=hybrid");
   assert.equal(user?.user?.role, "owner", "el owner debe entrar como owner");
 
-  // ── 2) El launcher debe poder renderizar las 11 tarjetas del modo ──
+  // ── 2) El launcher debe poder renderizar las 14 tarjetas del modo ──
   //   Se lee MODE_WIZARDS.hybrid del fuente (lib/business-modes.ts): si
   //   alguien agrega/quita un wizard del modo híbrido, este assert lo hace
   //   visible junto con el cambio.
@@ -2348,7 +2366,7 @@ test("seed híbrido: owner con businessMode=hybrid y launcher de 11 wizards", as
   const hybridMatch = modesSrc.match(/hybrid:\s*\[([^\]]+)\]/);
   assert.ok(hybridMatch, "MODE_WIZARDS.hybrid debe existir en business-modes.ts");
   const expectedKinds = [...hybridMatch[1].matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
-  assert.equal(expectedKinds.length, 11, `el modo híbrido debe exponer 11 wizards (tiene ${expectedKinds.length}: ${expectedKinds.join(", ")})`);
+  assert.equal(expectedKinds.length, 14, `el modo híbrido debe exponer 14 wizards (tiene ${expectedKinds.length}: ${expectedKinds.join(", ")})`);
   // Cada wizard del modo debe tener su definición WIZARD_ACTIONS (href+permiso).
   const definedKinds = [...modesSrc.matchAll(/^\s{2}([a-z_]+):\s*{/gm)].map((m) => m[1]);
   for (const kind of expectedKinds) {
