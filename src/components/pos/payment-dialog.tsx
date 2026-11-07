@@ -35,6 +35,7 @@ import { usePosTotals } from "@/hooks/use-pos-totals"
 import { money, round2 } from "@/lib/pos/money"
 import { moneyToPoints, pointsToMoney } from "@/lib/pos/pricing"
 import { playSound } from "@/lib/sounds"
+import { allocateDeposit } from "@/lib/deposits/allocate"
 import { buildSalePayload, type PaymentEntry } from "@/lib/pos/checkout"
 import { CASH_DENOMINATIONS, PAYMENT_METHOD_LABELS } from "@/lib/pos/config"
 import { Numpad, type NumpadKey } from "./numpad"
@@ -149,7 +150,32 @@ export function PaymentDialog({
   const totalWithTip = round2(t.payable + tipAmount + depositTotal)
   const paid = round2(entries.reduce((s, e) => s + e.amount, 0))
   const remaining = round2(Math.max(0, totalWithTip - paid))
-  const change = round2(Math.max(0, paid - totalWithTip))
+  // El importe de envases nunca impide cobrar: lo que no se pague queda pendiente a nombre del cliente.
+  const minToPay = round2(t.payable + tipAmount)
+  const depositAlloc = allocateDeposit(containerLines.map((l) => ({ productId: l.productId, charged: l.charged, unitAmount: l.unitAmount })), paid - minToPay)
+  const change = round2(Math.max(0, paid - minToPay - depositAlloc.collected))
+  const canComplete = paid - minToPay >= -0.01
+  // Aviso (no bloquea): envases o importe que este cliente ya tiene pendientes de ventas anteriores.
+  const customerId = t.customer?.id
+  const hasDepositProducts = catalogProducts.some((p) => (p.depositAmount ?? 0) > 0)
+  const [customerPending, setCustomerPending] = useState<{ outstanding: number; unpaid: number; amount: number } | null>(null)
+  useEffect(() => {
+    setCustomerPending(null)
+    if (!open || !customerId || !hasDepositProducts) return
+    let active = true
+    fetch(`/api/pos/containers?locationId=${encodeURIComponent(usePosStore.getState().location.id)}&customerId=${encodeURIComponent(customerId)}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data: { balances?: { outstanding: number; unpaid: number; unitAmount: number }[] }) => {
+        if (!active) return
+        const list = data.balances ?? []
+        const outstanding = list.reduce((s, b) => s + b.outstanding, 0)
+        if (outstanding > 0) {
+          setCustomerPending({ outstanding, unpaid: list.reduce((s, b) => s + b.unpaid, 0), amount: round2(list.reduce((s, b) => s + b.unpaid * b.unitAmount, 0)) })
+        }
+      })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [open, customerId, hasDepositProducts])
   const progress = totalWithTip > 0 ? Math.min(100, (paid / totalWithTip) * 100) : 0
   const currentAmount = parseFloat(cashStr.replace(",", ".")) || 0
 
@@ -303,7 +329,7 @@ export function PaymentDialog({
     setEntries((prev) => prev.filter((_, idx) => idx !== i))
 
   const complete = async () => {
-    if (paid - totalWithTip < -0.01) {
+    if (!canComplete) {
       setError("Falta por cubrir el total")
       return
     }
@@ -311,6 +337,10 @@ export function PaymentDialog({
     setError("")
     try {
       const payload = buildSalePayload(t, entries, change, tipAmount, containerLines)
+      if (containerLines.length) {
+        payload.depositTotal = depositAlloc.collected
+        payload.depositPending = depositAlloc.pendingAmount
+      }
       const res = await fetch("/api/pos/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -474,11 +504,11 @@ export function PaymentDialog({
         <Button
           size="lg"
           className="h-14 w-full rounded-2xl text-base font-semibold shadow-e2 desk:h-12 desk:rounded-xl"
-          disabled={loading || Boolean(pointOrder) || paid - totalWithTip < -0.01}
+          disabled={loading || Boolean(pointOrder) || !canComplete}
           onClick={complete}
         >
           <BadgeCheck className="size-5" />
-          {loading ? "Registrando…" : `Completar venta · ${money(totalWithTip)}`}
+          {loading ? "Registrando…" : `Completar venta · ${money(depositAlloc.pendingAmount > 0 ? totalWithTip - depositAlloc.pendingAmount : totalWithTip)}`}
         </Button>
       }
     >
@@ -530,9 +560,13 @@ export function PaymentDialog({
                   {money(paid)}
                 </span>
               </span>
-              {remaining > 0 ? (
+              {!canComplete ? (
                 <span className="font-semibold text-destructive tabular-nums">
-                  Falta {money(remaining)}
+                  Falta {money(minToPay - paid)}
+                </span>
+              ) : depositAlloc.pendingPieces > 0 ? (
+                <span className="font-semibold text-warning-ink tabular-nums">
+                  Envases sin pagar {money(depositAlloc.pendingAmount)}
                 </span>
               ) : (
                 <span className="font-semibold text-success-ink tabular-nums">
@@ -541,6 +575,27 @@ export function PaymentDialog({
               )}
             </div>
           </div>
+
+          {customerPending && (
+            <p className="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs text-warning-ink" role="status">
+              <Recycle className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {t.customer?.fullName ?? "Este cliente"} tiene {customerPending.outstanding} envase(s) pendientes de devolver
+                {customerPending.unpaid > 0 && <> ({customerPending.unpaid} sin importe pagado: {money(customerPending.amount)})</>}.
+                Es solo un aviso: puedes continuar.
+              </span>
+            </p>
+          )}
+
+          {depositAlloc.pendingPieces > 0 && (
+            <p className="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs text-warning-ink" role="status">
+              <Recycle className="mt-0.5 size-4 shrink-0" />
+              <span>
+                {depositAlloc.pendingPieces} envase(s) quedarán pendientes ({money(depositAlloc.pendingAmount)} sin pagar){t.customer ? ` a nombre de ${t.customer.fullName}` : ""}.
+                La venta se puede completar; al devolverlos solo se cierra el pendiente.
+              </span>
+            </p>
+          )}
 
           {containerLines.length > 0 && (
             <div className="space-y-2 rounded-xl border border-dashed border-info/40 bg-info/5 p-3" data-guide="pos-containers">

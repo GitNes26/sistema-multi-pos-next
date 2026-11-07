@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.61.0.0] — 2026-11-07
+- **Tipo:** `feat` (Minor)
+- feat: el importe de envases ya no bloquea la venta (queda pendiente a nombre del cliente con avisos en el cobro y el ticket), devolucion que solo cierra pendientes sin importe pagado y baja de envases que no regresan
+
 ### [0.60.0.0] — 2026-11-07
 - **Tipo:** `feat` (Minor)
 - feat: importe de envases retornables en el punto de venta (cobro aparte del total con canje, devolucion en efectivo y corte), interruptor de servicios en la ficha del producto y rentas con deposito, entrega y devolucion con revisiones y cargos por retraso o danos

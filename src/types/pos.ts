@@ -314,6 +314,8 @@ export interface PosSalePayload {
   /** Envases que el cliente trae a cambio, por producto con importe. El servidor recalcula el cobro. */
   containers?: { productId: string; brought: number }[]
   /** Solo para el ticket: importe de envases cobrado (el servidor lo recalcula). */
+  /** Importe de envases sin pagar (queda pendiente a nombre del cliente). Solo para mostrar. */
+  depositPending?: number
   depositTotal?: number
   subtotal: number
   discount: number

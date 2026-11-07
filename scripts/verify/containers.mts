@@ -33,7 +33,7 @@ const expectErr = async (name: string, fn: () => Promise<unknown>, contains: str
   }
 }
 
-const created = { products: [] as string[], sales: [] as string[], session: "" }
+const created = { products: [] as string[], sales: [] as string[], session: "", customer: "" }
 try {
   // Si ya hay una caja abierta en la sucursal se usa; si no, se abre una y se borra al final.
   const alreadyOpen = await prisma.cashSession.findFirst({ where: { organizationId: orgId, cashRegister: { locationId: location.id }, status: "open" } })
@@ -71,11 +71,29 @@ try {
   const ctx = { userId: user.id, employeeId: null }
 
   // 5 refrescos = 100 de venta + 5×12 = 60 de envases si no trae ninguno.
-  await expectErr("pagar solo el total no cubre el importe de envases", () => pos.createSale(orgId, location.id, payload([item(cola, 5)], 100), ctx), "envases")
+  await expectErr("pagar menos que el total sí se rechaza", () => pos.createSale(orgId, location.id, payload([item(cola, 5)], 90), ctx), "no cubren")
   const s1 = await pos.createSale(orgId, location.id, payload([item(cola, 5)], 160), ctx)
   created.sales.push(s1.id)
   const row1 = await prisma.sale.findUniqueOrThrow({ where: { id: s1.id } })
   check("el importe queda fuera del total de la venta", Number(row1.total) === 100 && Number(row1.depositCharged) === 60, `(${row1.total}/${row1.depositCharged})`)
+
+  // Pagar solo el total NO impide la venta: los 5 envases quedan pendientes (sin importe pagado) a nombre del cliente.
+  const customer = await prisma.customer.create({ data: { organization: { connect: { id: orgId } }, fullName: "zz Cliente envases", user: { connect: { id: user.id } } } })
+  created.customer = customer.id
+  const sOwed = await pos.createSale(orgId, location.id, { ...payload([item(cola, 5)], 100), customerId: customer.id }, ctx)
+  created.sales.push(sOwed.id)
+  const rowOwed = await prisma.sale.findUniqueOrThrow({ where: { id: sOwed.id } })
+  check("sin pagar el importe: la venta se completa y no se cobra importe", Number(rowOwed.depositCharged) === 0, `(${rowOwed.depositCharged})`)
+  const custBal = await dep.getContainerBalances(orgId, location.id, customer.id)
+  const cb = custBal.find((b) => b.productId === cola.productId)
+  check("el cliente queda con 5 envases pendientes sin pagar", cb?.outstanding === 5 && cb.unpaid === 5 && cb.paid === 0, `(${cb?.outstanding}/${cb?.unpaid}/${cb?.paid})`)
+
+  // Pago parcial del importe: 30 alcanzan para 2 envases (24); 3 quedan pendientes y los 6 sobrantes son cambio.
+  const sPart = await pos.createSale(orgId, location.id, { ...payload([item(cola, 5)], 130), changeGiven: 6 }, ctx)
+  created.sales.push(sPart.id)
+  const rowPart = await prisma.sale.findUniqueOrThrow({ where: { id: sPart.id } })
+  check("pago parcial: se cobran piezas completas (24) y el resto queda pendiente", Number(rowPart.depositCharged) === 24, `(${rowPart.depositCharged})`)
+  check("pago parcial: 3 envases quedan como pendientes", (await prisma.depositEntry.aggregate({ where: { saleId: sPart.id, kind: "owed" }, _sum: { quantity: true } }))._sum.quantity === 3)
 
   // Trae 2 envases: solo se cobran 3 × 12 = 36.
   const s2 = await pos.createSale(orgId, location.id, payload([item(cola, 5), item(plain, 1)], 146, [{ productId: cola.productId, brought: 2 }]), ctx)
@@ -93,24 +111,35 @@ try {
   created.sales.push(s3.id)
   check("canje completo: sin importe", Number((await prisma.sale.findUniqueOrThrow({ where: { id: s3.id } })).depositCharged) === 0)
 
-  // Saldo en circulación: 5 + 3 = 8 cobrados.
+  // Saldo en circulación: s1 5 + owed 5 + parcial 5 + s2 3 = 18; con importe pagado: 5 + 2 + 3 = 10.
   const balances = await dep.getContainerBalances(orgId, location.id)
   const bal = balances.find((b) => b.productId === cola.productId)
-  check("envases en circulación = 8 (96)", bal?.outstanding === 8 && bal.amount === 96, `(${bal?.outstanding}/${bal?.amount})`)
+  check("envases en circulación = 18 (10 pagados, 8 sin pagar)", bal?.outstanding === 18 && bal.paid === 10 && bal.unpaid === 8, `(${bal?.outstanding}/${bal?.paid}/${bal?.unpaid})`)
 
   // Devolución
-  await expectErr("no se devuelven más de los pendientes", () => dep.refundContainers(orgId, location.id, { productId: cola.productId, quantity: 9 }, { userId: user.id }), "pendiente")
+  await expectErr("no se devuelven más de los pendientes", () => dep.refundContainers(orgId, location.id, { productId: cola.productId, quantity: 19 }, { userId: user.id }), "pendiente")
   await expectErr("cantidad cero se rechaza", () => dep.refundContainers(orgId, location.id, { productId: cola.productId, quantity: 0 }, { userId: user.id }), "cuántos")
   await expectErr("un producto sin importe no se devuelve", () => dep.refundContainers(orgId, location.id, { productId: plain.productId, quantity: 1 }, { userId: user.id }), "no maneja importe")
   await expectErr("otra empresa no devuelve envases ajenos", () => dep.refundContainers(otherOrgId, location.id, { productId: cola.productId, quantity: 1 }, { userId: user.id }), "")
   const r = await dep.refundContainers(orgId, location.id, { productId: cola.productId, quantity: 3 }, { userId: user.id })
-  check("se regresan 36 por 3 envases y quedan 5", r.amount === 36 && r.pending === 5, `(${r.amount}/${r.pending})`)
+  check("se regresan 36 por 3 envases pagados y quedan 15", r.amount === 36 && r.pending === 15 && r.settled === 0, `(${r.amount}/${r.pending}/${r.settled})`)
   check("el efectivo regresado entra al corte", (await dep.depositCashRefunds(prisma, sessionId)) >= 36)
 
   // El catálogo cambió el importe: se regresa lo que se cobró.
   await prisma.product.update({ where: { id: cola.productId }, data: { depositAmount: 20 } })
   const r2 = await dep.refundContainers(orgId, location.id, { productId: cola.productId, quantity: 1 }, { userId: user.id })
   check("se regresa el importe cobrado, no el actual del catálogo", r2.amount === 12, `(${r2.amount})`)
+
+  // Quedan 6 con importe pagado (10 − 4) y 8 sin pagar: devolver 8 → 6 en efectivo (72) y 2 solo cierran pendiente.
+  const r3 = await dep.refundContainers(orgId, location.id, { productId: cola.productId, quantity: 8, customerId: customer.id }, { userId: user.id })
+  check("los envases sin importe pagado solo cierran el pendiente (sin efectivo)", r3.amount === 72 && r3.settled === 2, `(${r3.amount}/${r3.settled})`)
+
+  // Escenario "no regresa nunca": 2 envases pagados de una venta nueva se dan de baja; el importe se queda y no se regresa.
+  const sLost = await pos.createSale(orgId, location.id, payload([item(cola, 2)], 80), ctx)
+  created.sales.push(sLost.id)
+  const w = await dep.writeOffContainers(orgId, location.id, { productId: cola.productId, quantity: 2 }, { userId: user.id })
+  check("dar de baja retiene el importe cobrado (2 × 20)", w.retained === 40 && w.settled === 0 && w.pending === 6, `(${w.retained}/${w.settled}/${w.pending})`)
+  await expectErr("lo dado de baja ya no cuenta como pendiente (quedan 6)", () => dep.refundContainers(orgId, location.id, { productId: cola.productId, quantity: 7 }, { userId: user.id }), "pendientes")
 } finally {
   await prisma.depositEntry.deleteMany({ where: { organizationId: orgId, productId: { in: created.products } } })
   for (const id of created.sales) {
@@ -122,6 +151,7 @@ try {
     await prisma.productVariant.deleteMany({ where: { productId: id } })
     await prisma.product.delete({ where: { id } })
   }
+  if (created.customer) await prisma.customer.delete({ where: { id: created.customer } })
   if (created.session) await prisma.cashSession.delete({ where: { id: created.session } })
   await prisma.$disconnect()
 }

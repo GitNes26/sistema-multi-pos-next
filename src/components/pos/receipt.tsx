@@ -180,6 +180,12 @@ export function Receipt({
             <span>{money(payload.depositTotal)}</span>
           </div>
         )}
+        {payload.depositPending != null && payload.depositPending > 0 && (
+          <div className="flex justify-between">
+            <span>Envases pendientes (sin pagar)</span>
+            <span>{money(payload.depositPending)}</span>
+          </div>
+        )}
         {payload.tip != null && payload.tip > 0 && (
           <>
             <div className="flex justify-between">

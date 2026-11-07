@@ -14,6 +14,8 @@ interface Balance {
   productName: string
   unitAmount: number
   outstanding: number
+  paid: number
+  unpaid: number
   amount: number
 }
 
@@ -55,6 +57,34 @@ export function ContainerReturnButton() {
 
   if (!hasDeposits) return null
 
+  const writeOff = async (balance: Balance) => {
+    const quantity = Math.min(balance.outstanding, Math.max(1, qty[balance.productId] ?? 1))
+    const retained = Math.min(quantity, balance.paid) * balance.unitAmount
+    const ok = window.confirm(
+      `¿Dar de baja ${quantity} envase(s) de ${balance.productName}? El cliente no los regresó: ${money(retained)} de importe se queda en la tienda (se paga al proveedor) y ya no se podrá regresar.`
+    )
+    if (!ok) return
+    setBusyId(balance.productId)
+    setError(null)
+    try {
+      const res = await fetch("/api/pos/containers", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locationId, productId: balance.productId, quantity, action: "writeoff" }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "No se pudo dar de baja")
+      swalToast(`Baja registrada: ${money(data.retained)} se quedan en la tienda`)
+      setQty((prev) => ({ ...prev, [balance.productId]: 1 }))
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo dar de baja")
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const refund = async (balance: Balance) => {
     const quantity = Math.min(balance.outstanding, Math.max(1, qty[balance.productId] ?? 1))
     setBusyId(balance.productId)
@@ -68,7 +98,7 @@ export function ContainerReturnButton() {
       })
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error ?? "No se pudo registrar la devolución")
-      swalToast(`Regresa ${money(data.amount)} al cliente`)
+      swalToast(data.amount > 0 ? `Regresa ${money(data.amount)} al cliente` : "Envase recibido: se cerró el pendiente")
       setQty((prev) => ({ ...prev, [balance.productId]: 1 }))
       await load()
     } catch (err) {
@@ -88,7 +118,7 @@ export function ContainerReturnButton() {
         onOpenChange={setOpen}
         icon={<Recycle className="size-5 text-primary" />}
         title="Recibir envases"
-        description="El importe se regresa en efectivo y sale de la caja."
+        description="El importe se regresa en efectivo. Si el cliente ya no lo regresará, usa «No regresó»: el importe se queda en la tienda."
         className="sm:max-w-lg"
         footer={
           <Button variant="ghost" onClick={() => setOpen(false)}>
@@ -108,11 +138,11 @@ export function ContainerReturnButton() {
           {balances.map((balance) => {
             const value = Math.min(balance.outstanding, Math.max(1, qty[balance.productId] ?? 1))
             return (
-              <div key={balance.productId} className="flex items-center gap-2 rounded-xl border p-3">
+              <div key={balance.productId} className="flex flex-wrap items-center gap-2 rounded-xl border p-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{balance.productName}</p>
                   <p className="text-xs text-muted-foreground">
-                    {balance.outstanding} pendiente(s) · {money(balance.unitAmount)} c/u
+                    {balance.outstanding} pendiente(s) · {money(balance.unitAmount)} c/u{balance.unpaid > 0 ? ` · ${balance.unpaid} sin importe pagado` : ""}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
@@ -137,7 +167,10 @@ export function ContainerReturnButton() {
                   </button>
                 </div>
                 <Button size="sm" className="shrink-0" onClick={() => void refund(balance)} disabled={busyId === balance.productId}>
-                  {busyId === balance.productId ? <Loader2 className="size-4 animate-spin" /> : null} Regresar {money(value * balance.unitAmount)}
+                  {busyId === balance.productId ? <Loader2 className="size-4 animate-spin" /> : null} Regresar {money(Math.min(value, balance.paid) * balance.unitAmount)}
+                </Button>
+                <Button size="sm" variant="outline" className="shrink-0" onClick={() => void writeOff(balance)} disabled={busyId === balance.productId} title="El cliente no los regresó: el importe se queda en la tienda">
+                  No regresó
                 </Button>
               </div>
             )

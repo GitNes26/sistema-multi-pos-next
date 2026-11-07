@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { effectiveOrgId } from "@/lib/auth/org-context"
-import { DepositError, getContainerBalances, refundContainers } from "@/lib/deposits/server"
+import { DepositError, getContainerBalances, refundContainers, writeOffContainers } from "@/lib/deposits/server"
 import { requirePosSession } from "../helpers"
 
 // Envases con importe: saldo en circulación de la sucursal y devolución (el importe sale en efectivo de la caja).
@@ -11,9 +11,11 @@ export async function GET(req: Request) {
   const guard = await requirePosSession()
   if ("response" in guard) return guard.response
   const organizationId = effectiveOrgId(guard.session)!
-  const locationId = new URL(req.url).searchParams.get("locationId") ?? ""
+  const params = new URL(req.url).searchParams
+  const locationId = params.get("locationId") ?? ""
   if (!locationId) return NextResponse.json({ ok: false, error: "Falta la sucursal" }, { status: 400 })
-  return NextResponse.json({ ok: true, balances: await getContainerBalances(organizationId, locationId) })
+  // Con customerId: solo lo que ese cliente tiene pendiente (aviso en el cobro; nunca bloquea).
+  return NextResponse.json({ ok: true, balances: await getContainerBalances(organizationId, locationId, params.get("customerId")) })
 }
 
 export async function POST(req: Request) {
@@ -21,12 +23,16 @@ export async function POST(req: Request) {
   if ("response" in guard) return guard.response
   const { session } = guard
   const organizationId = effectiveOrgId(session)!
-  const body = (await req.json().catch(() => null)) as { locationId?: unknown; productId?: unknown; quantity?: unknown; customerId?: unknown } | null
+  const body = (await req.json().catch(() => null)) as { locationId?: unknown; productId?: unknown; quantity?: unknown; customerId?: unknown; action?: unknown } | null
   const locationId = typeof body?.locationId === "string" ? body.locationId : ""
   const productId = typeof body?.productId === "string" ? body.productId : ""
   const quantity = Number(body?.quantity)
   if (!locationId || !productId) return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 })
   try {
+    if (body?.action === "writeoff") {
+      const result = await writeOffContainers(organizationId, locationId, { productId, quantity }, { userId: session.user.id })
+      return NextResponse.json({ ok: true, ...result })
+    }
     const result = await refundContainers(
       organizationId,
       locationId,

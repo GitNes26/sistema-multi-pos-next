@@ -29,6 +29,7 @@ import { notifyStaff } from "@/lib/notifications/staff"
 import { broadcastTableUpdate } from "@/lib/tables/live"
 import { closeKitchenOrderOnSale } from "./kitchen"
 import { categoryBranchIds } from "@/lib/catalog/categories"
+import { allocateDeposit } from "@/lib/deposits/allocate"
 import { computeContainerDeposit, depositCashRefunds, DepositError, recordDepositCharges } from "@/lib/deposits/server"
 
 export class PosError extends Error {
@@ -1108,13 +1109,23 @@ export async function createSale(
 
   const payable = round2(payload.total - payload.pointsRedeemedValue)
   const paid = round2(payload.payments.reduce((acc, p) => acc + p.amount, 0))
-  if (round2(paid - payable - deposit.total) < -0.01) {
-    throw new PosError(deposit.total > 0 ? "Los pagos no cubren el total y el importe de envases" : "Los pagos no cubren el total", 400)
-  }
+  if (round2(paid - payable) < -0.01) throw new PosError("Los pagos no cubren el total", 400)
   if (deposit.total > 0) {
     const onCredit = round2(payload.payments.filter((p) => p.method === "credit").reduce((acc, p) => acc + p.amount, 0))
     if (onCredit > payable + 0.01) throw new PosError("El importe de envases no se puede dejar a crédito", 400)
   }
+  // El importe de envases nunca impide la venta: lo que el cliente no pagó queda pendiente a su nombre.
+  const allocation = allocateDeposit(
+    deposit.lines.map((l) => ({ productId: l.productId, charged: l.charged, unitAmount: l.unitAmount })),
+    paid - payable - (payload.tip ?? 0) - (payload.changeGiven ?? 0)
+  )
+  const depositLines = allocation.lines.map((l) => ({
+    productId: l.productId,
+    productName: deposit.lines.find((d) => d.productId === l.productId)?.productName ?? "",
+    unitAmount: l.unitAmount,
+    paid: l.paid,
+    owed: l.owed,
+  }))
 
   const result = await prisma.$transaction(async (tx) => {
     const loc = await tx.location.findFirst({
@@ -1175,7 +1186,7 @@ export async function createSale(
         tax: payload.tax,
         total: payload.total,
         tip: payload.tip ?? 0,
-        depositCharged: deposit.total,
+        depositCharged: allocation.collected,
         pointsEarned: payload.pointsEarned,
         pointsRedeemed: payload.pointsRedeemed,
         changeGiven: payload.changeGiven,
@@ -1188,7 +1199,7 @@ export async function createSale(
     await recordDepositCharges(
       tx,
       { organizationId, locationId, saleId: sale.id, cashSessionId: payload.cashSessionId, customerId: payload.customerId, userId: ctx.userId },
-      deposit.lines
+      depositLines
     )
 
     if (payload.items.length) {
