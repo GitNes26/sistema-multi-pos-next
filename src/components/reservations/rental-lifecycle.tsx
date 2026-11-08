@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, ClipboardCheck, Clock, Loader2, PackageCheck, PackageOpen, ShieldCheck, Undo2 } from "lucide-react";
+import { Check, ClipboardCheck, Clock, Loader2, PackageCheck, PackageOpen, Printer, ShieldCheck, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { DialogComponent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ export function RentalLifecycle({
 
   const template = (phase: "delivery" | "return") => templates.find((t) => t.phase === phase) ?? null;
 
-  const post = async (path: "deliver" | "return", body?: Record<string, unknown>) => {
+  const post = async (path: "deliver" | "return" | "settle", body?: Record<string, unknown>) => {
     setBusy(true);
     setError(null);
     try {
@@ -80,7 +80,13 @@ export function RentalLifecycle({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error ?? "No se pudo completar");
-      toast.success(path === "deliver" ? "Equipo entregado" : "Equipo recibido");
+      if (path === "settle") {
+        if (data.cashPending) setError("Abre la caja para registrar el efectivo del depósito");
+        else toast.success("Efectivo registrado en la caja");
+      } else {
+        toast.success(path === "deliver" ? "Equipo entregado (depósito en caja)" : "Equipo recibido");
+        if (data.cashPending) toast.warning("Abre la caja y registra el efectivo del depósito");
+      }
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo completar");
@@ -107,7 +113,12 @@ export function RentalLifecycle({
         <p className="flex items-center gap-1.5 text-sm font-semibold">
           <ShieldCheck className="size-4 text-primary" /> Depósito y entrega
         </p>
-        {hasDeposit && <span className="text-sm font-bold">{fmtMoney(reservation.depositAmount)}</span>}
+        <div className="flex items-center gap-2">
+          {hasDeposit && <span className="text-sm font-bold">{fmtMoney(reservation.depositAmount)}</span>}
+          <Button type="button" size="sm" variant="outline" onClick={() => window.open(`/api/reservaciones/${reservation.id}/hoja`, "_blank", "noopener")}>
+            <Printer className="size-4" /> Hoja
+          </Button>
+        </div>
       </div>
       {hasDeposit && (
         <p className="text-xs text-muted-foreground">
@@ -167,6 +178,15 @@ export function RentalLifecycle({
           )}
           {reservation.penaltyNotes && <dd className="col-span-2 text-xs text-muted-foreground">{reservation.penaltyNotes}</dd>}
         </dl>
+      )}
+
+      {returned && reservation.cashPending && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning-ink">
+          <span>El efectivo del depósito aún no pasa por la caja.</span>
+          <Button type="button" size="sm" variant="outline" onClick={() => void post("settle")} disabled={busy}>
+            Registrar en caja
+          </Button>
+        </div>
       )}
 
       {error && <p className="text-sm font-medium text-destructive">{error}</p>}

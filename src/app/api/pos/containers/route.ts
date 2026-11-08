@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { effectiveOrgId } from "@/lib/auth/org-context"
-import { DepositError, getContainerBalances, refundContainers, writeOffContainers } from "@/lib/deposits/server"
+import { DepositError, getContainerBalances, getCustomerContainerBalances, getRetainedDeposits, refundContainers, writeOffContainers } from "@/lib/deposits/server"
 import { requirePosSession } from "../helpers"
 
 // Envases con importe: saldo en circulación de la sucursal y devolución (el importe sale en efectivo de la caja).
@@ -15,7 +15,15 @@ export async function GET(req: Request) {
   const locationId = params.get("locationId") ?? ""
   if (!locationId) return NextResponse.json({ ok: false, error: "Falta la sucursal" }, { status: 400 })
   // Con customerId: solo lo que ese cliente tiene pendiente (aviso en el cobro; nunca bloquea).
-  return NextResponse.json({ ok: true, balances: await getContainerBalances(organizationId, locationId, params.get("customerId")) })
+  if (params.get("by") === "customer") {
+    return NextResponse.json({ ok: true, customers: await getCustomerContainerBalances(organizationId, locationId) })
+  }
+  const customerId = params.get("customerId")
+  const [balances, retained] = await Promise.all([
+    getContainerBalances(organizationId, locationId, customerId),
+    customerId ? Promise.resolve(null) : getRetainedDeposits(organizationId, locationId),
+  ])
+  return NextResponse.json({ ok: true, balances, retained })
 }
 
 export async function POST(req: Request) {

@@ -281,6 +281,114 @@ export async function writeOffContainers(
   })
 }
 
+/**
+ * Una devolución de venta devuelve también el envase: las piezas devueltas liberan el pendiente SIN importe
+ * pagado de esa venta (sin mover efectivo). El importe ya pagado se regresa desde «Recibir envases», donde el
+ * cajero entrega el efectivo de forma explícita y queda en el corte.
+ */
+export async function releaseSaleContainers(
+  tx: Prisma.TransactionClient,
+  ctx: { organizationId: string; locationId: string; saleId: string; customerId?: string | null; userId?: string | null },
+  items: { productId: string | null; quantity: number }[]
+) {
+  const wanted = new Map<string, number>()
+  for (const item of items) {
+    if (item.productId) wanted.set(item.productId, (wanted.get(item.productId) ?? 0) + Math.floor(item.quantity))
+  }
+  if (!wanted.size) return
+  const grouped = await tx.depositEntry.groupBy({
+    by: ["productId", "kind"],
+    where: { organizationId: ctx.organizationId, saleId: ctx.saleId, productId: { in: [...wanted.keys()] }, kind: { in: ["owed", "settle"] } },
+    _sum: { quantity: true },
+  })
+  const data: Prisma.DepositEntryCreateManyInput[] = []
+  for (const [productId, qty] of wanted) {
+    const sum = (kind: string) => grouped.find((g) => g.productId === productId && g.kind === kind)?._sum.quantity ?? 0
+    const open = sum("owed") - sum("settle")
+    const pieces = Math.min(qty, open)
+    if (pieces <= 0) continue
+    const sample = await tx.depositEntry.findFirst({ where: { organizationId: ctx.organizationId, saleId: ctx.saleId, productId, kind: "owed" }, select: { productName: true, unitAmount: true } })
+    if (!sample) continue
+    data.push({
+      organizationId: ctx.organizationId,
+      locationId: ctx.locationId,
+      kind: "settle",
+      productId,
+      productName: sample.productName,
+      quantity: pieces,
+      unitAmount: sample.unitAmount,
+      amount: 0,
+      saleId: ctx.saleId,
+      customerId: ctx.customerId ?? null,
+      userId: ctx.userId ?? null,
+    })
+  }
+  if (data.length) await tx.depositEntry.createMany({ data })
+}
+
+export interface CustomerContainerBalance {
+  customerId: string
+  customerName: string
+  outstanding: number
+  unpaid: number
+  /** Importe pagado que se les regresa al devolver. */
+  amount: number
+  items: { productName: string; outstanding: number }[]
+}
+
+/** Saldo de envases por cliente identificado (quién debe qué). Solo informa; no bloquea ninguna venta. */
+export async function getCustomerContainerBalances(organizationId: string, locationId: string): Promise<CustomerContainerBalance[]> {
+  const grouped = await prisma.depositEntry.groupBy({
+    by: ["customerId", "productId", "kind"],
+    where: { organizationId, locationId, customerId: { not: null } },
+    _sum: { quantity: true, amount: true },
+  })
+  const per = new Map<string, Map<string, { out: number; paidOut: number; unit: number }>>()
+  for (const row of grouped) {
+    const cid = row.customerId!
+    const byProduct = per.get(cid) ?? new Map()
+    const cur = byProduct.get(row.productId) ?? { out: 0, paidOut: 0, unit: 0 }
+    const qty = row._sum.quantity ?? 0
+    cur.out += (KIND_SIGN[row.kind] ?? 0) * qty
+    if (row.kind === "charge") { cur.paidOut += qty; cur.unit = qty > 0 ? toNum(row._sum.amount) / qty : cur.unit }
+    if (row.kind === "refund" || row.kind === "writeoff") cur.paidOut -= qty
+    byProduct.set(row.productId, cur)
+    per.set(cid, byProduct)
+  }
+  const pending = [...per.entries()]
+    .map(([cid, products]) => ({ cid, products: [...products.entries()].filter(([, v]) => v.out > 0) }))
+    .filter((c) => c.products.length)
+  if (!pending.length) return []
+  const [customers, products] = await Promise.all([
+    prisma.customer.findMany({ where: { organizationId, id: { in: pending.map((c) => c.cid) } }, select: { id: true, fullName: true } }),
+    prisma.product.findMany({ where: { organizationId, id: { in: [...new Set(pending.flatMap((c) => c.products.map(([id]) => id)))] } }, select: { id: true, name: true } }),
+  ])
+  const nameOf = new Map(customers.map((c) => [c.id, c.fullName]))
+  const productName = new Map(products.map((p) => [p.id, p.name]))
+  return pending
+    .map((c) => {
+      let outstanding = 0, unpaid = 0, amount = 0
+      const items = c.products.map(([id, v]) => {
+        const paid = Math.max(0, Math.min(v.out, v.paidOut))
+        outstanding += v.out
+        unpaid += v.out - paid
+        amount += paid * v.unit
+        return { productName: productName.get(id) ?? "Producto", outstanding: v.out }
+      })
+      return { customerId: c.cid, customerName: nameOf.get(c.cid) ?? "Cliente", outstanding, unpaid, amount: round2(amount), items }
+    })
+    .sort((a, b) => b.outstanding - a.outstanding)
+}
+
+/** Importe retenido por envases dados de baja (egreso por pagar al proveedor) de una sucursal. */
+export async function getRetainedDeposits(organizationId: string, locationId: string) {
+  const agg = await prisma.depositEntry.aggregate({
+    where: { organizationId, locationId, kind: "writeoff" },
+    _sum: { amount: true, quantity: true },
+  })
+  return { amount: round2(toNum(agg._sum.amount)), pieces: agg._sum.quantity ?? 0 }
+}
+
 /** Efectivo regresado por envases en una sesión de caja (para el corte). */
 export async function depositCashRefunds(db: Db, cashSessionId: string): Promise<number> {
   const agg = await db.depositEntry.aggregate({

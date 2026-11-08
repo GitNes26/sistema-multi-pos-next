@@ -1,6 +1,6 @@
 {
   "name": "sistema-multi-pos-react-node-chadcnui",
-  "version": "0.61.0.0",
+  "version": "0.62.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -21,6 +21,7 @@
     "verify:revisiones": "tsx scripts/verify/checklists.mts",
     "verify:rentas": "tsx scripts/verify/rentals.mts",
     "verify:envases": "tsx scripts/verify/containers.mts",
+    "verify:barberia": "tsx scripts/verify/barber-flow.mts",
     "loadtest:seed": "tsx scripts/loadtest/seed.mts",
     "loadtest:explain": "tsx scripts/loadtest/explain.mts",
     "loadtest:baseline": "tsx scripts/loadtest/baseline.mts",

@@ -10,6 +10,7 @@ export interface AgendaCita {
   notes: string | null;
   saleId: string | null;
   checkedInAt: string | null;
+  serviceOrder?: { id: string; number: number } | null;
   rescheduleCount: number;
   station: { id: string; name: string } | null;
   asset: { id: string; label: string; reference: string | null } | null;

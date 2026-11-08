@@ -61,6 +61,7 @@ export interface AgendaAppointment {
   notes: string | null;
   saleId: string | null;
   checkedInAt: string | null;
+  serviceOrder: { id: string; number: number } | null;
   rescheduleCount: number;
   station: { id: string; name: string } | null;
   asset: { id: string; label: string; reference: string | null } | null;
@@ -165,6 +166,7 @@ export async function getAgendaAppointments(
       notes: true,
       saleId: true,
       checkedInAt: true,
+      serviceOrder: { select: { id: true, number: true } },
       rescheduleCount: true,
       station: { select: { id: true, name: true } },
       asset: { select: { id: true, label: true, reference: true } },
@@ -183,6 +185,7 @@ export async function getAgendaAppointments(
     notes: r.notes,
     saleId: r.saleId,
     checkedInAt: r.checkedInAt?.toISOString() ?? null,
+    serviceOrder: r.serviceOrder,
     rescheduleCount: r.rescheduleCount,
     station: r.station,
     asset: r.asset,
@@ -464,6 +467,7 @@ export async function checkoutAppointment(
       customerId: true,
       locationId: true,
       notes: true,
+      serviceOrder: { select: { number: true } },
       variant: {
         select: {
           id: true,
@@ -476,6 +480,7 @@ export async function checkoutAppointment(
   });
   if (!appointment) throw new AgendaError("Cita no encontrada", 404);
   if (appointment.status === "completed") throw new AgendaError("La cita ya fue cobrada", 409);
+  if (appointment.serviceOrder) throw new AgendaError(`Esta cita ya es la orden #${appointment.serviceOrder.number}: cóbrala desde la orden de servicio`, 409);
   if (appointment.status === "cancelled") throw new AgendaError("No se puede cobrar una cita cancelada", 409);
   if (appointment.status === "no_show") {
     throw new AgendaError("La cita se marcó como «No asistió» (pasó la tolerancia sin registrar la llegada). Usa «Llegó» con un motivo para recibirla y luego cóbrala.", 409);

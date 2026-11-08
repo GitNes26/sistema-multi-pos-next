@@ -1,5 +1,6 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { CUT_FIELDS, cutFromAttributes } from "@/lib/styles/cut";
 import { CrudError, type CrudModule, type ListParams, type CrudListResult } from "../types";
 
 // Vehículos, fichas de estilo o equipos del cliente. Un cliente puede tener varios; se desactivan
@@ -18,6 +19,8 @@ export interface AssetDto {
   size: string | null;
   notes: string | null;
   isActive: boolean;
+  /** Ficha de estilo: indicaciones del corte (laterales, parte superior, barba…). */
+  [cutKey: `cut${string}`]: string | null;
 }
 
 const KINDS = ["vehicle", "profile", "equipment", "other"];
@@ -26,6 +29,7 @@ type Row = Prisma.CustomerAssetGetPayload<{ include: { customer: { select: { ful
 const include = { customer: { select: { fullName: true } } } as const;
 
 const serialize = (a: Row): AssetDto => ({
+  ...Object.fromEntries(CUT_FIELDS.map((f) => [f.key, cutFromAttributes(a.attributes)[f.key] ?? null])),
   id: a.id,
   customerId: a.customerId,
   customerName: a.customer.fullName,
@@ -48,6 +52,18 @@ const text = (v: unknown, max = 190): string | null => {
 /** «Tsuru gris» a partir de marca, modelo y color cuando no se escribe un nombre. */
 function autoLabel(d: { brand: string | null; model: string | null; color: string | null; reference: string | null }) {
   return [d.brand, d.model, d.color].filter(Boolean).join(" ") || d.reference || "";
+}
+
+/** Mezcla las indicaciones del corte recibidas con el JSON `attributes` existente (sin tocar otras claves). */
+function mergeCut(current: Prisma.JsonValue | null, d: Record<string, unknown>): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  const base = current && typeof current === "object" && !Array.isArray(current) ? { ...(current as Record<string, unknown>) } : {};
+  for (const field of CUT_FIELDS) {
+    if (d[field.key] === undefined) continue;
+    const value = text(d[field.key], 200);
+    if (value) base[field.key] = value;
+    else delete base[field.key];
+  }
+  return Object.keys(base).length ? (base as Prisma.InputJsonValue) : Prisma.JsonNull;
 }
 
 export const assetsModule: CrudModule<AssetDto> = {
@@ -99,7 +115,7 @@ export const assetsModule: CrudModule<AssetDto> = {
     const label = text(d.label, 120) ?? autoLabel(fields);
     if (!label) throw new CrudError("Escribe un nombre, la placa o la marca y el modelo", 400, "label");
     const a = await prisma.customerAsset.create({
-      data: { organizationId, customerId, kind, label, ...fields, size: text(d.size, 40), notes: text(d.notes, 2000), isActive: d.isActive !== false },
+      data: { organizationId, customerId, kind, label, ...fields, size: text(d.size, 40), notes: text(d.notes, 2000), isActive: d.isActive !== false, attributes: mergeCut(null, d) },
       include,
     });
     return serialize(a);
@@ -127,6 +143,7 @@ export const assetsModule: CrudModule<AssetDto> = {
         ...(has("size") ? { size: text(d.size, 40) } : {}),
         ...(has("notes") ? { notes: text(d.notes, 2000) } : {}),
         ...(has("isActive") ? { isActive: d.isActive !== false } : {}),
+        ...(CUT_FIELDS.some((f) => has(f.key)) ? { attributes: mergeCut(existing.attributes, d) } : {}),
       },
       include,
     });

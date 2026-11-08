@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   UserRound,
   X,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DialogComponent } from "@/components/ui/dialog";
@@ -515,6 +516,23 @@ export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverr
     }
   };
 
+  const startOrder = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/agenda/${cita.id}/order`, { method: "POST", credentials: "include" });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "No se pudo crear la orden");
+      toast.success(`Orden #${data.number} creada con las indicaciones del cliente`);
+      onChanged();
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear la orden");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const checkIn = async () => {
     if (overrideFor === "checkin" && (overrideReason ?? "").trim().length < 3) return setError("Escribe el motivo para continuar");
     setBusy(true);
@@ -739,6 +757,18 @@ export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverr
         </div>
       )}
 
+      {cita.checkedInAt && cita.status !== "cancelled" && cita.status !== "completed" && (
+        cita.serviceOrder ? (
+          <p className="rounded-lg bg-info/10 px-3 py-2 text-sm font-medium text-info-ink">
+            En curso como orden de servicio #{cita.serviceOrder.number}: se cobra desde ahí.
+          </p>
+        ) : (
+          <Button variant="outline" className="w-full" onClick={() => void startOrder()} disabled={busy}>
+            <ClipboardList className="size-4" /> Pasar a orden de servicio
+          </Button>
+        )
+      )}
+
       {/* Historial */}
       <div className="space-y-2">
         <button type="button" className="flex w-full items-center justify-between text-sm font-semibold" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}>
@@ -792,7 +822,7 @@ export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverr
           <Button variant="outline" className="flex-1 text-destructive" onClick={() => void act("cancelled")} disabled={busy}>
             Cancelar
           </Button>
-          <Button className="flex-1" onClick={() => setCheckingOut(true)} disabled={busy}>
+          <Button className="flex-1" onClick={() => setCheckingOut(true)} disabled={busy || Boolean(cita.serviceOrder)}>
             <Banknote className="size-4" /> Cobrar
           </Button>
         </div>

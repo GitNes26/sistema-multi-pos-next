@@ -78,8 +78,8 @@ try {
   check("el importe queda fuera del total de la venta", Number(row1.total) === 100 && Number(row1.depositCharged) === 60, `(${row1.total}/${row1.depositCharged})`)
 
   // Pagar solo el total NO impide la venta: los 5 envases quedan pendientes (sin importe pagado) a nombre del cliente.
-  const customer = await prisma.customer.create({ data: { organization: { connect: { id: orgId } }, fullName: "zz Cliente envases", user: { connect: { id: user.id } } } })
-  created.customer = customer.id
+  // Un cliente existente de la empresa de pruebas (no se crea ni se borra).
+  const customer = await prisma.customer.findFirstOrThrow({ where: { organizationId: orgId } })
   const sOwed = await pos.createSale(orgId, location.id, { ...payload([item(cola, 5)], 100), customerId: customer.id }, ctx)
   created.sales.push(sOwed.id)
   const rowOwed = await prisma.sale.findUniqueOrThrow({ where: { id: sOwed.id } })
@@ -87,6 +87,9 @@ try {
   const custBal = await dep.getContainerBalances(orgId, location.id, customer.id)
   const cb = custBal.find((b) => b.productId === cola.productId)
   check("el cliente queda con 5 envases pendientes sin pagar", cb?.outstanding === 5 && cb.unpaid === 5 && cb.paid === 0, `(${cb?.outstanding}/${cb?.unpaid}/${cb?.paid})`)
+
+  const perCustomer = (await dep.getCustomerContainerBalances(orgId, location.id)).find((c) => c.customerId === customer.id)
+  check("el reporte por cliente lista sus 5 envases sin pagar", perCustomer?.outstanding === 5 && perCustomer.unpaid === 5 && perCustomer.amount === 0, `(${perCustomer?.outstanding}/${perCustomer?.unpaid}/${perCustomer?.amount})`)
 
   // Pago parcial del importe: 30 alcanzan para 2 envases (24); 3 quedan pendientes y los 6 sobrantes son cambio.
   const sPart = await pos.createSale(orgId, location.id, { ...payload([item(cola, 5)], 130), changeGiven: 6 }, ctx)
@@ -151,7 +154,6 @@ try {
     await prisma.productVariant.deleteMany({ where: { productId: id } })
     await prisma.product.delete({ where: { id } })
   }
-  if (created.customer) await prisma.customer.delete({ where: { id: created.customer } })
   if (created.session) await prisma.cashSession.delete({ where: { id: created.session } })
   await prisma.$disconnect()
 }

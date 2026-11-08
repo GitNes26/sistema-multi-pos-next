@@ -29,6 +29,7 @@ import { notifyStaff } from "@/lib/notifications/staff"
 import { broadcastTableUpdate } from "@/lib/tables/live"
 import { closeKitchenOrderOnSale } from "./kitchen"
 import { categoryBranchIds } from "@/lib/catalog/categories"
+import { rentalCashForSession } from "@/lib/reservations/cash"
 import { allocateDeposit } from "@/lib/deposits/allocate"
 import { computeContainerDeposit, depositCashRefunds, DepositError, recordDepositCharges } from "@/lib/deposits/server"
 
@@ -721,6 +722,7 @@ export async function getSalesStats(
     }),
   ])
   const containerRefunds = session ? await depositCashRefunds(prisma, session.id) : 0
+  const rentalCash = session ? await rentalCashForSession(prisma, session.id) : { cashIn: 0, cashOut: 0 }
 
   const sessionCashData = session
     ? {
@@ -733,7 +735,7 @@ export async function getSalesStats(
                 .filter((p) => p.method === "cash")
                 .reduce((x, p) => x + toNum(p.amount), 0),
             0
-          )
+          ) + rentalCash.cashIn
         ),
         changeGiven: round2(
           session.sales.reduce((acc, s) => acc + toNum(s.changeGiven), 0)
@@ -747,7 +749,7 @@ export async function getSalesStats(
                 0
               ),
             0
-          ) + containerRefunds
+          ) + containerRefunds + rentalCash.cashOut
         ),
         cashExpenses: round2(
           session.expenses.reduce((sum, e) => sum + toNum(e.amount), 0)
@@ -1738,8 +1740,10 @@ export async function closeCashSession(
     )
     // Efectivo regresado por envases devueltos: sale de la caja igual que una devolución.
     const containerRefunds = await depositCashRefunds(tx, session.id)
+    // Depósitos de rentas: entra el que se recibe y el saldo por cargos; sale el que se regresa al cliente.
+    const rentalCash = await rentalCashForSession(tx, session.id)
     const expectedCash = round2(
-      toNum(session.openingCash) + cashPayments - changeGiven - cashRefunds - containerRefunds - cashExpenses
+      toNum(session.openingCash) + cashPayments + rentalCash.cashIn - changeGiven - cashRefunds - containerRefunds - rentalCash.cashOut - cashExpenses
     )
 
     const updated = await tx.cashSession.update({
@@ -1757,9 +1761,9 @@ export async function closeCashSession(
       id: updated.id,
       salesCount: sales.length,
       totalSales,
-      cashPayments,
+      cashPayments: round2(cashPayments + rentalCash.cashIn),
       changeGiven,
-      cashRefunds: round2(cashRefunds + containerRefunds),
+      cashRefunds: round2(cashRefunds + containerRefunds + rentalCash.cashOut),
       cashExpenses,
       openingCash: toNum(session.openingCash),
       systemCash: round2(expectedCash),

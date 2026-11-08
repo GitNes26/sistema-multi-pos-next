@@ -46,8 +46,8 @@ precios y descuentos recalculados en servidor; una orden cobrada se vincula a **
 | 0 · Fundación (**hecha**, con la política de citas) | `CustomerAsset`, `ServiceStation`, interruptores por empresa (qué módulos usa) y presets de negocio | Se pueden registrar vehículos y lugares |
 | 1 · Orden y tablero (**hecha**, con portal del cliente) | `ServiceOrder`, flujos por servicio, tablero por etapas/bahías en vivo (SSE), llavero, cobro ligado a venta, aviso "listo" al cliente | Autolavado operable de punta a punta |
 | 2 · Revisiones (**hecha para órdenes de servicio**; las rentas la reutilizarán) | Listas de entrega/devolución con fotos y firma | Sirve a autolavado (daños previos) y renta |
-| 3 · Renta (**base hecha**: depósito, entrega y devolución con revisiones, retraso y daños; faltan paquetes, hoja imprimible y movimiento de caja del depósito) | Paquetes, depósito, entrega y devolución, penalizaciones, hoja imprimible | Renta completa |
-| 4 · Barbería | Silla en la cita, agenda por silla, ficha de estilo del cliente (asset `profile`), indicaciones del corte | Barbería cubierta |
+| 3 · Renta (**base hecha**: depósito, entrega y devolución con revisiones, retraso y daños; hoja imprimible y depósito en caja y corte; faltan paquetes) | Paquetes, depósito, entrega y devolución, penalizaciones, hoja imprimible | Renta completa |
+| 4 · Barbería (**base hecha**: ficha con indicaciones del corte, cita → orden con «Llegó», silla y cobro único; falta agenda agrupada por silla y reserva en el portal) | Silla en la cita, agenda por silla, ficha de estilo del cliente (asset `profile`), indicaciones del corte | Barbería cubierta |
 | 5 · Fidelidad | Promociones por visitas, membresías o paquetes de lavados prepagados | Clientes frecuentes |
 | 6 · Comunicación | Landing, asistente de creación de empresa con presets (Autolavado, Barbería, Renta), guías, manual, datos demo y pruebas e2e por vertical | Se ofrece y se explica |
 

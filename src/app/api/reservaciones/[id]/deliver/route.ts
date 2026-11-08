@@ -10,7 +10,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
   if ("response" in guard) return guard.response;
   const { id } = await ctx.params;
   try {
-    return NextResponse.json({ ok: true, ...(await deliverReservation(guard.organizationId, id)) });
+    return NextResponse.json({ ok: true, ...(await deliverReservation(guard.organizationId, id, guard.session.user.id)) });
   } catch (err) {
     return reservationErrorResponse(err);
   }

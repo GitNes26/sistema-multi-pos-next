@@ -1,4 +1,5 @@
 import type { $Enums, Prisma } from "@prisma/client";
+import { releaseSaleContainers } from "@/lib/deposits/server";
 import { prisma } from "@/lib/db";
 import { CrudError } from "@/lib/crud/types";
 import { persistNotification } from "@/lib/notifications/helpers";
@@ -632,6 +633,13 @@ export async function completeReturn(
     } else if (input.refundPayments?.length) {
       throw new CrudError("Esta resolución no utiliza movimientos de reembolso", 400, "refundPayments");
     }
+
+    // El envase vuelve con el producto: se libera el importe pendiente (sin pagar) de esa venta.
+    await releaseSaleContainers(
+      tx,
+      { organizationId, locationId: ret.locationId, saleId: ret.saleId, customerId: ret.sale.customerId, userId },
+      ret.items.map((i) => ({ productId: i.productId, quantity: num(i.quantity) }))
+    );
 
     for (const item of ret.items) {
       if (!item.restockable) continue;

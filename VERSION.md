@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.62.0.0] — 2026-11-08
+- **Tipo:** `feat` (Minor)
+- feat: envases con devolucion que libera pendientes, saldo por cliente y retenido por bajas, depositos de renta en caja y corte con hoja imprimible, y barberia con ficha de estilo y cita que pasa a orden de servicio al llegar
+
 ### [0.61.0.0] — 2026-11-07
 - **Tipo:** `feat` (Minor)
 - feat: el importe de envases ya no bloquea la venta (queda pendiente a nombre del cliente con avisos en el cobro y el ticket), devolucion que solo cierra pendientes sin importe pagado y baja de envases que no regresan

@@ -27,6 +27,7 @@ export interface ReservationView {
   penaltyNotes: string | null;
   depositRefund: number | null;
   balanceDue: number | null;
+  cashPending?: boolean;
 }
 
 export interface RentUnit {

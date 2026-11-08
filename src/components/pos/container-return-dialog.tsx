@@ -31,6 +31,9 @@ export function ContainerReturnButton() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [balances, setBalances] = useState<Balance[]>([])
+  const [tab, setTab] = useState<"stock" | "customers">("stock")
+  const [customers, setCustomers] = useState<{ customerId: string; customerName: string; outstanding: number; unpaid: number; amount: number; items: { productName: string; outstanding: number }[] }[]>([])
+  const [retained, setRetained] = useState<{ amount: number; pieces: number } | null>(null)
   const [qty, setQty] = useState<Record<string, number>>({})
 
   const load = useCallback(async () => {
@@ -41,6 +44,9 @@ export function ContainerReturnButton() {
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error ?? "No se pudieron cargar los envases")
       setBalances(data.balances ?? [])
+      setRetained(data.retained ?? null)
+      const byCustomer = await fetch(`/api/pos/containers?locationId=${encodeURIComponent(locationId)}&by=customer`, { cache: "no-store", credentials: "include" }).then((r) => r.json()).catch(() => null)
+      setCustomers(byCustomer?.ok ? byCustomer.customers ?? [] : [])
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron cargar los envases")
     } finally {
@@ -126,6 +132,25 @@ export function ContainerReturnButton() {
           </Button>
         }
       >
+        <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl bg-muted p-1 text-sm font-medium">
+          {([["stock", "En circulación"], ["customers", `Por cliente (${customers.length})`]] as const).map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setTab(key)} className={`press rounded-lg px-3 py-2 ${tab === key ? "bg-card shadow-sm" : "text-muted-foreground"}`}>{label}</button>
+          ))}
+        </div>
+        {tab === "customers" ? (
+          <div className="space-y-2">
+            {customers.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Ningún cliente identificado debe envases.</p>}
+            {customers.map((c) => (
+              <div key={c.customerId} className="rounded-xl border p-3">
+                <p className="font-medium">{c.customerName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {c.outstanding} envase(s){c.unpaid > 0 ? ` · ${c.unpaid} sin importe pagado` : ""} · {money(c.amount)} por regresar
+                </p>
+                <p className="text-xs text-muted-foreground">{c.items.map((i) => `${i.outstanding} × ${i.productName}`).join(", ")}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="space-y-2">
           {loading && balances.length === 0 && (
             <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
@@ -175,8 +200,14 @@ export function ContainerReturnButton() {
               </div>
             )
           })}
+          {retained && retained.pieces > 0 && (
+            <p className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">
+              Importe retenido por {retained.pieces} envase(s) que no regresaron: {money(retained.amount)} (por pagar al proveedor).
+            </p>
+          )}
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
         </div>
+        )}
       </DialogComponent>
     </>
   )

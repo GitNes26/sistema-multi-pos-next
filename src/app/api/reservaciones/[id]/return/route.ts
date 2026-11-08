@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const result = await returnReservation(guard.organizationId, id, {
       damageFee: body.damageFee === undefined || body.damageFee === "" ? 0 : Number(body.damageFee),
       penaltyNotes: body.penaltyNotes ? String(body.penaltyNotes) : null,
-    });
+    }, guard.session.user.id);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     return reservationErrorResponse(err);

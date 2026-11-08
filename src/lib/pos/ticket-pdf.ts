@@ -316,10 +316,15 @@ export async function generateTicketPdf(
   totals.push({ label: "Impuestos", amount: MXN(Number(sale.tax)) });
   if (Number(sale.pointsRedeemed) > 0) totals.push({ label: `Puntos canjeados (${Math.floor(Number(sale.pointsRedeemed))})`, amount: `-${MXN(Number(sale.pointsRedeemed) * pointValue)}` });
   totals.push({ label: "TOTAL", amount: MXN(Number(sale.total)), big: true });
-  if (tip > 0) {
-    totals.push({ label: "Propina", amount: MXN(tip) });
-    totals.push({ label: "TOTAL PAGADO", amount: MXN(Number(sale.total) + tip), strong: true });
+  const deposit = Number(sale.depositCharged);
+  if (deposit > 0) totals.push({ label: "Importe de envases", amount: MXN(deposit) });
+  if (tip > 0 || deposit > 0) {
+    if (tip > 0) totals.push({ label: "Propina", amount: MXN(tip) });
+    totals.push({ label: "TOTAL PAGADO", amount: MXN(Number(sale.total) + tip + deposit), strong: true });
   }
+  const owedAgg = await prisma.depositEntry.aggregate({ where: { organizationId, saleId: sale.id, kind: "owed" }, _sum: { amount: true } });
+  const owed = Number(owedAgg._sum.amount ?? 0);
+  if (owed > 0) totals.push({ label: "Envases pendientes (sin pagar)", amount: MXN(owed) });
   if (Number(sale.changeGiven) > 0) totals.push({ label: "Cambio", amount: MXN(Number(sale.changeGiven)) });
 
   const extras: string[] = [];

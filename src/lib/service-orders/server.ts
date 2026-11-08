@@ -1,4 +1,5 @@
 import type { $Enums, Prisma } from "@prisma/client"
+import { formatCutIndications } from "@/lib/styles/cut"
 import { prisma } from "@/lib/db"
 import { round2 } from "@/lib/pos/money"
 import { createSale, PosError } from "@/lib/pos/server"
@@ -271,6 +272,7 @@ export interface CreateOrderInput {
   items: { variantId: string; quantity?: number }[]
   locationId?: string | null
   actorUserId?: string | null
+  appointmentId?: string | null
 }
 
 export async function createServiceOrder(organizationId: string, input: CreateOrderInput): Promise<ServiceOrderDto> {
@@ -339,6 +341,7 @@ export async function createServiceOrder(organizationId: string, input: CreateOr
             status: firstStage.isReady ? "ready" : "open",
             readyAt: firstStage.isReady ? new Date() : null,
             keyTag,
+            appointmentId: input.appointmentId ?? null,
             indications: input.indications?.trim().slice(0, 2000) || null,
             promisedAt: input.promisedAt ?? null,
             total,
@@ -513,6 +516,7 @@ export async function checkoutServiceOrder(
       status: true,
       locationId: true,
       customerId: true,
+      appointmentId: true,
       items: { select: { variantId: true, quantity: true, variant: { select: { id: true, price: true, productId: true, product: { select: { name: true, taxRate: true } } } } } },
     },
   })
@@ -586,7 +590,44 @@ export async function checkoutServiceOrder(
   }
 
   await prisma.serviceOrder.updateMany({ where: { id, status: "delivered", saleId: null }, data: { saleId: sale.id, total } })
+  // La cita de origen queda cobrada con esta misma venta (sin duplicar ticket ni caja).
+  if (order.appointmentId) {
+    await prisma.appointment.updateMany({ where: { id: order.appointmentId, organizationId, saleId: null }, data: { status: "completed", saleId: sale.id } })
+  }
   await addEvent(prisma, organizationId, id, "delivered", `Cobrada y entregada · venta ${sale.saleNumber}`, ctx.userId)
   broadcastServiceOrderChange(organizationId, id, "delivered", order.customerId)
   return { saleId: sale.id, saleNumber: sale.saleNumber, locationName: sale.locationName, total }
+}
+
+/**
+ * «Llegó» → orden de servicio: el cliente ya se presentó, así que la cita pasa a ser una orden con su silla,
+ * empleado, vehículo o ficha de estilo y las indicaciones (ficha del cliente + notas de la cita).
+ */
+export async function startOrderFromAppointment(organizationId: string, appointmentId: string, actorUserId?: string | null): Promise<ServiceOrderDto> {
+  const ap = await prisma.appointment.findFirst({
+    where: { id: appointmentId, organizationId },
+    select: {
+      id: true, status: true, checkedInAt: true, customerId: true, assetId: true, stationId: true, employeeId: true,
+      variantId: true, endsAt: true, notes: true, locationId: true,
+      asset: { select: { attributes: true, notes: true } },
+      serviceOrder: { select: { number: true } },
+    },
+  })
+  if (!ap) throw new ServiceOrderError("Cita no encontrada", 404)
+  if (ap.serviceOrder) throw new ServiceOrderError(`La cita ya tiene la orden #${ap.serviceOrder.number}`, 409)
+  if (ap.status === "cancelled" || ap.status === "completed") throw new ServiceOrderError("La cita ya está cerrada", 409)
+  if (!ap.checkedInAt) throw new ServiceOrderError("Registra primero la llegada del cliente («Llegó»)", 409)
+  const indications = [formatCutIndications(ap.asset?.attributes), ap.asset?.notes, ap.notes].filter((v) => v && String(v).trim()).join("\n")
+  return createServiceOrder(organizationId, {
+    customerId: ap.customerId,
+    assetId: ap.assetId,
+    stationId: ap.stationId,
+    employeeId: ap.employeeId,
+    indications: indications || null,
+    promisedAt: ap.endsAt,
+    items: [{ variantId: ap.variantId, quantity: 1 }],
+    locationId: ap.locationId,
+    actorUserId,
+    appointmentId: ap.id,
+  })
 }
