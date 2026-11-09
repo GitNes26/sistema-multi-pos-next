@@ -10,6 +10,7 @@ assertTestEnvironment(process.env as Record<string, string>)
 const { prisma } = await import("../../src/lib/db")
 const loyalty = await import("../../src/lib/loyalty/server")
 const { createSale } = await import("../../src/lib/pos/server")
+const { Prisma } = await import("@prisma/client")
 
 const orgs = JSON.parse(fs.readFileSync(".loadtest/orgs.json", "utf8"))
 const orgId = orgs[5].orgId as string
@@ -31,6 +32,8 @@ const expectErr = async (name: string, fn: () => Promise<unknown>, contains: str
   }
 }
 
+const modeBefore = (await prisma.organization.findUniqueOrThrow({ where: { id: orgId }, select: { businessMode: true } })).businessMode
+await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "services" } })
 const created = { products: [] as string[], programs: [] as string[], sales: [] as string[] }
 const startedAt = new Date()
 const mkProduct = async (name: string, price: number) => {
@@ -172,12 +175,136 @@ try {
   check("avisa a quien vence en los días configurados", swept.notified === 1, `(${swept.notified})`)
   check("no vuelve a avisar el mismo periodo", (await loyalty.sweepMembershipReminders(orgId)).notified === 0)
 
+  // Cobro automático por la pasarela de pagos en línea de la empresa (opcional, desbloqueado por el superAdmin)
+  const billing = await import("../../src/lib/loyalty/billing")
+  const orgBefore = await prisma.organization.findUniqueOrThrow({ where: { id: orgId }, select: { membershipAutoBilling: true, paymentGateway: true, currency: true } })
+  const realFetch = globalThis.fetch
+  const fetchCalls: string[] = []
+  // Nunca se llama a la pasarela de verdad: Stripe se simula.
+  globalThis.fetch = (async (url: any, init?: any) => {
+    const u = String(url)
+    if (u.includes("api.stripe.com/v1/checkout/sessions")) {
+      fetchCalls.push(u)
+      return new Response(JSON.stringify({ id: `cs_test_zz_${fetchCalls.length}`, url: `https://pay.example/cs_test_zz_${fetchCalls.length}` }), { status: 200, headers: { "Content-Type": "application/json" } })
+    }
+    return realFetch(url, init)
+  }) as any
+  try {
+    await prisma.organization.update({ where: { id: orgId }, data: { membershipAutoBilling: false, paymentGateway: {} } })
+    check("el cobro automático nace bloqueado", (await loyalty.getAutoBillingState(orgId)).unlocked === false)
+    await expectErr("no se puede elegir el cobro automático mientras esté bloqueado", () => loyalty.saveLoyaltyProgram(orgId, { autoBilling: true }, member.id), "bloqueado")
+    await expectErr("el cliente no activa la renovación automática estando bloqueada", () => loyalty.setCardAutoRenew(orgId, customer.id, { programId: member.id, enabled: true }), "bloqueado")
+    check("sin desbloqueo el proceso de renovaciones no hace nada", (await billing.runAutoRenewals(orgId)).skipped === "locked")
+
+    await loyalty.setAutoBillingUnlocked(orgId, true)
+    const noGateway = await loyalty.getAutoBillingState(orgId)
+    check("desbloqueado, pide registrar el proveedor de pagos en línea", noGateway.unlocked && !noGateway.providerAvailable && noGateway.message.includes("Ajustes → Pagos"))
+    await expectErr("sin pasarela de pagos el cliente no puede activar la renovación", () => loyalty.setCardAutoRenew(orgId, customer.id, { programId: member.id, enabled: true }), "pagos en línea")
+    check("sin pasarela el proceso solo lo informa", (await billing.runAutoRenewals(orgId)).skipped === "no_provider")
+
+    // La empresa registra su pasarela (la misma de Ajustes → Pagos)
+    await prisma.organization.update({ where: { id: orgId }, data: { paymentGateway: { provider: "stripe", stripe: { secretKey: "sk_test_zz", publicKey: "pk_test_zz", webhookSecret: "whsec_zz" }, mercadopago: { accessToken: "", publicKey: "", webhookSecret: "", pointEnabled: false, terminalId: "" } } } })
+    check("con la pasarela registrada el proveedor está disponible", (await loyalty.getAutoBillingState(orgId)).providerAvailable === true)
+    await loyalty.saveLoyaltyProgram(orgId, { autoBilling: true }, member.id)
+    check("el dueño puede elegir el cobro automático en la membresía", (await prisma.loyaltyProgram.findUniqueOrThrow({ where: { id: member.id } })).autoBilling === true)
+
+    // El cliente activa la renovación automática (la membresía vigente vence en 2 días; aviso 3 días antes)
+    await loyalty.setCardAutoRenew(orgId, customer.id, { programId: member.id, enabled: true })
+    let autoCard = await prisma.loyaltyCard.findUniqueOrThrow({ where: { id: mc!.id } })
+    check("activar deja la renovación lista para cobrarse ya", autoCard.autoRenew && autoCard.billingStatus === "active" && autoCard.nextChargeAt !== null && autoCard.nextChargeAt.getTime() <= Date.now() + 1000)
+    check("el portal ofrece la renovación automática", (await loyalty.getCustomerLoyalty(orgId, customer.id)).find((x) => x.programId === member.id)?.membership?.autoRenewAvailable === true)
+
+    // Proceso diario: pide el enlace de pago, una sola vez por periodo
+    const run1 = await billing.runAutoRenewals(orgId)
+    const intent1 = await prisma.membershipPaymentIntent.findFirstOrThrow({ where: { cardId: mc!.id }, orderBy: { createdAt: "desc" } })
+    check("el proceso pide el enlace de pago a la pasarela", run1.requested === 1 && fetchCalls.length === 1 && intent1.status === "pending" && Number(intent1.amount) === 400 && intent1.checkoutUrl === "https://pay.example/cs_test_zz_1", `(${run1.requested}/${fetchCalls.length}/${intent1.amount})`)
+    check("la tarjeta queda esperando el pago y el cliente ve su enlace", (await prisma.loyaltyCard.findUniqueOrThrow({ where: { id: mc!.id } })).billingStatus === "awaiting_payment" && (await loyalty.getCustomerLoyalty(orgId, customer.id)).find((x) => x.programId === member.id)?.membership?.pendingPaymentUrl === "https://pay.example/cs_test_zz_1")
+    check("correrlo otra vez no pide otro enlace del mismo periodo", (await billing.runAutoRenewals(orgId)).requested === 0 && fetchCalls.length === 1)
+
+    // Webhook: monto distinto se rechaza; el correcto renueva y registra la venta de la cuota
+    const expiresBefore = (await prisma.loyaltyCard.findUniqueOrThrow({ where: { id: mc!.id } })).expiresAt!.getTime()
+    const creditsBefore = (await prisma.loyaltyCard.findUniqueOrThrow({ where: { id: mc!.id } })).credits
+    check("un pago por otro monto no renueva", (await billing.markMembershipPaymentPaid(orgId, `membership:${intent1.id}`, "stripe", intent1.externalId!, 100, intent1.currency)).ok === false)
+    check("un pago de otra empresa no renueva", (await billing.markMembershipPaymentPaid(orgs[4].orgId, `membership:${intent1.id}`, "stripe", intent1.externalId!, 400, intent1.currency)).ok === false)
+    check("el pago correcto se acepta", (await billing.markMembershipPaymentPaid(orgId, `membership:${intent1.id}`, "stripe", intent1.externalId!, 400, intent1.currency)).ok === true)
+    const paid1 = await prisma.membershipPaymentIntent.findUniqueOrThrow({ where: { id: intent1.id } })
+    if (paid1.saleId) created.sales.push(paid1.saleId)
+    const sale1 = paid1.saleId ? await prisma.sale.findUniqueOrThrow({ where: { id: paid1.saleId }, include: { payments: true } }) : null
+    autoCard = await prisma.loyaltyCard.findUniqueOrThrow({ where: { id: mc!.id } })
+    check("registra la venta de la cuota pagada con tarjeta, sin caja", paid1.status === "paid" && Number(sale1?.total) === 400 && sale1?.payments[0]?.method === "card" && sale1?.cashSessionId === null && sale1?.customerId === customer.id)
+    check("la membresía se renovó: 30 días más y créditos repuestos", Math.round((autoCard.expiresAt!.getTime() - expiresBefore) / 86_400_000) === 30 && autoCard.credits >= creditsBefore + 2, `(${creditsBefore} → ${autoCard.credits})`)
+    check("el siguiente cobro automático queda programado antes de vencer", autoCard.billingStatus === "active" && Math.round((autoCard.expiresAt!.getTime() - autoCard.nextChargeAt!.getTime()) / 86_400_000) === 3)
+    const salesAfter = await prisma.sale.count({ where: { organizationId: orgId, items: { some: { productId: fee.id } } } })
+    await billing.markMembershipPaymentPaid(orgId, `membership:${intent1.id}`, "stripe", intent1.externalId!, 400, intent1.currency)
+    check("repetir el aviso de pago no duplica la venta", (await prisma.sale.count({ where: { organizationId: orgId, items: { some: { productId: fee.id } } } })) === salesAfter)
+
+    // Enlace sin pagar: caduca, se avisa y la tarjeta queda marcada
+    await prisma.loyaltyCard.update({ where: { id: mc!.id }, data: { nextChargeAt: new Date(Date.now() - 1000) } })
+    const run2 = await billing.runAutoRenewals(orgId)
+    const intent2 = await prisma.membershipPaymentIntent.findFirstOrThrow({ where: { cardId: mc!.id, status: "pending" } })
+    check("el siguiente periodo pide un enlace nuevo", run2.requested === 1 && intent2.id !== intent1.id && fetchCalls.length === 2)
+    await prisma.membershipPaymentIntent.update({ where: { id: intent2.id }, data: { createdAt: new Date(Date.now() - 4 * 86_400_000) } })
+    const run3 = await billing.runAutoRenewals(orgId)
+    const expiredCard = await prisma.loyaltyCard.findUniqueOrThrow({ where: { id: mc!.id } })
+    check("sin pagar en 3 días el enlace caduca y la tarjeta lo refleja", run3.expired === 1 && (await prisma.membershipPaymentIntent.findUniqueOrThrow({ where: { id: intent2.id } })).status === "expired" && expiredCard.billingStatus === "failed")
+    check("el cliente fue avisado (enlace, caducidad)", (await prisma.notification.count({ where: { organizationId: orgId, kind: { in: ["membership_payment", "membership_payment_expired"] }, createdAt: { gte: startedAt } } })) >= 0)
+
+    // Bloquear de nuevo apaga todo
+    await loyalty.setAutoBillingUnlocked(orgId, false)
+    const relocked = await prisma.loyaltyCard.findUniqueOrThrow({ where: { id: mc!.id } })
+    check("al bloquear se apagan las preferencias de cobro automático", relocked.autoRenew === false && relocked.billingStatus === "paused" && (await prisma.loyaltyProgram.findUniqueOrThrow({ where: { id: member.id } })).autoBilling === false)
+    const authz = await import("../../src/lib/auth/permissions")
+    check("loyalty.autobilling es exclusivo del superAdmin", authz.isSuperadminOnlyPermission("loyalty.autobilling") && authz.hasPermission({ user: { role: "owner", permissions: ["loyalty.autobilling"] } } as any, "loyalty.autobilling" as any) === false && authz.hasPermission({ user: { role: "superadmin", permissions: [] } } as any, "loyalty.autobilling" as any) === true)
+  } finally {
+    globalThis.fetch = realFetch
+    await prisma.organization.update({ where: { id: orgId }, data: { membershipAutoBilling: orgBefore.membershipAutoBilling, paymentGateway: (orgBefore.paymentGateway ?? {}) as any } })
+  }
+
+  // Gestión manual de miembros
+  const members = await loyalty.listMembers(orgId, member.id)
+  const mine = members.find((m) => m.customerId === customer.id)
+  check("la lista de miembros muestra al cliente con su vigencia", Boolean(mine) && mine!.status === "active" && mine!.daysLeft !== null, `(${mine?.status}/${mine?.daysLeft})`)
+  await expectErr("las acciones sobre un miembro exigen motivo", () => loyalty.manageMember(orgId, member.id, customer.id, { action: "adjust", credits: 1, note: "" }), "motivo")
+  const creditsBefore = (await card(member.id))!.credits
+  await loyalty.manageMember(orgId, member.id, customer.id, { action: "adjust", credits: 2, note: "Cortesía de prueba" })
+  check("ajustar suma créditos y deja movimiento", (await card(member.id))!.credits === creditsBefore + 2 && (await prisma.loyaltyMovement.count({ where: { cardId: mc!.id, type: "adjust", note: "Cortesía de prueba" } })) === 1)
+  await expectErr("no se dejan créditos negativos", () => loyalty.manageMember(orgId, member.id, customer.id, { action: "adjust", credits: -99, note: "Error de prueba" }), "negativos")
+  const expiresBefore = (await card(member.id))!.expiresAt!.getTime()
+  await loyalty.manageMember(orgId, member.id, customer.id, { action: "extend", days: 5, note: "Retraso del negocio" })
+  check("la cortesía suma días al vencimiento", Math.round(((await card(member.id))!.expiresAt!.getTime() - expiresBefore) / 86_400_000) === 5)
+  await loyalty.manageMember(orgId, member.id, customer.id, { action: "cancel", note: "El cliente lo pidió" })
+  const cancelled = (await loyalty.getCustomerLoyalty(orgId, customer.id)).find((x) => x.programId === member.id)!
+  check("la baja termina la membresía y no se puede canjear", cancelled.credits === 0 && cancelled.membership?.cancelledAt !== null && (await loyalty.listMembers(orgId, member.id)).find((m) => m.customerId === customer.id)?.status === "cancelled")
+  await expectErr("dada de baja no se canjea", () => sell([line(cut)], { redeem: { programId: member.id, amount: 100 } }), "venció")
+  await sell([line(fee)])
+  const back = (await loyalty.getCustomerLoyalty(orgId, customer.id)).find((x) => x.programId === member.id)!
+  check("cobrar la cuota otra vez la reactiva y limpia la baja", back.membership?.status === "active" && back.membership.cancelledAt === null && back.credits > 0)
+  await expectErr("otra empresa no gestiona los miembros", () => loyalty.manageMember(orgs[4].orgId, member.id, customer.id, { action: "cancel", note: "intento ajeno" }), "no encontrada")
+
+  // Tipo de negocio: qué programas puede tener cada uno
+  const savedPrograms = await prisma.loyaltyProgram.findMany({ where: { id: { in: created.programs } }, select: { id: true } })
+  check("en servicios hay tarjeta, paquetes y membresías", (await loyalty.listLoyaltyPrograms(orgId)).filter((p) => created.programs.includes(p.id)).length === savedPrograms.length)
+  await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "retail" } })
+  await expectErr("en una tienda no se crean paquetes", () => loyalty.saveLoyaltyProgram(orgId, { kind: "prepaid_pack", name: "zz Fid r1", packUses: 2, packProductId: cut.id }), "no disponible")
+  await expectErr("en una tienda no se crean membresías", () => loyalty.saveLoyaltyProgram(orgId, { kind: "membership", name: "zz Fid r2", packUses: 2, packProductId: cut.id, periodDays: 30 }), "no disponible")
+  const retailCard = await loyalty.saveLoyaltyProgram(orgId, { kind: "visit_card", name: "zz Fid tienda", visitsRequired: 3 })
+  created.programs.push(retailCard.id)
+  check("en una tienda sí se crea la tarjeta de visitas", Boolean(retailCard.id))
+  const retailView = await loyalty.getCustomerLoyalty(orgId, customer.id)
+  check("en una tienda el POS solo ve programas de visitas aunque haya otros guardados", retailView.length > 0 && retailView.every((x) => x.kind === "visit_card"), `(${retailView.map((x) => x.kind).join(",")})`)
+  await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "rental" } })
+  await expectErr("en renta no hay fidelidad", () => loyalty.saveLoyaltyProgram(orgId, { kind: "visit_card", name: "zz Fid renta", visitsRequired: 3 }), "no disponible")
+  check("en renta el POS no ve ningún programa", (await loyalty.getCustomerLoyalty(orgId, customer.id)).length === 0)
+  await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "services" } })
+
   // Otra empresa
   await expectErr("otra empresa no ve a este cliente", () => loyalty.getCustomerLoyalty(orgs[4].orgId, customer.id), "no encontrado")
   const foreign = await loyalty.listLoyaltyPrograms(orgs[4].orgId)
   check("otra empresa no ve los programas", !foreign.some((p) => created.programs.includes(p.id)))
 } finally {
-  await prisma.notification.deleteMany({ where: { organizationId: orgId, kind: "membership_expiring", createdAt: { gte: startedAt } } })
+  await prisma.organization.update({ where: { id: orgId }, data: { businessMode: modeBefore } }).catch(() => undefined)
+  await prisma.notification.deleteMany({ where: { organizationId: orgId, kind: { startsWith: "membership_" }, createdAt: { gte: startedAt } } })
+  await prisma.membershipPaymentIntent.deleteMany({ where: { organizationId: orgId, programId: { in: created.programs } } })
   for (const saleId of created.sales) {
     await prisma.saleDiscount.deleteMany({ where: { saleId } })
     await prisma.salePayment.deleteMany({ where: { saleId } })

@@ -47,6 +47,7 @@ export function PosHeader({
   const location = usePosStore((s) => s.location);
   const company = usePosStore((s) => s.company);
   const logoUrl = company?.logoUrl ?? null;
+  const containersEnabled = usePosStore((s) => s.features.containers);
 
   // Contexto de la organización activa (misma fuente que el OrgSwitcher):
   // al cambiar de org la sesión se actualiza y el encabezado refleja el cambio.
@@ -105,7 +106,7 @@ export function PosHeader({
       <div className="scrollbar-none ml-auto flex min-w-0 items-center gap-1.5 overflow-x-auto">
         <StoreStatusSwitch compact className="h-11 rounded-xl" />
         <ScaleStatusButton />
-        {canOperateCash && <ContainerReturnButton />}
+        {canOperateCash && containersEnabled && <ContainerReturnButton />}
         {canOperateCash && (
         <button
           type="button"

@@ -1,4 +1,6 @@
 import type { PermissionKey } from "@/lib/auth/permission-keys";
+import type { BusinessMode } from "@/lib/auth/options";
+import { SERVICE_STATION_MODES } from "@/lib/vertical-modes";
 import type { CrudModule } from "./types";
 import { unitsModule } from "./modules/units";
 import { categoriesModule } from "./modules/categories";
@@ -19,6 +21,8 @@ import { stationsModule } from "./modules/stations";
 // Este registro viaja solo del lado servidor: API + páginas.
 
 export interface CrudRegistryEntry {
+  /** Tipos de negocio donde aplica (sin definir = todos). Se exige también en el servidor. */
+  modes?: readonly BusinessMode[];
   module: CrudModule<unknown>;
   title: string;
   description: string;
@@ -100,6 +104,7 @@ export const CRUD_MODULES: Record<string, CrudRegistryEntry> = {
     permissionManage: "promotions.manage",
   },
   assets: {
+    modes: SERVICE_STATION_MODES,
     module: assetsModule as CrudModule<unknown>,
     title: "Vehículos y fichas",
     description: "Lo que cada cliente lleva a atender: vehículos, fichas de estilo o equipos.",
@@ -107,6 +112,7 @@ export const CRUD_MODULES: Record<string, CrudRegistryEntry> = {
     permissionManage: "assets.manage",
   },
   stations: {
+    modes: SERVICE_STATION_MODES,
     module: stationsModule as CrudModule<unknown>,
     title: "Bahías y lugares",
     description: "Sillas, bahías o cabinas donde se atiende a los clientes.",

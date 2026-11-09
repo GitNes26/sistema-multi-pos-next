@@ -1,5 +1,6 @@
 "use client";
 
+import { ServiceAvailabilityToggle } from "@/components/admin/crud/service-availability-toggle";
 import { memo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Info, Package, Scale } from "lucide-react";
@@ -164,7 +165,15 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
       icon={<Info className="size-5 text-primary" />}
       title={product.name}
       description={product.categoryName ?? "Información del producto"}
-      footer={<Button variant="outline" onClick={() => setInfoOpen(false)}>Cerrar</Button>}
+      footer={
+        <>
+          {/* Servicios: pausar o reanudar su venta desde aquí (requiere el permiso pos.toggle_services). */}
+          <ServiceAvailabilityToggle
+            product={{ id: product.productId, isActive: true, isAvailable: product.isAvailable, productType: product.kind, trackInventory: product.trackInventory }}
+          />
+          <Button variant="outline" onClick={() => setInfoOpen(false)}>Cerrar</Button>
+        </>
+      }
     >
       <div className="space-y-4">
         {product.imageUrl && (

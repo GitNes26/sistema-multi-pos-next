@@ -236,6 +236,7 @@ export const usePosStore = create<PosState>()((set, get) => ({
     credit: true,
     tips: true,
     splitBill: true,
+    containers: true,
   },
   cashier: { userId: "", employeeId: null, name: "" },
   loyalty: { pointValue: 0.01, pointsPerCurrency: 1, enabled: true },

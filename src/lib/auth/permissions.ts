@@ -27,9 +27,12 @@ export function isFullAccessRole(role: string | null | undefined): boolean {
   return role === "superadmin" || role === "owner" || role === "admin";
 }
 
-/** ¿Es el rol que solo ve el superAdmin (organizations.manage)? */
+/** Permisos que solo tiene el superAdmin (ni el propietario ni un rol propio, aunque estén en la lista). */
+const SUPERADMIN_ONLY_PERMISSIONS: readonly string[] = [SUPERADMIN_ONLY_PERMISSION, "loyalty.autobilling"];
+
+/** ¿Es un permiso exclusivo del superAdmin (organizaciones, cobro automático de membresías)? */
 export function isSuperadminOnlyPermission(permission: PermissionKey | string): boolean {
-  return permission === SUPERADMIN_ONLY_PERMISSION;
+  return SUPERADMIN_ONLY_PERMISSIONS.includes(permission);
 }
 
 /** ¿El usuario tiene el permiso? superadmin/owner/admin pasan siempre. */

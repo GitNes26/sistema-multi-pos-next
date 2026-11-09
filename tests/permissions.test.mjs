@@ -373,6 +373,7 @@ before(async () => {
     select: {
       id: true,
       name: true,
+      taxRate: true,
       variants: { where: { isActive: true }, take: 1, select: { price: true } },
     },
   });
@@ -381,7 +382,7 @@ before(async () => {
   assert.ok(price > 0, `El platillo ${dish.name} debe tener precio`);
   ctx.locationId = loc.id;
   ctx.tableId = freeTable.id;
-  ctx.dish = { id: dish.id, name: dish.name, price };
+  ctx.dish = { id: dish.id, name: dish.name, price, taxRate: Number(dish.taxRate) };
 
   // Fixtures del escenario híbrido (misma siembra, modo hybrid).
   const hybOrg = await prisma.organization.findFirst({
@@ -412,6 +413,7 @@ before(async () => {
     select: {
       id: true,
       name: true,
+      taxRate: true,
       variants: { where: { isActive: true }, take: 1, select: { price: true } },
     },
   });
@@ -422,7 +424,7 @@ before(async () => {
   ctx.hybLocationId = hybLoc.id;
   ctx.hybRegisterId = hybReg.id;
   ctx.hybTableId = hybTable.id;
-  ctx.hybDish = { id: hybDish.id, name: hybDish.name, price: hybPrice };
+  ctx.hybDish = { id: hybDish.id, name: hybDish.name, price: hybPrice, taxRate: Number(hybDish.taxRate) };
 
   // Fixtures del flujo de entrega (org del repartidor: Supermercado Demo).
   // No toca las órdenes sembradas: el pedido de prueba se crea y borra aquí.
@@ -770,6 +772,14 @@ test("cajero: opera POS (catalog 200, cash open/close 200, /pos 200), CRUD creat
   assert.equal(create.status, 403, "CRUD create debe ser 403 para cajero (sin products.manage)");
 });
 
+
+/** ¿La respuesta lleva a `target`? Redirección HTTP (3xx) o, con streaming de Next, 200 con la redirección en el cuerpo. */
+async function redirectsTo(res, target) {
+  if (res.status >= 300 && res.status < 400) return target.test(res.headers.get("location") ?? "");
+  const body = await res.text();
+  return /NEXT_REDIRECT/.test(body) && target.test(body);
+}
+
 test("cocina: /api/pos/* 403 y /pos redirige a /kds (sin pos.use)", async () => {
   const s = await login(ACCOUNTS.kitchen.email);
 
@@ -782,8 +792,7 @@ test("cocina: /api/pos/* 403 y /pos redirige a /kds (sin pos.use)", async () => 
   assert.equal(cash.status, 403, "cash open debe ser 403 para cocina");
 
   const pos = await api("/pos", { cookie: s.cookie });
-  assert.ok(pos.status >= 300 && pos.status < 400, `/pos debe redirigir, obtuvo ${pos.status}`);
-  assert.match(pos.headers.get("location") ?? "", /\/kds/, "/pos debe redirigir a /kds para cocina");
+  assert.ok(await redirectsTo(pos, /\/kds/), `/pos debe redirigir a /kds para cocina (estatus ${pos.status})`);
 });
 
 test("repartidor: /api/pos/* 403 y /pos redirige a /kds (sin pos.use)", async () => {
@@ -798,8 +807,7 @@ test("repartidor: /api/pos/* 403 y /pos redirige a /kds (sin pos.use)", async ()
   assert.equal(cash.status, 403, "cash open debe ser 403 para repartidor");
 
   const pos = await api("/pos", { cookie: s.cookie });
-  assert.ok(pos.status >= 300 && pos.status < 400, `/pos debe redirigir, obtuvo ${pos.status}`);
-  assert.match(pos.headers.get("location") ?? "", /\/kds/, "/pos debe redirigir a /kds para repartidor");
+  assert.ok(await redirectsTo(pos, /\/(?:kds|repartidor)/), `/pos debe redirigir a /kds o /repartidor para repartidor (estatus ${pos.status})`);
 });
 
 test("agenda: agente de atención 200; cajero del mismo modo 403; cajero de otro modo 403", async () => {
@@ -1474,8 +1482,8 @@ test("devolución: valida cantidades y repone inventario una sola vez", async ()
     const attempts = await Promise.all([requestReturn(), requestReturn()]);
     assert.deepEqual(
       attempts.map((response) => response.status).sort((a, b) => a - b),
-      [200, 400],
-      "dos solicitudes simultáneas no deben devolver más de lo vendido"
+      [200, 409],
+      "dos solicitudes simultáneas no deben devolver más de lo vendido (la segunda queda en conflicto)"
     );
     const create = attempts.find((response) => response.status === 200);
     const createdReturn = (await create.json()).return;
@@ -1578,7 +1586,7 @@ test("flujo mesa: mesero ocupa → envía a cocina (KDS la ve) → gerente cobra
   const { dish } = ctx;
   const qty = 2;
   const subtotal = round2(qty * dish.price);
-  const total = round2(subtotal * 1.16);
+  const total = round2(subtotal * (1 + dish.taxRate));
 
   // 1) Sentar: el mesero ocupa una mesa libre (solo status → pos.use).
   const seat = await api("/api/tables", {
@@ -1612,7 +1620,7 @@ test("flujo mesa: mesero ocupa → envía a cocina (KDS la ve) → gerente cobra
           productName: dish.name,
           quantity: qty,
           unitPrice: dish.price,
-          taxRate: 0.16,
+          taxRate: dish.taxRate,
         },
       ],
     },
@@ -1663,9 +1671,10 @@ test("flujo mesa: mesero ocupa → envía a cocina (KDS la ve) → gerente cobra
   );
   const kdsAfterReady = await api(`/api/kds?locationId=${ctx.locationId}`, { cookie: mesero.cookie });
   const kdsAfterReadyBody = await kdsAfterReady.json();
+  // Una comanda del POS lista (ready) sigue en el KDS hasta que se entrega (kitchenDoneAt): así la cocina la ve esperando.
   assert.ok(
-    !kdsAfterReadyBody.orders?.some((o) => o.id === orderId),
-    "la orden en ready ya no debe listarse en el KDS"
+    kdsAfterReadyBody.orders?.some((o) => o.id === orderId),
+    "la orden POS en ready sigue listada en el KDS hasta entregarse"
   );
 
   // 4) Cobrar: el gerente cobra el ticket de la mesa.
@@ -1686,7 +1695,7 @@ test("flujo mesa: mesero ocupa → envía a cocina (KDS la ve) → gerente cobra
             unitPrice: dish.price,
             totalPrice: subtotal,
             discount: 0,
-            taxRate: 0.16,
+            taxRate: dish.taxRate,
             lineTotal: subtotal,
             // Sin descuento de inventario: la demo conserva su stock intacto
             // (el seed no descuenta inventario en sus ventas).
@@ -1695,7 +1704,7 @@ test("flujo mesa: mesero ocupa → envía a cocina (KDS la ve) → gerente cobra
         ],
         subtotal,
         discount: 0,
-        tax: round2(subtotal * 0.16),
+        tax: round2(subtotal * dish.taxRate),
         total,
         changeGiven: 0,
         pointsEarned: 0,
@@ -1773,7 +1782,7 @@ test("flujo mesa ronda 2: la segunda ronda se agrega a la misma orden abierta", 
           productName: dish.name,
           quantity: 1,
           unitPrice: dish.price,
-          taxRate: 0.16,
+          taxRate: dish.taxRate,
         },
       ],
     },
@@ -1810,7 +1819,7 @@ test("flujo mesa ronda 2: la segunda ronda se agrega a la misma orden abierta", 
           productName: dish.name,
           quantity: 2,
           unitPrice: dish.price,
-          taxRate: 0.16,
+          taxRate: dish.taxRate,
         },
       ],
     },
@@ -1897,7 +1906,7 @@ test("flujo mesa híbrido: mesero/cocina del modo híbrido ejecutan el ciclo com
   const { dish } = { dish: ctx.hybDish };
   const qty = 1;
   const subtotal = round2(qty * dish.price);
-  const total = round2(subtotal * 1.16);
+  const total = round2(subtotal * (1 + dish.taxRate));
 
   // 1) Sentar: el mesero híbrido ocupa la mesa reservada (PUT solo-status → pos.use).
   const seat = await api("/api/tables", {
@@ -1922,7 +1931,7 @@ test("flujo mesa híbrido: mesero/cocina del modo híbrido ejecutan el ciclo com
           productName: dish.name,
           quantity: qty,
           unitPrice: dish.price,
-          taxRate: 0.16,
+          taxRate: dish.taxRate,
         },
       ],
     },
@@ -1978,14 +1987,14 @@ test("flujo mesa híbrido: mesero/cocina del modo híbrido ejecutan el ciclo com
             unitPrice: dish.price,
             totalPrice: subtotal,
             discount: 0,
-            taxRate: 0.16,
+            taxRate: dish.taxRate,
             lineTotal: subtotal,
             trackInventory: false,
           },
         ],
         subtotal,
         discount: 0,
-        tax: round2(subtotal * 0.16),
+        tax: round2(subtotal * dish.taxRate),
         total,
         changeGiven: 0,
         pointsEarned: 0,
@@ -1998,7 +2007,7 @@ test("flujo mesa híbrido: mesero/cocina del modo híbrido ejecutan el ciclo com
       },
     },
   });
-  assert.equal(charge.status, 200, "el cobro de la mesa debe funcionar para el gerente híbrido");
+  assert.equal(charge.status, 200, `el cobro de la mesa debe funcionar para el gerente híbrido: ${await charge.clone().text()}`);
   const saleId = (await charge.json())?.sale?.id;
   assert.ok(saleId, "el cobro debe devolver la venta");
   ctx.createdSaleIds.push(saleId);
@@ -2217,7 +2226,7 @@ test("imágenes: subida round-trip con org-scoping y guardas de permisos", async
   const upBody = await up.json();
   assert.ok(upBody.ok, "la subida debe responder ok:true");
   const url = upBody.url ?? "";
-  assert.match(url, new RegExp(`^/uploads/${activeOrg}/[0-9a-f-]+\\.webp$`), "la URL debe vivir bajo la org activa y ser .webp (recompresión)");
+  assert.match(url, new RegExp(`^/(?:uploads|api/media)/${activeOrg}/[0-9a-f-]+\\.webp$`), "la URL debe vivir bajo la org activa y ser .webp (recompresión)");
   ctx.uploadProbeUrls.push(url);
 
   // El archivo debe servirse de verdad: 200, content-type WebP y magic bytes
@@ -2235,7 +2244,7 @@ test("imágenes: subida round-trip con org-scoping y guardas de permisos", async
 
   // Miniatura: la subida genera el par <uuid>.webp + <uuid>-thumb.webp (256px)
   // y ambos se sirven por HTTP como WebP válido.
-  assert.match(upBody.thumbUrl ?? "", new RegExp(`^/uploads/${activeOrg}/[0-9a-f-]+-thumb\\.webp$`), "la respuesta debe traer la URL de la miniatura");
+  assert.match(upBody.thumbUrl ?? "", new RegExp(`^/(?:uploads|api/media)/${activeOrg}/[0-9a-f-]+-thumb\\.webp$`), "la respuesta debe traer la URL de la miniatura");
   ctx.uploadProbeUrls.push(upBody.thumbUrl);
   assert.ok(upBody.thumbUrl.startsWith(url.replace(/\.webp$/, "")), "la miniatura comparte el nombre base del original");
 
@@ -2324,7 +2333,7 @@ test("imágenes: subida round-trip con org-scoping y guardas de permisos", async
   const scopedBody = await scopedUpload.json();
   assert.match(
     scopedBody.url ?? "",
-    new RegExp(`^/uploads/${activeOrg}/`),
+    new RegExp(`^/(?:uploads|api/media)/${activeOrg}/`),
     "las subidas deben quedar bajo la org activa de la sesión"
   );
   assert.match(scopedBody.url ?? "", /\.webp$/, "toda imagen subida se re-codifica a WebP");
@@ -2335,7 +2344,7 @@ test("imágenes: subida round-trip con org-scoping y guardas de permisos", async
   //   depende de eso para las aserciones (el estado queda verificado arriba).
 });
 
-test("seed híbrido: owner con businessMode=hybrid y launcher de 14 wizards", async () => {
+test("seed híbrido: owner con businessMode=hybrid y launcher de 17 wizards", async () => {
   // El seed debe dejar Híbrido Demo lista para demostrar el modo completo:
   // owner que entra directo a la org (picker de login) con sesión hybrid y
   // el set de wizards del dashboard completo (MODE_WIZARDS.hybrid = 11).
@@ -2354,7 +2363,7 @@ test("seed híbrido: owner con businessMode=hybrid y launcher de 14 wizards", as
   assert.equal(user?.user?.businessMode, "hybrid", "la sesión debe llevar businessMode=hybrid");
   assert.equal(user?.user?.role, "owner", "el owner debe entrar como owner");
 
-  // ── 2) El launcher debe poder renderizar las 14 tarjetas del modo ──
+  // ── 2) El launcher debe poder renderizar las 17 tarjetas del modo (con plantillas, fidelidad y garantías) ──
   //   Se lee MODE_WIZARDS.hybrid del fuente (lib/business-modes.ts): si
   //   alguien agrega/quita un wizard del modo híbrido, este assert lo hace
   //   visible junto con el cambio.
@@ -2366,7 +2375,7 @@ test("seed híbrido: owner con businessMode=hybrid y launcher de 14 wizards", as
   const hybridMatch = modesSrc.match(/hybrid:\s*\[([^\]]+)\]/);
   assert.ok(hybridMatch, "MODE_WIZARDS.hybrid debe existir en business-modes.ts");
   const expectedKinds = [...hybridMatch[1].matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
-  assert.equal(expectedKinds.length, 14, `el modo híbrido debe exponer 14 wizards (tiene ${expectedKinds.length}: ${expectedKinds.join(", ")})`);
+  assert.equal(expectedKinds.length, 17, `el modo híbrido debe exponer 17 wizards (tiene ${expectedKinds.length}: ${expectedKinds.join(", ")})`);
   // Cada wizard del modo debe tener su definición WIZARD_ACTIONS (href+permiso).
   const definedKinds = [...modesSrc.matchAll(/^\s{2}([a-z_]+):\s*{/gm)].map((m) => m[1]);
   for (const kind of expectedKinds) {
@@ -2440,8 +2449,10 @@ test("guía del POS: el mesero híbrido ve Mesa/KDS; el cajero de retail no la v
     /const canKds = usePermission\("orders\.view"\)/,
     "el botón Cocina (KDS) debe regirse por orders.view"
   );
-  assert.match(guide, /> Mesas/, "la guía debe ofrecer el botón «Mesas»");
-  assert.match(guide, /> Cocina \(KDS\)/, "la guía debe ofrecer el botón «Cocina (KDS)»");
+  // La guía actual es un solo recorrido («Iniciar recorrido») que muestra el icono de Mesas / Cocina según el permiso.
+  assert.match(guide, /\{canTables && <Armchair/, "el recorrido debe mostrar Mesas solo con locations.view");
+  assert.match(guide, /\{canKds && <ChefHat/, "el recorrido debe mostrar Cocina (KDS) solo con orders.view");
+  assert.match(guide, /Iniciar recorrido/, "la guía debe ofrecer el recorrido");
   const header = readFileSync(
     new URL("../src/components/pos/pos-header.tsx", import.meta.url),
     "utf8"

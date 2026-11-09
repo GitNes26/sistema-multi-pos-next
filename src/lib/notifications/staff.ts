@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { persistNotification } from "@/lib/notifications/helpers";
 
-type StaffPermission = "purchasing.manage" | "purchasing.approve" | "purchasing.receive" | "orders.view";
+type StaffPermission = "purchasing.manage" | "purchasing.approve" | "purchasing.receive" | "orders.view" | "loyalty.manage";
 
 /** Entrega una alerta solo a usuarios activos con el permiso operativo indicado. */
 export async function notifyStaff(organizationId: string, permission: StaffPermission, event: {

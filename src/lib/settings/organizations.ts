@@ -44,6 +44,8 @@ export interface OrganizationRow {
   /** Modo de negocio: define los roles/páginas/permisos de la organización. */
   businessMode: BusinessMode
   currency: string
+  /** El superAdmin desbloqueó el cobro automático de membresías para esta empresa. */
+  membershipAutoBilling: boolean
   ownerName: string | null
   ownerEmail: string | null
   memberCount: number
@@ -73,6 +75,7 @@ export async function listOrganizations(): Promise<OrganizationRow[]> {
       name: o.name,
       businessMode: o.businessMode as BusinessMode,
       currency: o.currency,
+      membershipAutoBilling: o.membershipAutoBilling,
       ownerName: o.owner.fullName,
       ownerEmail: o.owner.email,
       memberCount: o.memberships.length,
@@ -182,6 +185,7 @@ export async function createOrganization(
     name: org.name,
     businessMode: org.businessMode as BusinessMode,
     currency: org.currency,
+    membershipAutoBilling: false,
     ownerName: owner.fullName,
     ownerEmail: owner.email,
     memberCount: 1,

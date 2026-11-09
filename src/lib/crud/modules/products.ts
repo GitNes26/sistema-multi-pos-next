@@ -1,3 +1,4 @@
+import { containersAvailable } from "@/lib/deposits/server";
 import { prisma } from "@/lib/db";
 import { isPlaceholderImage, productPlaceholder } from "@/lib/catalog/auto-emoji";
 import type { Prisma } from "@prisma/client";
@@ -59,6 +60,12 @@ function normalizeVariantRules(value: unknown): ProductOptionVariantRuleDto[] {
 }
 
 /** Importe de envase: solo productos estándar; nunca negativo, con centavos. */
+/** El importe de envase retornable solo aplica a tienda, restaurante/café e híbrido. */
+async function assertContainerDepositAllowed(organizationId: string, data: Record<string, unknown>) {
+  if (!(Number(data.depositAmount) > 0)) return;
+  if (!(await containersAvailable(organizationId))) throw new CrudError("Los envases retornables no aplican a tu tipo de negocio", 409, "depositAmount");
+}
+
 function depositFrom(value: unknown, productType: string): number {
   if (productType !== "standard") return 0;
   const n = Math.round((Number(value) || 0) * 100) / 100;
@@ -395,6 +402,7 @@ export const productsModule: CrudModule<ProductDto> = {
 
   async create(organizationId, input, ctx) {
     const data = input as Record<string, unknown>;
+    await assertContainerDepositAllowed(organizationId, data);
     // Existencias iniciales: se validan antes de crear nada.
     const initialStock = data.trackInventory !== false ? Number(data.initialStock) || 0 : 0;
     const initialMin = data.trackInventory !== false ? Number(data.initialMinStock) || 0 : 0;
@@ -524,6 +532,7 @@ export const productsModule: CrudModule<ProductDto> = {
   },
 
   async update(organizationId, id, input, _ctx) {
+    await assertContainerDepositAllowed(organizationId, input as Record<string, unknown>);
     const data = input as Record<string, unknown>;
     const existing = await prisma.product.findFirst({ where: { id, organizationId }, select: { id: true, productType: true, isNew: true, name: true, description: true, imageUrl: true, categoryId: true, bulkUnitId: true } });
     if (!existing) throw new CrudError("Producto no encontrado", 404);

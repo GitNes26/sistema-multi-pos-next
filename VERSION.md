@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.64.0.0] — 2026-11-09
+- **Tipo:** `feat` (Minor)
+- feat: cobro automatico de membresias por la pasarela de pagos en linea de la empresa (desbloqueo solo del superadmin), gestion manual de miembros, funciones por tipo de negocio exigidas en servidor y menu (fidelidad, garantias, bahias y envases), interruptor de venta en el modal del POS, datos demo y asistentes de verticales, pruebas de integracion y e2e al dia y landing actualizada
+
 ### [0.63.0.0] — 2026-11-09
 - **Tipo:** `feat` (Minor)
 - feat: fase 5 y 6 con programas de fidelidad (tarjeta de visitas, paquetes y membresias con vigencia, aviso y condiciones), garantias de servicio con leyenda en ticket y canje en caja y portal, plantillas de arranque, paquetes de renta, citas con personal opcional, agenda por lugar y reserva desde el portal, permisos y roles propios, carrusel de planes y manual

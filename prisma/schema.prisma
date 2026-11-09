@@ -352,19 +352,22 @@ model Organization {
   subscriptionPayments   SubscriptionPayment[]
   pointPaymentIntents    PointPaymentIntent[]
 
-  tableCarts         TableCart[]
-  customerAssets     CustomerAsset[]
-  serviceStations    ServiceStation[]
-  appointmentPolicy  AppointmentPolicy?
-  appointmentEvents  AppointmentEvent[]
-  serviceFlows       ServiceFlow[]
-  serviceOrders      ServiceOrder[]
-  checklistTemplates ChecklistTemplate[]
-  checklistRuns      ChecklistRun[]
-  loyaltyPrograms    LoyaltyProgram[]
-  loyaltyCards       LoyaltyCard[]
-  warrantyRules      WarrantyRule[]
-  warrantyClaims     WarrantyClaim[]
+  tableCarts               TableCart[]
+  customerAssets           CustomerAsset[]
+  serviceStations          ServiceStation[]
+  appointmentPolicy        AppointmentPolicy?
+  appointmentEvents        AppointmentEvent[]
+  serviceFlows             ServiceFlow[]
+  serviceOrders            ServiceOrder[]
+  checklistTemplates       ChecklistTemplate[]
+  checklistRuns            ChecklistRun[]
+  loyaltyPrograms          LoyaltyProgram[]
+  loyaltyCards             LoyaltyCard[]
+  warrantyRules            WarrantyRule[]
+  /// El superAdmin desbloquea el cobro automatico de membresias para esta empresa (bloqueado por defecto).
+  membershipAutoBilling    Boolean                   @default(false)
+  warrantyClaims           WarrantyClaim[]
+  membershipPaymentIntents MembershipPaymentIntent[]
 
   @@map("organizations")
 }
@@ -3373,6 +3376,8 @@ model LoyaltyProgram {
   rollover         Boolean  @default(false)
   reminderDays     Int      @default(3)
   terms            String?  @db.Text
+  /// Cobro automatico de la cuota (preparado; solo se activa si el superAdmin lo desbloqueo para la empresa).
+  autoBilling      Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -3384,20 +3389,29 @@ model LoyaltyProgram {
 }
 
 model LoyaltyCard {
-  id             String    @id @default(cuid())
-  organizationId String
-  customerId     String
-  programId      String
+  id               String    @id @default(cuid())
+  organizationId   String
+  customerId       String
+  programId        String
   /// Visitas acumuladas hacia el siguiente crédito (solo tarjeta de visitas).
-  visits         Int       @default(0)
+  visits           Int       @default(0)
   /// Créditos disponibles para canjear.
-  credits        Int       @default(0)
+  credits          Int       @default(0)
   /// Membresia: inicio y vencimiento del periodo vigente y ultimo aviso de vencimiento enviado.
-  startedAt      DateTime?
-  expiresAt      DateTime?
-  reminderSentAt DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  startedAt        DateTime?
+  expiresAt        DateTime?
+  reminderSentAt   DateTime?
+  /// Baja de la membresia hecha por el negocio (conserva el historial).
+  cancelledAt      DateTime?
+  /// Renovacion automatica (preparada): el cliente la activa con un metodo de pago guardado.
+  autoRenew        Boolean   @default(false)
+  paymentMethodId  String?
+  nextChargeAt     DateTime?
+  /// active | failed | paused (solo con renovacion automatica)
+  billingStatus    String?
+  lastBillingError String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   organization Organization      @relation(fields: [organizationId], references: [id])
   customer     Customer          @relation(fields: [customerId], references: [id])
@@ -3406,6 +3420,7 @@ model LoyaltyCard {
 
   @@unique([customerId, programId])
   @@index([organizationId, customerId])
+  @@index([autoRenew, nextChargeAt])
   @@map("loyalty_cards")
 }
 
@@ -3484,4 +3499,32 @@ model WarrantyClaim {
   @@index([organizationId, status, createdAt])
   @@index([organizationId, customerId])
   @@map("warranty_claims")
+}
+
+/// Cobro de la cuota de una membresia por la pasarela de pagos en linea de la empresa (la misma de Ajustes -> Pagos).
+/// Se pide un enlace de pago por periodo (periodKey evita duplicados); al confirmarse el pago se registra una venta
+/// con la cuota y el motor de fidelidad renueva el periodo.
+model MembershipPaymentIntent {
+  id             String    @id @default(cuid())
+  organizationId String
+  customerId     String
+  programId      String
+  cardId         String
+  amount         Decimal   @db.Decimal(12, 2)
+  currency       String
+  provider       String
+  externalId     String?
+  checkoutUrl    String?   @db.Text
+  /// pending | processing | paid | paid_review (pagado pero la venta no se pudo registrar) | failed | expired
+  status         String    @default("pending")
+  periodKey      String    @unique
+  saleId         String?
+  createdAt      DateTime  @default(now())
+  paidAt         DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, status, createdAt])
+  @@index([cardId, status])
+  @@map("membership_payment_intents")
 }

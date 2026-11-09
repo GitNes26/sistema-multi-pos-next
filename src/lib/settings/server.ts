@@ -304,7 +304,7 @@ export async function setRolePermissions(roleId: string, keys: string[], organiz
   const role = await assertManageableRole(roleId, organizationId, isSuperadmin);
   const valid = new Set(PERMISSIONS.map((p) => p.key));
   const filtered = keys.filter((k) => valid.has(k as never));
-  if (!isSuperadmin && filtered.includes("organizations.manage")) throw new Error("Ese permiso está reservado al SuperAdmin");
+  if (!isSuperadmin && (filtered.includes("organizations.manage") || filtered.includes("loyalty.autobilling"))) throw new Error("Ese permiso está reservado al SuperAdmin");
   await prisma.$transaction([
     prisma.rolePermission.deleteMany({ where: { roleId, organizationId: null } }),
     prisma.rolePermission.createMany({

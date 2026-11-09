@@ -40,6 +40,7 @@ import { uploadFile, UPLOAD_IMAGE_ACCEPT } from "@/lib/uploads"
 import type { CrudField } from "./crud-config"
 import { SwitchField } from "@/components/base"
 import { Switch } from "@/components/ui/switch"
+import { isFeatureEnabled } from "@/lib/features"
 import { useBusinessMode } from "@/hooks/use-business-mode"
 import { useFocusInvalid } from "@/hooks/use-focus-invalid"
 
@@ -920,7 +921,7 @@ export function ProductsForm({
             border={false}
           />
         </div>
-        {productType === "standard" && trackInventory && (
+        {productType === "standard" && trackInventory && isFeatureEnabled("returnable_containers", businessMode) && (
           <InputGroupField
             id="product-depositAmount"
             label="Importe de envase (opcional)"

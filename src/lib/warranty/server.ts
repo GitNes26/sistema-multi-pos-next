@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { redemptionAmount } from "@/lib/loyalty/redeem"
 import { zonedParts } from "@/lib/schedule"
 import { warrantyLegendText, warrantyPresetByKey } from "./presets"
+import { notForModeMessage, WARRANTY_MODES } from "@/lib/vertical-modes"
 
 // Garantías de servicio. Existen solo si el dueño crea y deja activa una regla; entonces el ticket de los servicios
 // que cubre lleva la leyenda y el cliente puede canjear la garantía presentando el ticket (en caja) o pidiéndola desde
@@ -19,6 +20,12 @@ export class WarrantyError extends Error {
 }
 
 type Db = Prisma.TransactionClient | typeof prisma
+
+/** ¿El tipo de negocio de la empresa maneja garantías de servicio? (servicios e híbrido) */
+export async function warrantiesAvailable(organizationId: string, db: Db = prisma): Promise<boolean> {
+  const org = await db.organization.findUnique({ where: { id: organizationId }, select: { businessMode: true } })
+  return Boolean(org && WARRANTY_MODES.includes(org.businessMode))
+}
 
 const asIds = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [])
 
@@ -92,6 +99,8 @@ const intIn = (v: unknown, label: string, min: number, max: number, field: strin
 }
 
 export async function saveWarrantyRule(organizationId: string, input: WarrantyRuleInput, id?: string) {
+  const orgRow = await prisma.organization.findUnique({ where: { id: organizationId }, select: { businessMode: true } })
+  if (!orgRow || !WARRANTY_MODES.includes(orgRow.businessMode)) throw new WarrantyError(notForModeMessage("Las garantías de servicio", orgRow?.businessMode, WARRANTY_MODES), 409)
   const current = id ? await prisma.warrantyRule.findFirst({ where: { id, organizationId } }) : null
   if (id && !current) throw new WarrantyError("Garantía no encontrada", 404)
   const name = String(input.name ?? current?.name ?? "").trim()
@@ -160,7 +169,7 @@ export async function evaluateWarranty(organizationId: string, where: { saleNumb
     select: { id: true, saleNumber: true, locationSaleNumber: true, createdAt: true, customerId: true, customer: { select: { fullName: true } }, location: { select: { timezone: true } }, items: { select: { productId: true } } },
   })
   if (!sale) return null
-  const rules = await db.warrantyRule.findMany({ where: { organizationId, isActive: true } })
+  const rules = (await warrantiesAvailable(organizationId, db)) ? await db.warrantyRule.findMany({ where: { organizationId, isActive: true } }) : []
   if (!rules.length) return { saleId: sale.id, saleNumber: `#${Number(sale.locationSaleNumber ?? sale.saleNumber)}`, createdAt: sale.createdAt.toISOString(), customerId: sale.customerId, customerName: sale.customer?.fullName ?? null, offers: [] }
   const productIds = [...new Set(sale.items.map((i) => i.productId).filter((x): x is string => Boolean(x)))]
   const services = await db.product.findMany({ where: { organizationId, id: { in: productIds }, trackInventory: false }, select: { id: true } })
@@ -239,6 +248,7 @@ export async function applyWarrantyToSale(tx: Db, args: { organizationId: string
 
 /** Leyendas de garantía para el ticket de una venta (solo de las reglas activas que cubren sus servicios). */
 export async function warrantyTicketLegends(organizationId: string, items: { productId: string }[]): Promise<string[]> {
+  if (!(await warrantiesAvailable(organizationId))) return []
   const rules = await prisma.warrantyRule.findMany({ where: { organizationId, isActive: true } })
   if (!rules.length || !items.length) return []
   const productIds = [...new Set(items.map((i) => i.productId))]

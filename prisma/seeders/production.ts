@@ -20,7 +20,7 @@ const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME ?? "Super Admin"
 // organizations.manage es exclusivo del superAdmin (no va en owner/admin).
 const allPermissionKeys = PERMISSIONS.map((p) => p.key)
 const appPermissionKeys = PERMISSIONS.filter(
-  (p) => p.key !== "organizations.manage"
+  (p) => p.key !== "organizations.manage" && p.key !== "loyalty.autobilling"
 ).map((p) => p.key)
 
 // ── Roles de sistema por businessMode ──────────────────────────────────────

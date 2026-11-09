@@ -52,7 +52,7 @@ export function TemplatesClient() {
   if (templates === null) return <Skeleton className="h-40 rounded-2xl" />;
 
   return (
-    <div className="grid gap-3 md:grid-cols-3">
+    <div data-guide="templates-list" className="grid gap-3 md:grid-cols-3">
       {templates.map((t) => (
         <article key={t.key} className="flex flex-col gap-3 rounded-2xl border bg-card p-4">
           <div className="flex items-start justify-between gap-2">

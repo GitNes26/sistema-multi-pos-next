@@ -301,6 +301,10 @@ export async function createCheckout(
 }
 
 function gateBaseUrls(orderId: string) {
+  if (orderId.startsWith("membership:")) {
+    const base = `${appUrl()}/portal/loyalty`;
+    return { success: `${base}?payment=returned`, cancel: `${base}?payment=cancelled` };
+  }
   if (orderId.startsWith("credit:")) {
     const base = `${appUrl()}/portal/credit`;
     return { success: `${base}?payment=returned`, cancel: `${base}?payment=cancelled` };
@@ -553,6 +557,10 @@ export async function processStripeWebhook(
   const orderId = event.data?.object?.client_reference_id;
   if (!orderId || paymentStatus !== "paid") return { ok: true };
   const object = event.data!.object!;
+  if (orderId.startsWith("membership:")) {
+    const { markMembershipPaymentPaid } = await import("@/lib/loyalty/billing");
+    return markMembershipPaymentPaid(organizationId, orderId, "stripe", object.id, typeof object.amount_total === "number" ? object.amount_total / 100 : undefined, object.currency);
+  }
   if (orderId.startsWith("credit:")) return markCreditPaymentPaid(organizationId, orderId, "stripe", object.id, typeof object.amount_total === "number" ? object.amount_total / 100 : undefined, object.currency);
   return markOrderPaid(organizationId, orderId, typeof object.amount_total === "number" ? object.amount_total / 100 : undefined, object.currency);
 }
@@ -589,6 +597,10 @@ export async function processMercadoPagoWebhook(
   if (data.status !== "approved") return { ok: true };
   if (!data.external_reference) return { ok: true };
 
+  if (data.external_reference.startsWith("membership:")) {
+    const { markMembershipPaymentPaid } = await import("@/lib/loyalty/billing");
+    return markMembershipPaymentPaid(organizationId, data.external_reference, "mercadopago", String(paymentId), data.transaction_amount, data.currency_id);
+  }
   if (data.external_reference.startsWith("credit:")) return markCreditPaymentPaid(organizationId, data.external_reference, "mercadopago", String(paymentId), data.transaction_amount, data.currency_id);
   return markOrderPaid(organizationId, data.external_reference, data.transaction_amount, data.currency_id);
 }

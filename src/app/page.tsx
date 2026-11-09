@@ -27,6 +27,12 @@ import {
   CalendarRange,
   Hand,
   ChevronDown,
+  ShieldCheck,
+  Repeat2,
+  Recycle,
+  Car,
+  Wand2,
+  KeyRound,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Reveal } from "@/components/landing/reveal"
@@ -54,7 +60,7 @@ export const dynamic = "force-dynamic"
 export const metadata: Metadata = {
   title: "Bienvenido",
   description:
-    "Multi-POS: punto de venta multi-sucursal, panel administrativo y portal de clientes. Ventas, inventario, pedidos en línea y lealtad en una sola plataforma.",
+    "Multi-POS: punto de venta multi-sucursal, panel administrativo y portal de clientes para tiendas, restaurantes, autolavados, barberías y renta. Ventas, inventario, citas, membresías, garantías y pedidos en línea en una sola plataforma.",
 }
 
 const WHATSAPP_URL = whatsappUrl()
@@ -99,6 +105,12 @@ const FEATURES = [
   { icon: Users, title: "Equipo, roles y nómina", text: "Roles por área, permisos por plan, aprobación de supervisor y recibos de nómina con logo." },
   { icon: CreditCard, title: "Gastos y caja", text: "Registra gastos con retiro de caja y cuadra el corte sin hojas aparte. Te avisa de productos sin costo para que tus ganancias sean reales." },
   { icon: FileSpreadsheet, title: "Devoluciones justas", text: "Se devuelve lo realmente pagado: dinero, cupón, puntos, crédito o cambio de producto." },
+  { icon: Repeat2, title: "Fidelidad a tu medida", text: "Tarjeta de visitas para cualquier negocio; en servicios, también paquetes prepagados y membresías con vigencia, aviso antes de vencer y condiciones que el cliente ve en su portal. Tú decides si las usas." },
+  { icon: ShieldCheck, title: "Garantías de servicio", text: "Define tus reglas (por ejemplo, repetir el lavado si llueve el mismo día): la leyenda sale en el ticket y se canjea en caja o la pide el cliente desde su portal." },
+  { icon: Car, title: "Autolavado y barbería", text: "Bahías y sillas, órdenes por etapas con aviso de «listo», ficha de estilo del cliente y citas que el cliente reserva desde su portal, con o sin barbero preferido." },
+  { icon: KeyRound, title: "Renta con depósito", text: "Reservaciones por periodo, paquetes de renta, depósito en garantía en caja, entrega y devolución con revisión, y cargos por retraso o daños." },
+  { icon: Recycle, title: "Envases retornables", text: "El importe del envase se cobra aparte, se regresa al devolverlo y, si no lo pagan, queda pendiente a nombre del cliente sin frenar la venta." },
+  { icon: Wand2, title: "Plantillas de arranque", text: "Elige autolavado, barbería o renta y deja listos servicios, lugares, flujo y políticas en un clic. Después lo ajustas a tu gusto." },
 ]
 
 const CAPABILITIES = [
@@ -108,6 +120,10 @@ const CAPABILITIES = [
   { icon: MapPin, label: "Rastreo GPS en vivo" },
   { icon: FileSpreadsheet, label: "Exportar PDF / Excel" },
   { icon: Gift, label: "Puntos de lealtad" },
+  { icon: Repeat2, label: "Membresías" },
+  { icon: ShieldCheck, label: "Garantías de servicio" },
+  { icon: Recycle, label: "Envases retornables" },
+  { icon: Car, label: "Autolavado y barbería" },
   { icon: Smartphone, label: "PWA instalable" },
   { icon: Bell, label: "Alertas de stock" },
   { icon: ClipboardCheck, label: "Compras a proveedores" },
@@ -141,6 +157,14 @@ const FAQS = [
   {
     q: "¿Sirve para restaurante, servicios o renta, no solo tienda?",
     a: "Sí. Al configurar tu empresa eliges el tipo de negocio y el sistema activa las herramientas que corresponden: mesas y cocina, agenda de citas o reservaciones por periodo. Cocina, agenda, reservaciones y entregas a domicilio ya vienen desde el plan Esencial.",
+  },
+  {
+    q: "¿Todas las funciones están en todos los tipos de negocio?",
+    a: "No: cada tipo de negocio ve solo lo que le sirve. Tienda y restaurante: tarjeta de visitas y envases retornables. Servicios (autolavado, barbería, estética…): citas, bahías y sillas, órdenes de servicio, paquetes, membresías y garantías. Renta: reservaciones, paquetes de renta y depósito. El híbrido combina todo. Lo que no aplica ni aparece en el menú.",
+  },
+  {
+    q: "¿Cómo funcionan las membresías?",
+    a: "Son opcionales. Tú defines la cuota, cuántos servicios incluye cada periodo, cuándo vence y si los no usados se acumulan; el cliente ve en su portal qué tiene, cuándo vence y tus condiciones. La cuota se cobra en caja y, si activas pagos en línea y la plataforma lo habilita para tu empresa, se puede cobrar con un enlace de pago antes de vencer.",
   },
   {
     q: "¿Cómo funciona el menú digital por QR?",

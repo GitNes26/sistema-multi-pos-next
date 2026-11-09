@@ -46,6 +46,8 @@ if (mode === "prepare" && !fs.existsSync(envFile)) {
         SUPERADMIN_EMAIL: "audit-admin@multi-pos.local",
         SUPERADMIN_PASSWORD: randomBytes(24).toString("base64url"),
         SEED_DEMO: profile === "demo" ? "true" : "false",
+        // Las pruebas de permisos usan los roles reales de la demo (la demo de recorrido los vuelve propietarios).
+        SEED_KEEP_DEMO_ROLES: profile === "demo" ? "true" : "false",
         // Prevent real messages even if Next loads the developer's .env files.
         TWILIO_ACCOUNT_SID: "",
         TWILIO_AUTH_TOKEN: "",

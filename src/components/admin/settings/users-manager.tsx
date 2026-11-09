@@ -378,7 +378,11 @@ function RolesTab({ isSuperadmin }: { isSuperadmin: boolean }) {
               </p>
             )}
             <div className="space-y-3">
-              {Object.entries(MODULES_BY_GROUP).map(([module, modulePerms]) => {
+              {Object.entries(MODULES_BY_GROUP)
+                // Los permisos exclusivos del superAdmin (organizaciones, cobro automático…) no se ofrecen a quien no lo es.
+                .map(([module, perms]) => [module, isSuperadmin ? perms : perms.filter((p) => !("superAdminOnly" in p && p.superAdminOnly))] as const)
+                .filter(([, perms]) => perms.length > 0)
+                .map(([module, modulePerms]) => {
                 const usable = modulePerms.filter((p) => !planDenied.has(p.key));
                 const all = usable.length > 0 && usable.every((p) => perms.has(p.key));
                 const moduleLocked = usable.length === 0;

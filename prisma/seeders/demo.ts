@@ -4989,10 +4989,14 @@ async function finalizeDemoAccess(
     where: { id: { in: organizationIds } },
     data: { isBlocked: false, blockedReason: null },
   })
-  await prisma.membership.updateMany({
-    where: { organizationId: { in: organizationIds } },
-    data: { role: "owner", roleId: "system-owner" },
-  })
+  // La demo deja a todas las cuentas como propietario para recorrer cualquier pantalla. Las pruebas de permisos necesitan
+  // los roles reales (mesero, cajero, cocina…): con SEED_KEEP_DEMO_ROLES=true se conservan los que sembró cada organización.
+  if (process.env.SEED_KEEP_DEMO_ROLES !== "true") {
+    await prisma.membership.updateMany({
+      where: { organizationId: { in: organizationIds } },
+      data: { role: "owner", roleId: "system-owner" },
+    })
+  }
   await prisma.appSettings.updateMany({
     where: { organizationId: { in: organizationIds } },
     data: { surfaceTone: "subtle" },
@@ -6303,6 +6307,11 @@ export async function seedDemo() {
   }
 
   await finalizeDemoAccess(demoOrganizationIds, demoEmails, ownerUser.id)
+
+  // Datos demo de verticales (autolavado, barbería, renta, fidelidad y garantías) en «Híbrido Demo».
+  const { seedVerticalsDemo } = await import("./demo-verticals")
+  const verticals = await seedVerticalsDemo()
+  if (verticals.created.length) console.log(`✅ Demo de verticales: ${verticals.created.length} elementos`)
 
   // La limpieza global de arriba vacía también la empresa de pruebas NESSIK
   // (creada por seedProduction); se reconstruye para que siga lista.

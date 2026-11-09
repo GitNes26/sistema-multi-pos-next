@@ -32,8 +32,8 @@ await prisma.rolePermission.createMany({ data: [{ roleId: promoRole.id, organiza
 const promoPlan = await prisma.subscriptionPlan.create({ data: { name: "zz-plan-promos", description: "x", monthlyPrice: 0, permissions: ["pos.use", "promotions.view", "promotions.manage"] } as any })
 
 // Se simula una base anterior: sin los permisos nuevos.
-await prisma.rolePermission.deleteMany({ where: { permissionKey: { in: [...NEW, ...NEWL] } } })
-await prisma.permission.deleteMany({ where: { key: { in: [...NEW, ...NEWL] } } })
+await prisma.rolePermission.deleteMany({ where: { permissionKey: { in: [...NEW, ...NEWL, "loyalty.autobilling"] } } })
+await prisma.permission.deleteMany({ where: { key: { in: [...NEW, ...NEWL, "loyalty.autobilling"] } } })
 
 try {
   await seedProduction()
@@ -59,6 +59,7 @@ try {
   const menus = await prisma.menu.findMany({ where: { id: { in: ["menu-vehiculos", "menu-bahias", "menu-ordenes-servicio"] } }, select: { id: true, permissionKey: true } })
   check("menús nuevos con su permiso propio", menus.length === 3 && menus.some((m: any) => m.permissionKey === "service_orders.view") && menus.some((m: any) => m.permissionKey === "assets.view") && menus.some((m: any) => m.permissionKey === "stations.view"))
 
+  check("loyalty.autobilling existe y solo lo tiene el superadmin", (await prisma.permission.count({ where: { key: "loyalty.autobilling" } })) === 1 && (await has("superadmin", "loyalty.autobilling")) && !(await has("Propietario", "loyalty.autobilling")) && !(await has("Admin", "loyalty.autobilling")) && !(await has("Gerente", "loyalty.autobilling")))
   check("los 6 permisos de fidelidad y garantías existen", (await prisma.permission.count({ where: { key: { in: NEWL } } })) === 6)
   check("Propietario y Gerente tienen fidelidad y garantías", (await Promise.all(NEWL.flatMap((k) => [has("Propietario", k), has("Gerente", k)]))).every(Boolean))
   check("Cajero y Agente de atención canjean pero no configuran", (await has("Cajero", "loyalty.redeem")) && (await has("Cajero", "warranties.redeem")) && (await has("Agente de atención", "warranties.redeem")) && !(await has("Cajero", "loyalty.manage")) && !(await has("Cajero", "warranties.manage")) && !(await has("Agente de atención", "loyalty.manage")))

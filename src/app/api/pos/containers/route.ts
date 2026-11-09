@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { effectiveOrgId } from "@/lib/auth/org-context"
-import { DepositError, getContainerBalances, getCustomerContainerBalances, getRetainedDeposits, refundContainers, writeOffContainers } from "@/lib/deposits/server"
+import { containersAvailable, DepositError, getContainerBalances, getCustomerContainerBalances, getRetainedDeposits, refundContainers, writeOffContainers } from "@/lib/deposits/server"
 import { requirePosSession } from "../helpers"
 
 // Envases con importe: saldo en circulación de la sucursal y devolución (el importe sale en efectivo de la caja).
@@ -11,6 +11,7 @@ export async function GET(req: Request) {
   const guard = await requirePosSession()
   if ("response" in guard) return guard.response
   const organizationId = effectiveOrgId(guard.session)!
+  if (!(await containersAvailable(organizationId))) return NextResponse.json({ ok: false, error: "Los envases retornables no aplican a tu tipo de negocio" }, { status: 409 })
   const params = new URL(req.url).searchParams
   const locationId = params.get("locationId") ?? ""
   if (!locationId) return NextResponse.json({ ok: false, error: "Falta la sucursal" }, { status: 400 })
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
   if ("response" in guard) return guard.response
   const { session } = guard
   const organizationId = effectiveOrgId(session)!
+  if (!(await containersAvailable(organizationId))) return NextResponse.json({ ok: false, error: "Los envases retornables no aplican a tu tipo de negocio" }, { status: 409 })
   const body = (await req.json().catch(() => null)) as { locationId?: unknown; productId?: unknown; quantity?: unknown; customerId?: unknown; action?: unknown } | null
   const locationId = typeof body?.locationId === "string" ? body.locationId : ""
   const productId = typeof body?.productId === "string" ? body.productId : ""

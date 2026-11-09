@@ -36,6 +36,8 @@ export const BUSINESS_MODES: Record<BusinessMode, BusinessModeInfo> = {
       "Variantes de producto",
       "Combos",
       "Promociones",
+      "Tarjeta de visitas (opcional)",
+      "Envases retornables",
       "Crédito a clientes",
       "Delivery / recoger",
       "Portal del cliente",
@@ -64,7 +66,7 @@ export const BUSINESS_MODES: Record<BusinessMode, BusinessModeInfo> = {
     id: "services",
     label: "Servicios",
     description:
-      "Venta de productos y servicios con agenda: citas (también desde el portal), asignación de personal, promociones y cobro en caja. Opcionales: tarjeta de visitas, paquetes, membresías y garantías de servicio.",
+      "Autolavado, barbería, estética, taller… Venta de productos y servicios con agenda: citas (también desde el portal), asignación de personal, órdenes de servicio, promociones y cobro en caja. Opcionales: tarjeta de visitas, paquetes, membresías y garantías de servicio; con plantillas de arranque.",
     features: [
       "Punto de venta (POS)",
       "Agenda / citas",
@@ -82,7 +84,7 @@ export const BUSINESS_MODES: Record<BusinessMode, BusinessModeInfo> = {
     id: "rental",
     label: "Renta / Alquiler",
     description:
-      "Productos que se rentan por períodos: calendario de disponibilidad, reservaciones por unidades y paquetes, depósito en garantía, penalizaciones y cobro en caja.",
+      "Mobiliario, brincolines, equipo, herramienta… Productos que se rentan por períodos: calendario de disponibilidad, reservaciones por unidades y paquetes, depósito en garantía, entrega y devolución con revisión, penalizaciones y cobro en caja.",
     features: [
       "Punto de venta (POS)",
       "Reservaciones por períodos",
@@ -147,6 +149,9 @@ export type WizardActionKind =
   | "payments"
   | "company"
   | "portal"
+  | "templates"
+  | "loyalty"
+  | "warranty"
 
 export interface WizardActionDef {
   kind: WizardActionKind
@@ -289,6 +294,30 @@ export const WIZARD_ACTIONS: Record<WizardActionKind, WizardActionDef> = {
     href: "/portal",
     modes: ["retail", "food_service", "services", "rental", "hybrid"],
   },
+  templates: {
+    kind: "templates",
+    title: "Deja listo lo básico con una plantilla",
+    description: "Autolavado, barbería o renta: servicios, lugares, flujo y política en un clic (Ajustes → Plantillas)",
+    href: "/admin/settings/templates",
+    permission: "settings.manage",
+    modes: ["services", "rental", "hybrid"],
+  },
+  loyalty: {
+    kind: "loyalty",
+    title: "Premia a tus clientes frecuentes",
+    description: "Tarjeta de visitas (y, en servicios, paquetes o membresías), opcional, en Promociones → Fidelidad",
+    href: "/admin/loyalty-programs",
+    permission: "loyalty.manage",
+    modes: ["retail", "food_service", "services", "hybrid"],
+  },
+  warranty: {
+    kind: "warranty",
+    title: "Ofrece una garantía de servicio",
+    description: "Reglas opcionales: por ejemplo, repetir el lavado si llueve el mismo día (Promociones → Garantías)",
+    href: "/admin/warranties",
+    permission: "warranties.manage",
+    modes: ["services", "hybrid"],
+  },
 }
 
 /** Orden de los wizards por modo de negocio (orden lógico de puesta en marcha). */
@@ -300,6 +329,7 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "payroll",
     "expenses",
     "promotion",
+    "loyalty",
     "delivery",
     "credit",
     "payments",
@@ -316,6 +346,7 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "kds",
     "delivery",
     "promotion",
+    "loyalty",
     "credit",
     "payments",
     "company",
@@ -326,8 +357,11 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "purchasing",
     "payroll",
     "expenses",
+    "templates",
     "agenda",
     "promotion",
+    "loyalty",
+    "warranty",
     "payments",
     "company",
     "portal",
@@ -337,6 +371,7 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "purchasing",
     "payroll",
     "expenses",
+    "templates",
     "reservation",
     "promotion",
     "payments",
@@ -353,7 +388,10 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "payroll",
     "expenses",
     "delivery",
+    "templates",
     "promotion",
+    "loyalty",
+    "warranty",
     "credit",
     "payments",
     "company",

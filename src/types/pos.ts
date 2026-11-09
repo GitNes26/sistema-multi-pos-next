@@ -214,6 +214,8 @@ export interface PosFeatures {
   credit: boolean
   tips: boolean
   splitBill: boolean
+  /** Envases retornables con importe (tienda, restaurante/café e híbrido). */
+  containers: boolean
 }
 
 export interface PosTransferInfo {

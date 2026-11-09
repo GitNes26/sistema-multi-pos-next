@@ -1,3 +1,4 @@
+import { CONTAINER_MODES } from "@/lib/vertical-modes"
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { round2 } from "@/lib/pos/money"
@@ -5,6 +6,12 @@ import { round2 } from "@/lib/pos/money"
 type Db = Prisma.TransactionClient | typeof prisma
 
 /** Error de negocio con código HTTP (lo traduce la API). */
+/** ¿El tipo de negocio maneja envases retornables? (tienda, restaurante/café e híbrido) */
+export async function containersAvailable(organizationId: string): Promise<boolean> {
+  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { businessMode: true } })
+  return Boolean(org && CONTAINER_MODES.includes(org.businessMode))
+}
+
 export class DepositError extends Error {
   constructor(
     message: string,

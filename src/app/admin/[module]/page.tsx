@@ -9,6 +9,9 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CrudPage } from "@/components/admin/crud/crud-page";
+import { NotAvailableForMode } from "@/components/shared/not-available-for-mode";
+import { prisma } from "@/lib/db";
+import { effectiveOrgId } from "@/lib/auth/org-context";
 
 // FASE 7 — Página CRUD genérica del admin.
 // Los módulos registrados en CRUD_KEYS renderizan el CRUD real.
@@ -100,6 +103,16 @@ export default async function AdminModulePage({
 
   if (!CRUD_KEYS.includes(module)) {
     return <Placeholder module={module} />;
+  }
+
+  const entry = getCrudEntry(module);
+  if (entry?.modes) {
+    const session = await getServerSession(authOptions);
+    const orgId = session?.user ? effectiveOrgId(session) : null;
+    const org = orgId ? await prisma.organization.findUnique({ where: { id: orgId }, select: { businessMode: true } }) : null;
+    if (org && !entry.modes.includes(org.businessMode)) {
+      return <NotAvailableForMode icon={MODULE_ICONS[module] ?? <Construction className="size-5" />} title={entry.title} what={entry.title} mode={org.businessMode} modes={entry.modes} />;
+    }
   }
 
   const { canManage, canDelete } = await resolveFlags(module);

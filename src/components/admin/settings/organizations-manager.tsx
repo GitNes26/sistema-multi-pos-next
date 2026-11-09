@@ -42,6 +42,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { swalConfirm, swalError, swalToast } from "@/lib/swal"
+import { Switch } from "@/components/ui/switch"
 import { businessModeInfo } from "@/lib/business-modes"
 import type { BusinessMode } from "@/lib/auth/options"
 import { useFocusInvalid } from "@/hooks/use-focus-invalid"
@@ -53,6 +54,7 @@ type OrgRow = {
   name: string
   businessMode: BusinessMode
   currency: string
+  membershipAutoBilling?: boolean
   ownerName: string | null
   ownerEmail: string | null
   memberCount: number
@@ -705,8 +707,47 @@ function EditOrgDialog({
           required
           error={errors.currency}
         />
+        {org && <MembershipBillingLock key={org.id} org={org} onChanged={onSaved} />}
       </form>
     </DialogComponent>
+  )
+}
+
+/** Bloquear o desbloquear (solo superAdmin) el cobro automático de membresías de la empresa. Acción inmediata. */
+function MembershipBillingLock({ org, onChanged }: { org: OrgRow; onChanged: () => void }) {
+  const [unlocked, setUnlocked] = React.useState(Boolean(org.membershipAutoBilling))
+  const [busy, setBusy] = React.useState(false)
+  const change = async (next: boolean) => {
+    if (
+      !(await swalConfirm(
+        next ? "¿Desbloquear el cobro automático de membresías?" : "¿Bloquear el cobro automático de membresías?",
+        next
+          ? `Esta empresa podrá elegir el cobro automático en sus membresías. Se cobra por el mismo proveedor de pagos en línea que registre en Ajustes → Pagos (Stripe o Mercado Pago); sin él, la cuota se sigue cobrando en caja.`
+          : "Se apagarán las preferencias de cobro automático de la empresa y de sus clientes. La cuota se cobra manualmente en caja.",
+        { confirmText: next ? "Desbloquear" : "Bloquear", cancelText: "Cancelar" }
+      ))
+    )
+      return
+    setBusy(true)
+    try {
+      await api(`/api/settings/organizations/${org.id}/membership-billing`, { method: "PATCH", body: JSON.stringify({ unlocked: next }) })
+      setUnlocked(next)
+      swalToast(next ? "Cobro automático desbloqueado" : "Cobro automático bloqueado")
+      onChanged()
+    } catch (err) {
+      swalError("No se pudo cambiar", err instanceof Error ? err.message : undefined)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="flex items-start gap-3 rounded-xl border bg-muted/30 p-3">
+      <Switch checked={unlocked} disabled={busy} onCheckedChange={(v) => void change(v)} aria-label="Cobro automático de membresías" />
+      <div className="text-sm">
+        <p className="font-medium">Cobro automático de membresías: {unlocked ? "desbloqueado" : "bloqueado"}</p>
+        <p className="text-xs text-muted-foreground">Solo tú lo controlas. Mientras esté bloqueado, el negocio cobra la cuota manualmente en caja.</p>
+      </div>
+    </div>
   )
 }
 

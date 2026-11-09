@@ -9,8 +9,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await superadminGuard();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  // superadminGuard devuelve siempre un objeto: hay que mirar si trae `response` (antes `!session` nunca se cumplía).
+  const guard = await superadminGuard();
+  if ("response" in guard) return guard.response;
   if (!id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
 
   const body = (await req.json().catch(() => ({}))) as { name?: string; currency?: string };
@@ -37,8 +38,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await superadminGuard();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  // superadminGuard devuelve siempre un objeto: hay que mirar si trae `response` (antes `!session` nunca se cumplía).
+  const guard = await superadminGuard();
+  if ("response" in guard) return guard.response;
   if (!id) return NextResponse.json({ error: "Falta el id" }, { status: 400 });
 
   try {

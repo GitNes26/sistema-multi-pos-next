@@ -160,6 +160,7 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Fidelidad",
         icon: Gift,
         permission: "loyalty.view",
+        feature: "loyalty_programs",
       },
       {
         href: "/admin/warranties",

@@ -27,6 +27,9 @@ import {
   RefreshCcw,
   Wallet,
   Receipt,
+  Wand2,
+  Gift,
+  ShieldCheck,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -72,6 +75,9 @@ const ACTION_ICONS: Record<WizardActionKind, LucideIcon> = {
   payments: CreditCard,
   company: Building2,
   portal: ExternalLink,
+  templates: Wand2,
+  loyalty: Gift,
+  warranty: ShieldCheck,
 }
 
 const MODE_ICONS: Record<BusinessMode, LucideIcon> = {
@@ -150,6 +156,8 @@ export function WizardLauncher({
   const canPromotion = usePermission("promotions.manage")
   const canSettings = usePermission("settings.manage")
   const canExpenses = usePermission("expenses.manage")
+  const canLoyalty = usePermission("loyalty.manage")
+  const canWarranty = usePermission("warranties.manage")
   // Solo los primeros pasos a la vista; el resto se despliega para no abrumar.
   const [showAll, setShowAll] = useState(false)
 
@@ -172,7 +180,12 @@ export function WizardLauncher({
       case "credit":
       case "payments":
       case "company":
+      case "templates":
         return canSettings
+      case "loyalty":
+        return canLoyalty
+      case "warranty":
+        return canWarranty
       case "promotion":
         return canPromotion
       case "expenses":

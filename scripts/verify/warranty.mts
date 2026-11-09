@@ -32,6 +32,8 @@ const expectErr = async (name: string, fn: () => Promise<unknown>, contains: str
   }
 }
 
+const modeBefore = (await prisma.organization.findUniqueOrThrow({ where: { id: orgId }, select: { businessMode: true } })).businessMode
+await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "services" } })
 const created = { products: [] as string[], rules: [] as string[], sales: [] as string[] }
 const mkProduct = async (name: string, price: number, trackInventory = false) => {
   const p = await prisma.product.create({ data: { organizationId: orgId, name, trackInventory, taxRate: 0, variants: { create: { organizationId: orgId, name: "Default", price } } }, include: { variants: true } })
@@ -56,6 +58,7 @@ const sell = async (p: ReturnType<typeof line>, opts: { claim?: { ruleId: string
 }
 
 async function cleanup() {
+  await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "services" } })
   const old = await prisma.product.findMany({ where: { organizationId: orgId, name: { startsWith: "zz Gar" } }, select: { id: true } })
   const ids = old.map((p) => p.id)
   const sales = await prisma.sale.findMany({ where: { organizationId: orgId, items: { some: { productId: { in: ids } } } }, select: { id: true } })
@@ -126,10 +129,19 @@ try {
   const halfRow = await prisma.sale.findUniqueOrThrow({ where: { id: half.id } })
   check("con 50% se cobra la mitad y la solicitud pasa a usada", Number(halfRow.total) === 40 && (await prisma.warrantyClaim.findUniqueOrThrow({ where: { saleId_ruleId: { saleId: mine.id, ruleId: rain.id } } })).status === "used")
 
+  // Tipo de negocio: solo servicios e híbrido
+  await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "retail" } })
+  await expectErr("en una tienda no se crean garantías de servicio", () => warranty.saveWarrantyRule(orgId, { name: "zz Gar tienda" }), "no disponible")
+  check("en una tienda la regla guardada deja de dar leyenda y garantía", (await warranty.warrantyTicketLegends(orgId, [{ productId: full.id }])).length === 0 && (await warranty.evaluateWarranty(orgId, { saleId: mine.id }))!.offers.length === 0 && (await warranty.warrantiesAvailable(orgId)) === false)
+  await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "hybrid" } })
+  check("en híbrido sí aplica", (await warranty.warrantiesAvailable(orgId)) === true)
+  await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "services" } })
+
   check("otra empresa no encuentra el ticket", (await warranty.evaluateWarranty(orgs[4].orgId, { saleId: mine.id })) === null)
   check("otra empresa no ve las reglas", !(await warranty.listWarrantyRules(orgs[4].orgId)).some((r) => created.rules.includes(r.id)))
 } finally {
   await cleanup()
+  await prisma.organization.update({ where: { id: orgId }, data: { businessMode: modeBefore } }).catch(() => undefined)
   await prisma.$disconnect()
 }
 console.log(failures === 0 ? "TODO OK" : `${failures} FALLAS`)

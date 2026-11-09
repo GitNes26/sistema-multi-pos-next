@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, Gift, Loader2, Package, Pencil, Plus, Repeat2, Sparkles } from "lucide-react";
+import { CalendarClock, Gift, Loader2, Lock, Package, Pencil, Plus, Repeat2, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,6 +13,7 @@ import { FormCombobox } from "@/components/base/form-combobox";
 import { InputGroupField } from "@/components/base/input-group-field";
 import { TextareaField } from "@/components/base/textarea-field";
 import { EmptyState } from "@/components/shared/empty-state";
+import { MembersDialog } from "./members-dialog";
 import { LOYALTY_KIND_LABEL, LOYALTY_PRESETS, presetByKey, type LoyaltyKind, type LoyaltyPreset } from "@/lib/loyalty/presets";
 import { matchesSearch } from "@/lib/search";
 import { swalError, swalToast } from "@/lib/swal";
@@ -36,6 +37,7 @@ interface Program {
   rollover: boolean;
   reminderDays: number;
   terms: string | null;
+  autoBilling: boolean;
   customersWithCredits: number;
   creditsOutstanding: number;
   activeMembers: number;
@@ -60,24 +62,25 @@ interface Draft {
   rollover: boolean;
   reminderDays: string;
   terms: string;
+  autoBilling: boolean;
 }
 
 const draftFromPreset = (p: LoyaltyPreset): Draft => ({
   id: null, kind: p.kind, presetKey: p.key, name: p.name, description: "",
   visitsRequired: p.visitsRequired ? String(p.visitsRequired) : "", packUses: p.packUses ? String(p.packUses) : "",
   packProductId: "", targetProductIds: [], discountPercent: String(p.discountPercent),
-  periodDays: p.periodDays ? String(p.periodDays) : "30", rollover: Boolean(p.rollover), reminderDays: String(p.reminderDays ?? 3), terms: p.terms ?? "",
+  periodDays: p.periodDays ? String(p.periodDays) : "30", rollover: Boolean(p.rollover), reminderDays: String(p.reminderDays ?? 3), terms: p.terms ?? "", autoBilling: false,
 });
 const blankDraft = (kind: LoyaltyKind): Draft => ({
   id: null, kind, presetKey: null, name: "", description: "", visitsRequired: kind === "visit_card" ? "5" : "", packUses: kind === "visit_card" ? "" : kind === "membership" ? "4" : "5",
   packProductId: "", targetProductIds: [], discountPercent: "100",
-  periodDays: "30", rollover: false, reminderDays: "3", terms: "",
+  periodDays: "30", rollover: false, reminderDays: "3", terms: "", autoBilling: false,
 });
 const draftFromProgram = (p: Program): Draft => ({
   id: p.id, kind: p.kind, presetKey: p.presetKey, name: p.name, description: p.description ?? "",
   visitsRequired: p.visitsRequired ? String(p.visitsRequired) : "", packUses: p.packUses ? String(p.packUses) : "",
   packProductId: p.packProductId ?? "", targetProductIds: p.targetProductIds, discountPercent: String(p.discountPercent),
-  periodDays: p.periodDays ? String(p.periodDays) : "30", rollover: p.rollover, reminderDays: String(p.reminderDays), terms: p.terms ?? "",
+  periodDays: p.periodDays ? String(p.periodDays) : "30", rollover: p.rollover, reminderDays: String(p.reminderDays), terms: p.terms ?? "", autoBilling: p.autoBilling,
 });
 
 function summary(p: Program): string {
@@ -100,6 +103,9 @@ export function LoyaltyProgramsClient({ canManage }: { canManage: boolean }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [members, setMembers] = useState<{ id: string; name: string } | null>(null);
+  const [allowedKinds, setAllowedKinds] = useState<LoyaltyKind[]>(["visit_card", "prepaid_pack", "membership"]);
+  const [billing, setBilling] = useState<{ unlocked: boolean; providerAvailable: boolean; message: string } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -108,6 +114,8 @@ export function LoyaltyProgramsClient({ canManage }: { canManage: boolean }) {
       if (!res.ok || !json.ok) throw new Error(json.error ?? "No se pudieron cargar los programas");
       setPrograms(json.programs);
       setProducts(json.products);
+      setBilling(json.autoBilling ?? null);
+      if (Array.isArray(json.allowedKinds)) setAllowedKinds(json.allowedKinds);
     } catch (err) {
       setPrograms((prev) => prev ?? []);
       swalError("No se pudieron cargar los programas", err instanceof Error ? err.message : undefined);
@@ -131,7 +139,7 @@ export function LoyaltyProgramsClient({ canManage }: { canManage: boolean }) {
         visitsRequired: draft.kind === "visit_card" ? Number(draft.visitsRequired) : undefined,
         packUses: draft.kind !== "visit_card" ? Number(draft.packUses) : undefined,
         packProductId: draft.kind !== "visit_card" ? draft.packProductId || null : undefined,
-        ...(draft.kind === "membership" ? { periodDays: Number(draft.periodDays), rollover: draft.rollover, reminderDays: Number(draft.reminderDays), terms: draft.terms } : {}),
+        ...(draft.kind === "membership" ? { periodDays: Number(draft.periodDays), rollover: draft.rollover, reminderDays: Number(draft.reminderDays), terms: draft.terms, ...(billing?.unlocked ? { autoBilling: draft.autoBilling } : {}) } : {}),
         targetProductIds: draft.targetProductIds, discountPercent: Number(draft.discountPercent),
       };
       const res = await fetch(draft.id ? `/api/loyalty-programs/${draft.id}` : "/api/loyalty-programs", {
@@ -167,7 +175,7 @@ export function LoyaltyProgramsClient({ canManage }: { canManage: boolean }) {
           Elige una opción ya preparada, ajústala a tu negocio (cuántas visitas, qué servicios, cuánto cubre cada premio) y actívala. Los clientes ganan créditos y el cajero los canjea en el cobro.
         </p>
         {canManage && (
-          <Button onClick={() => setPicking(true)}>
+          <Button data-guide="loyalty-new" onClick={() => setPicking(true)}>
             <Plus className="size-4" /> Agregar programa
           </Button>
         )}
@@ -190,20 +198,30 @@ export function LoyaltyProgramsClient({ canManage }: { canManage: boolean }) {
               <p className="text-xs text-muted-foreground tabular-nums">
                 {p.kind === "membership" ? `${p.activeMembers} miembro(s) con membresía vigente · ` : ""}{p.creditsOutstanding > 0 ? `${p.creditsOutstanding} créditos pendientes en ${p.customersWithCredits} cliente(s)` : "Sin créditos pendientes"}
               </p>
-              {canManage && (
-                <Button variant="outline" size="sm" onClick={() => { setError(null); setDraft(draftFromProgram(p)); }}>
-                  <Pencil className="size-4" /> Configurar
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {canManage && (
+                  <Button variant="outline" size="sm" onClick={() => { setError(null); setDraft(draftFromProgram(p)); }}>
+                    <Pencil className="size-4" /> Configurar
+                  </Button>
+                )}
+                {p.kind === "membership" && (
+                  <Button variant="outline" size="sm" onClick={() => setMembers({ id: p.id, name: p.name })}>
+                    <Users className="size-4" /> Miembros
+                  </Button>
+                )}
+              </div>
             </article>
           ))}
         </div>
       )}
 
+      <MembersDialog programId={members?.id ?? null} programName={members?.name ?? ""} canManage={canManage} onClose={() => setMembers(null)} onChanged={() => void load()} />
+
       {/* Elegir opción precargada */}
       <DialogComponent
         open={picking}
         onOpenChange={setPicking}
+        dataGuide="loyalty-presets"
         icon={<Sparkles className="size-5 text-primary" />}
         title="Elige una opción"
         description="Son puntos de partida: en el siguiente paso puedes cambiar todo."
@@ -212,7 +230,7 @@ export function LoyaltyProgramsClient({ canManage }: { canManage: boolean }) {
         footer={<Button variant="ghost" onClick={() => setPicking(false)}>Cerrar</Button>}
       >
         <div className="grid gap-2 sm:grid-cols-2">
-          {LOYALTY_PRESETS.map((p) => (
+          {LOYALTY_PRESETS.filter((p) => allowedKinds.includes(p.kind)).map((p) => (
             <button key={p.key} type="button" className="press space-y-1 rounded-xl border bg-card p-3 text-left hover:border-primary/50" onClick={() => { setPicking(false); setError(null); setDraft(draftFromPreset(p)); }}>
               <span className="flex items-center gap-2 text-sm font-semibold">
                 {p.kind === "visit_card" ? <Repeat2 className="size-4 text-primary" /> : p.kind === "membership" ? <CalendarClock className="size-4 text-primary" /> : <Package className="size-4 text-primary" />} {p.name}
@@ -220,18 +238,18 @@ export function LoyaltyProgramsClient({ canManage }: { canManage: boolean }) {
               <span className="block text-xs text-muted-foreground">{p.blurb}</span>
             </button>
           ))}
-          <button type="button" className="press space-y-1 rounded-xl border border-dashed p-3 text-left hover:border-primary/50" onClick={() => { setPicking(false); setError(null); setDraft(blankDraft("visit_card")); }}>
+          {allowedKinds.includes("visit_card") && <button type="button" className="press space-y-1 rounded-xl border border-dashed p-3 text-left hover:border-primary/50" onClick={() => { setPicking(false); setError(null); setDraft(blankDraft("visit_card")); }}>
             <span className="flex items-center gap-2 text-sm font-semibold"><Plus className="size-4" /> Tarjeta de visitas a mi manera</span>
             <span className="block text-xs text-muted-foreground">Empieza en blanco.</span>
-          </button>
-          <button type="button" className="press space-y-1 rounded-xl border border-dashed p-3 text-left hover:border-primary/50" onClick={() => { setPicking(false); setError(null); setDraft(blankDraft("membership")); }}>
+          </button>}
+          {allowedKinds.includes("membership") && <button type="button" className="press space-y-1 rounded-xl border border-dashed p-3 text-left hover:border-primary/50" onClick={() => { setPicking(false); setError(null); setDraft(blankDraft("membership")); }}>
             <span className="flex items-center gap-2 text-sm font-semibold"><Plus className="size-4" /> Membresía a mi manera</span>
             <span className="block text-xs text-muted-foreground">Cuota periódica con vigencia. Empieza en blanco.</span>
-          </button>
-          <button type="button" className="press space-y-1 rounded-xl border border-dashed p-3 text-left hover:border-primary/50" onClick={() => { setPicking(false); setError(null); setDraft(blankDraft("prepaid_pack")); }}>
+          </button>}
+          {allowedKinds.includes("prepaid_pack") && <button type="button" className="press space-y-1 rounded-xl border border-dashed p-3 text-left hover:border-primary/50" onClick={() => { setPicking(false); setError(null); setDraft(blankDraft("prepaid_pack")); }}>
             <span className="flex items-center gap-2 text-sm font-semibold"><Plus className="size-4" /> Paquete prepagado a mi manera</span>
             <span className="block text-xs text-muted-foreground">Empieza en blanco.</span>
-          </button>
+          </button>}
         </div>
       </DialogComponent>
 
@@ -286,6 +304,15 @@ export function LoyaltyProgramsClient({ canManage }: { canManage: boolean }) {
                     <span className="block text-xs text-muted-foreground">Solo si el cliente renueva antes de que venza. Si vence, se pierden.</span>
                   </span>
                 </label>
+                <div className={cn("flex items-start gap-3 rounded-xl border p-3", !billing?.unlocked && "bg-muted/50")}>
+                  {billing?.unlocked ? <Switch checked={draft.autoBilling} onCheckedChange={(v) => set({ autoBilling: v })} aria-label="Cobro automático de la cuota" /> : <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />}
+                  <div className="text-sm">
+                    <p className="font-medium">Cobro automático de la cuota {!billing?.unlocked && <span className="font-normal text-muted-foreground">· bloqueado</span>}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {billing?.message ?? "Por ahora la cuota se cobra manualmente en caja."} {billing?.unlocked ? "" : "Mientras tanto, cobra la cuota en caja: eso da de alta o renueva la membresía."}
+                    </p>
+                  </div>
+                </div>
                 <TextareaField label="Condiciones y políticas" value={draft.terms} onChange={(e) => set({ terms: e.target.value })} rows={3} placeholder="Lo que debe saber el cliente: vigencia, si es personal, qué no incluye…" helper="El cliente lo ve en su portal junto a su membresía." />
               </div>
             )}

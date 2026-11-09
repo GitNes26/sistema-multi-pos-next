@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cached } from "@/lib/cache";
 import { getMenuTree, createMenu } from "@/lib/menus/server";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
+import type { BusinessMode } from "@/lib/auth/options";
 import { menusReadGuard, menusAdminGuard, menusErrorResponse } from "./guard";
 
 // FASE 14.5/14.6 — GET: árbol filtrado por permisos · POST: crear menú (admin).
@@ -19,8 +20,10 @@ export async function GET() {
     const permissions = (session.user.permissions ?? []) as PermissionKey[];
     const planDenied = (session.user.planDenied ?? []) as PermissionKey[];
     // El árbol de menús es el mismo para todos los que comparten rol, permisos y plan: se guarda 60 s.
-    const signature = createHash("sha1").update(JSON.stringify([isAdmin, session.user.role, [...permissions].sort(), [...planDenied].sort()])).digest("hex");
-    const menu = await cached(`menus:${signature}`, { ttlMs: 60_000, tags: ["menus"] }, () => getMenuTree(permissions, isAdmin, session.user.role, planDenied));
+    // El tipo de negocio decide qué opciones aplican (garantías, bahías, fidelidad…): entra en la clave de la caché.
+    const mode = ((session.user as { businessMode?: BusinessMode | null }).businessMode ?? null) as BusinessMode | null;
+    const signature = createHash("sha1").update(JSON.stringify([isAdmin, session.user.role, mode, [...permissions].sort(), [...planDenied].sort()])).digest("hex");
+    const menu = await cached(`menus:${signature}`, { ttlMs: 60_000, tags: ["menus"] }, () => getMenuTree(permissions, isAdmin, session.user.role, planDenied, mode));
     return NextResponse.json({ ok: true, menu });
   } catch (err) {
     return menusErrorResponse(err);

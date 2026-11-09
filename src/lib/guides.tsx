@@ -1435,6 +1435,113 @@ const expensesGuide: GuideDef = {
   ],
 }
 
+const templatesGuide: GuideDef = {
+  id: "templates",
+  title: "Deja listo lo básico con una plantilla",
+  steps: [
+    {
+      route: "/admin/settings/templates",
+      selector: "[data-guide='templates-list']",
+      title: "Plantillas de arranque",
+      body: (
+        <div className="space-y-2">
+          <p>
+            Elige la de tu tipo de negocio (autolavado, barbería o renta) y se crean los servicios de ejemplo, los
+            lugares de atención, el flujo y la política de renta.
+          </p>
+          <p>
+            Solo crea lo que <strong>falta</strong>: puedes aplicarla otra vez sin duplicar nada ni pisar lo que ya
+            editaste. Después ajusta precios y nombres a tu gusto.
+          </p>
+        </div>
+      ),
+      actions: [
+        { label: "Volver al panel", href: "/admin" },
+        { label: "Ver mis servicios", href: "/admin/products", primary: true },
+      ],
+    },
+  ],
+}
+
+const loyaltyGuide: GuideDef = {
+  id: "loyalty",
+  title: "Premia a tus clientes frecuentes",
+  steps: [
+    {
+      route: "/admin/loyalty-programs",
+      selector: "[data-guide='loyalty-new']",
+      title: "Programas de fidelidad (opcionales)",
+      body: (
+        <p>
+          Tú decides si premias a tus clientes: <strong>tarjeta de visitas</strong>, <strong>paquetes prepagados</strong>{" "}
+          o <strong>membresías</strong>. Empieza con <strong>Agregar programa</strong>.
+        </p>
+      ),
+      advanceOnClick: true,
+    },
+    {
+      route: "/admin/loyalty-programs",
+      selector: "[data-guide='loyalty-presets']",
+      title: "Elige una opción ya preparada",
+      body: (
+        <div className="space-y-2">
+          <p>Son puntos de partida: en el siguiente paso cambias cuántas visitas, qué servicios aplican y cuánto cubre cada premio.</p>
+          <ul className="list-disc space-y-1 pl-4">
+            <li>
+              En <strong>paquetes y membresías</strong> crea antes el producto de la cuota o del paquete en tu catálogo.
+            </li>
+            <li>
+              La membresía tiene vigencia, aviso antes de vencer y condiciones que el cliente ve en su portal. La cuota
+              se cobra en caja.
+            </li>
+          </ul>
+        </div>
+      ),
+      actions: [
+        { label: "Volver al panel", href: "/admin" },
+        { label: "Ver mis programas", href: "/admin/loyalty-programs", primary: true },
+      ],
+    },
+  ],
+}
+
+const warrantyGuide: GuideDef = {
+  id: "warranty",
+  title: "Ofrece una garantía de servicio",
+  steps: [
+    {
+      route: "/admin/warranties",
+      selector: "[data-guide='warranty-new']",
+      title: "Garantías de servicio (opcionales)",
+      body: (
+        <p>
+          Solo existen si tú las activas. Por ejemplo: «si llueve el mismo día, repite el lavado exterior sin costo
+          presentando tu ticket». Empieza con <strong>Agregar garantía</strong>.
+        </p>
+      ),
+      advanceOnClick: true,
+    },
+    {
+      route: "/admin/warranties",
+      selector: "[data-guide='warranty-presets']",
+      title: "Elige una y ajústala",
+      body: (
+        <div className="space-y-2">
+          <p>Defines el plazo, si es solo el mismo día, qué parte cubre y qué servicios se pueden repetir.</p>
+          <p>
+            Mientras esté activa, el <strong>ticket</strong> de esos servicios lleva la leyenda para que el cliente lo
+            sepa, y en caja la canjeas con el número del ticket (en «Descuentos y cupones»).
+          </p>
+        </div>
+      ),
+      actions: [
+        { label: "Volver al panel", href: "/admin" },
+        { label: "Ver mis garantías", href: "/admin/warranties", primary: true },
+      ],
+    },
+  ],
+}
+
 export const GUIDES: Record<string, GuideDef> = {
   product: productGuide,
   combos: combosGuide,
@@ -1453,4 +1560,7 @@ export const GUIDES: Record<string, GuideDef> = {
   purchasing: purchasingGuide,
   payroll: payrollGuide,
   expenses: expensesGuide,
+  templates: templatesGuide,
+  loyalty: loyaltyGuide,
+  warranty: warrantyGuide,
 }

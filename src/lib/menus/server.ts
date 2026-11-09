@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import { isPlanBlockedPath } from "@/lib/billing/plan-permissions";
 import { isSuperadminOnlyPermission } from "@/lib/auth/permissions";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
+import type { BusinessMode } from "@/lib/auth/options";
+import { NAV_HREF_TO_FEATURE, isFeatureEnabled } from "@/lib/features";
 
 // FASE 14.4/14.5 — Menú dinámico multinivel: CRUD + árbol filtrado por permisos.
 
@@ -79,6 +81,12 @@ const MENU_SELECT = {
 } as const;
 
 /** ¿El usuario (con esos permisos) puede ver un nodo con esa clave? */
+/** ¿La opción del menú aplica al tipo de negocio? (las rutas sin bandera aplican a todos) */
+function appliesToMode(href: string, mode: BusinessMode): boolean {
+  const feature = NAV_HREF_TO_FEATURE[href];
+  return !feature || isFeatureEnabled(feature, mode);
+}
+
 function canSee(
   permissionKey: string | null,
   permissions: PermissionKey[] | null,
@@ -133,7 +141,9 @@ export async function getMenuTree(
   permissions: PermissionKey[] | null,
   isAdmin: boolean,
   role?: string | null,
-  planDenied: PermissionKey[] = []
+  planDenied: PermissionKey[] = [],
+  /** Tipo de negocio de la empresa activa: oculta lo que no aplica (garantías, bahías, fidelidad…). Sin tipo = todo. */
+  mode?: BusinessMode | null
 ): Promise<MenuNode[]> {
   const rows = await prisma.menu.findMany({
     where: { isActive: true },
@@ -143,6 +153,7 @@ export async function getMenuTree(
   const nodes = rows.map((r) => toNode(r as MenuRow));
   const keep = (n: MenuNode) =>
     (n.href !== "/admin/settings/menus" || role === "superadmin") &&
+    (!mode || !n.href || appliesToMode(n.href, mode)) &&
     (role === "superadmin" || !n.href || !isPlanBlockedPath(n.href, planDenied)) &&
     canSee(n.permissionKey, permissions, isAdmin, role ?? null, planDenied);
   return filterTree(buildTree(nodes), keep);

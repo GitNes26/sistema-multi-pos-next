@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Star, TrendingUp, Gift, Clock, Sparkles, History, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { swalError, swalToast } from "@/lib/swal"
 import { portalApi, type LoyaltyData } from "@/lib/portal/client"
 import { money } from "@/lib/pos/money"
@@ -38,6 +39,11 @@ interface ProgramView {
     price: number | null
     terms: string | null
     targetProductNames: string[]
+    autoRenew: boolean
+    autoRenewAvailable: boolean
+    pendingPaymentUrl: string | null
+    billingStatus: string | null
+    reminderDays: number
   }
 }
 interface WarrantySale {
@@ -68,6 +74,14 @@ export function LoyaltyClient() {
       .then((j) => setWarranties(j.ok ? j.sales : []))
       .catch(() => setWarranties([]))
   }, [])
+
+  const setAutoRenew = async (programId: string, enabled: boolean) => {
+    const res = await fetch("/api/portal/loyalty/auto-renew", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ programId, enabled }) })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok || !json.ok) return swalError("No se pudo cambiar", json.error)
+    swalToast(enabled ? "Renovación automática activada: te enviaremos el enlace de pago antes de vencer" : "Renovación automática desactivada")
+    void load()
+  }
 
   const requestWarranty = async (saleId: string, ruleId: string) => {
     const res = await fetch("/api/portal/warranties", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ saleId, ruleId }) })
@@ -154,8 +168,26 @@ export function LoyaltyClient() {
                         <dd className="whitespace-pre-line">{p.membership.terms}</dd>
                       </div>
                     )}
-                    <p className="col-span-2 text-muted-foreground">Para dar de alta o renovar tu membresía, paga la cuota en el negocio.</p>
+                    <p className="col-span-2 text-muted-foreground">Para dar de alta o renovar tu membresía, paga la cuota en el negocio{p.membership.autoRenewAvailable ? " o en línea con el enlace de pago." : "."}</p>
                   </dl>
+                )}
+                {p.membership?.pendingPaymentUrl && (
+                  <Button className="w-full" onClick={() => { window.location.href = p.membership!.pendingPaymentUrl as string }}>
+                    Pagar renovación
+                  </Button>
+                )}
+                {p.membership && (p.membership.autoRenewAvailable || p.membership.autoRenew) && p.membership.status === "active" && (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm">
+                    <Switch checked={p.membership.autoRenew} onCheckedChange={(v) => void setAutoRenew(p.programId, v)} aria-label="Renovación automática" />
+                    <span>
+                      <span className="font-medium">Renovación automática</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {p.membership.reminderDays > 0 ? `${p.membership.reminderDays} día(s) antes de vencer` : "El día que vence"} te enviamos un enlace para pagar tu cuota en línea. No guardamos tu tarjeta.
+                      </span>
+                      {p.membership.billingStatus === "failed" && <span className="mt-1 block text-xs font-medium text-destructive">El último enlace caducó sin pagarse: paga en el negocio o vuelve a activarla.</span>}
+                      {p.membership.billingStatus === "awaiting_payment" && <span className="mt-1 block text-xs font-medium text-warning-ink">Tienes un pago pendiente.</span>}
+                    </span>
+                  </label>
                 )}
               </article>
             ))}

@@ -136,7 +136,7 @@ export function WarrantyRulesClient({ canManage }: { canManage: boolean }) {
           Las garantías son opcionales: solo existen si tú las activas. Mientras una esté activa, el ticket de los servicios que cubre lleva su leyenda y el cajero puede canjearla con el número del ticket (el cliente también puede pedirla desde su portal).
         </p>
         {canManage && (
-          <Button onClick={() => setPicking(true)}>
+          <Button data-guide="warranty-new" onClick={() => setPicking(true)}>
             <Plus className="size-4" /> Agregar garantía
           </Button>
         )}
@@ -171,6 +171,7 @@ export function WarrantyRulesClient({ canManage }: { canManage: boolean }) {
       <DialogComponent
         open={picking}
         onOpenChange={setPicking}
+        dataGuide="warranty-presets"
         icon={<Sparkles className="size-5 text-primary" />}
         title="Elige una garantía"
         description="Son puntos de partida: en el siguiente paso puedes cambiar plazo, porcentaje, servicios y leyenda."

@@ -2,6 +2,19 @@
 
 > Para dueños y administradores. Disponible según tu plan y tu tipo de negocio.
 
+## 11.0 ¿Qué aplica a mi tipo de negocio?
+
+| Función | Tienda | Restaurante / Café | Servicios | Renta | Híbrido |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| Tarjeta de visitas | ✓ | ✓ | ✓ | — | ✓ |
+| Paquetes prepagados y membresías | — | — | ✓ | — | ✓ |
+| Garantías de servicio | — | — | ✓ | — | ✓ |
+| Envases retornables | ✓ | ✓ | — | — | ✓ |
+| Bahías, sillas, vehículos y fichas, órdenes de servicio, citas | — | — | ✓ | — | ✓ |
+| Reservaciones de renta, paquetes de renta y depósito | — | — | — | ✓ | ✓ |
+
+Lo que no aplica a tu tipo de negocio no aparece en el menú y, si entras por la dirección, verás un aviso con los tipos donde sí está. Si cambias el tipo de tu negocio, lo que ya no aplica deja de funcionar (tus datos se conservan).
+
 ## 11.1 Plantillas de arranque (Ajustes → Plantillas)
 
 Si tienes un autolavado, una barbería o un negocio de renta, una plantilla deja listo lo básico con un clic:
@@ -61,6 +74,12 @@ Es opcional: solo existe si tú la activas en *Promociones → Fidelidad → Agr
 
 **En caja:** al elegir al cliente, *Descuentos y cupones → Recompensas del cliente* muestra sus servicios y la vigencia. Si la membresía venció, no se puede canjear hasta que pague la cuota otra vez.
 
+### Cobrar la cuota, renovar y administrar miembros
+
+- **El cobro es manual:** cobra la cuota en caja como cualquier producto. En *Descuentos y cupones → Recompensas del cliente*, la membresía muestra el botón **Cobrar cuota** (o **Renovar cuota** si le quedan 7 días o menos) que agrega la cuota al ticket. Al cobrar se da de alta o se renueva el periodo.
+- **Miembros:** en la tarjeta de la membresía, **Miembros** te muestra quién está vigente, vencido o dado de baja, cuándo vence y cuántos servicios le quedan. Puedes **dar de baja**, **sumar días de cortesía** o **ajustar servicios**; siempre pide un motivo y queda en el historial. Para reactivar a alguien dado de baja, cóbrale la cuota otra vez.
+- **Cobro automático (opcional):** viene **bloqueado** por la plataforma; el superadministrador lo desbloquea para tu empresa. Usa el **mismo proveedor de pagos en línea** que registres en *Ajustes → Pagos* (Stripe o Mercado Pago), no necesitas otro. Cuando esté desbloqueado y tengas tu proveedor registrado: (1) activa «Cobro automático» en el diálogo de tu membresía; (2) el cliente activa «Renovación automática» en su portal. Entonces, unos días antes de vencer (los que tú configuraste) el cliente recibe un **enlace para pagar su cuota en línea** (no se guarda su tarjeta). Al pagar, la membresía se renueva sola y queda registrada la venta. Si no lo paga en 3 días, el enlace caduca, se avisa a ambos y puedes cobrarle en caja. Mientras no lo uses, nada cambia: la cuota se cobra en caja.
+
 ## 11.6 Garantías de servicio
 
 También son opcionales (*Promociones → Garantías*). Por ejemplo, en un autolavado: «si llueve el mismo día, repite el lavado exterior sin costo presentando tu ticket». Tú defines:
@@ -85,6 +104,8 @@ Mientras una garantía esté activa, el ticket de los servicios que cubre lleva 
 | Canjear recompensas y servicios de membresía en caja | Usar «Recompensas del cliente» al cobrar | Además: Cajero, Agente de atención, Trabajador completo |
 | Aplicar garantías de servicio en caja | Usar «Garantía de servicio» al cobrar | Además: Cajero, Agente de atención, Trabajador completo |
 | Plantillas de arranque | Ajustes → Plantillas | Quien tenga permiso de Ajustes |
+| Desbloquear el cobro automático de membresías | Organizaciones → Editar (solo plataforma) | Solo el superadministrador |
+| Pausar o reanudar un servicio | En el POS, en «Ver información del producto» | Quien tenga «Activar o desactivar servicios» |
 
 Puedes cambiarlo en *Usuarios y roles*. Los permisos siempre se combinan con tu plan: si tu plan no incluye una sección, nadie la ve, ni siquiera el propietario.
 

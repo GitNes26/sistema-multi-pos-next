@@ -7,6 +7,8 @@ import { effectiveOrgId } from "@/lib/auth/org-context";
 import type { PermissionKey } from "@/lib/auth/permission-keys";
 import { getCrudEntry, type CrudRegistryEntry } from "@/lib/crud/modules";
 import { CrudError } from "@/lib/crud/types";
+import { prisma } from "@/lib/db";
+import { notForModeMessage } from "@/lib/vertical-modes";
 
 // FASE 7 — Guard compartido para los endpoints CRUD del admin.
 // Verifica sesión + organización + permiso del módulo según la acción.
@@ -61,6 +63,13 @@ export async function guardCrud(
   }
   if (!hasPermission(session, permissionForAction(entry, action))) {
     return { response: NextResponse.json({ ok: false, error: "No tienes permiso para esta acción" }, { status: 403 }) };
+  }
+
+  if (entry.modes) {
+    const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { businessMode: true } });
+    if (!org || !entry.modes.includes(org.businessMode)) {
+      return { response: NextResponse.json({ ok: false, error: notForModeMessage(entry.title, org?.businessMode, entry.modes) }, { status: 409 }) };
+    }
   }
 
   if (action !== "view") discardOrgCache(organizationId);

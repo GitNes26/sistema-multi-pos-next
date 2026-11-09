@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { notifyCustomer } from "@/lib/notifications/customer-channels"
 import { presetByKey, type LoyaltyKind } from "./presets"
 import { redemptionAmount } from "./redeem"
+import { LOYALTY_KIND_MODES, LOYALTY_KIND_NAMES, notForModeMessage, type LoyaltyKindKey } from "@/lib/vertical-modes"
 
 // Programas de fidelidad (tarjeta de visitas, paquetes prepagados y membresías). Todos generan «créditos» que
 // el cliente canjea en una venta: el POS propone el descuento y el servidor lo valida contra el saldo antes
@@ -40,11 +41,24 @@ export interface LoyaltyProgramDto {
   rollover: boolean
   reminderDays: number
   terms: string | null
+  /** Cobro automático elegido para esta membresía (solo se puede si la plataforma lo desbloqueó). */
+  autoBilling: boolean
   /** Clientes con créditos vigentes / créditos en circulación (para que el dueño vea cuánto debe). */
   customersWithCredits: number
   creditsOutstanding: number
   /** Membresías: clientes con periodo vigente. */
   activeMembers: number
+}
+
+/** Tipo de negocio de la empresa (decide qué programas de fidelidad puede tener y canjear). */
+async function orgMode(organizationId: string, db: Db = prisma): Promise<string> {
+  const org = await db.organization.findUnique({ where: { id: organizationId }, select: { businessMode: true } })
+  return org?.businessMode ?? "retail"
+}
+
+/** Solo los programas cuyo tipo aplica al negocio (si cambió de tipo, los que ya no aplican dejan de operar; se conservan sus datos). */
+function programsForMode<T extends { kind: string }>(programs: T[], mode: string): T[] {
+  return programs.filter((p) => LOYALTY_KIND_MODES[p.kind as LoyaltyKindKey]?.includes(mode as never))
 }
 
 const asIds = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [])
@@ -55,6 +69,26 @@ export function usableCredits(kind: string, card: { credits: number; expiresAt: 
   if (!card) return 0
   if (kind === "membership" && (!card.expiresAt || card.expiresAt.getTime() <= now.getTime())) return 0
   return card.credits
+}
+
+/**
+ * Qué pasa con una membresía al cobrar `bought` cuotas: renovar a tiempo suma el periodo al vencimiento actual; si ya
+ * venció (o nunca existió) cuenta desde hoy. Los créditos sin usar pasan solo si el dueño lo permite y la membresía
+ * seguía vigente. Lo comparten el cobro manual en caja y el cobro automático (cuando se active).
+ */
+export function membershipRenewal(
+  program: { packUses: number | null; periodDays: number | null; rollover: boolean },
+  card: { credits: number; expiresAt: Date | null; startedAt: Date | null },
+  bought: number,
+  now = new Date()
+) {
+  const periodDays = program.periodDays ?? 30
+  const active = Boolean(card.expiresAt && card.expiresAt.getTime() > now.getTime())
+  const base = active ? (card.expiresAt as Date) : now
+  const expiresAt = new Date(base.getTime() + bought * periodDays * DAY_MS)
+  const carried = active && program.rollover ? card.credits : 0
+  const credits = carried + bought * (program.packUses ?? 0)
+  return { active, expiresAt, credits, startedAt: active ? (card.startedAt ?? now) : now, delta: credits - (active ? card.credits : 0) }
 }
 
 export async function listLoyaltyPrograms(organizationId: string): Promise<LoyaltyProgramDto[]> {
@@ -89,6 +123,7 @@ export async function listLoyaltyPrograms(organizationId: string): Promise<Loyal
       rollover: r.rollover,
       reminderDays: r.reminderDays,
       terms: r.terms,
+      autoBilling: r.autoBilling,
       customersWithCredits: mine.length,
       creditsOutstanding: mine.reduce((a, b) => a + b, 0),
       activeMembers: r.kind === "membership" ? (members.get(r.id) ?? 0) : 0,
@@ -111,6 +146,7 @@ export interface LoyaltyProgramInput {
   rollover?: unknown
   reminderDays?: unknown
   terms?: unknown
+  autoBilling?: unknown
 }
 
 const intIn = (v: unknown, label: string, min: number, max: number, field: string) => {
@@ -125,6 +161,8 @@ export async function saveLoyaltyProgram(organizationId: string, input: LoyaltyP
   if (id && !current) throw new LoyaltyError("Programa no encontrado", 404)
   const kind = (input.kind ?? current?.kind) as LoyaltyKind
   if (kind !== "visit_card" && kind !== "prepaid_pack" && kind !== "membership") throw new LoyaltyError("Elige el tipo de programa", 400, "kind")
+  const mode = await orgMode(organizationId)
+  if (!LOYALTY_KIND_MODES[kind].includes(mode as never)) throw new LoyaltyError(notForModeMessage(LOYALTY_KIND_NAMES[kind], mode, LOYALTY_KIND_MODES[kind]), 409, "kind")
   const name = String(input.name ?? current?.name ?? "").trim()
   if (name.length < 2 || name.length > 80) throw new LoyaltyError("El nombre debe tener entre 2 y 80 caracteres", 400, "name")
   const discountPercent = intIn(input.discountPercent ?? current?.discountPercent ?? 100, "El porcentaje que cubre cada crédito", 1, 100, "discountPercent")
@@ -163,6 +201,15 @@ export async function saveLoyaltyProgram(organizationId: string, input: LoyaltyP
       terms = rawTerms.trim() || null
     }
   }
+  // Cobro automático: bloqueado por la plataforma salvo que el superAdmin lo haya desbloqueado para la empresa.
+  let autoBilling = kind === "membership" ? (current?.autoBilling ?? false) : false
+  if (kind === "membership" && input.autoBilling !== undefined) {
+    const wanted = Boolean(input.autoBilling)
+    if (wanted && !(await getAutoBillingState(organizationId)).unlocked) {
+      throw new LoyaltyError("El cobro automático de membresías está bloqueado por la plataforma. Por ahora la cuota se cobra manualmente en caja.", 403, "autoBilling")
+    }
+    autoBilling = wanted
+  }
   const preset = presetByKey(typeof input.presetKey === "string" ? input.presetKey : current?.presetKey)
   const data = {
     kind,
@@ -179,6 +226,7 @@ export async function saveLoyaltyProgram(organizationId: string, input: LoyaltyP
     rollover,
     reminderDays,
     terms,
+    autoBilling,
   }
   if (current) return prisma.loyaltyProgram.update({ where: { id: current.id }, data })
   return prisma.loyaltyProgram.create({ data: { organizationId, ...data } })
@@ -207,6 +255,16 @@ export interface CustomerCredit {
     price: number | null
     terms: string | null
     targetProductNames: string[]
+    /** Producto de la cuota: el POS lo agrega al ticket para dar de alta o renovar. */
+    feeProductId: string | null
+    cancelledAt: string | null
+    autoRenew: boolean
+    /** El cliente puede activar la renovación automática (desbloqueada, elegida por el negocio y con pasarela). */
+    autoRenewAvailable: boolean
+    /** Enlace de pago de la renovación si ya se pidió y sigue vigente. */
+    pendingPaymentUrl: string | null
+    billingStatus: string | null
+    reminderDays: number
   }
 }
 
@@ -215,12 +273,22 @@ export async function getCustomerLoyalty(organizationId: string, customerId: str
   const customer = await prisma.customer.findFirst({ where: { id: customerId, organizationId }, select: { id: true } })
   if (!customer) throw new LoyaltyError("Cliente no encontrado", 404)
   const now = new Date()
-  const [programs, cards] = await Promise.all([
+  const [allPrograms, cards, mode] = await Promise.all([
     prisma.loyaltyProgram.findMany({ where: { organizationId, isActive: true }, orderBy: { createdAt: "asc" } }),
     prisma.loyaltyCard.findMany({ where: { organizationId, customerId } }),
+    orgMode(organizationId),
   ])
+  const programs = programsForMode(allPrograms, mode)
   const packIds = programs.filter((p) => p.packProductId).map((p) => p.packProductId as string)
   const byProgram = new Map(cards.map((c) => [c.programId, c]))
+  // Cobro automático disponible para el cliente: desbloqueado por la plataforma y con pasarela de pagos registrada.
+  const billingState = programs.some((p) => p.kind === "membership" && p.autoBilling) ? await getAutoBillingState(organizationId) : null
+  const billingReady = Boolean(billingState?.unlocked && billingState.providerAvailable)
+  const pendingIntents = cards.length
+    ? await prisma.membershipPaymentIntent.findMany({ where: { organizationId, customerId, status: "pending", checkoutUrl: { not: null }, createdAt: { gte: new Date(now.getTime() - 3 * DAY_MS) } }, orderBy: { createdAt: "desc" } })
+    : []
+  const pending = new Map<string, string>()
+  for (const intent of pendingIntents) if (!pending.has(intent.programId) && intent.checkoutUrl) pending.set(intent.programId, intent.checkoutUrl)
   const ids = [...new Set(programs.filter((p) => p.kind === "membership").flatMap((p) => [...asIds(p.targetProductIds), ...(p.packProductId ? [p.packProductId] : [])]))]
   const [products, prices] = ids.length
     ? await Promise.all([
@@ -249,6 +317,13 @@ export async function getCustomerLoyalty(organizationId: string, customerId: str
         price: p.packProductId ? (priceOf.get(p.packProductId) ?? null) : null,
         terms: p.terms,
         targetProductNames: targets.map((id) => nameOf.get(id) ?? "Producto eliminado"),
+        feeProductId: p.packProductId,
+        cancelledAt: card?.cancelledAt?.toISOString() ?? null,
+        autoRenew: card?.autoRenew ?? false,
+        autoRenewAvailable: billingReady && p.autoBilling,
+        pendingPaymentUrl: pending.get(p.id) ?? null,
+        billingStatus: card?.billingStatus ?? null,
+        reminderDays: p.reminderDays,
       }
     }
     return {
@@ -282,7 +357,7 @@ export async function validateLoyaltyRedemptions(
   if (!input.customerId) throw new LoyaltyError("Para canjear una recompensa elige al cliente", 400)
   const ids = redeems.map((d) => d.loyaltyProgramId as string)
   if (new Set(ids).size !== ids.length) throw new LoyaltyError("Cada recompensa se canjea una sola vez por venta", 400)
-  const programs = await prisma.loyaltyProgram.findMany({ where: { organizationId, isActive: true } })
+  const programs = programsForMode(await prisma.loyaltyProgram.findMany({ where: { organizationId, isActive: true } }), await orgMode(organizationId))
   const packIds = programs.filter((p) => p.packProductId).map((p) => p.packProductId as string)
   const lines = input.items.flatMap((i) => Array.from({ length: Math.max(1, Math.floor(i.quantity)) }, () => ({ productId: i.productId, unitPrice: i.unitPrice })))
   for (const d of redeems) {
@@ -306,7 +381,7 @@ export async function applyLoyaltyToSale(
 ) {
   const { organizationId, customerId, saleId } = args
   if (!customerId) return
-  const programs = await tx.loyaltyProgram.findMany({ where: { organizationId, isActive: true } })
+  const programs = programsForMode(await tx.loyaltyProgram.findMany({ where: { organizationId, isActive: true } }), await orgMode(organizationId, tx))
   if (!programs.length) return
   const packIds = programs.filter((p) => p.packProductId).map((p) => p.packProductId as string)
   const now = new Date()
@@ -360,16 +435,12 @@ export async function applyLoyaltyToSale(
       const bought = args.items.filter((i) => i.productId === program.packProductId).reduce((sum, i) => sum + Math.floor(i.quantity), 0)
       if (bought < 1) continue
       const card = await cardFor(program.id)
-      const active = Boolean(card.expiresAt && card.expiresAt.getTime() > now.getTime())
-      const base = active ? (card.expiresAt as Date) : now
-      const expiresAt = new Date(base.getTime() + bought * program.periodDays * DAY_MS)
-      const carried = active && program.rollover ? card.credits : 0
-      const credits = carried + bought * program.packUses
+      const renewal = membershipRenewal(program, card, bought, now)
       await tx.loyaltyCard.update({
         where: { id: card.id },
-        data: { credits, expiresAt, startedAt: active ? (card.startedAt ?? now) : now, reminderSentAt: null },
+        data: { credits: renewal.credits, expiresAt: renewal.expiresAt, startedAt: renewal.startedAt, reminderSentAt: null, cancelledAt: null, ...(card.autoRenew ? { nextChargeAt: new Date(renewal.expiresAt.getTime() - program.reminderDays * DAY_MS), billingStatus: "active", lastBillingError: null } : {}) },
       })
-      await tx.loyaltyMovement.create({ data: { organizationId, cardId: card.id, type: "purchase", delta: credits - (active ? card.credits : 0), saleId, note: `${active ? "Renovación" : "Alta"} · ${program.name}` } })
+      await tx.loyaltyMovement.create({ data: { organizationId, cardId: card.id, type: "purchase", delta: renewal.delta, saleId, note: `${renewal.active ? "Renovación" : "Alta"} · ${program.name}` } })
     }
   }
 }
@@ -423,4 +494,163 @@ export async function sweepMembershipReminders(organizationId?: string, now = ne
     }
   }
   return { notified }
+}
+
+// ── Cobro automático de membresías (preparado, bloqueado por la plataforma) ───────────────────────────────────
+
+export interface AutoBillingState {
+  /** El superAdmin lo desbloqueó para esta empresa. */
+  unlocked: boolean
+  /** ¿La empresa registró su proveedor de pagos en línea (el mismo que cobra la cuota)? */
+  providerAvailable: boolean
+  message: string
+}
+
+export async function getAutoBillingState(organizationId: string): Promise<AutoBillingState> {
+  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { membershipAutoBilling: true } })
+  const unlocked = Boolean(org?.membershipAutoBilling)
+  const { billingProviderAvailable } = await import("./billing")
+  const providerAvailable = await billingProviderAvailable(organizationId)
+  return {
+    unlocked,
+    providerAvailable,
+    message: !unlocked
+      ? "El cobro automático de membresías está bloqueado por la plataforma. Por ahora la cuota se cobra manualmente en caja."
+      : providerAvailable
+        ? "El cobro automático está habilitado: se cobra por el mismo proveedor de pagos en línea que registraste en Ajustes → Pagos."
+        : "El cobro automático está desbloqueado, pero necesita que registres tu proveedor de pagos en línea (Stripe o Mercado Pago) en Ajustes → Pagos. Mientras tanto la cuota se cobra en caja.",
+  }
+}
+
+/** Solo el superAdmin (la ruta lo verifica). Al bloquear se apagan las preferencias de cobro automático de la empresa. */
+export async function setAutoBillingUnlocked(organizationId: string, unlocked: boolean) {
+  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } })
+  if (!org) throw new LoyaltyError("Empresa no encontrada", 404)
+  await prisma.$transaction(async (tx) => {
+    await tx.organization.update({ where: { id: organizationId }, data: { membershipAutoBilling: unlocked } })
+    if (!unlocked) {
+      await tx.loyaltyProgram.updateMany({ where: { organizationId }, data: { autoBilling: false } })
+      await tx.loyaltyCard.updateMany({ where: { organizationId, autoRenew: true }, data: { autoRenew: false, nextChargeAt: null, billingStatus: "paused" } })
+    }
+  })
+}
+
+/**
+ * El cliente activa o desactiva la renovación automática de su membresía. Activarla requiere que la plataforma haya
+ * desbloqueado la función, que el negocio la haya elegido en esa membresía y que tenga su proveedor de pagos en línea
+ * registrado. No se guarda tarjeta: cuando falten `reminderDays` para vencer se le envía el enlace de pago de la cuota.
+ */
+export async function setCardAutoRenew(organizationId: string, customerId: string, input: { programId: string; enabled: boolean }) {
+  const state = await getAutoBillingState(organizationId)
+  if (input.enabled && !state.unlocked) throw new LoyaltyError(state.message, 403)
+  if (input.enabled && !state.providerAvailable) throw new LoyaltyError("El negocio aún no tiene pagos en línea configurados. Renueva tu cuota pagándola en el negocio.", 409)
+  const program = await prisma.loyaltyProgram.findFirst({ where: { id: input.programId, organizationId, kind: "membership", isActive: true } })
+  if (!program) throw new LoyaltyError("Membresía no encontrada", 404)
+  if (input.enabled && !program.autoBilling) throw new LoyaltyError("Este negocio cobra esta membresía manualmente", 409)
+  const card = await prisma.loyaltyCard.findUnique({ where: { customerId_programId: { customerId, programId: program.id } } })
+  if (!card || card.organizationId !== organizationId) throw new LoyaltyError("Aún no tienes esta membresía", 404)
+  if (!input.enabled) {
+    await prisma.loyaltyCard.update({ where: { id: card.id }, data: { autoRenew: false, nextChargeAt: null, billingStatus: null, lastBillingError: null } })
+    return
+  }
+  const now = new Date()
+  if (!card.expiresAt || card.expiresAt.getTime() <= now.getTime()) throw new LoyaltyError("Tu membresía no está vigente: paga la cuota en el negocio para activarla", 409)
+  const next = new Date(card.expiresAt.getTime() - program.reminderDays * DAY_MS)
+  await prisma.loyaltyCard.update({ where: { id: card.id }, data: { autoRenew: true, nextChargeAt: next.getTime() < now.getTime() ? now : next, billingStatus: "active", lastBillingError: null } })
+}
+
+// ── Gestión manual de miembros ────────────────────────────────────────────────────────────────────────────────
+
+export interface MemberRow {
+  customerId: string
+  customerName: string
+  phone: string | null
+  status: "active" | "expired" | "cancelled"
+  startedAt: string | null
+  expiresAt: string | null
+  daysLeft: number | null
+  credits: number
+  usableCredits: number
+  autoRenew: boolean
+  billingStatus: string | null
+}
+
+/** Miembros de una membresía (más próximos a vencer primero): vigentes, vencidos y dados de baja. */
+export async function listMembers(organizationId: string, programId: string): Promise<MemberRow[]> {
+  const program = await prisma.loyaltyProgram.findFirst({ where: { id: programId, organizationId, kind: "membership" }, select: { id: true } })
+  if (!program) throw new LoyaltyError("Membresía no encontrada", 404)
+  const now = new Date()
+  const cards = await prisma.loyaltyCard.findMany({
+    where: { organizationId, programId, expiresAt: { not: null } },
+    include: { customer: { select: { fullName: true, phone: true } } },
+    orderBy: { expiresAt: "asc" },
+    take: 300,
+  })
+  return cards
+    .map((c) => {
+      const active = Boolean(c.expiresAt && c.expiresAt.getTime() > now.getTime())
+      return {
+        customerId: c.customerId,
+        customerName: c.customer.fullName,
+        phone: c.customer.phone,
+        status: (c.cancelledAt && !active ? "cancelled" : active ? "active" : "expired") as MemberRow["status"],
+        startedAt: c.startedAt?.toISOString() ?? null,
+        expiresAt: c.expiresAt?.toISOString() ?? null,
+        daysLeft: active && c.expiresAt ? Math.max(0, Math.ceil((c.expiresAt.getTime() - now.getTime()) / DAY_MS)) : null,
+        credits: c.credits,
+        usableCredits: usableCredits("membership", c, now),
+        autoRenew: c.autoRenew,
+        billingStatus: c.billingStatus,
+      }
+    })
+    .sort((a, b) => (a.status === "active" ? 0 : 1) - (b.status === "active" ? 0 : 1) || String(a.expiresAt).localeCompare(String(b.expiresAt)))
+}
+
+/**
+ * Acciones manuales del negocio sobre un miembro (todas dejan un movimiento con su motivo):
+ *  · cancel: da de baja la membresía hoy (conserva el historial; para volver a entrar basta cobrar la cuota).
+ *  · extend: suma días de cortesía al vencimiento (o reactiva desde hoy si ya venció).
+ *  · adjust: suma o resta créditos (corrección o cortesía).
+ */
+export async function manageMember(
+  organizationId: string,
+  programId: string,
+  customerId: string,
+  input: { action: "cancel" | "extend" | "adjust"; days?: unknown; credits?: unknown; note?: unknown }
+) {
+  const program = await prisma.loyaltyProgram.findFirst({ where: { id: programId, organizationId, kind: "membership" } })
+  if (!program) throw new LoyaltyError("Membresía no encontrada", 404)
+  const card = await prisma.loyaltyCard.findUnique({ where: { customerId_programId: { customerId, programId } } })
+  if (!card || card.organizationId !== organizationId || !card.expiresAt) throw new LoyaltyError("Ese cliente no tiene esta membresía", 404)
+  const note = String(input.note ?? "").trim().slice(0, 190)
+  if (note.length < 3) throw new LoyaltyError("Escribe el motivo (queda en el historial)", 400, "note")
+  const now = new Date()
+  if (input.action === "cancel") {
+    await prisma.$transaction([
+      prisma.loyaltyCard.update({ where: { id: card.id }, data: { expiresAt: now, cancelledAt: now, autoRenew: false, nextChargeAt: null, billingStatus: null } }),
+      prisma.loyaltyMovement.create({ data: { organizationId, cardId: card.id, type: "cancel", delta: 0, note } }),
+    ])
+    return
+  }
+  if (input.action === "extend") {
+    const days = intIn(input.days, "Los días de cortesía", 1, 366, "days")
+    const active = card.expiresAt.getTime() > now.getTime()
+    const base = active ? card.expiresAt : now
+    await prisma.$transaction([
+      prisma.loyaltyCard.update({ where: { id: card.id }, data: { expiresAt: new Date(base.getTime() + days * DAY_MS), cancelledAt: null, reminderSentAt: null, ...(active ? {} : { startedAt: now }) } }),
+      prisma.loyaltyMovement.create({ data: { organizationId, cardId: card.id, type: "adjust", delta: 0, note: `+${days} día(s): ${note}` } }),
+    ])
+    return
+  }
+  if (input.action === "adjust") {
+    const delta = Number(input.credits)
+    if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 100) throw new LoyaltyError("Los créditos a sumar o restar deben ser un entero entre -100 y 100 (distinto de 0)", 400, "credits")
+    if (card.credits + delta < 0) throw new LoyaltyError("No se pueden dejar créditos negativos", 409, "credits")
+    await prisma.$transaction([
+      prisma.loyaltyCard.update({ where: { id: card.id }, data: { credits: { increment: delta } } }),
+      prisma.loyaltyMovement.create({ data: { organizationId, cardId: card.id, type: "adjust", delta, note } }),
+    ])
+    return
+  }
+  throw new LoyaltyError("Acción no válida", 400)
 }

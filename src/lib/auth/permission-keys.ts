@@ -32,6 +32,7 @@ export const PERMISSIONS = [
   { key: "loyalty.view", module: "loyalty", action: "view", label: "Ver programas de fidelidad y membresías" },
   { key: "loyalty.manage", module: "loyalty", action: "manage", label: "Crear y configurar programas de fidelidad y membresías" },
   { key: "loyalty.redeem", module: "loyalty", action: "redeem", label: "Canjear recompensas y servicios de membresía en la caja" },
+  { key: "loyalty.autobilling", module: "loyalty", action: "autobilling", label: "Bloquear o desbloquear el cobro automático de membresías (plataforma)", superAdminOnly: true },
   { key: "warranties.view", module: "warranties", action: "view", label: "Ver las garantías de servicio" },
   { key: "warranties.manage", module: "warranties", action: "manage", label: "Crear y configurar garantías de servicio" },
   { key: "warranties.redeem", module: "warranties", action: "redeem", label: "Aplicar garantías de servicio en la caja" },

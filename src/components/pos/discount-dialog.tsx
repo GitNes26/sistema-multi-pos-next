@@ -32,7 +32,7 @@ interface CustomerProgram {
   targetProductIds: string[];
   excludeProductIds: string[];
   discountPercent: number;
-  membership?: { status: "none" | "active" | "expired"; daysLeft: number | null; expiresAt: string | null } | null;
+  membership?: { status: "none" | "active" | "expired"; daysLeft: number | null; expiresAt: string | null; feeProductId: string | null; price: number | null; autoRenew: boolean } | null;
 }
 
 interface DiscountDialogProps {
@@ -55,6 +55,8 @@ export function DiscountDialog({ open, onClose }: DiscountDialogProps) {
   const toggleLoyaltyRedeem = usePosStore((s) => s.toggleLoyaltyRedeem);
   const warrantyRedeems = usePosStore((s) => s.warrantyRedeems);
   const toggleWarrantyRedeem = usePosStore((s) => s.toggleWarrantyRedeem);
+  const addProduct = usePosStore((s) => s.addProduct);
+  const catalogProducts = usePosStore((s) => s.products);
   const locationId = usePosStore((s) => s.location.id);
   const [ticketNo, setTicketNo] = useState("");
   const [warranty, setWarranty] = useState<WarrantyInfo | null>(null);
@@ -332,6 +334,16 @@ export function DiscountDialog({ open, onClose }: DiscountDialogProps) {
                               : "Sin créditos"}
                         </p>
                       </div>
+                      {p.membership?.feeProductId && (p.membership.status !== "active" || (p.membership.daysLeft ?? 99) <= 7) && (() => {
+                        // Cuota de la membresía: se cobra como cualquier producto y al cobrar da de alta o renueva el periodo.
+                        const fee = catalogProducts.find((c) => c.productId === p.membership!.feeProductId);
+                        const inTicket = items.some((i) => i.productId === p.membership!.feeProductId);
+                        return (
+                          <Button size="sm" disabled={!fee || inTicket} onClick={() => { if (fee) { addProduct(fee); onClose(); } }} title={fee ? undefined : "El producto de la cuota no está disponible en el catálogo del POS"}>
+                            {inTicket ? "Cuota en el ticket" : p.membership.status === "active" ? "Renovar cuota" : "Cobrar cuota"}{p.membership.price !== null && !inTicket ? ` ${money(p.membership.price)}` : ""}
+                          </Button>
+                        );
+                      })()}
                       {p.credits > 0 && (
                         <Button
                           size="sm"

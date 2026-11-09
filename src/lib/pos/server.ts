@@ -65,6 +65,7 @@ function computeFeatures(mode: BusinessMode): PosFeatures {
     credit: isFeatureEnabled("credit", mode),
     tips: isFeatureEnabled("tips", mode),
     splitBill: isFeatureEnabled("split_bill", mode),
+    containers: isFeatureEnabled("returnable_containers", mode),
   }
 }
 

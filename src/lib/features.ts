@@ -38,6 +38,8 @@ export type FeatureKey =
   | "stations"
   | "service_orders"
   | "warranties"
+  | "loyalty_programs"
+  | "returnable_containers"
   // Rental
   | "reservations"
   | "calendar"
@@ -137,6 +139,9 @@ export const FEATURE_FLAGS: Record<FeatureKey, FeatureFlag> = {
   stations: { label: "Bahías y lugares de atención", modes: ["services", "hybrid"] },
   service_orders: { label: "Órdenes de servicio", modes: ["services", "hybrid"] },
   warranties: { label: "Garantías de servicio", modes: ["services", "hybrid"] },
+  // Fidelidad (tarjeta de visitas; paquetes y membresías solo en servicios/híbrido) y envases retornables: ver `vertical-modes.ts`.
+  loyalty_programs: { label: "Fidelidad y membresías", modes: ["retail", "food_service", "services", "hybrid"] },
+  returnable_containers: { label: "Envases retornables", modes: ["retail", "food_service", "hybrid"] },
 
   // ── Rental ─────────────────────────────────────────────────────
   reservations: {
@@ -207,5 +212,6 @@ export const NAV_HREF_TO_FEATURE: Record<string, FeatureKey> = {
   "/admin/stations": "stations",
   "/admin/service-orders": "service_orders",
   "/admin/warranties": "warranties",
+  "/admin/loyalty-programs": "loyalty_programs",
   "/reservaciones": "reservations",
 }

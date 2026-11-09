@@ -185,7 +185,7 @@ export function AgendaApp({ orgName, orgMode, canManage, canManagePolicy = false
             </Button>
           )}
           {canManage && (
-            <Button size="sm" data-guide="agenda-new" onClick={() => { setCreateSlot({ employeeId: null, stationId: null, time: "10:00" }); setCreateOpen(true); }}>
+            <Button size="sm" data-guide="agenda-new" aria-label="Nueva cita" onClick={() => { setCreateSlot({ employeeId: null, stationId: null, time: "10:00" }); setCreateOpen(true); }}>
               <Plus className="size-4" /> <span className="hidden sm:inline">Nueva cita</span>
             </Button>
           )}

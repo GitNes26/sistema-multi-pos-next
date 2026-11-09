@@ -143,6 +143,22 @@ try {
   const w = await dep.writeOffContainers(orgId, location.id, { productId: cola.productId, quantity: 2 }, { userId: user.id })
   check("dar de baja retiene el importe cobrado (2 × 20)", w.retained === 40 && w.settled === 0 && w.pending === 6, `(${w.retained}/${w.settled}/${w.pending})`)
   await expectErr("lo dado de baja ya no cuenta como pendiente (quedan 6)", () => dep.refundContainers(orgId, location.id, { productId: cola.productId, quantity: 7 }, { userId: user.id }), "pendientes")
+  // Tipo de negocio: envases solo en tienda, restaurante/café e híbrido
+  const modeBefore = (await prisma.organization.findUniqueOrThrow({ where: { id: orgId }, select: { businessMode: true } })).businessMode
+  try {
+    const { productsModule } = await import("../../src/lib/crud/modules/products")
+    await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "retail" } })
+    check("en una tienda aplican los envases", (await dep.containersAvailable(orgId)) === true)
+    await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "services" } })
+    check("en servicios no aplican los envases", (await dep.containersAvailable(orgId)) === false)
+    await expectErr("en servicios no se guarda un importe de envase en un producto", () => productsModule.create(orgId, { name: "zz Envase servicios", depositAmount: 5 } as any, { canManageInventory: false, userId: user.id } as any), "no aplican")
+    await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "rental" } })
+    check("en renta no aplican los envases", (await dep.containersAvailable(orgId)) === false)
+    await prisma.organization.update({ where: { id: orgId }, data: { businessMode: "hybrid" } })
+    check("en híbrido aplican los envases", (await dep.containersAvailable(orgId)) === true)
+  } finally {
+    await prisma.organization.update({ where: { id: orgId }, data: { businessMode: modeBefore } })
+  }
 } finally {
   await prisma.depositEntry.deleteMany({ where: { organizationId: orgId, productId: { in: created.products } } })
   for (const id of created.sales) {
