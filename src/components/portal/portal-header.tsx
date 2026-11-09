@@ -28,6 +28,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/portal/loyalty": "Mis Puntos",
   "/portal/favorites": "Favoritos",
   "/portal/vehicles": "Mis Vehículos",
+  "/portal/citas": "Mis Citas",
   "/portal/payment-methods": "Métodos de Pago",
   "/portal/notifications": "Notificaciones",
 }

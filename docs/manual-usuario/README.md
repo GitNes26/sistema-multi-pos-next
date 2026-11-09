@@ -25,6 +25,7 @@ La edición navegable e imprimible de los cuatro manuales está en
 8. **Créditos y adeudos (transversal)** — `08-creditos.md`
 9. **Preguntas frecuentes por tipo de negocio** — `09-faq.md`
 10. **Glosario general** — `10-glosario.md`
+11. **Fidelidad, paquetes de renta y plantillas de arranque** — `11-fidelidad-y-plantillas.md`
 
 ## Convenciones
 

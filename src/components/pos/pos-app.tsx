@@ -242,7 +242,7 @@ export function PosApp({
   // header («Guía del POS»), así se reabre aunque la tarjeta esté descartada.
   const [guideOpen, setGuideOpen] = useState(false);
   const [lastSale, setLastSale] = useState<{
-    sale: { id: string; saleNumber: string; locationName: string };
+    sale: { id: string; saleNumber: string; locationName: string; legends?: string[] };
     payload: PosSalePayload;
   } | null>(null);
   const [splitParts, setSplitParts] = useState<number | null>(null);
@@ -368,7 +368,7 @@ export function PosApp({
   };
 
   const onSaleSuccess = async (
-    sale: { id: string; saleNumber: string; locationName: string },
+    sale: { id: string; saleNumber: string; locationName: string; legends?: string[] },
     payload: PosSalePayload
   ) => {
     setPaymentOpen(false);

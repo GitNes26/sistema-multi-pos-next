@@ -80,6 +80,8 @@ const ALL_ROUNDER_PERMISSIONS = [
   "customers.view",
   "customers.manage",
   "promotions.view",
+  "loyalty.redeem",
+  "warranties.redeem",
   "sales.view",
   "cash.open",
   "cash.close",
@@ -139,6 +141,8 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
       "customers.view",
       "customers.manage",
       "promotions.view",
+      "loyalty.redeem",
+      "warranties.redeem",
       "sales.view",
       "cash.open",
       "cash.close",
@@ -208,6 +212,8 @@ export const SYSTEM_ROLES: readonly SystemRoleDef[] = [
       "customers.view",
       "customers.manage",
       "promotions.view",
+      "loyalty.redeem",
+      "warranties.redeem",
       "sales.view",
       "orders.view",
       "orders.manage",
@@ -519,6 +525,26 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     sortOrder: 8,
   },
   {
+    id: "menu-fidelidad",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Fidelidad",
+    icon: "Gift",
+    href: "/admin/loyalty-programs",
+    permissionKey: "loyalty.view",
+    sortOrder: 8,
+  },
+  {
+    id: "menu-garantias",
+    parentId: "menu-catalogos",
+    type: "item",
+    label: "Garantías",
+    icon: "ShieldCheck",
+    href: "/admin/warranties",
+    permissionKey: "warranties.view",
+    sortOrder: 8,
+  },
+  {
     id: "menu-publicaciones",
     parentId: "menu-catalogos",
     type: "item",
@@ -746,6 +772,16 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     sortOrder: 3,
   },
   {
+    id: "menu-plantillas",
+    parentId: "menu-ajustes",
+    type: "item",
+    label: "Plantillas",
+    icon: "Wand2",
+    href: "/admin/settings/templates",
+    permissionKey: "settings.manage",
+    sortOrder: 3,
+  },
+  {
     id: "menu-supervisor",
     parentId: "menu-ajustes",
     type: "item",
@@ -891,6 +927,7 @@ export async function seedProduction() {
   const hadPanelStats = !!(await prisma.permission.findUnique({ where: { key: "panel.stats" } }))
   const hadToggleServices = !!(await prisma.permission.findUnique({ where: { key: "pos.toggle_services" } }))
   const hadVerticalPermissions = !!(await prisma.permission.findUnique({ where: { key: "assets.view" } }))
+  const hadLoyaltyPermissions = !!(await prisma.permission.findUnique({ where: { key: "loyalty.view" } }))
 
   // Permisos
   for (const p of PERMISSIONS) {
@@ -1005,6 +1042,31 @@ export async function seedProduction() {
       const keys = plan.permissions.map(String)
       if (!keys.includes("pos.use")) continue
       const next = [...new Set([...keys, ...NEW_KEYS])]
+      if (next.length !== keys.length) await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: next } })
+    }
+  }
+  // Respaldo único de fidelidad y garantías: antes colgaban de promociones y de usar el POS. Los roles propios de cada
+  // empresa y los planes con lista guardada conservan el mismo acceso que ya tenían.
+  if (!hadLoyaltyPermissions) {
+    const MAP: [string, string[]][] = [
+      ["promotions.view", ["loyalty.view", "warranties.view"]],
+      ["promotions.manage", ["loyalty.manage", "warranties.manage"]],
+      ["pos.use", ["loyalty.redeem", "warranties.redeem"]],
+    ]
+    const existing = await prisma.rolePermission.findMany({
+      where: { permissionKey: { in: MAP.map(([k]) => k) }, role: { isSystem: false } },
+      select: { organizationId: true, roleId: true, permissionKey: true, allowed: true },
+    })
+    for (const rp of existing) {
+      for (const next of MAP.find(([k]) => k === rp.permissionKey)?.[1] ?? []) {
+        const dup = await prisma.rolePermission.findFirst({ where: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: next } })
+        if (!dup) await prisma.rolePermission.create({ data: { organizationId: rp.organizationId, roleId: rp.roleId, permissionKey: next, allowed: rp.allowed } })
+      }
+    }
+    for (const plan of await prisma.subscriptionPlan.findMany({ select: { id: true, permissions: true } })) {
+      if (!Array.isArray(plan.permissions)) continue
+      const keys = plan.permissions.map(String)
+      const next = [...new Set([...keys, ...MAP.filter(([k]) => keys.includes(k)).flatMap(([, add]) => add)])]
       if (next.length !== keys.length) await prisma.subscriptionPlan.update({ where: { id: plan.id }, data: { permissions: next } })
     }
   }

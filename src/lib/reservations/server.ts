@@ -49,7 +49,10 @@ export interface ReservationRow {
   saleId: string | null;
   customer: { id: string; fullName: string; phone: string | null } | null;
   items: { variantId: string; name: string; quantity: number; unitPrice: number; lineTotal: number }[];
+  /** Total de la renta con el descuento de paquete ya aplicado (sin impuestos). */
   total: number;
+  packageDiscount: number;
+  packageNote: string | null;
   depositAmount: number;
   deliveredAt: string | null;
   returnedAt: string | null;
@@ -127,6 +130,8 @@ export async function getReservations(
       notes: true,
       saleId: true,
       depositAmount: true,
+      packageDiscount: true,
+      packageNote: true,
       deliveredAt: true,
       returnedAt: true,
       lateFee: true,
@@ -172,7 +177,9 @@ export async function getReservations(
       unitPrice: Number(i.unitPrice),
       lineTotal: Number(i.lineTotal ?? 0),
     })),
-    total: r.items.reduce((acc, i) => acc + Number(i.lineTotal ?? 0), 0),
+    total: Math.max(0, round2(r.items.reduce((acc, i) => acc + Number(i.lineTotal ?? 0), 0) - Number(r.packageDiscount))),
+    packageDiscount: Number(r.packageDiscount),
+    packageNote: r.packageNote,
     depositAmount: Number(r.depositAmount),
     deliveredAt: r.deliveredAt?.toISOString() ?? null,
     returnedAt: r.returnedAt?.toISOString() ?? null,
@@ -272,9 +279,47 @@ export async function assertAvailability(
   return totals;
 }
 
+export interface RentalPackage {
+  id: string;
+  name: string;
+  /** Precio del paquete completo (el de lista de sus artículos suele ser mayor). */
+  price: number;
+  listPrice: number;
+  items: { variantId: string; name: string; quantity: number }[];
+}
+
+/** Paquetes de renta = combos activos cuyos artículos son todos rentables y de cantidad entera. */
+export async function getRentalPackages(organizationId: string, db: Prisma.TransactionClient | typeof prisma = prisma): Promise<RentalPackage[]> {
+  const units = await getRentableUnits(organizationId, db);
+  const byVariant = new Map(units.map((u) => [u.variantId, u]));
+  const combos = await db.productCombo.findMany({
+    where: { organizationId, isActive: true },
+    include: { items: { orderBy: { position: "asc" } } },
+    orderBy: { name: "asc" },
+  });
+  const out: RentalPackage[] = [];
+  for (const combo of combos) {
+    if (combo.items.length === 0) continue;
+    const items: RentalPackage["items"] = [];
+    let list = 0;
+    let valid = true;
+    for (const item of combo.items) {
+      const unit = item.variantId ? byVariant.get(item.variantId) : undefined;
+      const qty = Number(item.quantity);
+      if (!unit || !Number.isInteger(qty) || qty < 1) { valid = false; break; }
+      items.push({ variantId: unit.variantId, name: unit.name, quantity: qty });
+      list += unit.price * qty;
+    }
+    if (valid) out.push({ id: combo.id, name: combo.name, price: Number(combo.comboPrice), listPrice: round2(list), items });
+  }
+  return out;
+}
+
 export interface ReservationCreateInput {
   customerId: string;
   items: ReservationDraftItem[];
+  /** Paquetes (combos de renta) y cuántos se llevan; el servidor calcula sus artículos y el precio. */
+  packages?: { comboId: string; quantity: number }[];
   startsAt: Date;
   endsAt: Date;
   notes?: string | null;
@@ -315,8 +360,8 @@ export async function createReservation(organizationId: string, input: Reservati
   if (input.endsAt.getTime() <= input.startsAt.getTime()) {
     throw new ReservationError("La fecha de fin debe ser posterior al inicio", 400);
   }
-  if (input.items.length === 0) {
-    throw new ReservationError("Agrega al menos un artículo a la renta", 400);
+  if (input.items.length === 0 && !input.packages?.length) {
+    throw new ReservationError("Agrega al menos un artículo o paquete a la renta", 400);
   }
 
   const customer = await prisma.customer.findFirst({
@@ -341,7 +386,24 @@ export async function createReservation(organizationId: string, input: Reservati
     }
     const depositAmount = round2(requested != null ? Number(requested) : Number(policy?.defaultDeposit ?? 0));
     const priceByVariant = new Map(units.map((u) => [u.variantId, u.price]));
-    await assertAvailability(organizationId, input.items, input.startsAt, input.endsAt, undefined, tx);
+    // Paquetes: sus artículos se guardan a precio de lista y la diferencia contra el precio del paquete es el descuento.
+    const catalog = input.packages?.length ? await getRentalPackages(organizationId, tx) : [];
+    const lines: { variantId: string; quantity: number }[] = input.items.map((it) => ({ variantId: it.variantId, quantity: Math.round(Number(it.quantity)) }));
+    let packageDiscount = 0;
+    const packageNames: string[] = [];
+    for (const wanted of input.packages ?? []) {
+      const pkg = catalog.find((c) => c.id === wanted.comboId);
+      if (!pkg) throw new ReservationError("El paquete ya no está disponible para renta", 404);
+      const count = Math.round(Number(wanted.quantity));
+      if (!Number.isFinite(count) || count < 1 || count > 100) throw new ReservationError("Cantidad de paquetes inválida", 400);
+      for (const item of pkg.items) lines.push({ variantId: item.variantId, quantity: item.quantity * count });
+      packageDiscount = round2(packageDiscount + Math.max(0, pkg.listPrice - pkg.price) * count);
+      packageNames.push(count > 1 ? `${pkg.name} ×${count}` : pkg.name);
+    }
+    // La disponibilidad se valida con el total por artículo (uno puede venir suelto y dentro de un paquete).
+    const merged = new Map<string, number>();
+    for (const l of lines) merged.set(l.variantId, (merged.get(l.variantId) ?? 0) + l.quantity);
+    await assertAvailability(organizationId, [...merged].map(([variantId, quantity]) => ({ variantId, quantity })), input.startsAt, input.endsAt, undefined, tx);
     const reservation = await tx.reservation.create({
       data: {
         organizationId,
@@ -353,10 +415,12 @@ export async function createReservation(organizationId: string, input: Reservati
         notes: input.notes?.trim() ? input.notes.trim() : null,
         depositAmount,
         depositNote: input.depositNote?.trim() ? input.depositNote.trim().slice(0, 190) : null,
+        packageDiscount,
+        packageNote: packageNames.length ? packageNames.join(", ").slice(0, 190) : null,
         items: {
-          create: input.items.map((it) => {
+          create: lines.map((it) => {
             const price = priceByVariant.get(it.variantId) ?? 0;
-            const qty = Math.round(Number(it.quantity));
+            const qty = it.quantity;
             return {
               variantId: it.variantId,
               quantity: qty,
@@ -393,6 +457,8 @@ export async function checkoutReservation(
       customerId: true,
       locationId: true,
       notes: true,
+      packageDiscount: true,
+      packageNote: true,
       items: {
         select: {
           variantId: true,
@@ -451,18 +517,22 @@ export async function checkoutReservation(
       extraPrice: 0,
     };
   });
-  // Impuesto por línea según su tasa (todas comparten taxRate en la demo).
-  const tax = round2(reservation.items.reduce((acc, it, i) => {
-    const rate = Number(it.variant.product.taxRate);
-    return acc + round2(saleItems[i].lineTotal * rate);
-  }, 0));
-  const total = round2(subtotal + tax);
+  // Descuento de paquete: se reparte entre las líneas en proporción a su importe (mismo cálculo que valida la venta).
+  const discount = round2(Math.min(subtotal, Number(reservation.packageDiscount)));
+  let tax = 0;
+  for (const line of saleItems) {
+    const allocated = subtotal > 0 ? round2((line.totalPrice / subtotal) * discount) : 0;
+    line.discount = allocated;
+    line.lineTotal = round2(line.totalPrice - allocated);
+    tax = round2(tax + round2(Math.max(0, line.lineTotal) * line.taxRate));
+  }
+  const total = round2(subtotal - discount + tax);
 
   const payload: PosSalePayload = {
     items: saleItems,
     customerId: reservation.customerId ?? undefined,
     subtotal,
-    discount: 0,
+    discount,
     tax,
     total,
     changeGiven: 0,
@@ -470,7 +540,7 @@ export async function checkoutReservation(
     pointsRedeemed: 0,
     pointsRedeemedValue: 0,
     payments: [{ method, amount: total }],
-    discounts: [],
+    discounts: discount > 0 ? [{ label: `Paquete: ${reservation.packageNote ?? "renta"}`.slice(0, 190), amount: discount }] : [],
     notes: reservation.notes ?? undefined,
   };
 

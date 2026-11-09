@@ -21,6 +21,8 @@ import {
   Puzzle,
   Palette,
   Percent,
+  Gift,
+  Wand2,
   Ruler,
   Settings,
   ShieldCheck,
@@ -154,6 +156,19 @@ export const NAV_SECTIONS: NavSection[] = [
         permission: "promotions.view",
       },
       {
+        href: "/admin/loyalty-programs",
+        label: "Fidelidad",
+        icon: Gift,
+        permission: "loyalty.view",
+      },
+      {
+        href: "/admin/warranties",
+        label: "Garantías",
+        icon: ShieldCheck,
+        permission: "warranties.view",
+        feature: "warranties",
+      },
+      {
         href: "/admin/publications",
         label: "Publicaciones",
         icon: Megaphone,
@@ -256,6 +271,12 @@ export const NAV_SECTIONS: NavSection[] = [
         href: "/admin/settings/loyalty",
         label: "Lealtad",
         icon: Sparkles,
+        permission: "settings.manage",
+      },
+      {
+        href: "/admin/settings/templates",
+        label: "Plantillas",
+        icon: Wand2,
         permission: "settings.manage",
       },
       {

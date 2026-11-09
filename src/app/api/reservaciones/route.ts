@@ -3,6 +3,7 @@ import { reservationErrorResponse, requireReservationsSession } from "./helpers"
 import {
   createReservation,
   getRentableUnits,
+  getRentalPackages,
   getReservations,
 } from "@/lib/reservations/server";
 
@@ -22,11 +23,12 @@ export async function GET(req: NextRequest) {
     if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to <= from) {
       return NextResponse.json({ ok: false, error: "Rango de fechas inválido" }, { status: 400 });
     }
-    const [reservations, units] = await Promise.all([
+    const [reservations, units, packages] = await Promise.all([
       getReservations(organizationId, from, to),
       getRentableUnits(organizationId),
+      getRentalPackages(organizationId),
     ]);
-    return NextResponse.json({ ok: true, reservations, units });
+    return NextResponse.json({ ok: true, reservations, units, packages });
   } catch (err) {
     return reservationErrorResponse(err);
   }
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const startsAt = new Date(body.startsAt);
     const endsAt = new Date(body.endsAt);
-    if (!body.customerId || !Array.isArray(body.items) || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+    if (!body.customerId || !(Array.isArray(body.items) || Array.isArray(body.packages)) || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
       return NextResponse.json(
         { ok: false, error: "Faltan datos: cliente, artículos y período" },
         { status: 400 }
@@ -50,8 +52,12 @@ export async function POST(req: NextRequest) {
     }
     const reservation = await createReservation(organizationId, {
       customerId: String(body.customerId),
-      items: body.items.map((it: Record<string, unknown>) => ({
+      items: (Array.isArray(body.items) ? body.items : []).map((it: Record<string, unknown>) => ({
         variantId: String(it.variantId),
+        quantity: Number(it.quantity),
+      })),
+      packages: (Array.isArray(body.packages) ? body.packages : []).map((it: Record<string, unknown>) => ({
+        comboId: String(it.comboId),
         quantity: Number(it.quantity),
       })),
       startsAt,

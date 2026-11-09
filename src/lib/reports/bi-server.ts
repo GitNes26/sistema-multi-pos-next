@@ -1207,7 +1207,7 @@ export async function getAppointmentsPerformance(orgId: string, f: Period) {
   });
   const map = new Map<string, { total: number; completed: number; cancelled: number; noShow: number; revenue: number }>();
   for (const item of appointments) {
-    const name = item.employee.fullName;
+    const name = item.employee?.fullName ?? "Por asignar";
     const row = map.get(name) ?? { total: 0, completed: 0, cancelled: 0, noShow: 0, revenue: 0 };
     row.total++;
     if (item.status === "completed") row.completed++;

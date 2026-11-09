@@ -1,5 +1,6 @@
 "use client";
 
+import { BUSINESS_TEMPLATES } from "@/lib/templates/definitions";
 import { useState, useCallback } from "react";
 import {
   ArrowLeft,
@@ -64,6 +65,9 @@ export function OnboardingWizard({
   const [selectedMode, setSelectedMode] = useState<string>(
     currentMode ?? ""
   );
+  // Plantillas de arranque opcionales (autolavado, barbería, renta) que se aplican al terminar.
+  const [templateKeys, setTemplateKeys] = useState<string[]>([]);
+  const availableTemplates = BUSINESS_TEMPLATES.filter((t) => t.modes.includes(selectedMode));
 
   const selectedModeData = BUSINESS_MODE_LIST.find(
     (m) => m.id === selectedMode
@@ -109,6 +113,10 @@ export function OnboardingWizard({
         // activeOrganizationId en el payload de update.
         const nextOrgId = (data.organizationId as string | undefined) ?? orgId;
         await updateSession(nextOrgId ? { activeOrganizationId: nextOrgId } : {});
+        // Las plantillas son un extra: si alguna falla no se frena el arranque (se pueden aplicar luego en Ajustes → Plantillas).
+        for (const key of templateKeys.filter((k) => availableTemplates.some((t) => t.key === k))) {
+          await fetch("/api/settings/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key }) }).catch(() => undefined);
+        }
         router.push("/admin");
       } else {
         setError(data?.error || "No se pudo guardar el tipo de negocio");
@@ -118,7 +126,7 @@ export function OnboardingWizard({
     } finally {
       setLoading(false);
     }
-  }, [selectedMode, orgId, router, updateSession]);
+  }, [selectedMode, orgId, router, updateSession, templateKeys, availableTemplates]);
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
@@ -250,6 +258,26 @@ export function OnboardingWizard({
                       </li>
                     ))}
                   </ul>
+                  {availableTemplates.length > 0 && (
+                    <div className="space-y-2 rounded-2xl border bg-card p-4">
+                      <p className="text-sm font-semibold">¿Quieres dejar listo lo básico? <span className="font-normal text-muted-foreground">(opcional)</span></p>
+                      {availableTemplates.map((t) => (
+                        <label key={t.key} className="flex cursor-pointer items-start gap-2.5 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1 size-4 accent-[var(--primary)]"
+                            checked={templateKeys.includes(t.key)}
+                            onChange={(e) => setTemplateKeys((prev) => (e.target.checked ? [...prev, t.key] : prev.filter((k) => k !== t.key)))}
+                          />
+                          <span>
+                            <span className="font-medium">{t.label}</span>
+                            <span className="block text-xs text-muted-foreground">{t.highlights.join(" · ")}</span>
+                          </span>
+                        </label>
+                      ))}
+                      <p className="text-xs text-muted-foreground">Todo se puede cambiar después; también lo encuentras en Ajustes → Plantillas.</p>
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     En el panel verás una guía paso a paso que te lleva a cada
                     apartado (productos, envíos, mesas…) para llenar los

@@ -3,6 +3,7 @@ import type { PosCustomer, PosPromotion } from "@/types/pos"
 import { POINTS_PER_PESO, LOYALTY_EARN_RATE } from "./config"
 import { round2, round3 } from "./money"
 import { getWeekdaysNumber } from "./pricing-schedule"
+import { redemptionAmount } from "@/lib/loyalty/redeem"
 
 export interface PricingLine {
   key: string
@@ -23,7 +24,10 @@ export interface DiscountLine {
   label: string
   amount: number
   promotionId?: string
-  kind: "promo" | "manual" | "coupon"
+  loyaltyProgramId?: string
+  warrantyRuleId?: string
+  warrantySaleId?: string
+  kind: "promo" | "manual" | "coupon" | "loyalty" | "warranty"
 }
 
 export interface CouponResult {
@@ -53,6 +57,10 @@ export interface PricingInput {
   coupon: CouponResult | null
   pointsRedeemedValue: number
   pointsPerCurrency?: number
+  /** Recompensas de fidelidad elegidas para canjear (un crédito = una unidad elegible). */
+  loyaltyRedeems?: { programId: string; label: string; targetProductIds: string[]; excludeProductIds: string[]; percent: number }[]
+  /** Garantías de servicio aplicadas con el ticket original. */
+  warrantyRedeems?: { ruleId: string; saleId: string; label: string; coversProductIds: string[]; percent: number }[]
 }
 
 function withinSchedule(p: PosPromotion, now: Date): boolean {
@@ -224,6 +232,8 @@ export function computeTotals(input: PricingInput): Totals {
     coupon,
     pointsRedeemedValue,
     pointsPerCurrency = LOYALTY_EARN_RATE,
+    loyaltyRedeems = [],
+    warrantyRedeems = [],
   } = input
 
   const subtotal = round2(
@@ -281,6 +291,18 @@ export function computeTotals(input: PricingInput): Totals {
       amount: couponAmount,
       kind: "coupon",
     })
+
+  // Fidelidad: cada crédito cubre un % de la unidad elegible más barata (misma regla que valida el servidor).
+  const redeemLines = lines.filter((l) => l.qty >= 1).map((l) => ({ productId: l.productId, unitPrice: l.unitPrice }))
+  for (const redeem of loyaltyRedeems) {
+    const amount = redemptionAmount(redeemLines, redeem.targetProductIds, redeem.percent, redeem.excludeProductIds)
+    if (amount > 0) discounts.push({ label: `Recompensa: ${redeem.label}`, amount, loyaltyProgramId: redeem.programId, kind: "loyalty" })
+  }
+
+  for (const redeem of warrantyRedeems) {
+    const amount = redemptionAmount(redeemLines, redeem.coversProductIds, redeem.percent)
+    if (amount > 0) discounts.push({ label: `Garantía: ${redeem.label}`, amount, warrantyRuleId: redeem.ruleId, warrantySaleId: redeem.saleId, kind: "warranty" })
+  }
 
   const discountTotal = round2(
     Math.min(

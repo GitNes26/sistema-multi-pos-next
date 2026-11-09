@@ -26,6 +26,7 @@ import { ymdToDate, dateToYmd } from "@/lib/date-input";
 import { cn } from "@/lib/utils";
 import { RentalLifecycle } from "./rental-lifecycle";
 import {
+  type RentPackage,
   type RentUnit,
   type ReservationView,
   fmtMoney,
@@ -57,10 +58,13 @@ interface CreateDialogProps {
   /** Día visible (para prellenar entrega). */
   day: Date;
   units: RentUnit[];
+  /** Paquetes de renta (combos) con su precio. */
+  packages?: RentPackage[];
   onCreated: () => void;
 }
 
-export function ReservationCreateDialog({ open, onOpenChange, day, units, onCreated }: CreateDialogProps) {
+export function ReservationCreateDialog({ open, onOpenChange, day, units, packages = [], onCreated }: CreateDialogProps) {
+  const [pkgLines, setPkgLines] = useState<{ comboId: string; quantity: number }[]>([]);
   const [customerId, setCustomerId] = useState<string>("");
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [startYmd, setStartYmd] = useState("");
@@ -117,6 +121,7 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
     end.setDate(end.getDate() + 1);
     setEndYmd(toYMD(end));
     setLines([{ key: keySeq.current++, variantId: "", quantity: 1 }]);
+    setPkgLines([]);
     void loadCustomers("");
   }, [open, day, loadCustomers]);
 
@@ -137,8 +142,12 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
       if (!unit) continue;
       sub += unit.price * Math.max(1, line.quantity);
     }
+    for (const line of pkgLines) {
+      const pkg = packages.find((p) => p.id === line.comboId);
+      if (pkg) sub += pkg.price * line.quantity;
+    }
     return { subtotal: sub, total: Math.round(sub * 1.16 * 100) / 100 };
-  }, [lines, units]);
+  }, [lines, units, pkgLines, packages]);
 
   const patchLine = (key: number, patch: Partial<LineDraft>) =>
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -172,7 +181,7 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
     const items = lines
       .filter((l) => l.variantId)
       .map((l) => ({ variantId: l.variantId, quantity: l.quantity }));
-    if (items.length === 0) return setError("Agrega al menos un artículo a la renta");
+    if (items.length === 0 && pkgLines.length === 0) return setError("Agrega al menos un artículo o paquete a la renta");
     const startsAt = fromYMD(startYmd);
     const endsAt = fromYMD(endYmd);
     if (endsAt.getTime() <= startsAt.getTime()) {
@@ -186,6 +195,7 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
         body: JSON.stringify({
           customerId,
           items,
+          packages: pkgLines,
           startsAt: startsAt.toISOString(),
           endsAt: endsAt.toISOString(),
           notes: notes || null,
@@ -257,6 +267,38 @@ export function ReservationCreateDialog({ open, onOpenChange, day, units, onCrea
         <DatePicker label="Entrega" required value={startYmd ? fromYMD(startYmd) : null} onChange={(value) => setStartYmd(value ? toYMD(value) : "")} clearable={false} />
         <DatePicker label="Regreso" required value={endYmd ? fromYMD(endYmd) : null} onChange={(value) => setEndYmd(value ? toYMD(value) : "")} clearable={false} disabledBefore={startYmd ? fromYMD(startYmd) : undefined} />
       </div>
+
+      {packages.length > 0 && (
+        <div className="space-y-2">
+          <FormCombobox
+            label="Paquete"
+            value=""
+            onChange={(value) => value && setPkgLines((prev) => prev.some((p) => p.comboId === value) ? prev.map((p) => (p.comboId === value ? { ...p, quantity: p.quantity + 1 } : p)) : [...prev, { comboId: value, quantity: 1 }])}
+            options={packages.map((pkg) => ({ value: pkg.id, label: pkg.name, meta: `${pkg.items.map((i) => `${i.quantity}× ${i.name}`).join(" + ")} · ${fmtMoney(pkg.price)}` }))}
+            placeholder="Agregar un paquete…"
+            helper="Un paquete suma sus artículos a la renta con el precio del paquete."
+          />
+          {pkgLines.map((line) => {
+            const pkg = packages.find((p) => p.id === line.comboId);
+            if (!pkg) return null;
+            return (
+              <div key={line.comboId} className="flex items-center gap-2 rounded-xl border bg-card p-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{pkg.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{pkg.items.map((i) => `${i.quantity * line.quantity}× ${i.name}`).join(" + ")}</p>
+                </div>
+                <div className="w-20">
+                  <InputGroupField label="Cant." type="number" min={1} max={100} value={line.quantity} onChange={(e) => { const v = Math.round(Number(e.target.value)); setPkgLines((prev) => prev.map((p) => (p.comboId === line.comboId ? { ...p, quantity: Number.isFinite(v) ? Math.min(100, Math.max(1, v)) : 1 } : p))); }} />
+                </div>
+                <p className="text-xs font-semibold text-muted-foreground">{fmtMoney(pkg.price * line.quantity)}</p>
+                <Button variant="ghost" size="icon" className="text-destructive" aria-label="Quitar paquete" onClick={() => setPkgLines((prev) => prev.filter((p) => p.comboId !== line.comboId))}>
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label className="text-xs">Artículos a rentar</Label>
@@ -476,6 +518,12 @@ export function ReservationDetailDialog({ reservation, canManage, onOpenChange, 
             <span className="font-semibold">{fmtMoney(it.lineTotal)}</span>
           </div>
         ))}
+        {(reservation.packageDiscount ?? 0) > 0 && (
+          <div className="flex items-center justify-between text-sm text-success-ink">
+            <span>Paquete: {reservation.packageNote}</span>
+            <span>−{fmtMoney(reservation.packageDiscount ?? 0)}</span>
+          </div>
+        )}
         <div className="flex items-center justify-between border-t pt-1.5 text-sm font-bold">
           <span>Total</span>
           <span>{fmtMoney(reservation.total)}</span>

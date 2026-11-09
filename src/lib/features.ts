@@ -37,6 +37,7 @@ export type FeatureKey =
   | "assets"
   | "stations"
   | "service_orders"
+  | "warranties"
   // Rental
   | "reservations"
   | "calendar"
@@ -135,6 +136,7 @@ export const FEATURE_FLAGS: Record<FeatureKey, FeatureFlag> = {
   assets: { label: "Vehículos y fichas del cliente", modes: ["services", "hybrid"] },
   stations: { label: "Bahías y lugares de atención", modes: ["services", "hybrid"] },
   service_orders: { label: "Órdenes de servicio", modes: ["services", "hybrid"] },
+  warranties: { label: "Garantías de servicio", modes: ["services", "hybrid"] },
 
   // ── Rental ─────────────────────────────────────────────────────
   reservations: {
@@ -204,5 +206,6 @@ export const NAV_HREF_TO_FEATURE: Record<string, FeatureKey> = {
   "/admin/assets": "assets",
   "/admin/stations": "stations",
   "/admin/service-orders": "service_orders",
+  "/admin/warranties": "warranties",
   "/reservaciones": "reservations",
 }

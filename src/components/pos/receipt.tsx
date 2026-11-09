@@ -40,7 +40,7 @@ function AppPromo() {
 }
 
 interface ReceiptProps {
-  sale: { id: string; saleNumber: string; locationName: string }
+  sale: { id: string; saleNumber: string; locationName: string; legends?: string[] }
   payload: PosSalePayload
   cashierName: string
   registerName?: string
@@ -230,6 +230,14 @@ export function Receipt({
               Puntos totales: <span className="font-bold">{newPoints}</span>
             </p>
           )}
+        </div>
+      )}
+
+      {sale.legends && sale.legends.length > 0 && (
+        <div className="mt-2 space-y-1 border-t border-dashed border-black/60 pt-2 text-[9px] leading-snug">
+          {sale.legends.map((l, idx) => (
+            <p key={idx}>{l}</p>
+          ))}
         </div>
       )}
 

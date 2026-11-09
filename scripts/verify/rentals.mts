@@ -35,7 +35,7 @@ const expectErr = async (name: string, fn: () => Promise<unknown>, contains: str
 }
 
 const policyBefore = await prisma.rentalPolicy.findUnique({ where: { organizationId: orgId } })
-const created = { product: "", reservations: [] as string[], session: "" }
+const created = { product: "", reservations: [] as string[], session: "", combo: "", sale: "" }
 const day = 86_400_000
 try {
   // El depósito se recibe en efectivo en la caja: se usa la abierta o se abre una (y se borra al final).
@@ -119,10 +119,40 @@ try {
   const afterReturnB = await cash.rentalCashForSession(prisma, sessionId)
   check("los 400 que se regresan salen de la caja", afterReturnB.cashOut - cashBefore.cashOut === 400, `(${afterReturnB.cashOut - cashBefore.cashOut})`)
 
+  const pStart = new Date(start.getTime() + 60 * day)
+  const pEnd = new Date(pStart.getTime() + 2 * day)
+  // Paquete de renta (combo): sus artículos van a precio de lista y el paquete descuenta la diferencia
+  const combo = await prisma.productCombo.create({ data: { organizationId: orgId, name: "zz Paquete fiesta", comboPrice: 1200, items: { create: { productId: p.id, variantId, quantity: 2 } } } })
+  created.combo = combo.id
+  const pkgs = await rs.getRentalPackages(orgId)
+  const found = pkgs.find((x) => x.id === combo.id)
+  check("el combo de artículos rentables aparece como paquete", Boolean(found) && found!.price === 1200 && found!.listPrice === 1600, `(${found?.price}/${found?.listPrice})`)
+  const pk = await rs.createReservation(orgId, { customerId: customer.id, items: [], packages: [{ comboId: combo.id, quantity: 1 }], startsAt: pStart, endsAt: pEnd, depositAmount: 0 })
+  created.reservations.push(pk.id)
+  const pkRow = (await rs.getReservations(orgId, new Date(pStart.getTime() - day), new Date(pEnd.getTime() + day))).find((r) => r.id === pk.id)!
+  check("el paquete guarda 2 piezas a precio de lista y un descuento de 400", pkRow.items.length === 1 && pkRow.items[0].quantity === 2 && pkRow.packageDiscount === 400 && pkRow.total === 1200, `(${pkRow.items[0]?.quantity}/${pkRow.packageDiscount}/${pkRow.total})`)
+  await expectErr("el paquete respeta la disponibilidad (3 piezas: 2 del paquete y se piden 1 suelta + 2 de otro paquete)", () => rs.createReservation(orgId, { customerId: customer.id, items: [{ variantId, quantity: 1 }], packages: [{ comboId: combo.id, quantity: 2 }], startsAt: pStart, endsAt: pEnd, depositAmount: 0 }), "solo hay")
+  await expectErr("un paquete inexistente se rechaza", () => rs.createReservation(orgId, { customerId: customer.id, items: [], packages: [{ comboId: "nada", quantity: 1 }], startsAt: pStart, endsAt: pEnd }), "paquete")
+  const paid = await rs.checkoutReservation(orgId, pk.id, "cash", { userId: user.id, employeeId: null })
+  created.sale = paid.saleId
+  const sale = await prisma.sale.findUniqueOrThrow({ where: { id: paid.saleId } })
+  check("la venta cobra el precio del paquete con su descuento", Number(sale.subtotal) === 1600 && Number(sale.discount) === 400 && Number(sale.total) === paid.total, `(${sale.subtotal}/${sale.discount}/${sale.total})`)
+
   // Otra empresa no ve ni toca la renta
   await expectErr("otra empresa no puede entregar una renta ajena", () => rs.deliverReservation(orgs[4].orgId, a.id), "no encontrada")
 } finally {
   const ids = created.reservations
+  if (created.sale) {
+    await prisma.reservation.updateMany({ where: { id: { in: ids } }, data: { saleId: null } })
+    await prisma.salePayment.deleteMany({ where: { saleId: created.sale } })
+    await prisma.saleItem.deleteMany({ where: { saleId: created.sale } })
+    await prisma.saleDiscount.deleteMany({ where: { saleId: created.sale } }).catch(() => undefined)
+    await prisma.sale.delete({ where: { id: created.sale } }).catch(() => undefined)
+  }
+  if (created.combo) {
+    await prisma.comboItem.deleteMany({ where: { comboId: created.combo } })
+    await prisma.productCombo.delete({ where: { id: created.combo } })
+  }
   await prisma.rentalCashEntry.deleteMany({ where: { reservationId: { in: ids } } })
   await prisma.checklistRunItem.deleteMany({ where: { run: { organizationId: orgId, subjectId: { in: ids } } } })
   await prisma.checklistRun.deleteMany({ where: { organizationId: orgId, subjectId: { in: ids } } })

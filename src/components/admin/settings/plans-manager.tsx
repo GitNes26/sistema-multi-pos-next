@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import { PERMISSION_MODULE_LABELS, permissionsByModule, type PermissionKey } from "@/lib/auth/permission-keys"
 import { PLAN_PERMISSION_KEYS, planDeniedKeys } from "@/lib/billing/plan-permissions"
 import { cn } from "@/lib/utils"
+import { PlanCarousel } from "@/components/shared/plan-carousel"
 
 // Planes del sistema (superAdmin): precio, capacidad, beneficios comerciales y
 // los permisos que incluye. Lo que un plan no incluye queda fuera para toda la
@@ -154,7 +155,7 @@ export function PlansManager() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <PlanCarousel label="Planes">
         {plans.map((p) => {
           const excluded = excludedModules(p.permissions)
           return (
@@ -207,7 +208,7 @@ export function PlansManager() {
             </div>
           )
         })}
-      </div>
+      </PlanCarousel>
 
       <DialogComponent
         open={form !== null}

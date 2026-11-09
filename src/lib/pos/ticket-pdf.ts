@@ -1,3 +1,5 @@
+import { loyaltyTicketLines } from "@/lib/loyalty/server";
+import { warrantyTicketLegends } from "@/lib/warranty/server";
 import { cleanItemName } from "@/lib/pos/item-name";
 import PDFDocument from "pdfkit";
 import { groupByGuest } from "@/lib/guests";
@@ -332,6 +334,9 @@ export async function generateTicketPdf(
     extras.push(`Puntos ganados: ${Math.floor(Number(sale.pointsEarned))}`);
     extras.push(`Puntos totales: ${Math.floor(Number(sale.customer.points))}`);
   }
+  // Membresías, recompensas canjeadas y leyenda de garantía (solo si el dueño las habilitó).
+  extras.push(...(await loyaltyTicketLines(organizationId, sale.id)));
+  extras.push(...(await warrantyTicketLegends(organizationId, sale.items.filter((i) => i.productId).map((i) => ({ productId: i.productId as string })))));
 
   const observations = sale.returns.map(
     (r) => `Venta con devolución DEV-${Number(r.returnNumber)} (${RETURN_TYPE_LABELS[r.returnType] ?? r.returnType}) por ${MXN(Number(r.total))} · ${r.createdAt.toLocaleDateString("es-MX")}`

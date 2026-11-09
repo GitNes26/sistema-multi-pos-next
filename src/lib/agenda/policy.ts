@@ -151,7 +151,7 @@ export function assertCanReschedule(
 export interface AppointmentEventInput {
   organizationId: string
   appointmentId: string
-  type: "created" | "rescheduled" | "status" | "checked_in" | "auto_no_show" | "override"
+  type: "created" | "rescheduled" | "status" | "checked_in" | "auto_no_show" | "override" | "assigned"
   fromStartsAt?: Date | null
   toStartsAt?: Date | null
   fromStatus?: string | null

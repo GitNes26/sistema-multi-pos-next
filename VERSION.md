@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.63.0.0] — 2026-11-09
+- **Tipo:** `feat` (Minor)
+- feat: fase 5 y 6 con programas de fidelidad (tarjeta de visitas, paquetes y membresias con vigencia, aviso y condiciones), garantias de servicio con leyenda en ticket y canje en caja y portal, plantillas de arranque, paquetes de renta, citas con personal opcional, agenda por lugar y reserva desde el portal, permisos y roles propios, carrusel de planes y manual
+
 ### [0.62.0.0] — 2026-11-08
 - **Tipo:** `feat` (Minor)
 - feat: envases con devolucion que libera pendientes, saldo por cliente y retenido por bajas, depositos de renta en caja y corte con hoja imprimible, y barberia con ficha de estilo y cita que pasa a orden de servicio al llegar

@@ -29,6 +29,24 @@ export interface CouponApplied {
 
 type CouponStatus = "none" | "pending" | "error" | "applied"
 
+/** Garantía de servicio que el cajero aplicó con el ticket original (el servidor la valida al cobrar). */
+export interface WarrantyRedeem {
+  ruleId: string
+  saleId: string
+  label: string
+  coversProductIds: string[]
+  percent: number
+}
+
+/** Recompensa de fidelidad que el cajero eligió canjear en este ticket (el servidor la valida al cobrar). */
+export interface LoyaltyRedeem {
+  programId: string
+  label: string
+  targetProductIds: string[]
+  excludeProductIds: string[]
+  percent: number
+}
+
 /** Borrador de una cuenta que se dejó en pausa para atender otra (mesa o para llevar). */
 export interface HeldTicket {
   key: string
@@ -161,6 +179,10 @@ interface PosState extends PosCatalog {
   couponPending: () => void
   clearCoupon: () => void
   setPointsRedeemed: (points: number) => void
+  loyaltyRedeems: LoyaltyRedeem[]
+  toggleLoyaltyRedeem: (r: LoyaltyRedeem) => void
+  warrantyRedeems: WarrantyRedeem[]
+  toggleWarrantyRedeem: (r: WarrantyRedeem) => void
 }
 
 /** Identifica la cuenta que se está atendiendo (para pausarla y retomarla). */
@@ -234,6 +256,8 @@ export const usePosStore = create<PosState>()((set, get) => ({
   manualDiscount: null,
   coupon: { status: "none", code: "", result: null },
   pointsRedeemed: 0,
+  loyaltyRedeems: [],
+  warrantyRedeems: [],
 
   setCatalog: (catalog) => {
     set((state) => ({
@@ -421,6 +445,8 @@ export const usePosStore = create<PosState>()((set, get) => ({
         manualDiscount: null,
         coupon: { status: "none", code: "", result: null },
         pointsRedeemed: 0,
+        loyaltyRedeems: [],
+        warrantyRedeems: [],
         held,
       }
     }),
@@ -463,9 +489,24 @@ export const usePosStore = create<PosState>()((set, get) => ({
       manualDiscount: null,
       coupon: { status: "none", code: "", result: null },
       pointsRedeemed: 0,
+      loyaltyRedeems: [],
+      warrantyRedeems: [],
     }),
 
-  setCustomer: (customerId) => set({ customerId }),
+  // Los créditos son del cliente: al cambiar de cliente se quitan los canjes elegidos.
+  setCustomer: (customerId) => set({ customerId, loyaltyRedeems: [] }),
+  toggleWarrantyRedeem: (r) =>
+    set((s) => ({
+      warrantyRedeems: s.warrantyRedeems.some((x) => x.ruleId === r.ruleId && x.saleId === r.saleId)
+        ? s.warrantyRedeems.filter((x) => !(x.ruleId === r.ruleId && x.saleId === r.saleId))
+        : [...s.warrantyRedeems, r],
+    })),
+  toggleLoyaltyRedeem: (r) =>
+    set((s) => ({
+      loyaltyRedeems: s.loyaltyRedeems.some((x) => x.programId === r.programId)
+        ? s.loyaltyRedeems.filter((x) => x.programId !== r.programId)
+        : [...s.loyaltyRedeems, r],
+    })),
   setTable: (table) => set({ selectedTable: table }),
   setServiceType: (serviceType) => set({ serviceType, ...(serviceType === "takeaway" ? {} : { kitchenOrderId: null }) }),
   setKitchenOrderId: (kitchenOrderId) => set({ kitchenOrderId }),

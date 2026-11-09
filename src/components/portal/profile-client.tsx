@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
+  CalendarClock,
   Car,
   ChevronRight,
   CreditCard,
@@ -234,6 +235,7 @@ export function ProfileClient({ canReserve = false, hasVehicles = false }: { can
       <motion.div variants={item}>
         <SettingsGroup title="Tu actividad">
           <SettingsRow href="/portal/orders" icon={Receipt} label="Mis pedidos" value={stats.orders ? String(stats.orders) : undefined} />
+          {hasVehicles && <SettingsRow href="/portal/citas" icon={CalendarClock} label="Mis citas" description="Reserva y consulta tus citas" />}
           {hasVehicles && <SettingsRow href="/portal/vehicles" icon={Car} label="Mis vehículos" description="Tus vehículos y el avance de tus servicios" />}
           <SettingsRow href="/portal/favorites" icon={Heart} label="Favoritos" value={stats.favorites ? String(stats.favorites) : undefined} />
           <SettingsRow href="/portal/loyalty" icon={Sparkles} label="Puntos y recompensas" />

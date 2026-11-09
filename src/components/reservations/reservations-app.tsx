@@ -74,7 +74,7 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
       );
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error ?? "No se pudieron cargar las reservaciones");
-      setData({ reservations: json.reservations, units: json.units });
+      setData({ reservations: json.reservations, units: json.units, packages: json.packages ?? [] });
       setUnitVariant((prev) => prev || json.units?.[0]?.variantId || "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron cargar las reservaciones");
@@ -340,6 +340,7 @@ export function ReservationsApp({ orgName, orgMode, canManage }: ReservationsApp
         onOpenChange={setCreateOpen}
         day={selectedDay}
         units={data?.units ?? []}
+        packages={data?.packages ?? []}
         onCreated={() => void reload(monthCursor)}
       />
       <RentalPolicyDialog open={policyOpen} onOpenChange={setPolicyOpen} />

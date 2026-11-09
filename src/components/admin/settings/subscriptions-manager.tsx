@@ -300,14 +300,14 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
     >
       <section className="space-y-3">
         <h3 className="text-sm font-semibold">Plan y vigencia</h3>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 py-1 scrollbar-none" role="group" aria-label="Planes">
           {plans.map((p) => (
             <button
               key={p.id}
               type="button"
               onClick={() => setForm({ ...form, planId: p.id })}
               aria-pressed={form.planId === p.id}
-              className={cn("press rounded-xl border p-3 text-left", form.planId === p.id ? "border-primary bg-primary/10 ring-2 ring-primary/30" : "hover:bg-muted/60")}
+              className={cn("press w-44 shrink-0 snap-start rounded-xl border p-3 text-left", form.planId === p.id ? "border-primary bg-primary/10 ring-2 ring-primary/30" : "hover:bg-muted/60")}
             >
               <p className="font-semibold">{p.name}</p>
               <p className="text-sm tabular-nums">{money(Number(p.monthlyPrice))}/mes</p>

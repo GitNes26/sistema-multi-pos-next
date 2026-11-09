@@ -34,7 +34,7 @@ const expectErr = async (name: string, fn: () => Promise<unknown>, contains: str
   }
 }
 
-const created = { product: "", customer: "", employee: "", station: "", asset: "", appointment: "", session: "", sale: "" }
+const created = { product: "", customer: "", employee: "", station: "", asset: "", appointment: "", session: "", sale: "", employeeService: "", freeAppointment: "", otherEmployee: "", otherUser: "" }
 try {
   // Restos de una corrida interrumpida (todo lo que crea esta prueba lleva el prefijo «zz»).
   const staleAppts = await prisma.appointment.findMany({ where: { organizationId: orgId, notes: "Llega con prisa" }, select: { id: true } })
@@ -58,7 +58,11 @@ try {
   await prisma.productVariant.deleteMany({ where: { productId: { in: staleProducts.map((p) => p.id) } } })
   await prisma.product.deleteMany({ where: { id: { in: staleProducts.map((p) => p.id) } } })
   await prisma.serviceStation.deleteMany({ where: { organizationId: orgId, name: "zz Silla 1" } })
-  await prisma.employee.deleteMany({ where: { organizationId: orgId, fullName: "zz Barbero" } })
+  const staleEmps = await prisma.employee.findMany({ where: { organizationId: orgId, fullName: { in: ["zz Barbero", "zz Otro"] } }, select: { id: true } })
+  await prisma.appointmentEvent.deleteMany({ where: { appointment: { notes: "zz sin preferencia" } } })
+  await prisma.appointment.deleteMany({ where: { organizationId: orgId, notes: "zz sin preferencia" } })
+  await prisma.employeeService.deleteMany({ where: { employeeId: { in: staleEmps.map((e) => e.id) } } })
+  await prisma.employee.deleteMany({ where: { id: { in: staleEmps.map((e) => e.id) } } })
   const alreadyOpen = await prisma.cashSession.findFirst({ where: { organizationId: orgId, cashRegister: { locationId: location.id }, status: "open" } })
   let sessionId: string
   if (alreadyOpen) sessionId = alreadyOpen.id
@@ -111,6 +115,27 @@ try {
   await expectErr("una cita no genera dos órdenes", () => so.startOrderFromAppointment(orgId, appt.id, user.id), "ya tiene la orden")
   await expectErr("la cita con orden no se cobra aparte", () => ag.checkoutAppointment(orgId, appt.id, "cash", { userId: user.id, employeeId: null }), "orden de servicio")
 
+  // Cita sin preferencia de personal: queda «por asignar» y el negocio la asigna después
+  const offered = await prisma.employeeService.create({ data: { organizationId: orgId, employeeId: employee.id, variantId, durationMin: 25 } })
+  created.employeeService = offered.id
+  const when = new Date(Date.now() + 3 * 86_400_000)
+  when.setHours(11, 0, 0, 0)
+  const free: any = await ag.createAppointment(orgId, { customerId: customer.id, variantId, startsAt: when, notes: "zz sin preferencia", override: { reason: "prueba" } })
+  created.freeAppointment = free.id
+  const freeRow = await prisma.appointment.findUniqueOrThrow({ where: { id: free.id } })
+  check("la cita sin personal queda por asignar con la duración del servicio", freeRow.employeeId === null && freeRow.durationMin === 25, `(${freeRow.employeeId}/${freeRow.durationMin})`)
+  const otherUser = await prisma.user.create({ data: { email: `zz-otro-${Date.now()}@test.local`, fullName: "zz Otro", passwordHash: "x" } as any })
+  created.otherUser = otherUser.id
+  const otherEmployee = await prisma.employee.create({ data: { organizationId: orgId, userId: otherUser.id, fullName: "zz Otro" } })
+  created.otherEmployee = otherEmployee.id
+  await expectErr("no se asigna a quien no presta el servicio", () => ag.updateAppointment(orgId, free.id, { employeeId: otherEmployee.id }), "no atiende")
+  await ag.updateAppointment(orgId, free.id, { employeeId: employee.id, actorUserId: user.id })
+  const assigned = await prisma.appointment.findUniqueOrThrow({ where: { id: free.id } })
+  const assignedEvent = await prisma.appointmentEvent.findFirst({ where: { appointmentId: free.id, type: "assigned" } })
+  check("al asignar queda el empleado y el historial", assigned.employeeId === employee.id && Boolean(assignedEvent))
+  const listed = await ag.getAgendaAppointments(orgId, new Date(when.getTime() - 3600_000), new Date(when.getTime() + 3600_000))
+  check("la agenda lista la cita con su empleado", listed.some((a) => a.id === free.id && a.employee?.id === employee!.id))
+
   // Avanza la orden hasta listo y cóbrala
   const flow = await prisma.serviceFlowStage.findMany({ where: { flowId: row.flowId, isActive: true }, orderBy: { sortOrder: "asc" } })
   const ready = flow.find((s) => s.isReady)!
@@ -135,6 +160,13 @@ try {
     await prisma.saleItem.deleteMany({ where: { saleId: created.sale } })
     await prisma.sale.delete({ where: { id: created.sale } }).catch(() => undefined)
   }
+  if (created.freeAppointment) {
+    await prisma.appointmentEvent.deleteMany({ where: { appointmentId: created.freeAppointment } })
+    await prisma.appointment.delete({ where: { id: created.freeAppointment } }).catch(() => undefined)
+  }
+  if (created.employeeService) await prisma.employeeService.delete({ where: { id: created.employeeService } }).catch(() => undefined)
+  if (created.otherEmployee) await prisma.employee.delete({ where: { id: created.otherEmployee } }).catch(() => undefined)
+  if (created.otherUser) await prisma.user.delete({ where: { id: created.otherUser } }).catch(() => undefined)
   if (created.employee) await prisma.employee.delete({ where: { id: created.employee } }).catch(() => undefined)
   if (created.asset) await prisma.customerAsset.delete({ where: { id: created.asset } })
   if (created.station) await prisma.serviceStation.delete({ where: { id: created.station } })

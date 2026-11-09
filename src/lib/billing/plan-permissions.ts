@@ -47,6 +47,8 @@ const PLAN_AREAS: [string, PermissionKey[]][] = [
   ["/admin/assets", ["assets.view"]],
   ["/admin/stations", ["stations.view"]],
   ["/admin/service-orders", ["service_orders.view"]],
+  ["/admin/loyalty-programs", ["loyalty.view"]],
+  ["/admin/warranties", ["warranties.view"]],
   ["/reservaciones", ["reservations.view"]],
   ["/admin/reservations", ["reservations.view"]],
 ]

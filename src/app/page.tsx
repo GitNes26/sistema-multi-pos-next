@@ -44,6 +44,7 @@ import { prisma } from "@/lib/db"
 import { planWhatsappUrl, whatsappUrl } from "@/lib/whatsapp"
 import { cached } from "@/lib/cache"
 import { KitQuote } from "@/components/landing/kit-quote"
+import { PlanCarousel } from "@/components/shared/plan-carousel"
 
 // Los planes se administran en la base de datos. La portada debe resolverlos
 // al atender la petición, cuando Dokploy ya inyectó DATABASE_URL al contenedor,
@@ -390,7 +391,7 @@ export default async function LandingPage() {
                 clientes. La capacidad cambia según tu operación.
               </p>
             </Reveal>
-            <div className="mt-12 grid gap-4 lg:grid-cols-3">
+            <PlanCarousel className="mt-12" label="Planes de suscripción">
               {plans.map((plan, i) => (
                 <Reveal key={plan.id} delay={i * 0.08} className="h-full">
                 <div className="flex h-full flex-col rounded-3xl border bg-card p-7 shadow-e1 transition-[transform,box-shadow,border-color] duration-300 ease-out-quart hover:-translate-y-1 hover:border-primary/40 hover:shadow-e3">
@@ -422,7 +423,7 @@ export default async function LandingPage() {
                 </div>
                 </Reveal>
               ))}
-            </div>
+            </PlanCarousel>
           </div>
         </section>
       )}

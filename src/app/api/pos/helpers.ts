@@ -3,9 +3,15 @@ import { NextResponse } from "next/server";
 import { authOptions, type SessionUser } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { hasPermission } from "@/lib/auth/permissions";
+import type { PermissionKey } from "@/lib/auth/permission-keys";
 import { prisma } from "@/lib/db";
 
 export type PosSession = { user: SessionUser };
+
+/** ¿La sesión del POS tiene el permiso? (rol ∩ plan, igual que en el resto del sistema). */
+export function posCan(session: PosSession, permission: PermissionKey): boolean {
+  return hasPermission(session as unknown as Parameters<typeof hasPermission>[0], permission);
+}
 
 export async function requirePosSession(): Promise<
   { session: PosSession } | { response: NextResponse }

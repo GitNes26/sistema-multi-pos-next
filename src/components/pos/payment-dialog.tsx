@@ -47,7 +47,7 @@ interface PaymentDialogProps {
   open: boolean
   onClose: () => void
   onSuccess: (
-    sale: { id: string; saleNumber: string; locationName: string },
+    sale: { id: string; saleNumber: string; locationName: string; legends?: string[] },
     payload: ReturnType<typeof buildSalePayload>
   ) => void
   splitParts?: number | null

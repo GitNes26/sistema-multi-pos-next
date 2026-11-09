@@ -99,6 +99,24 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: "Lo que realmente te queda después de pagar todo.",
     body: "Ventas − lo que te costó la mercancía − tus gastos (renta, luz, sueldos). Si el resultado es negativo, ese mes perdiste.",
   },
+  membresia: {
+    term: "Membresía",
+    short: "Una cuota periódica que le da al cliente servicios incluidos mientras esté vigente.",
+    body: "Es opcional: tú decides si la ofreces. El cliente paga una cuota (por ejemplo cada mes) y recibe cierta cantidad de servicios que se renuevan con cada pago. Tú defines el precio, cuántos servicios incluye, cada cuántos días vence, si los que no use se acumulan y las condiciones que verá en su portal.",
+    example: "Membresía de $400 al mes con 4 lavados: al cobrar la cuota el cliente tiene 4 lavados por 30 días.",
+  },
+  "tarjeta-visitas": {
+    term: "Tarjeta de visitas",
+    short: "Cada cierto número de servicios, el cliente gana uno gratis (o con descuento).",
+    body: "Cada venta con alguno de tus servicios suma una visita. Al completar las que tú definas, el cliente gana un crédito que el cajero canjea en el cobro. Es opcional y todo se configura: cuántas visitas, a qué servicios aplica y cuánto cubre el premio.",
+    example: "Cada 5 lavados, el 6.º va por la casa.",
+  },
+  "garantia-servicio": {
+    term: "Garantía de servicio",
+    short: "Una regla opcional para repetir un servicio sin costo (o con descuento) dentro de un plazo.",
+    body: "Si la activas, el ticket de los servicios que cubre lleva la leyenda y el cliente puede canjear la garantía presentando su ticket (o pidiéndola desde su portal). Tú defines el plazo, si es solo el mismo día, qué servicios cubre y qué parte se descuenta.",
+    example: "Si llueve el mismo día del lavado, repite el lavado exterior sin costo.",
+  },
   lealtad: {
     term: "Lealtad (puntos)",
     short: "Puntos que tus clientes acumulan por comprar.",

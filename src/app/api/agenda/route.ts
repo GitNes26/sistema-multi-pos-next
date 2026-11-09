@@ -46,15 +46,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const startsAt = new Date(body.startsAt);
-    if (!body.customerId || !body.employeeId || !body.variantId || Number.isNaN(startsAt.getTime())) {
+    if (!body.customerId || !body.variantId || Number.isNaN(startsAt.getTime())) {
       return NextResponse.json(
-        { ok: false, error: "Faltan datos: cliente, empleado, servicio y horario" },
+        { ok: false, error: "Faltan datos: cliente, servicio y horario" },
         { status: 400 }
       );
     }
     const appointment = await createAppointment(organizationId, {
       customerId: String(body.customerId),
-      employeeId: String(body.employeeId),
+      employeeId: body.employeeId ? String(body.employeeId) : null,
       variantId: String(body.variantId),
       startsAt,
       durationMin: body.durationMin ? Number(body.durationMin) : undefined,

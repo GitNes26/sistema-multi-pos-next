@@ -18,15 +18,22 @@ const check = (name: string, ok: boolean, extra = "") => {
 }
 const NEW = ["appointments.checkin", "appointments.override", "appointments.policy", "assets.view", "assets.manage", "stations.view", "stations.manage", "service_orders.view", "service_orders.manage", "service_flows.manage"]
 
+const NEWL = ["loyalty.view", "loyalty.manage", "loyalty.redeem", "warranties.view", "warranties.manage", "warranties.redeem"]
+
 // Una empresa con un plan de lista guardada y un rol propio que ya hacía lo equivalente.
 const org = await prisma.organization.findFirstOrThrow({ select: { id: true } })
 const customRole = await prisma.role.create({ data: { name: "zz-rol-propio", description: "prueba", isSystem: false, organizationId: org.id } as any })
 await prisma.rolePermission.createMany({ data: [{ roleId: customRole.id, organizationId: org.id, permissionKey: "customers.manage", allowed: true }, { roleId: customRole.id, organizationId: org.id, permissionKey: "appointments.manage", allowed: true }] })
 const plan = await prisma.subscriptionPlan.create({ data: { name: "zz-plan-prueba", description: "x", monthlyPrice: 0, permissions: ["pos.use", "products.view"] } as any })
 
+// Rol propio y plan que ya usaban promociones y el POS (fidelidad y garantías antes colgaban de ahí).
+const promoRole = await prisma.role.create({ data: { name: "zz-rol-promos", description: "prueba", isSystem: false, organizationId: org.id } as any })
+await prisma.rolePermission.createMany({ data: [{ roleId: promoRole.id, organizationId: org.id, permissionKey: "promotions.view", allowed: true }, { roleId: promoRole.id, organizationId: org.id, permissionKey: "pos.use", allowed: true }] })
+const promoPlan = await prisma.subscriptionPlan.create({ data: { name: "zz-plan-promos", description: "x", monthlyPrice: 0, permissions: ["pos.use", "promotions.view", "promotions.manage"] } as any })
+
 // Se simula una base anterior: sin los permisos nuevos.
-await prisma.rolePermission.deleteMany({ where: { permissionKey: { in: NEW } } })
-await prisma.permission.deleteMany({ where: { key: { in: NEW } } })
+await prisma.rolePermission.deleteMany({ where: { permissionKey: { in: [...NEW, ...NEWL] } } })
+await prisma.permission.deleteMany({ where: { key: { in: [...NEW, ...NEWL] } } })
 
 try {
   await seedProduction()
@@ -52,6 +59,18 @@ try {
   const menus = await prisma.menu.findMany({ where: { id: { in: ["menu-vehiculos", "menu-bahias", "menu-ordenes-servicio"] } }, select: { id: true, permissionKey: true } })
   check("menús nuevos con su permiso propio", menus.length === 3 && menus.some((m: any) => m.permissionKey === "service_orders.view") && menus.some((m: any) => m.permissionKey === "assets.view") && menus.some((m: any) => m.permissionKey === "stations.view"))
 
+  check("los 6 permisos de fidelidad y garantías existen", (await prisma.permission.count({ where: { key: { in: NEWL } } })) === 6)
+  check("Propietario y Gerente tienen fidelidad y garantías", (await Promise.all(NEWL.flatMap((k) => [has("Propietario", k), has("Gerente", k)]))).every(Boolean))
+  check("Cajero y Agente de atención canjean pero no configuran", (await has("Cajero", "loyalty.redeem")) && (await has("Cajero", "warranties.redeem")) && (await has("Agente de atención", "warranties.redeem")) && !(await has("Cajero", "loyalty.manage")) && !(await has("Cajero", "warranties.manage")) && !(await has("Agente de atención", "loyalty.manage")))
+  check("Trabajador completo canjea", (await has("Trabajador completo", "loyalty.redeem")) && (await has("Trabajador completo", "warranties.redeem")))
+  check("Mesero y Repartidor no canjean", !(await has("Mesero", "loyalty.redeem")) && !(await has("Repartidor", "warranties.redeem")))
+  const promoKeys = (await prisma.rolePermission.findMany({ where: { roleId: promoRole.id }, select: { permissionKey: true } })).map((r: any) => r.permissionKey)
+  check("rol propio con promociones y POS conserva ver y canjear", ["loyalty.view", "warranties.view", "loyalty.redeem", "warranties.redeem"].every((k) => promoKeys.includes(k)) && !promoKeys.includes("loyalty.manage"))
+  const promoPlanRow = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { id: promoPlan.id } })
+  check("plan con lista guardada incluye los permisos de fidelidad y garantías", NEWL.every((k) => (promoPlanRow.permissions as string[]).includes(k)))
+  const newMenus = await prisma.menu.findMany({ where: { id: { in: ["menu-fidelidad", "menu-garantias", "menu-plantillas"] } }, select: { id: true, permissionKey: true } })
+  check("menús de fidelidad, garantías y plantillas con su permiso", newMenus.length === 3 && newMenus.some((m: any) => m.permissionKey === "loyalty.view") && newMenus.some((m: any) => m.permissionKey === "warranties.view") && newMenus.some((m: any) => m.permissionKey === "settings.manage"))
+
   const before = await prisma.rolePermission.count()
   await seedProduction()
   const after = await prisma.rolePermission.count()
@@ -60,6 +79,9 @@ try {
   await prisma.rolePermission.deleteMany({ where: { roleId: customRole.id } })
   await prisma.role.delete({ where: { id: customRole.id } })
   await prisma.subscriptionPlan.delete({ where: { id: plan.id } })
+  await prisma.rolePermission.deleteMany({ where: { roleId: promoRole.id } })
+  await prisma.role.delete({ where: { id: promoRole.id } })
+  await prisma.subscriptionPlan.delete({ where: { id: promoPlan.id } })
   await prisma.$disconnect()
 }
 console.log(failures === 0 ? "TODO OK" : `${failures} FALLAS`)

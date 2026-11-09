@@ -330,7 +330,7 @@ export interface PosSalePayload {
     amount: number
     reference?: string
   }[]
-  discounts: { label: string; amount: number; promotionId?: string }[]
+  discounts: { label: string; amount: number; promotionId?: string; loyaltyProgramId?: string; warrantyRuleId?: string; warrantySaleId?: string }[]
   cashSessionId?: string
   cashRegisterId?: string
   couponCode?: string

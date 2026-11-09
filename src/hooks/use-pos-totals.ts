@@ -15,6 +15,8 @@ export function usePosTotals() {
   const coupon = usePosStore((s) => s.coupon.result);
   const pointsRedeemed = usePosStore((s) => s.pointsRedeemed);
   const loyalty = usePosStore((s) => s.loyalty);
+  const loyaltyRedeems = usePosStore((s) => s.loyaltyRedeems);
+  const warrantyRedeems = usePosStore((s) => s.warrantyRedeems);
 
   return useMemo(() => {
     const customer = selectCustomer(customerId);
@@ -39,6 +41,8 @@ export function usePosTotals() {
       coupon,
       pointsRedeemedValue: pointsToMoney(pointsRedeemed, loyalty.pointValue),
       pointsPerCurrency: loyalty.pointsPerCurrency,
+      loyaltyRedeems,
+      warrantyRedeems,
     });
 
     // 6.8 – Promoción "cupón para la próxima compra".
@@ -63,5 +67,5 @@ export function usePosTotals() {
         ? { promotionId: nextPurchase.id, amount: nextPurchase.value || Math.round(totals.payable * 0.1) }
         : null,
     };
-  }, [items, promotions, promotionUses, customerId, manualDiscount, coupon, pointsRedeemed, loyalty]);
+  }, [items, promotions, promotionUses, customerId, manualDiscount, coupon, pointsRedeemed, loyalty, loyaltyRedeems, warrantyRedeems]);
 }

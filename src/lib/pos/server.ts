@@ -1,3 +1,5 @@
+import { applyLoyaltyToSale, LoyaltyError, validateLoyaltyRedemptions } from "@/lib/loyalty/server"
+import { applyWarrantyToSale, validateWarrantyRedemptions, WarrantyError } from "@/lib/warranty/server"
 import { prisma } from "@/lib/db"
 import { cached, invalidateOrg, orgTag } from "@/lib/cache"
 import { runAfterResponse } from "@/lib/jobs/after-response"
@@ -1100,6 +1102,31 @@ export async function createSale(
 
   await validateSaleAmounts(organizationId, payload)
 
+  // Recompensas de fidelidad canjeadas: el servidor comprueba crédito y monto antes de cobrar.
+  let redeemedPrograms: string[]
+  try {
+    redeemedPrograms = await validateLoyaltyRedemptions(organizationId, {
+      customerId: payload.customerId,
+      items: payload.items.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice })),
+      discounts: payload.discounts,
+    })
+  } catch (error) {
+    if (error instanceof LoyaltyError) throw new PosError(error.message, error.status)
+    throw error
+  }
+
+  // Garantías de servicio canjeadas: vigencia, ticket original y monto los vuelve a calcular el servidor.
+  let warrantyRedemptions: Awaited<ReturnType<typeof validateWarrantyRedemptions>>
+  try {
+    warrantyRedemptions = await validateWarrantyRedemptions(organizationId, {
+      items: payload.items.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice })),
+      discounts: payload.discounts,
+    })
+  } catch (error) {
+    if (error instanceof WarrantyError) throw new PosError(error.message, error.status)
+    throw error
+  }
+
   // Importe de envases: lo calcula el servidor; el cliente solo dice cuántos envases trae.
   let deposit: Awaited<ReturnType<typeof computeContainerDeposit>>
   try {
@@ -1253,6 +1280,24 @@ export async function createSale(
           amount: d.amount,
         })),
       })
+    }
+    try {
+      await applyLoyaltyToSale(tx, {
+        organizationId,
+        customerId: payload.customerId,
+        saleId: sale.id,
+        items: payload.items.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice })),
+        redeemedProgramIds: redeemedPrograms,
+      })
+    } catch (error) {
+      if (error instanceof LoyaltyError) throw new PosError(error.message, error.status)
+      throw error
+    }
+    try {
+      await applyWarrantyToSale(tx, { organizationId, usedSaleId: sale.id, redemptions: warrantyRedemptions })
+    } catch (error) {
+      if (error instanceof WarrantyError) throw new PosError(error.message, error.status)
+      throw error
     }
     const issuedCoupon = payload.couponCode ? await tx.coupon.findFirst({
       where: { organizationId, code: payload.couponCode.trim().toUpperCase() },

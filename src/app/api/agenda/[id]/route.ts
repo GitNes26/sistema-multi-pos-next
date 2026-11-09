@@ -23,6 +23,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       startsAt: body.startsAt ? new Date(body.startsAt) : undefined,
       durationMin: body.durationMin !== undefined ? Number(body.durationMin) : undefined,
       notes: body.notes !== undefined ? String(body.notes) : undefined,
+      employeeId: body.employeeId ? String(body.employeeId) : undefined,
       actorUserId: session.user.id,
       override: overrideFromBody(session, body),
     });

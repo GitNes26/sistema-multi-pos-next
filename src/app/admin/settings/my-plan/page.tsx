@@ -12,6 +12,7 @@ import { planWhatsappUrl } from "@/lib/whatsapp"
 import { PageHeader } from "@/components/layout/page-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { PlanCarousel } from "@/components/shared/plan-carousel"
 
 export const metadata: Metadata = { title: "Mi plan" }
 
@@ -42,9 +43,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ b
       <div><p className="flex gap-2 font-medium"><Building2 className="size-5" />Sucursales</p><p className="text-2xl font-semibold">{usage.locations} / {usage.locationLimit ?? "—"}</p></div>
       <div><p className="flex gap-2 font-medium"><Users className="size-5" />Empleados</p><p className="text-2xl font-semibold">{usage.employees} / {usage.employeeLimit ?? "—"}</p></div>
     </CardContent></Card>
-    <div className="grid gap-4 lg:grid-cols-3">{plans.map((plan) => {
+    <PlanCarousel label="Planes disponibles">{plans.map((plan) => {
       const isCurrent = subscription?.planId === plan.id
-      return <Card key={plan.id}><CardContent className="space-y-4 p-5">
+      return <Card key={plan.id} className="h-full"><CardContent className="space-y-4 p-5">
         <h2 className="text-xl font-semibold">{plan.name}</h2>
         <p className="text-3xl font-semibold">${Number(plan.monthlyPrice).toLocaleString("es-MX")}<span className="text-sm font-normal text-muted-foreground">/mes</span></p>
         <p className="text-sm">{plan.includedLocations} sucursal(es) · {plan.includedEmployees} empleados</p>
@@ -52,6 +53,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ b
         {excludedModules(plan.permissions).length > 0 && <p className="flex gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground"><Lock className="mt-0.5 size-3.5 shrink-0" />No incluye: {excludedModules(plan.permissions).join(", ")}</p>}
         <Button asChild variant={isCurrent ? "secondary" : "default"} className="w-full"><a href={planWhatsappUrl(plan)} target="_blank" rel="noopener noreferrer"><MessageCircle className="size-4" />{isCurrent ? "Consultar mi plan" : "Solicitar actualización"}</a></Button>
       </CardContent></Card>
-    })}</div>
+    })}</PlanCarousel>
   </div>
 }

@@ -5,10 +5,13 @@ import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
 import {
   requirePosSession,
+  posCan,
   resolveLocationId,
   getCashierContext,
 } from "../helpers";
 import type { PosSalePayload } from "@/types/pos";
+import { loyaltyTicketLines } from "@/lib/loyalty/server";
+import { warrantyTicketLegends } from "@/lib/warranty/server";
 import { attachPointPaymentToSale, claimPointPayment, releasePointPaymentClaim } from "@/lib/payments/server";
 
 export async function POST(req: Request) {
@@ -20,6 +23,13 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as { locationId?: string; payload: PosSalePayload };
 
+    // Canjear recompensas o garantías exige su permiso (rol ∩ plan), también en el servidor.
+    if (body.payload.discounts?.some((d) => d.loyaltyProgramId) && !posCan(session, "loyalty.redeem")) {
+      return NextResponse.json({ ok: false, error: "No tienes permiso para canjear recompensas de fidelidad" }, { status: 403 });
+    }
+    if (body.payload.discounts?.some((d) => d.warrantyRuleId) && !posCan(session, "warranties.redeem")) {
+      return NextResponse.json({ ok: false, error: "No tienes permiso para aplicar garantías de servicio" }, { status: 403 });
+    }
     // Guard: validar que haya una sesión de caja abierta
     if (!body.payload.cashSessionId) {
       return NextResponse.json(
@@ -61,7 +71,12 @@ export async function POST(req: Request) {
     for (const intentId of pointReferences) {
       if (intentId) await attachPointPaymentToSale(intentId, sale.id);
     }
-    return NextResponse.json({ ok: true, sale });
+    // Leyendas del ticket (membresía vigente, recompensas, garantía): no deben frenar el cobro si fallan.
+    const legends = await Promise.all([
+      loyaltyTicketLines(organizationId, sale.id),
+      warrantyTicketLegends(organizationId, body.payload.items.map((i) => ({ productId: i.productId }))),
+    ]).then((groups) => groups.flat()).catch(() => [] as string[]);
+    return NextResponse.json({ ok: true, sale: { ...sale, legends } });
   } catch (err) {
     if (err instanceof PosError) {
       return NextResponse.json({ ok: false, error: err.message }, { status: err.status });

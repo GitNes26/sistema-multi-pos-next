@@ -19,6 +19,8 @@ export interface ReservationView {
   customer: { id: string; fullName: string; phone: string | null } | null;
   items: ReservationItemView[];
   total: number;
+  packageDiscount?: number;
+  packageNote?: string | null;
   depositAmount: number;
   deliveredAt: string | null;
   returnedAt: string | null;
@@ -38,9 +40,18 @@ export interface RentUnit {
   totalUnits: number;
 }
 
+export interface RentPackage {
+  id: string;
+  name: string;
+  price: number;
+  listPrice: number;
+  items: { variantId: string; name: string; quantity: number }[];
+}
+
 export interface ReservationsData {
   reservations: ReservationView[];
   units: RentUnit[];
+  packages?: RentPackage[];
 }
 
 /** Estatus que apartan unidades (disponibilidad). */

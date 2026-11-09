@@ -56,6 +56,7 @@ interface CreateDialogProps {
   /** Día visible en la agenda (para el campo de fecha). */
   day: Date;
   defaultEmployeeId?: string | null;
+  defaultStationId?: string | null;
   defaultTime?: string;
   staff: AgendaStaff[];
   canOverride?: boolean;
@@ -68,6 +69,7 @@ export function CitaCreateDialog({
   onOpenChange,
   day,
   defaultEmployeeId,
+  defaultStationId,
   defaultTime,
   staff,
   canOverride = false,
@@ -130,12 +132,12 @@ export function CitaCreateDialog({
     ).padStart(2, "0")}`;
     setDate(ymd);
     setTime(defaultTime ?? "10:00");
-    setEmployeeId(defaultEmployeeId ?? staff[0]?.id ?? "");
+    setEmployeeId(defaultEmployeeId ?? "");
     setServiceVariantId("");
     setDuration("30");
     setCustomerId("");
     setCustomers([]);
-    setStationId("");
+    setStationId(defaultStationId ?? "");
     setAssetId("");
     setAssets([]);
     setCreatingAsset(false);
@@ -146,7 +148,7 @@ export function CitaCreateDialog({
       .then((r) => r.json())
       .then((d) => setStations((d.rows ?? []).filter((s: { isActive?: boolean }) => s.isActive !== false)))
       .catch(() => setStations([]));
-  }, [open, day, defaultEmployeeId, defaultTime, staff, loadCustomers]);
+  }, [open, day, defaultEmployeeId, defaultStationId, defaultTime, staff, loadCustomers]);
 
   // Los vehículos o fichas son del cliente elegido: al cambiar de cliente se recargan.
   useEffect(() => {
@@ -163,7 +165,19 @@ export function CitaCreateDialog({
   }, [customerId]);
 
   const employee = staff.find((s) => s.id === employeeId);
-  const services = employee?.services ?? [];
+  // Sin preferencia de personal se ofrecen todos los servicios que alguien presta (con la duración más corta).
+  const services = useMemo(() => {
+    if (employee) return employee.services;
+    const byVariant = new Map<string, AgendaStaff["services"][number]>();
+    for (const person of staff) {
+      for (const item of person.services) {
+        if (!item.isActive) continue;
+        const known = byVariant.get(item.variantId);
+        if (!known || item.durationMin < known.durationMin) byVariant.set(item.variantId, item);
+      }
+    }
+    return [...byVariant.values()];
+  }, [employee, staff]);
   const service = services.find((s) => s.variantId === serviceVariantId);
 
   // Al cambiar el servicio se sugiere su duración asignada.
@@ -185,7 +199,6 @@ export function CitaCreateDialog({
   const submit = async () => {
     setError(null);
     if (!customerId) return setError("Selecciona o crea el cliente");
-    if (!employeeId) return setError("Selecciona al personal");
     if (!serviceVariantId) return setError("Selecciona el servicio");
     if (overrideReason !== null && overrideReason.trim().length < 3) return setError("Escribe el motivo para continuar");
     const startsAt = fromDateInput(fromYMD(date), time);
@@ -200,7 +213,7 @@ export function CitaCreateDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerId,
-          employeeId,
+          employeeId: employeeId || null,
           variantId: serviceVariantId,
           startsAt: startsAt.toISOString(),
           durationMin,
@@ -328,9 +341,9 @@ export function CitaCreateDialog({
           )}
         </div>
 
-        <FormCombobox label="Personal" required value={employeeId} onChange={(value) => { setEmployeeId(value); setServiceVariantId(""); }} options={staff.map((person) => ({ value: person.id, label: person.fullName, meta: person.services.length ? `${person.services.length} servicios` : "Sin servicios asignados", disabled: person.services.length === 0 }))} placeholder="Seleccionar personal…" helper="Primero asigna servicios al empleado desde la sección Personal de esta Agenda." />
+        <FormCombobox label="Personal" value={employeeId} onChange={(value) => { setEmployeeId(value); setServiceVariantId(""); }} onClear={() => { setEmployeeId(""); setServiceVariantId(""); }} options={staff.map((person) => ({ value: person.id, label: person.fullName, meta: person.services.length ? `${person.services.length} servicios` : "Sin servicios asignados", disabled: person.services.length === 0 }))} placeholder="Sin preferencia (se asigna después)" helper="Opcional: si el cliente no pide a nadie, la cita queda «por asignar» y el negocio elige quién la atiende." />
 
-        <FormCombobox label="Servicio" required value={serviceVariantId} onChange={setServiceVariantId} disabled={!employee} options={services.map((item) => ({ value: item.variantId, label: item.name, meta: `${fmtMoney(item.price)} · ${item.durationMin} min` }))} placeholder={employee ? "Seleccionar servicio…" : "Selecciona primero al personal"} emptyText="Este empleado no tiene servicios asignados" />
+        <FormCombobox label="Servicio" required value={serviceVariantId} onChange={setServiceVariantId} options={services.map((item) => ({ value: item.variantId, label: item.name, meta: `${fmtMoney(item.price)} · ${item.durationMin} min` }))} placeholder="Seleccionar servicio…" emptyText={employee ? "Este empleado no tiene servicios asignados" : "Aún no hay servicios asignados al personal"} />
 
         <DatePicker label="Fecha" required value={date ? fromYMD(date) : null} onChange={(value) => setDate(value ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}` : "")} clearable={false} />
         <TimePicker label="Hora" required value={time} onChange={(value) => setTime(value ?? "")} clearable={false} />
@@ -409,11 +422,13 @@ interface DetailDialogProps {
   canManage: boolean;
   canCheckIn?: boolean;
   canOverride?: boolean;
+  /** Personal con sus servicios (para asignar quien atiende una cita «por asignar»). */
+  staff?: AgendaStaff[];
   onOpenChange: (open: boolean) => void;
   onChanged: () => void;
 }
 
-export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverride = false, onOpenChange, onChanged }: DetailDialogProps) {
+export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverride = false, staff = [], onOpenChange, onChanged }: DetailDialogProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
@@ -511,6 +526,28 @@ export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverr
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo reprogramar");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const assignEmployee = async (employeeId: string) => {
+    if (!employeeId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/agenda/${cita.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "No se pudo asignar");
+      toast.success("Personal asignado");
+      onChanged();
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo asignar");
     } finally {
       setBusy(false);
     }
@@ -623,7 +660,11 @@ export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverr
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Personal</p>
-          <p className="font-semibold">{cita.employee.fullName}</p>
+          {cita.employee ? (
+            <p className="font-semibold">{cita.employee.fullName}</p>
+          ) : (
+            <p className="font-semibold text-warning-ink">Por asignar</p>
+          )}
         </div>
         {(cita.station || cita.asset) && (
           <div className="col-span-2 flex flex-wrap gap-x-4 gap-y-1">
@@ -654,6 +695,22 @@ export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverr
           </div>
         )}
       </div>
+
+      {/* Asignar personal (cita sin preferencia del cliente) */}
+      {editable && (
+        <FormCombobox
+          label={cita.employee ? "Cambiar personal" : "Asignar personal"}
+          value=""
+          onChange={(value) => void assignEmployee(value)}
+          disabled={busy}
+          options={staff
+            .filter((person) => person.id !== cita.employee?.id && person.services.some((item) => item.variantId === cita.service.variantId && item.isActive))
+            .map((person) => ({ value: person.id, label: person.fullName, meta: person.position ?? undefined }))}
+          placeholder={cita.employee ? "Elegir a otra persona…" : "Elegir quién atiende…"}
+          emptyText="Nadie más presta este servicio"
+          helper={cita.employee ? undefined : "El cliente no pidió a nadie en particular. Se valida que esté libre en ese horario."}
+        />
+      )}
 
       {/* Reprogramar */}
       {editable && (
@@ -858,6 +915,8 @@ function describeEvent(e: CitaEvent): string {
       return `Reagendada de ${when(e.fromStartsAt)} a ${when(e.toStartsAt)}`;
     case "checked_in":
       return "El cliente llegó";
+    case "assigned":
+      return e.reason ? `Atiende: ${e.reason}` : "Personal asignado";
     case "auto_no_show":
       return "Cita perdida: no llegó dentro de la tolerancia";
     case "override":

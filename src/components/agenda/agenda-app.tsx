@@ -75,10 +75,20 @@ export function AgendaApp({ orgName, orgMode, canManage, canManagePolicy = false
   const [error, setError] = useState<string | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createSlot, setCreateSlot] = useState<{ employeeId: string | null; time: string }>({
+  const [createSlot, setCreateSlot] = useState<{ employeeId: string | null; stationId: string | null; time: string }>({
     employeeId: null,
+    stationId: null,
     time: "10:00",
   });
+  // Vista por personal o por lugar de atención (silla, bahía…); solo hay «por lugar» si el negocio tiene lugares.
+  const [groupBy, setGroupBy] = useState<"staff" | "station">("staff");
+  const [stationList, setStationList] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/crud/stations?pageSize=100")
+      .then((r) => r.json())
+      .then((d) => setStationList((d.rows ?? []).filter((x: { isActive?: boolean }) => x.isActive !== false).map((x: { id: string; name: string }) => ({ id: x.id, name: x.name }))))
+      .catch(() => setStationList([]));
+  }, []);
   const [selected, setSelected] = useState<AgendaCita | null>(null);
   const router = useRouter();
 
@@ -111,13 +121,15 @@ export function AgendaApp({ orgName, orgMode, canManage, canManagePolicy = false
     setDay(d);
   };
 
-  const openSlot = (employeeId: string, minutes: number) => {
+  const openSlot = (columnId: string, minutes: number) => {
     const d = new Date(day);
     d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
     const snap = snapToSlot(d);
     const hh = String(snap.getHours()).padStart(2, "0");
     const mm = String(snap.getMinutes()).padStart(2, "0");
-    setCreateSlot({ employeeId, time: `${hh}:${mm}` });
+    setCreateSlot(groupBy === "station"
+      ? { employeeId: null, stationId: columnId || null, time: `${hh}:${mm}` }
+      : { employeeId: columnId || null, stationId: null, time: `${hh}:${mm}` });
     setCreateOpen(true);
   };
 
@@ -173,7 +185,7 @@ export function AgendaApp({ orgName, orgMode, canManage, canManagePolicy = false
             </Button>
           )}
           {canManage && (
-            <Button size="sm" data-guide="agenda-new" onClick={() => { setCreateSlot({ employeeId: null, time: "10:00" }); setCreateOpen(true); }}>
+            <Button size="sm" data-guide="agenda-new" onClick={() => { setCreateSlot({ employeeId: null, stationId: null, time: "10:00" }); setCreateOpen(true); }}>
               <Plus className="size-4" /> <span className="hidden sm:inline">Nueva cita</span>
             </Button>
           )}
@@ -194,7 +206,22 @@ export function AgendaApp({ orgName, orgMode, canManage, canManagePolicy = false
           </TabsList>
 
           {tab === "agenda" && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {stationList.length > 0 && (
+                <div className="mr-1 inline-flex rounded-lg border p-0.5" role="group" aria-label="Agrupar la agenda">
+                  {([["staff", "Por personal"], ["station", "Por lugar"]] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={groupBy === value}
+                      onClick={() => setGroupBy(value)}
+                      className={cn("rounded-md px-2.5 py-1 text-xs font-semibold transition-colors", groupBy === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <Button variant="outline" size="icon" onClick={() => shift(-1)} aria-label="Día anterior">
                 <ChevronLeft className="size-4" />
               </Button>
@@ -244,6 +271,8 @@ export function AgendaApp({ orgName, orgMode, canManage, canManagePolicy = false
             <DayGrid
               day={day}
               data={data}
+              groupBy={groupBy}
+              stations={stationList}
               canManage={canManage}
               onSlotClick={openSlot}
               onBlockClick={openBlock}
@@ -286,6 +315,7 @@ export function AgendaApp({ orgName, orgMode, canManage, canManagePolicy = false
         onOpenChange={setCreateOpen}
         day={day}
         defaultEmployeeId={createSlot.employeeId}
+        defaultStationId={createSlot.stationId}
         defaultTime={createSlot.time}
         staff={data?.staff ?? []}
         canOverride={canOverride}
@@ -297,6 +327,7 @@ export function AgendaApp({ orgName, orgMode, canManage, canManagePolicy = false
         canManage={canManage}
         canCheckIn={canCheckIn}
         canOverride={canOverride}
+        staff={data?.staff ?? []}
         onOpenChange={(o) => !o && setSelected(null)}
         onChanged={() => void reload()}
       />
@@ -309,13 +340,26 @@ export function AgendaApp({ orgName, orgMode, canManage, canManagePolicy = false
 interface DayGridProps {
   day: Date;
   data: AgendaData | null;
+  groupBy: "staff" | "station";
+  stations: { id: string; name: string }[];
   canManage: boolean;
-  onSlotClick: (employeeId: string, minutes: number) => void;
+  onSlotClick: (columnId: string, minutes: number) => void;
   onBlockClick: (cita: AgendaCita) => void;
 }
 
-function DayGrid({ day, data, canManage, onSlotClick, onBlockClick }: DayGridProps) {
-  const staff = data?.staff ?? [];
+function DayGrid({ day, data, groupBy, stations, canManage, onSlotClick, onBlockClick }: DayGridProps) {
+  // Columna extra «Por asignar» cuando hay citas sin personal (el cliente no pidió a nadie).
+  const staff = useMemo<AgendaStaff[]>(() => {
+    const appointments = data?.appointments ?? [];
+    if (groupBy === "station") {
+      const columns: AgendaStaff[] = stations.map((st) => ({ id: st.id, fullName: st.name, position: "Lugar de atención", services: [] }));
+      return appointments.some((a) => !a.station) ? [...columns, { id: "", fullName: "Sin lugar", position: "Sin silla asignada", services: [] }] : columns;
+    }
+    const base = data?.staff ?? [];
+    return appointments.some((a) => !a.employee)
+      ? [...base, { id: "", fullName: "Por asignar", position: "Sin preferencia del cliente", services: [] }]
+      : base;
+  }, [data, groupBy, stations]);
   const today = useMemo(() => {
     const now = new Date();
     return (
@@ -416,7 +460,7 @@ function DayGrid({ day, data, canManage, onSlotClick, onBlockClick }: DayGridPro
 
               {/* Citas */}
               {(data?.appointments ?? [])
-                .filter((a) => a.employee.id === s.id)
+                .filter((a) => ((groupBy === "station" ? a.station?.id : a.employee?.id) ?? "") === s.id)
                 .map((a) => {
                   const start = new Date(a.startsAt);
                   const top = (minutesOfDay(start) - DAY_START_HOUR * 60) / SLOT_MIN * ROW_HEIGHT + 1;

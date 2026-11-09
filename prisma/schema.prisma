@@ -361,6 +361,10 @@ model Organization {
   serviceOrders      ServiceOrder[]
   checklistTemplates ChecklistTemplate[]
   checklistRuns      ChecklistRun[]
+  loyaltyPrograms    LoyaltyProgram[]
+  loyaltyCards       LoyaltyCard[]
+  warrantyRules      WarrantyRule[]
+  warrantyClaims     WarrantyClaim[]
 
   @@map("organizations")
 }
@@ -772,6 +776,7 @@ model Customer {
   segments              CustomerSegment[]
   assets                CustomerAsset[]
   serviceOrders         ServiceOrder[]
+  loyaltyCards          LoyaltyCard[]
 
   @@unique([organizationId, customerCode])
   @@unique([organizationId, userId])
@@ -2216,8 +2221,8 @@ model Appointment {
   organizationId  String
   locationId      String?
   customerId      String?
-  // Personal asignado (empleado que presta el servicio)
-  employeeId      String
+  // Personal asignado (empleado que presta el servicio); null = por asignar (el cliente no pidió a nadie)
+  employeeId      String?
   // Servicio a realizar (variante del producto con precio)
   variantId       String
   status          AppointmentStatus @default(pending)
@@ -2240,7 +2245,7 @@ model Appointment {
   organization Organization       @relation(fields: [organizationId], references: [id])
   location     Location?          @relation(fields: [locationId], references: [id])
   customer     Customer?          @relation(fields: [customerId], references: [id])
-  employee     Employee           @relation(fields: [employeeId], references: [id])
+  employee     Employee?          @relation(fields: [employeeId], references: [id])
   variant      ProductVariant     @relation(fields: [variantId], references: [id])
   sale         Sale?              @relation(fields: [saleId], references: [id])
   station      ServiceStation?    @relation(fields: [stationId], references: [id])
@@ -2289,33 +2294,36 @@ enum ReservationStatus {
 }
 
 model Reservation {
-  id             String            @id @default(cuid())
-  organizationId String
-  locationId     String?
-  customerId     String?
-  status         ReservationStatus @default(pending)
+  id              String            @id @default(cuid())
+  organizationId  String
+  locationId      String?
+  customerId      String?
+  status          ReservationStatus @default(pending)
   // Período de la renta: [startsAt, endsAt) — la disponibilidad se calcula
   // por día sobre las unidades apartadas en el rango.
-  startsAt       DateTime
-  endsAt         DateTime
-  notes          String?
+  startsAt        DateTime
+  endsAt          DateTime
+  notes           String?
   // Venta generada por el checkout (cobro de la reservación)
-  saleId         String?
+  saleId          String?
   // Depósito en garantía: se retiene hasta la devolución y no es ingreso.
-  depositAmount  Decimal           @default(0) @db.Decimal(12, 2)
-  depositNote    String?
+  depositAmount   Decimal           @default(0) @db.Decimal(12, 2)
+  depositNote     String?
   // Entrega y devolución del equipo (con sus revisiones en el motor de checklists).
-  deliveredAt    DateTime?
-  returnedAt     DateTime?
+  deliveredAt     DateTime?
+  returnedAt      DateTime?
   // Cargos calculados/capturados al devolver; se descuentan del depósito.
-  lateFee        Decimal           @default(0) @db.Decimal(12, 2)
-  damageFee      Decimal           @default(0) @db.Decimal(12, 2)
-  penaltyNotes   String?
+  lateFee         Decimal           @default(0) @db.Decimal(12, 2)
+  damageFee       Decimal           @default(0) @db.Decimal(12, 2)
+  penaltyNotes    String?
   // Lo que se regresa al cliente del depósito y lo que aún debe si los cargos lo exceden.
-  depositRefund  Decimal?          @db.Decimal(12, 2)
-  balanceDue     Decimal?          @db.Decimal(12, 2)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  depositRefund   Decimal?          @db.Decimal(12, 2)
+  balanceDue      Decimal?          @db.Decimal(12, 2)
+  // Descuento de paquete: los articulos van a precio de lista y el paquete se cobra a su precio (la diferencia).
+  packageDiscount Decimal           @default(0) @db.Decimal(12, 2)
+  packageNote     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   organization Organization      @relation(fields: [organizationId], references: [id])
   location     Location?         @relation(fields: [locationId], references: [id])
@@ -3334,4 +3342,146 @@ model DepositEntry {
   @@index([organizationId, productId, kind])
   @@index([cashSessionId, kind])
   @@map("deposit_entries")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROGRAMAS DE FIDELIDAD (tarjeta de visitas y paquetes prepagados)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Programa que el dueño elige de las opciones precargadas y configura. Ambos tipos dan «créditos»: un crédito
+/// vale un servicio (o el porcentaje configurado) en una venta futura.
+///  · visit_card: cada `visitsRequired` ventas con productos del programa se gana un crédito.
+///  · prepaid_pack: al comprar el producto `packProductId` el cliente recibe `packUses` créditos.
+model LoyaltyProgram {
+  id               String   @id @default(cuid())
+  organizationId   String
+  kind             String
+  /// Opción precargada de la que partió (solo informativo).
+  presetKey        String?
+  name             String
+  description      String?
+  isActive         Boolean  @default(true)
+  visitsRequired   Int?
+  packUses         Int?
+  packProductId    String?
+  /// Productos/servicios que cuentan y que se pueden canjear (vacío = cualquiera).
+  targetProductIds Json
+  /// Qué parte del precio cubre un crédito (100 = gratis).
+  discountPercent  Int      @default(100)
+  /// Membresia (kind = membership): vigencia de cada periodo, si los creditos sin usar pasan al siguiente, aviso previo y condiciones.
+  periodDays       Int?
+  rollover         Boolean  @default(false)
+  reminderDays     Int      @default(3)
+  terms            String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  cards        LoyaltyCard[]
+
+  @@index([organizationId, isActive])
+  @@map("loyalty_programs")
+}
+
+model LoyaltyCard {
+  id             String    @id @default(cuid())
+  organizationId String
+  customerId     String
+  programId      String
+  /// Visitas acumuladas hacia el siguiente crédito (solo tarjeta de visitas).
+  visits         Int       @default(0)
+  /// Créditos disponibles para canjear.
+  credits        Int       @default(0)
+  /// Membresia: inicio y vencimiento del periodo vigente y ultimo aviso de vencimiento enviado.
+  startedAt      DateTime?
+  expiresAt      DateTime?
+  reminderSentAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  customer     Customer          @relation(fields: [customerId], references: [id])
+  program      LoyaltyProgram    @relation(fields: [programId], references: [id])
+  movements    LoyaltyMovement[]
+
+  @@unique([customerId, programId])
+  @@index([organizationId, customerId])
+  @@map("loyalty_cards")
+}
+
+model LoyaltyMovement {
+  id             String   @id @default(cuid())
+  organizationId String
+  cardId         String
+  /// visit | earn | purchase | redeem | adjust
+  type           String
+  delta          Int
+  saleId         String?
+  note           String?
+  createdAt      DateTime @default(now())
+
+  card LoyaltyCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("loyalty_movements")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GARANTÍAS DE SERVICIO (política opcional que define el dueño)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Regla de garantía de un servicio (p. ej. «si llueve el mismo día, el lavado exterior va por nuestra cuenta»).
+/// Solo existe si el dueño la crea y la deja activa; la leyenda sale en el ticket de los servicios que cubre.
+model WarrantyRule {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  presetKey           String?
+  name                String
+  isActive            Boolean  @default(true)
+  /// Servicios cubiertos (vacío = cualquier servicio sin inventario).
+  appliesToProductIds Json
+  /// Qué se puede repetir con la garantía (vacío = los mismos servicios del ticket original).
+  coversProductIds    Json
+  /// Horas desde la venta en las que se puede usar.
+  windowHours         Int      @default(24)
+  /// Solo el mismo día natural de la venta (en la zona de la sucursal).
+  sameDayOnly         Boolean  @default(false)
+  /// Qué parte del servicio cubre (100 = se repite gratis, 50 = a mitad de precio).
+  discountPercent     Int      @default(100)
+  /// Texto del ticket; si se deja vacío se arma con las condiciones.
+  legend              String?  @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  claims       WarrantyClaim[]
+
+  @@index([organizationId, isActive])
+  @@map("warranty_rules")
+}
+
+/// Uso (o solicitud del cliente desde el portal) de una garantía sobre una venta: una vez por venta y regla.
+model WarrantyClaim {
+  id             String    @id @default(cuid())
+  organizationId String
+  ruleId         String
+  /// Venta original (el ticket que se presenta).
+  saleId         String
+  customerId     String?
+  /// requested (pedida desde el portal) | used (canjeada en una venta) | rejected
+  status         String    @default("requested")
+  reason         String?
+  /// Venta en la que se aplicó el descuento de la garantía.
+  usedSaleId     String?
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  rule         WarrantyRule @relation(fields: [ruleId], references: [id])
+
+  @@unique([saleId, ruleId])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, customerId])
+  @@map("warranty_claims")
 }

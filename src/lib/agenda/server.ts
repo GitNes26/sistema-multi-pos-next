@@ -66,7 +66,8 @@ export interface AgendaAppointment {
   station: { id: string; name: string } | null;
   asset: { id: string; label: string; reference: string | null } | null;
   customer: { id: string; fullName: string; phone: string | null } | null;
-  employee: { id: string; fullName: string };
+  /** null = por asignar (el cliente no pidió a nadie en particular). */
+  employee: { id: string; fullName: string } | null;
   service: { variantId: string; name: string; price: number };
 }
 
@@ -190,7 +191,7 @@ export async function getAgendaAppointments(
     station: r.station,
     asset: r.asset,
     customer: r.customer ? { id: r.customer.id, fullName: r.customer.fullName, phone: r.customer.phone } : null,
-    employee: { id: r.employee.id, fullName: r.employee.fullName },
+    employee: r.employee ? { id: r.employee.id, fullName: r.employee.fullName } : null,
     service: { variantId: r.variant.id, name: r.variant.product.name, price: Number(r.variant.price) },
   }));
 }
@@ -254,7 +255,8 @@ export async function hasStationConflict(
 
 export interface AppointmentCreateInput {
   customerId: string;
-  employeeId: string;
+  /** Opcional: sin preferencia del cliente la cita queda «por asignar» y la toma el negocio después. */
+  employeeId?: string | null;
   variantId: string;
   startsAt: Date;
   durationMin?: number;
@@ -284,16 +286,34 @@ export async function createAppointment(organizationId: string, input: Appointme
     if (!station) throw new AgendaError("Lugar de atención no encontrado", 404);
   }
 
-  const employee = await prisma.employee.findFirst({
-    where: { id: input.employeeId, organizationId, isActive: true },
-    select: { id: true },
-  });
-  if (!employee) throw new AgendaError("Empleado no encontrado", 404);
+  const employeeId = input.employeeId || null;
+  let defaultDuration = 30;
+  if (employeeId) {
+    const employee = await prisma.employee.findFirst({
+      where: { id: employeeId, organizationId, isActive: true },
+      select: { id: true },
+    });
+    if (!employee) throw new AgendaError("Empleado no encontrado", 404);
 
-  const assignment = await findAssignment(organizationId, input.employeeId, input.variantId);
-  if (!assignment) throw new AgendaError("Este empleado no atiende el servicio seleccionado", 409);
+    const assignment = await findAssignment(organizationId, employeeId, input.variantId);
+    if (!assignment) throw new AgendaError("Este empleado no atiende el servicio seleccionado", 409);
+    defaultDuration = assignment.durationMin;
+  } else {
+    // Sin empleado: el servicio debe existir y ser agendable; la duración sale de lo que tarda quien lo presta.
+    const variant = await prisma.productVariant.findFirst({
+      where: { id: input.variantId, organizationId, isActive: true, product: { isActive: true, trackInventory: false } },
+      select: { id: true },
+    });
+    if (!variant) throw new AgendaError("Servicio no encontrado", 404);
+    const offered = await prisma.employeeService.findFirst({
+      where: { organizationId, variantId: input.variantId, isActive: true, employee: { isActive: true } },
+      orderBy: { durationMin: "asc" },
+      select: { durationMin: true },
+    });
+    if (offered) defaultDuration = offered.durationMin;
+  }
 
-  const durationMin = input.durationMin && input.durationMin > 0 ? input.durationMin : assignment.durationMin;
+  const durationMin = input.durationMin && input.durationMin > 0 ? input.durationMin : defaultDuration;
   const endsAt = new Date(input.startsAt.getTime() + durationMin * 60000);
 
   const location = await prisma.location.findFirst({
@@ -308,7 +328,7 @@ export async function createAppointment(organizationId: string, input: Appointme
 
   try {
     return await prisma.$transaction(async (tx) => {
-      if (await hasTimeConflict(organizationId, input.employeeId, input.startsAt, endsAt, undefined, tx)) {
+      if (employeeId && (await hasTimeConflict(organizationId, employeeId, input.startsAt, endsAt, undefined, tx))) {
         throw new AgendaError("El empleado ya tiene una cita en ese horario", 409);
       }
       if (input.stationId && (await hasStationConflict(organizationId, input.stationId, input.startsAt, endsAt, undefined, tx))) {
@@ -319,7 +339,7 @@ export async function createAppointment(organizationId: string, input: Appointme
           organizationId,
           locationId: location?.id ?? null,
           customerId: input.customerId,
-          employeeId: input.employeeId,
+          employeeId,
           variantId: input.variantId,
           status: "pending",
           startsAt: input.startsAt,
@@ -359,6 +379,8 @@ export async function updateAppointment(
     durationMin?: number;
     notes?: string | null;
     stationId?: string | null;
+    /** Asigna (o cambia) a quien atiende; se valida que preste el servicio y esté libre. */
+    employeeId?: string;
     /** Quién hace el cambio (historial). */
     actorUserId?: string | null;
     /** Saltarse el tiempo mínimo o el límite de reagendas (queda registrado con su motivo). */
@@ -390,7 +412,18 @@ export async function updateAppointment(
       const endsAt = new Date(startsAt.getTime() + durationMin * 60000);
       const rescheduled = startsAt.getTime() !== appointment.startsAt.getTime() || durationMin !== appointment.durationMin;
       const moved = startsAt.getTime() !== appointment.startsAt.getTime();
-      if (rescheduled) {
+      const assigning = changes.employeeId !== undefined && changes.employeeId !== appointment.employeeId;
+      let assignedName: string | null = null;
+      if (assigning) {
+        if (terminal) throw new AgendaError("No se puede asignar personal a una cita cerrada", 409);
+        const person = await tx.employee.findFirst({ where: { id: changes.employeeId, organizationId, isActive: true }, select: { id: true, fullName: true } });
+        if (!person) throw new AgendaError("Empleado no encontrado", 404);
+        const offered = await tx.employeeService.findFirst({ where: { organizationId, employeeId: person.id, variantId: appointment.variantId, isActive: true }, select: { id: true } });
+        if (!offered) throw new AgendaError("Este empleado no atiende el servicio de la cita", 409);
+        assignedName = person.fullName;
+      }
+      const effectiveEmployeeId = assigning ? changes.employeeId! : appointment.employeeId;
+      if (rescheduled || assigning) {
         if (terminal) throw new AgendaError("No se puede reprogramar una cita cerrada", 409);
         if (moved) {
           // Reagendar: tiempo mínimo antes de la cita, límite de reagendas y horario del negocio.
@@ -398,7 +431,7 @@ export async function updateAppointment(
           assertBookingWindow(policy, startsAt, changes.override);
           await assertWithinBusinessHours(organizationId, appointment.locationId, startsAt, endsAt, policy, tx);
         }
-        if (await hasTimeConflict(organizationId, appointment.employeeId, startsAt, endsAt, id, tx)) {
+        if (effectiveEmployeeId && (await hasTimeConflict(organizationId, effectiveEmployeeId, startsAt, endsAt, id, tx))) {
           throw new AgendaError("El empleado ya tiene una cita en ese horario", 409);
         }
         if (appointment.stationId && (await hasStationConflict(organizationId, appointment.stationId, startsAt, endsAt, id, tx))) {
@@ -414,6 +447,7 @@ export async function updateAppointment(
           endsAt,
           durationMin,
           notes: changes.notes !== undefined ? (changes.notes?.trim() || null) : appointment.notes,
+          ...(assigning ? { employeeId: effectiveEmployeeId } : {}),
           ...(moved ? { rescheduleCount: { increment: 1 } } : {}),
         },
       });
@@ -428,6 +462,15 @@ export async function updateAppointment(
           toStartsAt: startsAt,
           actorUserId: changes.actorUserId,
           reason: changes.override?.reason ?? null,
+        });
+      }
+      if (assigning) {
+        await recordAppointmentEvent(tx, {
+          organizationId,
+          appointmentId: id,
+          type: "assigned",
+          actorUserId: changes.actorUserId,
+          reason: assignedName,
         });
       }
       if (nextStatus !== appointment.status) {
