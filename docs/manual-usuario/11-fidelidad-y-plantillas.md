@@ -10,7 +10,7 @@
 | Paquetes prepagados y membresías | — | — | ✓ | — | ✓ |
 | Garantías de servicio | — | — | ✓ | — | ✓ |
 | Envases retornables | ✓ | ✓ | — | — | ✓ |
-| Bahías, sillas, vehículos y fichas, órdenes de servicio, citas | — | — | ✓ | — | ✓ |
+| Bahías, sillas, vehículos y fichas, órdenes de servicio, citas, pantalla de turnos | — | — | ✓ | — | ✓ |
 | Reservaciones de renta, paquetes de renta y depósito | — | — | — | ✓ | ✓ |
 
 Lo que no aplica a tu tipo de negocio no aparece en el menú y, si entras por la dirección, verás un aviso con los tipos donde sí está. Si cambias el tipo de tu negocio, lo que ya no aplica deja de funcionar (tus datos se conservan).
@@ -110,3 +110,14 @@ Mientras una garantía esté activa, el ticket de los servicios que cubre lleva 
 Puedes cambiarlo en *Usuarios y roles*. Los permisos siempre se combinan con tu plan: si tu plan no incluye una sección, nadie la ve, ni siquiera el propietario.
 
 Al crear tu empresa, el asistente te ofrece (opcional) aplicar la plantilla de tu tipo de negocio.
+
+## 11.8 Pantalla de turnos para la clientela
+
+Para negocios de servicios (autolavado, barbería, taller…). En *Órdenes de servicio* pulsa **Pantalla de turnos** y ábrela en una TV o tableta de la sala de espera (dirección `/turnos`, con la sesión de un usuario que pueda ver órdenes).
+
+- **En proceso:** cada vehículo con su folio, la etapa en que va, el avance por etapas, el **tiempo transcurrido** y el **tiempo estimado** para estar listo.
+- **En espera:** la cola, con el lugar que lleva cada uno.
+- **Listos:** los que ya pueden recogerse. Cuando uno termina aparece un aviso grande; con **Activar sonido** también suena un timbre y una voz dice el turno (el navegador exige pulsar el botón una vez).
+- **Estimado:** es la hora prometida de la orden; si no tiene, el tiempo típico que tarda ese flujo (promedio de tus últimas órdenes, a partir de 3 entregas).
+- **Privacidad:** solo se ve el folio y el vehículo con la placa parcialmente oculta; nunca el nombre ni el teléfono del cliente.
+- Se actualiza sola al instante; usa **pantalla completa** para la TV.

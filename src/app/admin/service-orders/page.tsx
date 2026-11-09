@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { ClipboardList } from "lucide-react";
+import Link from "next/link";
+import { ClipboardList, MonitorPlay } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { hasPermission } from "@/lib/auth/permissions";
@@ -30,6 +32,14 @@ export default async function ServiceOrdersPage() {
         icon={<ClipboardList className="size-5" />}
         title="Órdenes de servicio"
         description="Recibe vehículos, asigna lugar y llavero, avanza cada etapa y cobra al entregar."
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link href="/turnos" target="_blank" rel="noopener">
+              <MonitorPlay className="size-4" />
+              Pantalla de turnos
+            </Link>
+          </Button>
+        }
       />
       <ServiceOrdersBoard
         canManage={hasPermission(session, "service_orders.manage")}

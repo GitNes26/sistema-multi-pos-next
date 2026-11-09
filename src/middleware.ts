@@ -89,6 +89,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Pantalla de turnos para la clientela (servicios / híbrido): sesión de app; el giro y el permiso se validan en la página.
+  if (pathname.startsWith("/turnos")) {
+    if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    if (token!.scope === "portal")
+      return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
+    if (token!.scope === "superadmin" && !token!.activeOrganizationId)
+      return NextResponse.redirect(new URL("/admin/settings/organizations", req.url));
+    return NextResponse.next();
+  }
+
   // Reservaciones (rental / hybrid)
   if (pathname.startsWith("/reservaciones")) {
     if (!authenticated) return NextResponse.redirect(loginUrl("/auth/login", pathname + search));
@@ -147,6 +157,7 @@ export const config = {
     "/pos/:path*",
     "/kds/:path*",
     "/agenda/:path*",
+    "/turnos/:path*",
     "/reservaciones/:path*",
     "/admin/:path*",
     "/portal/:path*",

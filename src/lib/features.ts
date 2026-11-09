@@ -211,6 +211,7 @@ export const NAV_HREF_TO_FEATURE: Record<string, FeatureKey> = {
   "/admin/assets": "assets",
   "/admin/stations": "stations",
   "/admin/service-orders": "service_orders",
+  "/turnos": "service_orders",
   "/admin/warranties": "warranties",
   "/admin/loyalty-programs": "loyalty_programs",
   "/reservaciones": "reservations",

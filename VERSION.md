@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.65.0.0] — 2026-11-09
+- **Tipo:** `feat` (Minor)
+- feat: pantalla de turnos para la clientela en negocios de servicios (en proceso con etapas, tiempo transcurrido y estimado, cola en espera y listos con aviso visual, sonido y voz), acceso desde ordenes de servicio, privacidad de datos, pruebas y documentacion
+
 ### [0.64.0.0] — 2026-11-09
 - **Tipo:** `feat` (Minor)
 - feat: cobro automatico de membresias por la pasarela de pagos en linea de la empresa (desbloqueo solo del superadmin), gestion manual de miembros, funciones por tipo de negocio exigidas en servidor y menu (fidelidad, garantias, bahias y envases), interruptor de venta en el modal del POS, datos demo y asistentes de verticales, pruebas de integracion y e2e al dia y landing actualizada

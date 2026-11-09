@@ -122,6 +122,7 @@ tests/                   unitarias, integración y E2E
 - Productos, variantes, opciones y ubicaciones inactivas no se ofrecen para nuevas operaciones.
 - Horarios y cierre extraordinario determinan si el portal acepta pedidos; el cierre comunica motivo y reapertura programada.
 - Agenda y rentas calculan disponibilidad en servidor y vuelven a validarla al confirmar.
+- Pantalla de turnos de la clientela (`/turnos`, solo giros con órdenes de servicio, permiso `service_orders.view`): `src/lib/service-orders/turns-board.ts` (puro, probado) arma en proceso/espera/listos con avance por etapas, tiempo transcurrido y estimado (hora prometida o mediana del flujo con ≥3 entregas); `turns.ts` lee por `organizationId`; `GET /api/turnos` + SSE de órdenes; avisa al quedar listo (banner, timbre y voz opcionales). Solo folio y vehículo con placa enmascarada, nunca datos del cliente.
 
 ## 6. Flujos end-to-end esenciales
 
