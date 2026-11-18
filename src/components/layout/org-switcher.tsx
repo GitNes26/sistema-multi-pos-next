@@ -117,7 +117,17 @@ export function OrgSwitcher({
     }
     setSwitching(true)
     try {
-      await update({ activeOrganizationId: orgId })
+      // El servidor rechaza en silencio una org sin acceso y una petición puede
+      // perderse: se comprueba la sesión devuelta y se reintenta una vez.
+      const applied = (s: Awaited<ReturnType<typeof update>>) => {
+        const u = s?.user as
+          | { activeOrganizationId?: string | null; organizationId?: string | null }
+          | undefined
+        return (u?.activeOrganizationId ?? u?.organizationId) === orgId
+      }
+      let next = await update({ activeOrganizationId: orgId })
+      if (!applied(next)) next = await update({ activeOrganizationId: orgId })
+      if (!applied(next)) throw new Error("org-switch-not-applied")
       setOpen(false)
       // Cerrar antes del refresh: el contexto de navegación cambia debajo
       // (secciones por modo) y el drawer no debe quedarse abierto encima.
@@ -168,7 +178,7 @@ export function OrgSwitcher({
                   ? "inline-flex shrink-0"
                   : "hidden shrink-0 md:inline-flex"
               }
-              labelClassName="hidden max-w-28 lg:inline"
+              labelClassName={variant === "sidebar" ? "hidden max-w-28 lg:inline" : "hidden max-w-28 2xl:inline"}
             />
           ) : null}
           {switching ? (

@@ -714,6 +714,16 @@ export const SYSTEM_MENUS: SystemMenuDef[] = [
     sortOrder: 12,
   },
   {
+    id: "menu-turnos",
+    parentId: "menu-operacion",
+    type: "item",
+    label: "Pantalla de turnos",
+    icon: "MonitorPlay",
+    href: "/turnos",
+    permissionKey: "service_orders.view",
+    sortOrder: 13,
+  },
+  {
     id: "menu-reservaciones",
     parentId: "menu-operacion",
     type: "item",

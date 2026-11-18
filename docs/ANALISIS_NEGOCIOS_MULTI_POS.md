@@ -1,5 +1,5 @@
 # ANÁLISIS MULTI-POS — VIABILIDAD POR TIPO DE NEGOCIO
-## Documento Ejecutivo · Coahuila, México · Agosto 2026
+## Documento Ejecutivo · Coahuila, México · Agosto 2026 · Actualizado noviembre 2026 (ver sección 7)
 
 ---
 
@@ -11,6 +11,7 @@
 4. [Listado Detallado de Funcionalidades](#4-listado-detallado)
 5. [Gap Analysis — Lo que Falta](#5-gap-analysis)
 6. [Modelo de Negocio / Venta-Renta](#6-modelo-de-negocio)
+7. [Actualización noviembre 2026 — funciones de verticales por tipo de negocio](#7-actualización-noviembre-2026)
 
 ---
 
@@ -387,6 +388,18 @@ El presente documento evalúa la capacidad del sistema para cubrir **10 tipos de
 | Calendario visual | ❌ | ❌ | ❌ | ❌ | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | ❌ |
 | Duración estimada | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Recordatorios/notificaciones | ❌ | ❌ | ❌ | ❌ | 🟡 | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **VERTICALES (nov 2026)** | | | | | | | | | | |
+| Órdenes de servicio por etapas (recibido → listo → entregado) | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Vehículos y fichas del cliente (placa, mascota, equipo) | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Bahías, sillas y lugares de atención | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Pantalla de turnos para la clientela (proceso, tiempos, cola, aviso «listo») | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Garantías de servicio (leyenda en ticket y canje en caja) | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Tarjeta de visitas («cada N, el siguiente gratis») | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Paquetes prepagados y membresías (vigencia, aviso, cobro manual u en línea) | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Envases retornables (importe, devolución, pendientes por cliente) | ✅ | 🟡 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Reservaciones de renta con depósito, entrega/devolución y cargos por retraso | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Paquetes de renta (combos de artículos rentables) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Plantillas de arranque (autolavado, barbería, renta) | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | **CLIENTES** | | | | | | | | | | |
 | Fichas de cliente | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Puntos de lealtad | ✅ | 🟡 | ✅ | 🟡 | ✅ | ✅ | 🟡 | ❌ | ❌ | 🟡 |
@@ -763,3 +776,60 @@ El sistema es **competitivo** en precio y funcionalidad vs soluciones del mercad
 ---
 
 *Documento generado para análisis interno · Multi-POS · Coahuila, México · Agosto 2026*
+
+---
+
+# 7. ACTUALIZACIÓN NOVIEMBRE 2026 — FUNCIONES DE VERTICALES POR TIPO DE NEGOCIO
+
+Desde la versión original de este análisis se construyeron las **fases de verticales** (servicios, renta, fidelidad, garantías, envases y pantalla de turnos). Cada función **solo aparece y solo funciona** en los tipos de negocio donde tiene sentido: el menú, las páginas, las APIs y los asistentes consultan la misma matriz (`src/lib/vertical-modes.ts` y `src/lib/features.ts`). Si una persona entra por dirección a algo que no aplica a su giro, ve un aviso con los tipos donde sí está.
+
+## 7.1 Matriz por tipo de negocio del sistema
+
+| Función | Tienda / Abarrotes | Restaurante / Café | Servicios | Renta | Híbrido |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| Tarjeta de visitas (fidelidad) | — | ✓ | ✓ | — | ✓ |
+| Paquetes prepagados y membresías | — | — | ✓ | — | ✓ |
+| Garantías de servicio | — | — | ✓ | — | ✓ |
+| Envases retornables (importe y devolución) | ✓ | ✓ | — | — | ✓ |
+| Órdenes de servicio, vehículos y fichas, bahías y sillas | — | — | ✓ | — | ✓ |
+| **Pantalla de turnos** (`/turnos`) | — | — | ✓ | — | ✓ |
+| Agenda de citas (con o sin personal, por lugar, desde el portal) | — | — | ✓ | — | ✓ |
+| Reservaciones, depósito, entrega/devolución, paquetes de renta | — | — | — | ✓ | ✓ |
+| Mesas, cocina (KDS), propinas, dividir cuenta, menú digital | — | ✓ | — | — | ✓ |
+| Producto a granel y CEDIS | ✓ | — | — | — | ✓ |
+| Plantillas de arranque | — | — | autolavado y barbería | renta | las tres |
+
+> Decisión de producto (nov 2026): la **fidelidad no se muestra en la tienda de abarrotes** (sus puntos de lealtad y promociones siguen en Promociones y Ajustes → Lealtad); sí en restaurante/café («cada 5 cafés, el siguiente gratis»), servicios e híbrido.
+
+## 7.2 Dónde se configura y se ve cada cosa (menú del panel)
+
+| Si tu negocio es… | Verás en el menú (Operación / Catálogos) |
+| --- | --- |
+| **Servicios** (barbería, autolavado, veterinaria, fotografía) | Agenda de citas · Órdenes de servicio · **Pantalla de turnos** · Vehículos y fichas · **Bahías y lugares** (bahías, sillas, cajones) · Promociones → Fidelidad y Garantías · Ajustes → Plantillas |
+| **Renta** (brincolines, equipo) | Reservaciones · Ajustes → Plantillas (renta de equipo) |
+| **Restaurante / Café** | Mesas · Cocina (KDS) · Fidelidad (tarjeta de visitas) · Envases retornables |
+| **Tienda / Abarrotes / Ferretería** | Inventario · Granel · CEDIS · Envases retornables (refresco retornable, garrafón) |
+| **Híbrido** | Todo lo anterior |
+
+Las pantallas propias del giro quedan **fijas** en el menú reducido (no se esconden en «Más herramientas»).
+
+## 7.3 Integración por negocio del análisis
+
+| Negocio (sección 2) | Funciones nuevas que le aplican | Situaciones que ahora cubre |
+| --- | --- | --- |
+| 2.1 Abarrotes | Envases retornables | Refresco/garrafón retornable con importe aparte y devolución. *No usa fidelidad de programas.* |
+| 2.2 Ferretería | Envases retornables (poco uso) | Cilindros y tambos retornables. |
+| 2.3 Nieves | Tarjeta de visitas · envases | «Cada 10 nieves, la siguiente gratis»; envases de litro retornables. |
+| 2.4 Snacks y bebidas | Envases retornables | Casco de refresco y reposición. |
+| 2.5 Barbería / estética | Sillas (bahías y lugares) · órdenes de servicio · fichas de estilo · citas con personal opcional · lista por lugar · **pantalla de turnos** · tarjeta de visitas · paquetes · membresías · garantías | Situaciones 1, 3, 9, 11, 19 y 20 (cupón de fidelidad, walk-in + cita, paquetes, lista de espera). |
+| 2.6 Autolavado | Bahías · vehículos (placa, color) · flujo *Recibido → Lavando → Secado → Listo* · **pantalla de turnos** (proceso, transcurrido, estimado, cola, aviso «listo») · garantías («si llueve, repites») · paquetes y membresías (5 lavados, mensualidad) · plantilla de arranque | Situaciones 3, 5, 6, 8, 9, 11 y 12 (bahía, tiempo estimado, ticket de entrada/salida, paquetes, turnos y «su auto está listo»). |
+| 2.7 Veterinaria | Fichas de la mascota · órdenes de servicio · citas · garantías · tarjeta de visitas | Ficha y expediente base (el calendario de vacunas sigue como pendiente). |
+| 2.8 Brincolines | Reservaciones con depósito · entrega y devolución con revisión · cargos por retraso y daños · paquetes de renta · plantilla de renta | Control de depósito, retraso y combos de fiesta. |
+| 2.9 Fotografía | Citas · órdenes de servicio · fichas · paquetes y membresías | Sesiones por cita y paquetes de sesiones. |
+| 2.10 Restaurante | Tarjeta de visitas · envases retornables (botella, garrafón) | Fidelidad por consumo; devolución de envase. *Mesas, KDS, propinas y dividir cuenta ya existían.* |
+
+## 7.4 Estado frente a los pendientes de la sección 5
+
+- **Cubierto:** turnos/colas y aviso «listo» (autolavado), paquetes y membresías, cupón de fidelidad por visitas, bahías/sillas, ficha de cliente/vehículo, depósitos y penalizaciones de renta, lista de espera visible al cliente.
+- **Sigue pendiente:** calendario de vacunas/desparasitación y control de caducidad (veterinaria), comisiones por servicio al empleado, galerías antes/después, contratos de renta con firma.
+- **Requiere evidencia externa:** pagos reales con Stripe o Mercado Pago, cobro con tarjeta guardada, y despliegue en producción (migraciones, semilla de permisos y cron de membresías).

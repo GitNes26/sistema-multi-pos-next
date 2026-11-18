@@ -308,7 +308,7 @@ export const WIZARD_ACTIONS: Record<WizardActionKind, WizardActionDef> = {
     description: "Tarjeta de visitas (y, en servicios, paquetes o membresías), opcional, en Promociones → Fidelidad",
     href: "/admin/loyalty-programs",
     permission: "loyalty.manage",
-    modes: ["retail", "food_service", "services", "hybrid"],
+    modes: ["food_service", "services", "hybrid"],
   },
   warranty: {
     kind: "warranty",
@@ -329,7 +329,6 @@ export const MODE_WIZARDS: Record<BusinessMode, WizardActionKind[]> = {
     "payroll",
     "expenses",
     "promotion",
-    "loyalty",
     "delivery",
     "credit",
     "payments",

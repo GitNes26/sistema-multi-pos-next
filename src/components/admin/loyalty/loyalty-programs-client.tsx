@@ -186,7 +186,7 @@ export function LoyaltyProgramsClient({ canManage }: { canManage: boolean }) {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {programs.map((p) => (
-            <article key={p.id} className={cn("space-y-3 rounded-2xl border bg-card p-4", !p.isActive && "opacity-70")}>
+            <article key={p.id} className={cn("min-w-0 space-y-3 rounded-2xl border bg-card p-4", !p.isActive && "opacity-70")}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="truncate font-semibold">{p.name}</h3>
@@ -194,7 +194,7 @@ export function LoyaltyProgramsClient({ canManage }: { canManage: boolean }) {
                 </div>
                 {canManage && <Switch checked={p.isActive} onCheckedChange={(v) => void toggle(p, v)} aria-label={`Programa ${p.isActive ? "activo" : "pausado"}`} />}
               </div>
-              <p className="text-sm text-muted-foreground">{summary(p)}</p>
+              <p className="break-words text-sm text-muted-foreground">{summary(p)}</p>
               <p className="text-xs text-muted-foreground tabular-nums">
                 {p.kind === "membership" ? `${p.activeMembers} miembro(s) con membresía vigente · ` : ""}{p.creditsOutstanding > 0 ? `${p.creditsOutstanding} créditos pendientes en ${p.customersWithCredits} cliente(s)` : "Sin créditos pendientes"}
               </p>

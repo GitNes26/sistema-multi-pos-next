@@ -24,7 +24,7 @@ test("portal: productos a granel en listas y acceso a cambio de contraseña", as
   await page.getByRole("button", { name: "Cerrar menú" }).click();
 
   await page.getByRole("link", { name: "Listas" }).click();
-  await page.getByRole("button", { name: "Nueva lista" }).click();
+  await page.getByRole("button", { name: /^Nueva$/ }).click();
   await page.getByRole("dialog", { name: "Nueva lista" }).getByRole("button", { name: "Crear lista" }).click();
   await expect(page.locator("#shopping-list-name")).toHaveAttribute("aria-invalid", "true");
   await expect(page.locator("#shopping-list-name")).toBeFocused();
@@ -33,11 +33,14 @@ test("portal: productos a granel en listas y acceso a cambio de contraseña", as
   await page.getByRole("dialog", { name: "Nueva lista" }).getByRole("button", { name: "Crear lista" }).click();
   await page.waitForURL(/\/portal\/lists\//);
   await page.getByRole("button", { name: /agregar/i }).first().click();
-  await expect(page.getByRole("button", { name: /kilogramo.*\$/i }).first()).toBeVisible();
-  await page.getByRole("button", { name: /kilogramo.*\$/i }).first().click();
+  // Modo lista: cada presentación es una fila con su propio botón «Agregar».
+  const bulkRow = page.locator("li").filter({ hasText: /kilogramo/i }).filter({ has: page.getByRole("button", { name: /agregar/i }) }).first();
+  await expect(bulkRow).toBeVisible();
+  await bulkRow.getByRole("button", { name: /agregar/i }).click();
   await page.getByRole("button", { name: /listo/i }).click();
-  await page.getByRole("button", { name: "Guardar lista" }).click();
-  await expect(page.getByText("Lista guardada")).toBeVisible();
+  // La lista se guarda sola al agregar; «Listo» vuelve al detalle con lo ya guardado.
+  await expect(page).toHaveURL(/\/portal\/lists\//);
+  await expect(page.getByText(/kg/).first()).toBeVisible();
   await page.reload();
   if (await page.getByRole("button", { name: "Saltar" }).waitFor({ state: "visible", timeout: 3000 }).then(() => true).catch(() => false)) await page.getByRole("button", { name: "Saltar" }).click();
   await expect(page.getByText(/kg/).first()).toBeVisible();

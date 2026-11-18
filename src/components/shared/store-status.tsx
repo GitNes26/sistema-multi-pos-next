@@ -111,7 +111,7 @@ export function StoreStatusSwitch({ className, compact = false }: { className?: 
           <Dot open={status.open} />
           {status.open ? "Abierto" : "Cerrado"}
           {!compact && !["Abierto", "Cerrado"].includes(status.label) && (
-            <span className="hidden font-normal opacity-80 xl:inline">· {status.label.replace(/^Cerrado · /, "")}</span>
+            <span className="hidden font-normal opacity-80 2xl:inline">· {status.label.replace(/^Cerrado · /, "")}</span>
           )}
         </button>
       </PopoverTrigger>

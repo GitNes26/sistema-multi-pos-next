@@ -411,6 +411,21 @@ export const authOptions: NextAuthOptions = {
       ) {
         const next = (updatePayload as { activeOrganizationId?: string | null })
           .activeOrganizationId
+        // Un usuario de app solo puede activar una organización donde tenga
+        // membresía o empleo; el tenant nunca se acepta sin comprobarlo.
+        if (token.scope === "app" && next) {
+          const [membership, employee] = await Promise.all([
+            prisma.membership.findFirst({
+              where: { userId: token.id, organizationId: next },
+              select: { id: true },
+            }),
+            prisma.employee.findFirst({
+              where: { userId: token.id, organizationId: next },
+              select: { id: true },
+            }),
+          ])
+          if (!membership && !employee) return token
+        }
         if (token.scope === "portal" && next) {
           const customerAccess = await prisma.customer.findFirst({
             where: { userId: token.id, organizationId: next, isActive: true },

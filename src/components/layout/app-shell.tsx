@@ -16,6 +16,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { NavigationDrawer } from "@/components/layout/navigation-drawer";
 import { BottomTabBar } from "@/components/layout/bottom-tab-bar";
+import { InteractionGuard } from "@/components/layout/interaction-guard";
 import { RouteTransition } from "@/components/layout/route-transition";
 import type { UserMenuUser } from "@/components/layout/user-menu"
 
@@ -83,7 +84,7 @@ export function AppShell({ user, permissions, planDenied, logoUrl, businessMode:
         />
       </aside>
 
-      <div className="flex min-h-svh w-full flex-col lg:pl-[var(--sidebar-width)]">
+      <div className="flex min-h-svh w-full min-w-0 flex-col lg:pl-[var(--sidebar-width)]">
         <AppHeader sections={sections} user={user} logoUrl={logoUrl} />
 
         <main className="flex-1 px-3 pb-24 pt-4 sm:px-4 md:px-6 md:pb-8 md:pt-6">
@@ -91,6 +92,7 @@ export function AppShell({ user, permissions, planDenied, logoUrl, businessMode:
         </main>
       </div>
 
+      <InteractionGuard />
       <NavigationDrawer
         sections={sections}
         orgScope={user.scope ?? null}

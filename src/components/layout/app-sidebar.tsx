@@ -12,6 +12,7 @@ import { NavLink } from "@/components/layout/nav-link";
 import { Logo } from "@/components/layout/logo";
 import { useNavUsage } from "@/hooks/use-nav-usage";
 import { pickFrequent } from "@/lib/nav-usage";
+import { isModeSpecificHref } from "@/lib/features";
 import { OrgSwitcher } from "@/components/layout/org-switcher";
 import {
   Collapsible,
@@ -126,7 +127,7 @@ export function AppSidebar({
     return sections
       .map((section) => ({
         ...section,
-        items: section.items.filter((item) => item.href === HOME_HREF || frequent.has(navKey(item)) || isNavActive(item, pathname)),
+        items: section.items.filter((item) => item.href === HOME_HREF || frequent.has(navKey(item)) || isNavActive(item, pathname) || isModeSpecificHref(item.href)),
       }))
       .filter((section) => section.items.length > 0);
   }, [sections, showAll, pathname, frequent]);

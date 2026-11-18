@@ -19,17 +19,20 @@ async function loginPortal(page: Page) {
   await page.waitForURL((url) => url.pathname === "/portal", { timeout: 45_000, waitUntil: "domcontentloaded" })
 }
 
+// Los campos de CrudForm llevan id con prefijo aleatorio; se localizan por la clave del campo.
+const supplierName = (page: Page) => page.locator('#supplier-form [id$="-f-businessName"]')
+
 test("proveedor: foco inicial y Enter guarda el formulario", async ({ page }, testInfo) => {
   await loginOwner(page)
   await page.goto("/admin/purchasing", { waitUntil: "domcontentloaded" })
   await page.getByRole("button", { name: "Nuevo proveedor" }).click()
-  await expect(page.locator("#supplier-name")).toBeFocused()
-  await page.locator("#supplier-name").press("Enter")
-  await expect(page.locator("#supplier-name")).toHaveAttribute("aria-invalid", "true")
-  await expect(page.locator("#supplier-name")).toBeFocused()
+  await expect(supplierName(page)).toBeFocused()
+  await supplierName(page).press("Enter")
+  await expect(supplierName(page)).toHaveAttribute("aria-invalid", "true")
+  await expect(supplierName(page)).toBeFocused()
   const name = `Proveedor UX ${testInfo.project.name} ${Date.now()}`
-  await page.locator("#supplier-name").fill(name)
-  await page.locator("#supplier-name").press("Enter")
+  await supplierName(page).fill(name)
+  await supplierName(page).press("Enter")
   await expect(page.getByRole("dialog", { name: "Nuevo proveedor" })).toBeHidden({ timeout: 30_000 })
   await expect(page.getByText(name, { exact: true })).toBeVisible({ timeout: 30_000 })
   await page.screenshot({ path: testInfo.outputPath("proveedor-guardado.png"), fullPage: true })
@@ -47,21 +50,22 @@ test("compras: cotización y orden validan por Enter y conservan los totales", a
   await page.getByRole("button", { name: "Nueva cotización" }).click()
   const dialog = page.getByRole("dialog", { name: "Nueva solicitud de cotización" })
   await expect(dialog).toBeVisible()
-  await dialog.getByRole("button", { name: "Crear cotización" }).click()
-  await expect(page.locator("#purchase-supplier")).toHaveAttribute("aria-invalid", "true")
-  await expect(page.locator("#purchase-supplier")).toBeFocused()
-  await expect(page.locator("#purchase-add-product")).toHaveAttribute("aria-invalid", "true")
-  await page.locator("#purchase-supplier").click()
+  // Asistente de tres pasos: no se avanza sin productos.
+  await expect(dialog.getByRole("button", { name: /Continuar/ })).toBeDisabled()
+  await page.locator("#quote-add-product").click()
   await page.locator("[cmdk-item]").first().click()
-  await page.locator("#purchase-add-product").click()
-  await page.locator("[cmdk-item]").first().click()
-  await expect(dialog.locator('input[id^="qty-"]').first()).toBeVisible()
-  await dialog.locator('input[id^="qty-"]').first().fill("2")
-  await dialog.locator('input[id^="cost-"]').first().fill("12.50")
-  await dialog.locator('input[id^="tax-"]').first().fill("0.16")
-  await expect(dialog.getByText(/Total estimado:.*29/)).toBeVisible()
+  await dialog.locator('input[aria-label^="Cantidad de"]').first().fill("2")
+  await dialog.getByRole("button", { name: /Continuar/ }).click()
+  // Paso 2: si el producto no tiene proveedor vinculado, se elige uno y se captura el precio.
+  if (await dialog.getByRole("button", { name: /Ver resumen/ }).isDisabled()) {
+    await dialog.locator('[id^="other-"]').first().click()
+    await page.locator("[cmdk-item]").first().click()
+    const price = dialog.locator('input[id^="price-"]').first()
+    if (await price.isVisible().catch(() => false)) await price.fill("12.5")
+  }
+  await dialog.getByRole("button", { name: /Ver resumen/ }).click()
   const quoteResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/purchasing") && response.request().method() === "POST" && response.request().postData()?.includes('"quote.create"') === true)
-  await dialog.locator('input[id^="qty-"]').first().press("Enter")
+  await dialog.getByRole("button", { name: /Finalizar/ }).click()
   const quoteResponse = await quoteResponsePromise
   expect(quoteResponse.ok()).toBe(true)
   const quote = (await quoteResponse.json()).data as { folio: string }
@@ -70,12 +74,14 @@ test("compras: cotización y orden validan por Enter y conservan los totales", a
   await expect(quoteRow).toBeVisible({ timeout: 30_000 })
   await quoteRow.getByRole("button", { name: "Crear orden" }).click()
   const orderDialog = page.getByRole("dialog", { name: "Nueva orden de compra" })
-  await orderDialog.getByRole("button", { name: "Crear orden" }).click()
-  await expect(page.locator("#purchase-target")).toHaveAttribute("aria-invalid", "true")
-  await expect(page.locator("#purchase-target")).toBeFocused()
-  await page.locator("#purchase-target").click()
-  await page.locator("[cmdk-item]").first().click()
-  await expect(orderDialog.getByText(/Total estimado:.*29/)).toBeVisible()
+    // Desde una cotización el asistente abre en «productos»; falta el destino: se vuelve al paso 1.
+  await orderDialog.getByRole("button", { name: /Atrás/ }).click()
+  await expect(orderDialog.getByRole("button", { name: /Continuar/ })).toBeDisabled()
+  await orderDialog.locator("button[aria-pressed]").last().click() // los anteriores son proveedores
+  await orderDialog.getByRole("button", { name: /Continuar/ }).click()
+  await orderDialog.getByRole("button", { name: /Continuar/ }).click()
+  const shownTotal = Number((await orderDialog.locator("dt:has-text('Total estimado') + dd").innerText()).replace(/[^0-9.]/g, ""))
+  expect(shownTotal).toBeGreaterThan(0)
   await page.route("**/api/purchasing", async (route) => {
     if (route.request().method() === "POST" && route.request().postData()?.includes('"order.create"')) {
       await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ ok: false, error: "Esta cotización ya tiene una orden activa", field: "quoteId" }) })
@@ -86,17 +92,16 @@ test("compras: cotización y orden validan por Enter y conservan los totales", a
   await expect(orderDialog).toBeVisible()
   await page.unroute("**/api/purchasing")
   const orderResponsePromise = page.waitForResponse((response) => response.url().endsWith("/api/purchasing") && response.request().method() === "POST" && response.request().postData()?.includes('"order.create"') === true)
-  await orderDialog.locator('input[id^="qty-"]').first().press("Enter")
+  await orderDialog.getByRole("button", { name: "Crear orden" }).click()
   const orderResponse = await orderResponsePromise
   expect(orderResponse.ok()).toBe(true)
   const order = (await orderResponse.json()).data as { total: string | number; folio: string }
-  expect(Number(order.total)).toBeCloseTo(29, 2)
+  expect(Number(order.total)).toBeCloseTo(shownTotal, 2)
   await expect(orderDialog).toBeHidden({ timeout: 30_000 })
   await page.getByRole("tab", { name: "Órdenes" }).click()
   const orderCard = page.locator('[data-slot="card"]').filter({ has: page.getByText(order.folio, { exact: true }) })
   await expect(orderCard).toBeVisible({ timeout: 30_000 })
-  await expect(orderCard.getByText("$29.00")).toBeVisible()
-  await orderCard.getByRole("button", { name: "Aprobar" }).click()
+    await orderCard.getByRole("button", { name: "Aprobar" }).click()
   await expect(orderCard.getByRole("button", { name: "Recibir" })).toBeVisible({ timeout: 30_000 })
   await orderCard.getByRole("button", { name: "Recibir" }).click()
   const receiveDialog = page.getByRole("dialog", { name: `Recibir ${order.folio}` })
@@ -128,7 +133,7 @@ test("publicación: Enter muestra errores y conserva el foco", async ({ page }, 
 test("producto: Enter destaca campos inválidos y enfoca el primero", async ({ page }, testInfo) => {
   await loginOwner(page)
   await page.goto("/admin/products", { waitUntil: "domcontentloaded" })
-  await page.getByRole("button", { name: /^nuevo$/i }).click()
+  await page.getByRole("button", { name: /^nuevo producto$/i }).click()
   const name = page.locator("#product-name")
   await expect(page.locator("#product-form")).toBeVisible()
   await name.focus()
@@ -142,7 +147,7 @@ test("producto: Enter destaca campos inválidos y enfoca el primero", async ({ p
 test("producto: crear una categoría conserva el formulario padre y selecciona la nueva opción", async ({ page }) => {
   await loginOwner(page)
   await page.goto("/admin/products", { waitUntil: "domcontentloaded" })
-  await page.getByRole("button", { name: /^nuevo$/i }).click()
+  await page.getByRole("button", { name: /^nuevo producto$/i }).click()
 
   const productName = `Producto pendiente ${Date.now()}`
   const categoryName = `Categoría rápida ${Date.now()}`
@@ -169,18 +174,26 @@ test("producto personalizado: muestra variantes vendibles y tópicos como seccio
   await organizationSwitcher.click()
   await page.getByRole("menuitem").filter({ hasText: "Restaurante Demo" }).click()
   await expect(organizationSwitcher).toContainText("Restaurante Demo", { timeout: 30_000 })
-  await page.goto("/admin/products", { waitUntil: "domcontentloaded" })
-  await page.getByRole("button", { name: /^nuevo$/i }).click()
-  await page.getByRole("button", { name: "Personalizado", exact: true }).click()
+  // El cambio de empresa se recuerda en la BD (lastOrganizationId): se devuelve al final para no contaminar otras pruebas.
+  try {
+    await page.goto("/admin/products", { waitUntil: "domcontentloaded" })
+    await page.getByRole("button", { name: /^nuevo producto$/i }).click()
+    await page.getByRole("radio", { name: /^Personalizado/ }).click()
 
-  const form = page.locator("#product-form")
-  await expect(form.getByText("Opciones y variantes", { exact: true })).toBeVisible()
-  await expect(form.getByText("Personalízalo — tópicos", { exact: true })).toBeVisible()
-  await expect(form.getByRole("button", { name: "Agregar opción" })).toBeVisible()
-  await form.getByRole("button", { name: "Agregar opción" }).click()
-  await expect(form.getByLabel("Opción 1")).toBeVisible()
-  await expect(form.getByLabel("Valor 1")).toBeVisible()
-  await page.screenshot({ path: testInfo.outputPath("producto-personalizado-opciones.png"), fullPage: true })
+    const form = page.locator("#product-form")
+    await expect(form.getByText("Opciones y variantes", { exact: true })).toBeVisible()
+    await expect(form.getByText("Personalízalo — tópicos", { exact: true })).toBeVisible()
+    await expect(form.getByRole("button", { name: "Agregar opción" })).toBeVisible()
+    await form.getByRole("button", { name: "Agregar opción" }).click()
+    await expect(form.getByLabel("Opción 1")).toBeVisible()
+    await expect(form.getByLabel("Valor 1")).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath("producto-personalizado-opciones.png"), fullPage: true })
+  } finally {
+    await page.goto("/admin", { waitUntil: "domcontentloaded" })
+    await organizationSwitcher.click()
+    await page.getByRole("menuitem").filter({ hasText: "Híbrido Demo" }).click()
+    await expect(organizationSwitcher).toContainText("Híbrido Demo", { timeout: 30_000 })
+  }
 })
 
 test("portal: Enter en login vacío muestra errores sin desbordamiento", async ({ page }, testInfo) => {

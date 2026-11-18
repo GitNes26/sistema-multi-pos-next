@@ -8,6 +8,7 @@ import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db";
+import { NotAvailableForMode } from "@/components/shared/not-available-for-mode";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { PageHeader } from "@/components/layout/page-header";
 import { ServiceOrdersBoard } from "@/components/admin/service-orders/service-orders-board";
@@ -23,7 +24,10 @@ export default async function ServiceOrdersPage() {
 
   // Solo los giros con servicios (autolavado, estética, taller…) usan órdenes de servicio.
   const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { businessMode: true } });
-  if (!org || !SERVICE_ORDER_MODES.includes(org.businessMode)) redirect("/admin");
+  if (!org) redirect("/admin");
+  if (!SERVICE_ORDER_MODES.includes(org.businessMode)) {
+    return <NotAvailableForMode icon={<ClipboardList className="size-5" />} title="Órdenes de servicio" what="Las órdenes de servicio" mode={org.businessMode} modes={SERVICE_ORDER_MODES} />;
+  }
   if (!hasPermission(session, "service_orders.view")) return <AccessDenied permission="service_orders.view" />;
 
   return (

@@ -81,3 +81,11 @@ Estado verificado el 9 nov 2026: **29/29** pruebas de integración y la de compr
 ## Cobro de membresías por la pasarela (pruebas)
 
 `npm run verify:fidelidad` simula Stripe (sustituye `fetch` solo para `api.stripe.com/v1/checkout/sessions`): nunca se llama a una pasarela real. Probar con cuentas reales de Stripe/Mercado Pago sigue pendiente.
+
+## Documentos Word
+
+`npm run docs:word` regenera `docs/ANALISIS_NEGOCIOS_MULTI_POS.docx` desde su `.md` (`scripts/md-to-docx.mjs`; admite otro par `entrada.md salida.docx`). La fuente de verdad es el Markdown: no edites el `.docx` a mano. `scripts/generate-word.ts` es el generador anterior con contenido fijo y ruta ajena a este equipo; ya no se usa.
+
+## Selectores de e2e que cambian con la interfaz
+
+Los campos de `CrudForm` llevan id con prefijo aleatorio (`<uid>-f-<clave>`): localízalos con `[id$="-f-clave"]`. «Nuevo producto» y el tipo de producto (radios) son los controles vigentes; las cotizaciones y órdenes de compra usan asistentes de tres pasos (`Continuar` / `Ver resumen` / `Finalizar`); en las listas del portal cada presentación tiene su «Agregar» y se guardan solas.

@@ -105,7 +105,7 @@ const FEATURES = [
   { icon: Users, title: "Equipo, roles y nómina", text: "Roles por área, permisos por plan, aprobación de supervisor y recibos de nómina con logo." },
   { icon: CreditCard, title: "Gastos y caja", text: "Registra gastos con retiro de caja y cuadra el corte sin hojas aparte. Te avisa de productos sin costo para que tus ganancias sean reales." },
   { icon: FileSpreadsheet, title: "Devoluciones justas", text: "Se devuelve lo realmente pagado: dinero, cupón, puntos, crédito o cambio de producto." },
-  { icon: Repeat2, title: "Fidelidad a tu medida", text: "Tarjeta de visitas para cualquier negocio; en servicios, también paquetes prepagados y membresías con vigencia, aviso antes de vencer y condiciones que el cliente ve en su portal. Tú decides si las usas." },
+  { icon: Repeat2, title: "Fidelidad a tu medida", text: "Tarjeta de visitas en cafeterías, restaurantes y servicios; en servicios, también paquetes prepagados y membresías con vigencia, aviso antes de vencer y condiciones que el cliente ve en su portal. Tú decides si las usas." },
   { icon: ShieldCheck, title: "Garantías de servicio", text: "Define tus reglas (por ejemplo, repetir el lavado si llueve el mismo día): la leyenda sale en el ticket y se canjea en caja o la pide el cliente desde su portal." },
   { icon: Car, title: "Autolavado y barbería", text: "Bahías y sillas, órdenes por etapas con aviso de «listo», ficha de estilo del cliente y citas que el cliente reserva desde su portal, con o sin barbero preferido." },
   { icon: KeyRound, title: "Renta con depósito", text: "Reservaciones por periodo, paquetes de renta, depósito en garantía en caja, entrega y devolución con revisión, y cargos por retraso o daños." },

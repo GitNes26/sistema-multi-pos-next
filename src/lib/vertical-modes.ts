@@ -4,7 +4,7 @@ import type { BusinessMode } from "@/lib/auth/options"
 // páginas, las APIs y los asistentes, para que ninguna función aparezca ni funcione donde no tiene sentido.
 //
 //                                      retail  food  services  rental  hybrid
-//  Tarjeta de visitas                    ✓      ✓       ✓        ·       ✓
+//  Tarjeta de visitas                    ·      ✓       ✓        ·       ✓   (tienda de abarrotes: no)
 //  Paquetes prepagados y membresías      ·      ·       ✓        ·       ✓   (cobro de la cuota manual o en línea: igual)
 //  Garantías de servicio                 ·      ·       ✓        ·       ✓
 //  Envases retornables (importe)         ✓      ✓       ·        ·       ✓
@@ -17,12 +17,12 @@ import type { BusinessMode } from "@/lib/auth/options"
 export type LoyaltyKindKey = "visit_card" | "prepaid_pack" | "membership"
 
 export const LOYALTY_KIND_MODES: Record<LoyaltyKindKey, readonly BusinessMode[]> = {
-  visit_card: ["retail", "food_service", "services", "hybrid"],
+  visit_card: ["food_service", "services", "hybrid"],
   prepaid_pack: ["services", "hybrid"],
   membership: ["services", "hybrid"],
 }
 
-export const LOYALTY_MODES: readonly BusinessMode[] = ["retail", "food_service", "services", "hybrid"]
+export const LOYALTY_MODES: readonly BusinessMode[] = ["food_service", "services", "hybrid"]
 export const WARRANTY_MODES: readonly BusinessMode[] = ["services", "hybrid"]
 export const CONTAINER_MODES: readonly BusinessMode[] = ["retail", "food_service", "hybrid"]
 export const SERVICE_STATION_MODES: readonly BusinessMode[] = ["services", "hybrid"]

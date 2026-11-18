@@ -1,6 +1,6 @@
 {
   "name": "sistema-multi-pos-react-node-chadcnui",
-  "version": "0.65.0.0",
+  "version": "0.66.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -35,6 +35,7 @@
     "loadtest:serve": "node scripts/test-env.mjs serve-prod minimal",
     "loadtest:run": "tsx scripts/loadtest/run.mts",
     "test:e2e": "node scripts/test-env.mjs e2e",
+    "docs:word": "node scripts/md-to-docx.mjs",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

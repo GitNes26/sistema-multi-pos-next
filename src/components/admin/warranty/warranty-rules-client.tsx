@@ -147,7 +147,7 @@ export function WarrantyRulesClient({ canManage }: { canManage: boolean }) {
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {rules.map((r) => (
-            <article key={r.id} className={cn("space-y-3 rounded-2xl border bg-card p-4", !r.isActive && "opacity-70")}>
+            <article key={r.id} className={cn("min-w-0 space-y-3 rounded-2xl border bg-card p-4", !r.isActive && "opacity-70")}>
               <div className="flex items-start justify-between gap-2">
                 <h3 className="flex items-center gap-1.5 font-semibold"><ShieldCheck className="size-4 text-primary" /> {r.name}</h3>
                 {canManage && <Switch checked={r.isActive} onCheckedChange={(v) => void toggle(r, v)} aria-label={`Garantía ${r.isActive ? "activa" : "pausada"}`} />}

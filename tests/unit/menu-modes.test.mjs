@@ -3,18 +3,18 @@ import test from "node:test"
 import { NAV_HREF_TO_FEATURE, isFeatureEnabled } from "../../src/lib/features.ts"
 
 // Las rutas de los verticales deben tener bandera para que el menú del sidebar las oculte donde no aplican.
-const GATED = ["/admin/warranties", "/admin/loyalty-programs", "/admin/stations", "/admin/assets", "/admin/service-orders", "/agenda", "/reservaciones"]
+const GATED = ["/turnos", "/admin/warranties", "/admin/loyalty-programs", "/admin/stations", "/admin/assets", "/admin/service-orders", "/agenda", "/reservaciones"]
 
 test("las rutas de los verticales tienen bandera de tipo de negocio", () => {
   for (const href of GATED) assert.ok(NAV_HREF_TO_FEATURE[href], `falta bandera para ${href}`)
 })
 
-test("tienda y restaurante no ven garantías, bahías, vehículos, órdenes ni agenda; sí ven fidelidad", () => {
+test("tienda y restaurante no ven garantías, bahías, vehículos, órdenes, turnos ni agenda; la tienda tampoco ve fidelidad (el restaurante sí)", () => {
   for (const mode of ["retail", "food_service"]) {
-    for (const href of ["/admin/warranties", "/admin/stations", "/admin/assets", "/admin/service-orders", "/agenda", "/reservaciones"]) {
+    for (const href of ["/admin/warranties", "/admin/stations", "/admin/assets", "/admin/service-orders", "/turnos", "/agenda", "/reservaciones"]) {
       assert.equal(isFeatureEnabled(NAV_HREF_TO_FEATURE[href], mode), false, `${href} en ${mode}`)
     }
-    assert.equal(isFeatureEnabled(NAV_HREF_TO_FEATURE["/admin/loyalty-programs"], mode), true)
+    assert.equal(isFeatureEnabled(NAV_HREF_TO_FEATURE["/admin/loyalty-programs"], mode), mode === "food_service")
   }
 })
 

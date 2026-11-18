@@ -5,8 +5,8 @@ import { isFeatureEnabled } from "../../src/lib/features.ts"
 
 const MODES = ["retail", "food_service", "services", "rental", "hybrid"]
 
-test("la tarjeta de visitas aplica a todos menos renta; paquetes y membresías solo a servicios e híbrido", () => {
-  assert.deepEqual(loyaltyKindsFor("retail"), ["visit_card"])
+test("la tarjeta de visitas aplica a restaurante/café, servicios e híbrido (no a tienda de abarrotes ni renta); paquetes y membresías solo a servicios e híbrido", () => {
+  assert.deepEqual(loyaltyKindsFor("retail"), [])
   assert.deepEqual(loyaltyKindsFor("food_service"), ["visit_card"])
   assert.deepEqual(loyaltyKindsFor("services"), ["visit_card", "prepaid_pack", "membership"])
   assert.deepEqual(loyaltyKindsFor("hybrid"), ["visit_card", "prepaid_pack", "membership"])

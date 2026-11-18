@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.66.0.0] — 2026-11-18
+- **Tipo:** `feat` (Minor)
+- feat: menus por modo de negocio y arreglo del congelamiento del menu en movil, validacion de empresa activa en servidor con reintento en el selector, pruebas e2e al dia (asistentes de compras, listas del portal, tipo de producto), word del analisis regenerable con docs:word, guiones de videos narrados y videos fuera del repositorio
+
 ### [0.65.0.0] — 2026-11-09
 - **Tipo:** `feat` (Minor)
 - feat: pantalla de turnos para la clientela en negocios de servicios (en proceso con etapas, tiempo transcurrido y estimado, cola en espera y listos con aviso visual, sonido y voz), acceso desde ordenes de servicio, privacidad de datos, pruebas y documentacion

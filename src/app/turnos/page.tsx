@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth/options";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { hasPermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/db";
+import { MonitorPlay } from "lucide-react";
+import { NotAvailableForMode } from "@/components/shared/not-available-for-mode";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { TurnsScreen } from "@/components/turnos/turns-screen";
 import { SERVICE_ORDER_MODES } from "@/lib/service-orders/server";
@@ -19,7 +21,10 @@ export default async function TurnosPage() {
   if (!organizationId) redirect("/pos");
 
   const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true, businessMode: true } });
-  if (!org || !SERVICE_ORDER_MODES.includes(org.businessMode)) redirect("/pos");
+  if (!org) redirect("/pos");
+  if (!SERVICE_ORDER_MODES.includes(org.businessMode)) {
+    return <NotAvailableForMode icon={<MonitorPlay className="size-5" />} title="Pantalla de turnos" what="La pantalla de turnos" mode={org.businessMode} modes={SERVICE_ORDER_MODES} />;
+  }
   if (!hasPermission(session, "service_orders.view")) return <AccessDenied permission="service_orders.view" />;
 
   return <TurnsScreen organizationName={org.name} />;

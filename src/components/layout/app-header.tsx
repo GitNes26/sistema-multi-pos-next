@@ -82,10 +82,13 @@ export function AppHeader({ sections, user, logoUrl }: AppHeaderProps) {
           <RoleBadge
             roleName={user.roleName}
             role={user.role}
-            className="hidden lg:inline-flex"
+            className="hidden 2xl:inline-flex"
           />
           {user.activeOrganizationId ? <StoreStatusSwitch className="mx-1" /> : null}
-          <ThemeToggle />
+          {/* En celulares muy angostos (360 px) no cabe: el tema también se cambia desde Apariencia. */}
+          <span className="hidden sm:contents">
+            <ThemeToggle />
+          </span>
           <NotificationsBell />
           <PushSubscriber />
           <UserMenu user={user} />

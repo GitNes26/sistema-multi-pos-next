@@ -140,7 +140,7 @@ export const FEATURE_FLAGS: Record<FeatureKey, FeatureFlag> = {
   service_orders: { label: "Órdenes de servicio", modes: ["services", "hybrid"] },
   warranties: { label: "Garantías de servicio", modes: ["services", "hybrid"] },
   // Fidelidad (tarjeta de visitas; paquetes y membresías solo en servicios/híbrido) y envases retornables: ver `vertical-modes.ts`.
-  loyalty_programs: { label: "Fidelidad y membresías", modes: ["retail", "food_service", "services", "hybrid"] },
+  loyalty_programs: { label: "Fidelidad y membresías", modes: ["food_service", "services", "hybrid"] },
   returnable_containers: { label: "Envases retornables", modes: ["retail", "food_service", "hybrid"] },
 
   // ── Rental ─────────────────────────────────────────────────────
@@ -215,4 +215,12 @@ export const NAV_HREF_TO_FEATURE: Record<string, FeatureKey> = {
   "/admin/warranties": "warranties",
   "/admin/loyalty-programs": "loyalty_programs",
   "/reservaciones": "reservations",
+}
+
+/** Pantallas propias del giro (bahías, órdenes, turnos, agenda, mesas, reservaciones…): el menú reducido SIEMPRE las
+ *  muestra (ya vienen filtradas por tipo de negocio), para que no queden escondidas en «Más herramientas». */
+const MODE_SPECIFIC_FEATURES: readonly FeatureKey[] = ["appointments", "assets", "stations", "service_orders", "warranties", "loyalty_programs", "reservations", "tables", "kds"]
+export function isModeSpecificHref(href: string | undefined): boolean {
+  const feature = href ? NAV_HREF_TO_FEATURE[href] : undefined
+  return !!feature && MODE_SPECIFIC_FEATURES.includes(feature)
 }

@@ -49,3 +49,12 @@ next-env.d.ts
 .freebuff/
 test-results/
 .loadtest/
+
+# Videos promocionales generados (scripts/promo)
+/scripts/promo/out/
+# Videos y audio generados (no subir al servidor)
+*.mp4
+*.webm
+*.mov
+*.mkv
+*.m4a

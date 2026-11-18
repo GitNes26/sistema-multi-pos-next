@@ -6,7 +6,7 @@
 
 | Función | Tienda | Restaurante / Café | Servicios | Renta | Híbrido |
 | --- | :-: | :-: | :-: | :-: | :-: |
-| Tarjeta de visitas | ✓ | ✓ | ✓ | — | ✓ |
+| Tarjeta de visitas | — | ✓ | ✓ | — | ✓ |
 | Paquetes prepagados y membresías | — | — | ✓ | — | ✓ |
 | Garantías de servicio | — | — | ✓ | — | ✓ |
 | Envases retornables | ✓ | ✓ | — | — | ✓ |
