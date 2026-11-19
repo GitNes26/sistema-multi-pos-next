@@ -406,6 +406,8 @@ model OrganizationSubscription {
   extraLocations     Int                   @default(0)
   extraEmployeePacks Int                   @default(0)
   autoBlockOnPastDue Boolean               @default(true)
+  /// Empresa demo / prueba gratis: no se cobra ni cuenta en ingresos; `periodEndsAt` es el fin de la prueba.
+  isDemo             Boolean               @default(false)
   reminderDaysBefore Int                   @default(5)
   lastReminderAt     DateTime?
   notes              String?

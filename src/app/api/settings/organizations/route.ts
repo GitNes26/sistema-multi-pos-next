@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       ownerName?: string;
       ownerEmail: string;
       ownerPassword: string;
+      demoDays?: number;
     };
     const organization = await createOrganization(body);
     return NextResponse.json({ ok: true, organization }, { status: 201 });

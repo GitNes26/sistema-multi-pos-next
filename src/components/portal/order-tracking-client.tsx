@@ -526,6 +526,21 @@ export function OrderTrackingClient({ orderId }: { orderId: string }) {
               </ol>
             </section>
           )}
+          {order.saleId && (
+            <section className="rounded-2xl border p-4 text-center">
+              {/* Fondo blanco fijo: el código debe leerse igual en tema claro y oscuro. */}
+              <div className="rounded-xl bg-white p-3">
+                <img
+                  src={`/api/portal/orders/${order.id}/barcode`}
+                  alt={`Código de barras del ticket del pedido ${order.orderNumber}`}
+                  className="mx-auto h-14 w-full max-w-xs object-fill"
+                />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Muestra este código en la sucursal si necesitas una aclaración: lo escanean y encuentran tu compra al instante.
+              </p>
+            </section>
+          )}
         </div>
       </BottomSheet>
 

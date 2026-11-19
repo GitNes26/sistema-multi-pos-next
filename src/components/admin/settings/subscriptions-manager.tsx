@@ -2,7 +2,7 @@
 
 import { matchesSearch } from "@/lib/search"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, Ban, Building2, CalendarClock, CreditCard, Loader2, Lock, Receipt, Search, ShieldCheck, Users, Wallet } from "lucide-react"
+import { AlertTriangle, Ban, Building2, CalendarClock, CreditCard, Gift, Loader2, Lock, Receipt, Search, ShieldCheck, Users, Wallet } from "lucide-react"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,7 @@ import { SegmentedFilter, StatusPill, type StatusTone } from "@/components/base"
 import { ClearFiltersButton } from "@/components/base/clear-filters-button"
 import { money } from "@/lib/pos/money"
 import { cn } from "@/lib/utils"
+import { demoPeriodEnd, daysUntil, PERMANENT_DEMO_DAYS } from "@/lib/billing/demo"
 
 // Control de suscripciones (solo superAdmin): plan, capacidad, vencimiento,
 // bloqueo y pagos de cada empresa, con lo urgente primero.
@@ -53,12 +54,13 @@ interface Org {
     extraEmployeePacks: number
     reminderDaysBefore: number
     autoBlockOnPastDue: boolean
+    isDemo: boolean
     plan: Plan
   } | null
   subscriptionPayments: Payment[]
 }
 
-type Health = "ok" | "soon" | "overdue" | "blocked" | "none"
+type Health = "ok" | "soon" | "overdue" | "blocked" | "none" | "demo"
 type Filter = "all" | Health
 
 const HEALTH: Record<Health, { label: string; tone: StatusTone }> = {
@@ -67,6 +69,7 @@ const HEALTH: Record<Health, { label: string; tone: StatusTone }> = {
   overdue: { label: "Vencida", tone: "danger" },
   blocked: { label: "Bloqueada", tone: "danger" },
   none: { label: "Sin plan", tone: "neutral" },
+  demo: { label: "Prueba gratis", tone: "info" },
 }
 
 const daysLeft = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000)
@@ -76,6 +79,8 @@ function healthOf(o: Org): Health {
   if (!o.subscription) return "none"
   const d = daysLeft(o.subscription.periodEndsAt)
   if (d < 0 || o.subscription.status === "past_due" || o.subscription.status === "suspended") return "overdue"
+  // Demo vigente: no se cobra ni cuenta como ingreso; solo se vigila cuánto le queda.
+  if (o.subscription.isDemo) return "demo"
   if (d <= Math.max(7, o.subscription.reminderDaysBefore)) return "soon"
   return "ok"
 }
@@ -124,12 +129,13 @@ export function SubscriptionsManager() {
 
   const withHealth = useMemo(() => (orgs ?? []).map((o) => ({ o, h: healthOf(o) })), [orgs])
   const counts = useMemo(() => {
-    const c: Record<Health, number> = { ok: 0, soon: 0, overdue: 0, blocked: 0, none: 0 }
+    const c: Record<Health, number> = { ok: 0, soon: 0, overdue: 0, blocked: 0, none: 0, demo: 0 }
     for (const { h } of withHealth) c[h]++
     return c
   }, [withHealth])
-  const mrr = withHealth.filter(({ h }) => h !== "blocked" && h !== "none").reduce((s, { o }) => s + monthlyOf(o), 0)
-  const order: Health[] = ["overdue", "blocked", "soon", "none", "ok"]
+  // Las empresas demo no se cobran: no suman al ingreso mensual.
+  const mrr = withHealth.filter(({ h, o }) => h !== "blocked" && h !== "none" && !o.subscription?.isDemo).reduce((s, { o }) => s + monthlyOf(o), 0)
+  const order: Health[] = ["overdue", "blocked", "soon", "none", "demo", "ok"]
   const visible = withHealth
     .filter(({ h }) => filter === "all" || h === filter)
     .filter(({ o }) => !q || matchesSearch(o.name, q))
@@ -139,12 +145,13 @@ export function SubscriptionsManager() {
     <div className="space-y-5">
       <PageHeader icon={<ShieldCheck className="size-5" />} title="Control de suscripciones" description="Plan, capacidad, vencimiento, bloqueo y pagos de cada empresa. Lo urgente aparece primero." />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {[
           { label: "Ingreso mensual activo", value: money(mrr), icon: Wallet, tone: "text-primary" },
           { label: "Al corriente", value: counts.ok, icon: ShieldCheck, tone: "text-success" },
           { label: "Por vencer", value: counts.soon, icon: CalendarClock, tone: "text-warning-ink" },
           { label: "Vencidas o bloqueadas", value: counts.overdue + counts.blocked, icon: AlertTriangle, tone: "text-destructive" },
+          { label: "En prueba gratis (sin cobro)", value: counts.demo, icon: Gift, tone: "text-info" },
         ].map((k) => (
           <div key={k.label} className="rounded-2xl border bg-card p-4 shadow-e1">
             <k.icon className={cn("size-5", k.tone)} />
@@ -164,6 +171,7 @@ export function SubscriptionsManager() {
             { value: "overdue", label: "Vencidas", count: counts.overdue, countTone: counts.overdue ? "danger" : undefined },
             { value: "soon", label: "Por vencer", count: counts.soon, countTone: counts.soon ? "warning" : undefined },
             { value: "blocked", label: "Bloqueadas", count: counts.blocked, countTone: counts.blocked ? "danger" : undefined },
+            { value: "demo", label: "Demo", count: counts.demo },
             { value: "none", label: "Sin plan", count: counts.none },
           ]}
         />
@@ -189,14 +197,14 @@ export function SubscriptionsManager() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{o.name}</p>
-                    <p className="text-sm text-muted-foreground">{p ? `${p.name} · ${money(monthlyOf(o))}/mes` : "Sin plan asignado"}</p>
+                    <p className="text-sm text-muted-foreground">{p ? (s?.isDemo ? `${p.name} · costaría ${money(monthlyOf(o))}/mes · sin cobro` : `${p.name} · ${money(monthlyOf(o))}/mes`) : "Sin plan asignado"}</p>
                   </div>
                   <StatusPill tone={HEALTH[h].tone}>{HEALTH[h].label}</StatusPill>
                 </div>
                 {s && (
                   <p className={cn("flex items-center gap-1.5 text-sm", d! < 0 ? "text-destructive" : d! <= 7 ? "text-warning-ink" : "text-muted-foreground")}>
                     <CalendarClock className="size-4" />
-                    {d! < 0 ? `Venció hace ${-d!} días` : d === 0 ? "Vence hoy" : `Vence en ${d} días`} · {new Date(s.periodEndsAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
+                    {s.isDemo && d! > PERMANENT_DEMO_DAYS ? "Demo permanente (uso interno)" : s.isDemo ? (d! < 0 ? `Su prueba terminó hace ${-d!} días` : d === 0 ? "Su prueba termina hoy" : `Le quedan ${d} días de prueba`) : d! < 0 ? `Venció hace ${-d!} días` : d === 0 ? "Vence hoy" : `Vence en ${d} días`} · {new Date(s.periodEndsAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
                 )}
                 {o.isBlocked && o.blockedReason && (
@@ -238,12 +246,15 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
     extraEmployeePacks: String(s?.extraEmployeePacks ?? 0),
     reminderDaysBefore: String(s?.reminderDaysBefore ?? 5),
     autoBlockOnPastDue: s?.autoBlockOnPastDue ?? true,
+    isDemo: s?.isDemo ?? false,
+    demoDays: "",
     blocked: org.isBlocked,
     blockedReason: org.blockedReason ?? "",
   })
   const [payment, setPayment] = useState({ amount: "", reference: "" })
   const [busy, setBusy] = useState(false)
   const plan = plans.find((p) => p.id === form.planId)
+  const isDemo = form.isDemo
   const total = plan ? Number(plan.monthlyPrice) + Number(form.extraLocations || 0) * Number(plan.extraLocationPrice) + Number(form.extraEmployeePacks || 0) * Number(plan.extraEmployeePackPrice) : 0
 
   const post = async (body: Record<string, unknown>) => {
@@ -261,7 +272,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
     }
   }
   const save = async () => {
-    if (await post({ organizationId: org.id, subscriptionId: s?.id ?? null, ...form })) {
+    if (await post({ organizationId: org.id, subscriptionId: s?.id ?? null, ...form, demoDays: form.demoDays ? Number(form.demoDays) : undefined })) {
       toast.success("Suscripción actualizada")
       onSaved()
     }
@@ -289,7 +300,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
       footer={
         <>
           <span className="mr-auto text-sm text-muted-foreground">
-            Mensualidad: <b className="text-foreground tabular-nums">{money(total)}</b>
+            {isDemo ? "Costaría" : "Mensualidad"}: <b className="text-foreground tabular-nums">{money(total)}</b>{isDemo && " · prueba gratis, sin cobro"}
           </span>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={() => void save()} disabled={busy}>
@@ -317,8 +328,34 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
             </button>
           ))}
         </div>
+        <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
+          <SwitchField id="subscription-demo" label="Empresa demo (prueba gratis)" description="Se configura como pagada y se le muestra lo que costaría, pero no se cobra ni cuenta en los ingresos" checked={form.isDemo} onCheckedChange={(v) => setForm({ ...form, isDemo: v })} />
+          {isDemo && (
+            <div className="flex flex-wrap items-end gap-3">
+              <InputGroupField
+                id="subscription-demo-days"
+                label="Días de prueba (desde hoy)"
+                type="text"
+                inputMode="numeric"
+                leftIcon={<Gift className="size-4" />}
+                value={form.demoDays}
+                placeholder={daysUntil(form.periodEndsAt) > PERMANENT_DEMO_DAYS ? "Sin límite" : String(Math.max(0, daysUntil(form.periodEndsAt)))}
+                onChange={(e) => {
+                  const days = e.target.value.replace(/\D/g, "").slice(0, 4)
+                  setForm({ ...form, demoDays: days, periodEndsAt: days ? dateToYmd(demoPeriodEnd(Number(days))) : form.periodEndsAt })
+                }}
+                className="w-56"
+              />
+              {[7, 14, 30].map((n) => (
+                <Button key={n} type="button" size="sm" variant={form.demoDays === String(n) ? "default" : "outline"} onClick={() => setForm({ ...form, demoDays: String(n), periodEndsAt: dateToYmd(demoPeriodEnd(n)) })}>
+                  {n} días
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <DatePicker label="Vence el" value={ymdToDate(form.periodEndsAt)} onChange={(d) => setForm({ ...form, periodEndsAt: dateToYmd(d) })} clearable />
+          <DatePicker label={isDemo ? "La prueba termina el" : "Vence el"} value={ymdToDate(form.periodEndsAt)} onChange={(d) => setForm({ ...form, periodEndsAt: dateToYmd(d) })} clearable />
           <FormCombobox
             id="subscription-status"
             label="Estado"
@@ -368,9 +405,10 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
       <section className="grid gap-4 md:grid-cols-2">
         <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
           <p className="text-sm font-semibold">Registrar pago</p>
+          {isDemo && <p className="rounded-lg bg-info/10 px-3 py-2 text-xs text-info-ink">Es una empresa demo: no se cobra. Cuando contrate, desactiva «Empresa demo», guarda y registra su primer pago.</p>}
           <InputGroupField required label="Importe" type="number" leftIcon={<Wallet className="size-4" />} value={payment.amount} placeholder={String(total)} onChange={(e) => setPayment({ ...payment, amount: e.target.value })} />
           <InputGroupField label="Referencia" leftIcon={<Receipt className="size-4" />} value={payment.reference} onChange={(e) => setPayment({ ...payment, reference: e.target.value })} />
-          <Button variant="outline" className="w-full" onClick={() => void pay()} disabled={busy}>
+          <Button variant="outline" className="w-full" onClick={() => void pay()} disabled={busy || isDemo}>
             Registrar pago y desbloquear
           </Button>
         </div>

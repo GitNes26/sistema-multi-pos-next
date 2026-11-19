@@ -881,6 +881,8 @@ export interface PortalOrderDetail {
   paymentReference: string | null
   deliveryPin: string | null
   deliveryQrToken: string | null
+  /** Venta vinculada al pedido (ya cobrado/concluido): habilita el código de barras del ticket. */
+  saleId: string | null
   /** Nombre de pila de quien reparte (cuando ya aceptó la entrega). */
   driverName: string | null
   /** Destino del pedido a domicilio. */
@@ -951,6 +953,7 @@ export async function getPortalOrder(
     locationName: order.location?.name ?? null,
     paymentMethod: order.paymentMethod,
     paymentReference: order.paymentReference,
+    saleId: order.saleId,
     driverName: order.driverAcceptedAt ? order.driver?.fullName.split(" ")[0] ?? null : null,
     deliveryPin:
       order.status === "at_destination" ||

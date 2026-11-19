@@ -85,6 +85,11 @@ function coerce(type: string, value: unknown) {
   }
 }
 
+/** NESSIK Test es empresa demo: no se cobra ni cuenta en los ingresos del Control de suscripciones (idempotente). */
+async function markNessikAsDemo(organizationId: string) {
+  await prisma.organizationSubscription.updateMany({ where: { organizationId, isDemo: false }, data: { isDemo: true } })
+}
+
 export async function seedNessikTest() {
   const passwordHash = await bcrypt.hash(NESSIK_TEST.password, 10)
   const now = new Date()
@@ -96,6 +101,7 @@ export async function seedNessikTest() {
   const existing = await prisma.organization.findFirst({ where: { name: org.name }, select: { id: true } })
   if (existing && existing.id !== org.id) {
     await prisma.organization.update({ where: { id: existing.id }, data: { isBlocked: false, blockedReason: null } })
+    await markNessikAsDemo(existing.id)
     console.log("ℹ️  NESSIK Test existe con otros ids (base local anterior): no se recarga. Reinicia la base para cargar los datos con sus ids.")
     return existing.id
   }
@@ -169,6 +175,7 @@ export async function seedNessikTest() {
       },
     })
   }
+  await markNessikAsDemo(org.id)
 
   console.log(`✅ NESSIK Test: ${inserted} registros nuevos cargados con los ids del servidor`)
   return org.id

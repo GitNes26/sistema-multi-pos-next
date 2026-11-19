@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Layers,
   Search,
+  Gift,
 } from "lucide-react"
 import { EntityCell, RowActions, SegmentedFilter } from "@/components/base"
 import { ClearFiltersButton } from "@/components/base/clear-filters-button"
@@ -367,6 +368,7 @@ function CreateOrgDialog({
   const [ownerName, setOwnerName] = React.useState("")
   const [ownerEmail, setOwnerEmail] = React.useState("")
   const [ownerPassword, setOwnerPassword] = React.useState("")
+  const [demoDays, setDemoDays] = React.useState("")
   const [saving, setSaving] = React.useState(false)
   const [errors, setErrors] = React.useState<Record<string, string>>({})
   const [formError, setFormError] = React.useState<string>()
@@ -455,6 +457,7 @@ function CreateOrgDialog({
           ownerName,
           ownerEmail,
           ownerPassword,
+          demoDays: demoDays ? Number(demoDays) : undefined,
         }),
       })
       reset()
@@ -559,6 +562,17 @@ function CreateOrgDialog({
           value={ownerPassword}
           onChange={(e) => setOwnerPassword(e.target.value)}
           error={errors.ownerPassword}
+        />
+        <InputGroupField
+          id="create-org-demoDays"
+          label="Días de prueba gratis"
+          type="text"
+          inputMode="numeric"
+          placeholder="Vacío = suscripción normal"
+          leftIcon={<Gift className="size-4" />}
+          value={demoDays}
+          onChange={(e) => setDemoDays(e.target.value.replace(/\D/g, "").slice(0, 3))}
+          helper="La crea como demo: configurada como pagada, sin cobro y con esos días de uso. Lo ajustas en Control de suscripciones."
         />
       </form>
     </DialogComponent>

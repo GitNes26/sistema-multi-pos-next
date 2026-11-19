@@ -1,3 +1,4 @@
+import { demoPeriodEnd } from "@/lib/billing/demo"
 import { $Enums, type BusinessMode } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { hashPassword, normalizeIdentifier } from "@/lib/auth/users"
@@ -92,6 +93,8 @@ export interface CreateOrganizationInput {
   ownerName?: string
   ownerEmail: string
   ownerPassword: string
+  /** Días de prueba gratis: la empresa se crea como demo (sin cobro) con ese plazo. */
+  demoDays?: number
 }
 
 /** Crea la organización + la cuenta owner (membresía owner) + sucursal
@@ -176,8 +179,11 @@ export async function createOrganization(
 
   const starterPlan = await prisma.subscriptionPlan.findFirst({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
   if (starterPlan) {
-    const periodEndsAt = new Date(); periodEndsAt.setDate(periodEndsAt.getDate() + 30)
-    await prisma.organizationSubscription.create({ data: { organizationId: org.id, planId: starterPlan.id, status: "active", periodEndsAt } })
+    const demoDays = Math.floor(Number(input.demoDays) || 0)
+    const isDemo = demoDays > 0
+    const periodEndsAt = isDemo ? demoPeriodEnd(demoDays) : new Date()
+    if (!isDemo) periodEndsAt.setDate(periodEndsAt.getDate() + 30)
+    await prisma.organizationSubscription.create({ data: { organizationId: org.id, planId: starterPlan.id, status: "active", periodEndsAt, isDemo } })
   }
 
   return {

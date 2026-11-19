@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.67.0.0] — 2026-11-19
+- **Tipo:** `feat` (Minor)
+- feat: codigo de barras del ticket en el recibo del portal del cliente y bandera Demo en suscripciones (prueba gratis con dias controlados desde Control de suscripciones, sin cobro ni conteo en ingresos, aviso con dias restantes y costo en Mi plan, NESSIK Test como demo en los seeders)
+
 ### [0.66.0.0] — 2026-11-18
 - **Tipo:** `feat` (Minor)
 - feat: menus por modo de negocio y arreglo del congelamiento del menu en movil, validacion de empresa activa en servidor con reintento en el selector, pruebas e2e al dia (asistentes de compras, listas del portal, tipo de producto), word del analisis regenerable con docs:word, guiones de videos narrados y videos fuera del repositorio

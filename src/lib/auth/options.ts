@@ -5,7 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "@/lib/db"
 import { verifyPassword, normalizeIdentifier } from "@/lib/auth/users"
 import { permissionsForRole } from "@/lib/auth/server-permissions"
-import { planDeniedPermissions } from "@/lib/billing/subscriptions"
+import { DEMO_ENDED_REASON, planDeniedPermissions } from "@/lib/billing/subscriptions"
 import { effectiveRole, type AppRole } from "@/lib/auth/permissions"
 import type { PermissionKey } from "@/lib/auth/permission-keys"
 
@@ -334,13 +334,15 @@ export const authOptions: NextAuthOptions = {
         if (candidateOrgId) {
           const org = await prisma.organization.findUnique({
             where: { id: candidateOrgId },
-            select: { businessMode: true, name: true, isBlocked: true, blockedReason: true, subscription: { select: { id: true, status: true, periodEndsAt: true, graceEndsAt: true, autoBlockOnPastDue: true } } },
+            select: { businessMode: true, name: true, isBlocked: true, blockedReason: true, subscription: { select: { id: true, status: true, periodEndsAt: true, graceEndsAt: true, autoBlockOnPastDue: true, isDemo: true } } },
           })
           if (org?.businessMode) businessMode = org.businessMode
           organizationName = org?.name ?? null
           const subscriptionExpired = Boolean(org?.subscription?.autoBlockOnPastDue && ["active", "past_due"].includes(org.subscription.status) && (org.subscription.graceEndsAt ?? org.subscription.periodEndsAt) < new Date())
           if (subscriptionExpired && candidateOrgId) {
-            await prisma.$transaction([prisma.organizationSubscription.update({ where: { id: org!.subscription!.id }, data: { status: "suspended" } }), prisma.organization.update({ where: { id: candidateOrgId }, data: { isBlocked: true, blockedReason: "Suscripción vencida sin pago registrado" } })])
+            const reason = org!.subscription!.isDemo ? DEMO_ENDED_REASON : "Suscripción vencida sin pago registrado"
+            await prisma.$transaction([prisma.organizationSubscription.update({ where: { id: org!.subscription!.id }, data: { status: "suspended" } }), prisma.organization.update({ where: { id: candidateOrgId }, data: { isBlocked: true, blockedReason: reason } })])
+            if (org) org.blockedReason = reason
           }
           if ((org?.isBlocked || subscriptionExpired) && kind.scope !== "superadmin") {
             throw new Error(org?.blockedReason || "El acceso de esta empresa está suspendido. Contacta al administrador.")

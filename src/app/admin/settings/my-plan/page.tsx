@@ -1,12 +1,12 @@
 import type { Metadata } from "next"
 import { getServerSession } from "next-auth"
 import { redirect } from "next/navigation"
-import { BadgeDollarSign, Building2, Check, Lock, MessageCircle, Users } from "lucide-react"
+import { BadgeDollarSign, Building2, Check, Gift, Lock, MessageCircle, Users } from "lucide-react"
 import { PERMISSION_MODULE_LABELS, permissionsByModule } from "@/lib/auth/permission-keys"
 import { planDeniedKeys } from "@/lib/billing/plan-permissions"
 import { authOptions } from "@/lib/auth/options"
 import { effectiveOrgId } from "@/lib/auth/org-context"
-import { subscriptionUsage } from "@/lib/billing/subscriptions"
+import { demoTrialInfo, subscriptionUsage } from "@/lib/billing/subscriptions"
 import { prisma } from "@/lib/db"
 import { planWhatsappUrl } from "@/lib/whatsapp"
 import { PageHeader } from "@/components/layout/page-header"
@@ -30,16 +30,18 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ b
   const session = await getServerSession(authOptions)
   const organizationId = effectiveOrgId(session)
   if (!organizationId) redirect("/admin")
-  const [usage, plans] = await Promise.all([
+  const [usage, plans, trial] = await Promise.all([
     subscriptionUsage(organizationId),
     prisma.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: { monthlyPrice: "asc" } }),
+    demoTrialInfo(organizationId),
   ])
   const subscription = usage.subscription
   return <div className="space-y-5">
     <PageHeader icon={<BadgeDollarSign />} title="Mi plan" description="Consulta tu capacidad actual y pide ayuda por WhatsApp para elegir o actualizar tu plan." />
     {bloqueado && <div role="status" className="flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm"><Lock className="mt-0.5 size-4 shrink-0" /><div><p className="font-semibold">Esa sección no está incluida en tu plan actual</p><p className="text-muted-foreground">Actualiza tu plan para usarla; abajo ves qué incluye cada uno.</p></div></div>}
+    {trial && <div role="status" className="flex items-start gap-3 rounded-2xl border border-info/40 bg-info/10 p-4 text-sm"><Gift className="mt-0.5 size-4 shrink-0 text-info-ink" /><div><p className="font-semibold">{trial.permanent ? "Empresa demo: uso sin costo" : trial.label}</p><p className="text-muted-foreground">{trial.permanent ? "Esta empresa no genera cobro." : `Estás en tu prueba gratis hasta el ${new Date(trial.endsAt).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}. `}Con tu configuración actual ({trial.planName}) pagarías <b className="text-foreground">${trial.monthlyCost.toLocaleString("es-MX")}/mes</b>; hoy no se te cobra nada.</p></div></div>}
     <Card><CardContent className="grid gap-4 p-5 md:grid-cols-3">
-      <div><p className="text-sm text-muted-foreground">Plan actual</p><p className="text-2xl font-semibold">{subscription?.plan.name ?? "Sin plan asignado"}</p><p className="text-sm text-muted-foreground">{subscription ? `Vence ${new Date(subscription.periodEndsAt).toLocaleDateString("es-MX")}` : "Contacta al administrador del sistema"}</p></div>
+      <div><p className="text-sm text-muted-foreground">Plan actual</p><p className="text-2xl font-semibold">{subscription?.plan.name ?? "Sin plan asignado"}</p><p className="text-sm text-muted-foreground">{subscription ? (trial ? (trial.permanent ? "Sin vencimiento" : `Prueba gratis hasta ${new Date(subscription.periodEndsAt).toLocaleDateString("es-MX")}`) : `Vence ${new Date(subscription.periodEndsAt).toLocaleDateString("es-MX")}`) : "Contacta al administrador del sistema"}</p></div>
       <div><p className="flex gap-2 font-medium"><Building2 className="size-5" />Sucursales</p><p className="text-2xl font-semibold">{usage.locations} / {usage.locationLimit ?? "—"}</p></div>
       <div><p className="flex gap-2 font-medium"><Users className="size-5" />Empleados</p><p className="text-2xl font-semibold">{usage.employees} / {usage.employeeLimit ?? "—"}</p></div>
     </CardContent></Card>
