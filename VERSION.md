@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.68.0.0] — 2026-11-20
+- **Tipo:** `feat` (Minor)
+- feat: quitar reglas por presentacion en topicos, receta e insumos mejor explicada, entero y porciones con una sola existencia (variantes del mismo producto o producto ligado, piezas vendibles en POS y portal, decimales en inventario) y mensajes claros cuando falta inventario o insumo
+
 ### [0.67.0.0] — 2026-11-19
 - **Tipo:** `feat` (Minor)
 - feat: codigo de barras del ticket en el recibo del portal del cliente y bandera Demo en suscripciones (prueba gratis con dias controlados desde Control de suscripciones, sin cobro ni conteo en ingresos, aviso con dias restantes y costo en Mi plan, NESSIK Test como demo en los seeders)

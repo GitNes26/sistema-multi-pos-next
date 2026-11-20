@@ -25,7 +25,9 @@ import { isFeatureEnabled } from "@/lib/features"
 import type { BusinessMode } from "@/lib/auth/options"
 import { maybeNotifyLowStock } from "@/lib/inventory/server"
 import { calculateOptionExtra, optionRuleForVariant, isValidOptionCount, parseOptionVariantRules } from "@/lib/products/option-rules"
-import { consumeRecipeIngredients } from "@/lib/inventory/recipes"
+import { consumeRecipeIngredients, loadRecipeRows, recipeManagedItemKeys } from "@/lib/inventory/recipes"
+import { recipeManagedVariants, sellableUnits } from "@/lib/inventory/recipe-stock"
+import { StockShortageError, type StockShortage } from "@/lib/inventory/stock-errors"
 import { notifySaleCompleted } from "@/lib/notifications/events"
 import { notifyStaff } from "@/lib/notifications/staff"
 import { broadcastTableUpdate } from "@/lib/tables/live"
@@ -394,6 +396,21 @@ async function buildPosCatalog(
       p.imageUrl = def.imageUrl
       p.stock = def.stock
       // NO mutar p.name — el cliente construye el displayName con product.name + variant.name
+    }
+  }
+
+  // Presentaciones que se venden «de» una receta (pastel entero y rebanadas, rebanada ligada al pastel…):
+  // la existencia que ve el cajero son las piezas que alcanzan con el insumo, y se marca agotado cuando se acaba.
+  const recipeRows = await loadRecipeRows(prisma, organizationId)
+  if (recipeRows.length) {
+    for (const p of products) {
+      const managed = recipeManagedVariants(recipeRows, { id: p.productId, trackInventory: p.trackInventory, variantIds: p.variants.filter((v) => v.isActive).map((v) => v.id) })
+      if (!managed.size) continue
+      for (const v of p.variants) {
+        if (managed.has(v.id)) v.stock = sellableUnits(recipeRows, p.productId, v.id, (id) => variantStock.get(id) ?? 0) ?? 0
+      }
+      p.trackInventory = true
+      p.stock = p.variants.find((v) => v.id === p.variantId)?.stock ?? p.stock
     }
   }
 
@@ -1167,14 +1184,31 @@ export async function createSale(
     // sucursal la bloquea hasta confirmar, y al inicio serializaba todas las cajas de la sucursal
     // durante toda la venta (y frenaba hasta las notificaciones que referencian esa fila).
 
-    // Validar y descontar inventario (6.12 – ticket correcto/posible error de stock).
+    // Validar inventario (6.12). Se revisa todo el ticket junto (renglones repetidos suman) y, si algo no
+    // alcanza, se avisa de una vez qué producto, cuánto se pide y cuánto hay.
+    // Presentaciones que se venden «de» una receta (pastel: la rebanada gasta 0.1 del completo): no tienen
+    // existencia propia; la receta valida y descuenta el insumo.
+    const recipeManaged = await recipeManagedItemKeys(tx, organizationId, payload.items)
+    const isRecipeManaged = (item: { productId: string; variantId?: string | null }) => recipeManaged.has(`${item.productId}|${item.variantId ?? ""}`)
+    const asked = new Map<string, { productId: string; variantId: string | null; name: string; quantity: number }>()
     for (const item of payload.items) {
-      if (!item.trackInventory) continue
-      const inv = item.variantId
+      if (!item.trackInventory || isRecipeManaged(item)) continue
+      const key = item.variantId ?? `p:${item.productId}`
+      const prev = asked.get(key)
+      asked.set(key, {
+        productId: item.productId,
+        variantId: item.variantId ?? null,
+        name: item.variantName && item.variantName !== "Default" && item.variantName !== "Estándar" ? `${item.productName} · ${item.variantName}` : item.productName,
+        quantity: (prev?.quantity ?? 0) + item.quantity,
+      })
+    }
+    const shortages: StockShortage[] = []
+    for (const want of asked.values()) {
+      const inv = want.variantId
         ? await tx.inventory.findUnique({
             where: {
               variantId_locationId_locationType: {
-                variantId: item.variantId,
+                variantId: want.variantId,
                 locationId,
                 locationType: "location",
               },
@@ -1182,25 +1216,20 @@ export async function createSale(
           })
         : await tx.inventory.findFirst({
             where: {
-              productId: item.productId,
+              productId: want.productId,
               variantId: null,
               locationId,
               locationType: "location",
             },
           })
-      if (!inv)
-        throw new PosError(
-          `Sin inventario registrado para ${item.productName}`,
-          400
-        )
-      const current = toNum(inv.quantity)
-      if (current < item.quantity) {
-        throw new PosError(
-          `Stock insuficiente para ${item.productName} (disponible ${current})`,
-          409
-        )
+      if (!inv) {
+        shortages.push({ name: want.name, needed: want.quantity, available: 0, kind: "product", noRecord: true })
+        continue
       }
+      const current = toNum(inv.quantity)
+      if (current < want.quantity) shortages.push({ name: want.name, needed: want.quantity, available: current, kind: "product" })
     }
+    if (shortages.length) throw new StockShortageError(shortages, "pos")
 
     const sale = await tx.sale.create({
       data: {
@@ -1325,7 +1354,7 @@ export async function createSale(
     // Descontar inventario y registrar movimientos.
     const touchedInventoryIds: string[] = []
     for (const item of payload.items) {
-      if (!item.trackInventory) continue
+      if (!item.trackInventory || isRecipeManaged(item)) continue
       const inv = item.variantId
         ? await tx.inventory.update({
             where: {

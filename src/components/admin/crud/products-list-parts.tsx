@@ -228,7 +228,7 @@ export function ProductRowActions({
           "data-guide": "variants-btn",
         },
         { label: "Ver y llenar inventario", icon: PackagePlus, onSelect: onInventory },
-        { label: "Receta e insumos", icon: CookingPot, hidden: type !== "custom", onSelect: onRecipe },
+        { label: "Receta e insumos", icon: CookingPot, hidden: !(type === "standard" || type === "custom"), onSelect: onRecipe },
         { label: "Duplicar producto", icon: Copy, onSelect: onDuplicate },
         { label: "Eliminar", icon: Trash2, destructive: true, hidden: !canDelete, disabled: deleting, onSelect: onDelete },
       ]}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 import { getPortalCustomer, PortalError } from "@/lib/portal/server";
+import { StockShortageError } from "@/lib/inventory/stock-errors";
 
 // FASE 13 — Guard de rutas del portal: resuelve la sesión del cliente.
 
@@ -33,6 +34,11 @@ export async function requirePortalCustomer(): Promise<
 }
 
 export function portalErrorResponse(err: unknown): NextResponse {
+  if (err instanceof StockShortageError) {
+    // Los faltantes de un pedido del portal se explican siempre en lenguaje de cliente.
+    const message = new StockShortageError(err.shortages, "portal").message;
+    return NextResponse.json({ ok: false, error: message, code: err.code, shortages: err.shortages }, { status: err.status });
+  }
   if (err instanceof PortalError) {
     return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
   }

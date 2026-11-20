@@ -133,20 +133,14 @@ function revisionStatusBadge(status: RevisionStatus) {
   return <Badge variant="destructive">Cancelada</Badge>;
 }
 
-function fmtStock(qty: number, unit: string | null): string {
-  const u = (unit ?? "pza").toLowerCase();
-  if (u === "pza" || u === "pzas" || u === "pieza" || u === "piezas" || u === "ud" || u === "uds") {
-    return String(Math.round(qty));
-  }
+function fmtStock(qty: number, _unit: string | null): string {
+  // Una pieza fraccionada (0.1 de pastel que se vende en rebanadas) se muestra con sus decimales, no redondeada.
   if (qty === Math.floor(qty)) return String(qty);
   return qty.toFixed(3).replace(/\.?0+$/, "");
 }
 
-function fmtMin(qty: number, unit: string | null): string {
-  const u = (unit ?? "pza").toLowerCase();
-  if (u === "pza" || u === "pzas" || u === "pieza" || u === "piezas" || u === "ud" || u === "uds") {
-    return String(Math.round(qty));
-  }
+function fmtMin(qty: number, _unit: string | null): string {
+  // Una pieza fraccionada (0.1 de pastel que se vende en rebanadas) se muestra con sus decimales, no redondeada.
   if (qty === Math.floor(qty)) return String(qty);
   return qty.toFixed(3).replace(/\.?0+$/, "");
 }

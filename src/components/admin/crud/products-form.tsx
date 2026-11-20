@@ -704,6 +704,18 @@ export function ProductsForm({
       })),
     })
   }
+  /** Quita la regla propia de una presentación: desde ese momento usa la regla general del tópico. */
+  const removeVariantRule = (i: number, variantId: string) => {
+    updateOption(i, { variantRules: (options[i].variantRules ?? []).filter((rule) => rule.variantId !== variantId) })
+  }
+  /** Vuelve a dar regla propia a una presentación que se había quitado (parte de la regla general). */
+  const addVariantRule = (i: number, variantId: string) => {
+    const option = options[i]
+    const maximum = Math.max(1, Number(option.maxSelect) || 1)
+    updateOption(i, {
+      variantRules: [...(option.variantRules ?? []), { variantId, included: maximum, maxSelect: maximum, overageMode: "blocked", overagePrice: 0 }],
+    })
+  }
   const updateVariantRule = (i: number, variantId: string, patch: Partial<ProductOptionVariantRule>) => {
     const current = options[i].variantRules ?? []
     updateOption(i, {
@@ -1356,7 +1368,7 @@ export function ProductsForm({
                             const rule = opt.variantRules?.find((item) => item.variantId === variant.id)
                             if (!rule) return null
                             return (
-                              <div key={variant.id} className="grid gap-2 rounded-lg border bg-background p-2 sm:grid-cols-[minmax(7rem,1fr)_7rem_7rem_minmax(10rem,1.3fr)] sm:items-end">
+                              <div key={variant.id} className="grid gap-2 rounded-lg border bg-background p-2 sm:grid-cols-[minmax(7rem,1fr)_7rem_7rem_minmax(10rem,1.3fr)_auto] sm:items-end">
                                 <div className="pb-2 text-sm font-medium">{variant.name || "Presentación"}</div>
                                 <InputGroupField
                                   id={`topic-${i}-${variant.id}-included`}
@@ -1404,9 +1416,32 @@ export function ProductsForm({
                                     onChange={(event) => updateVariantRule(i, variant.id, { overagePrice: Math.max(0, Number(event.target.value) || 0) })}
                                   />
                                 )}
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="justify-self-end text-destructive hover:text-destructive"
+                                  aria-label={`Quitar la regla de ${variant.name || "esta presentación"}`}
+                                  title="Quitar la regla de esta presentación: usará la regla general"
+                                  onClick={() => removeVariantRule(i, variant.id)}
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
                               </div>
                             )
                           })}
+                          {saleVariants.some((variant) => !opt.variantRules?.some((rule) => rule.variantId === variant.id)) && (
+                            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-2">
+                              <span className="text-xs text-muted-foreground">Sin regla propia (usan la regla general):</span>
+                              {saleVariants
+                                .filter((variant) => !opt.variantRules?.some((rule) => rule.variantId === variant.id))
+                                .map((variant) => (
+                                  <Button key={variant.id} type="button" variant="outline" size="sm" onClick={() => addVariantRule(i, variant.id)}>
+                                    <Plus className="size-3.5" /> {variant.name || "Presentación"}
+                                  </Button>
+                                ))}
+                            </div>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             Ejemplo: Ch incluye 1 sabor; Md incluye 2; Gr incluye 3. Puedes permitir un sabor extra con tarifa fija o con el precio asignado a ese sabor.
                           </p>

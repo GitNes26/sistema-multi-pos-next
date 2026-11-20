@@ -130,11 +130,21 @@ switch (mode) {
       process.exit(r.status ?? 1)
     }
     break
+  case "recipe-integration":
+    {
+      const r = spawnSync(
+        process.execPath,
+        ["--import", "tsx", "--test", "tests/recipe-stock.integration.test.mjs"],
+        { cwd: root, env, stdio: "inherit" }
+      )
+      process.exit(r.status ?? 1)
+    }
+    break
   case "e2e":
     run("@playwright/test/cli", ["test", ...process.argv.slice(4)])
     break
   default:
     throw new Error(
-      "Use prepare, serve, build-prod, serve-prod, integration, purchasing-integration or e2e."
+      "Use prepare, serve, build-prod, serve-prod, integration, purchasing-integration, recipe-integration or e2e."
     )
 }

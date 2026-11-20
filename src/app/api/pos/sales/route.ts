@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { friendlyServerError } from "@/lib/errors/friendly";
+import { StockShortageError } from "@/lib/inventory/stock-errors";
 import { createSale, PosError } from "@/lib/pos/server";
 import { effectiveOrgId } from "@/lib/auth/org-context";
 import { prisma } from "@/lib/db";
@@ -78,6 +79,9 @@ export async function POST(req: Request) {
     ]).then((groups) => groups.flat()).catch(() => [] as string[]);
     return NextResponse.json({ ok: true, sale: { ...sale, legends } });
   } catch (err) {
+    if (err instanceof StockShortageError) {
+      return NextResponse.json({ ok: false, error: err.message, code: err.code, shortages: err.shortages }, { status: err.status });
+    }
     if (err instanceof PosError) {
       return NextResponse.json({ ok: false, error: err.message }, { status: err.status });
     }

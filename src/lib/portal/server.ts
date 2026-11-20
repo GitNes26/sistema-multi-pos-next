@@ -22,8 +22,12 @@ import { evaluatePortalPromotions } from "./promo-engine"
 import { customerMayUsePromotion, reservePromotionCustomerUse } from "@/lib/promotions/customer-use"
 import {
   consumeRecipeIngredients,
+  loadRecipeRows,
+  recipeManagedItemKeys,
   restoreRecipeIngredients,
 } from "@/lib/inventory/recipes"
+import { StockShortageError, type StockShortage } from "@/lib/inventory/stock-errors"
+import { recipeManagedVariants, sellableUnits } from "@/lib/inventory/recipe-stock"
 import { calculateOptionExtra, isValidOptionCount, optionRuleForVariant, parseOptionVariantRules, type OptionVariantRule } from "@/lib/products/option-rules"
 import { categoryBranchIds } from "@/lib/catalog/categories"
 
@@ -341,6 +345,22 @@ export async function getStorefront(
   }
 
   const products: PortalProduct[] = [...stdByProduct.values()]
+
+  // Presentaciones que se venden «de» una receta (pastel entero y rebanadas): la existencia que ve el cliente
+  // son las piezas que alcanzan con el insumo, y salen como agotadas cuando se acaba.
+  const derivedRows = await loadRecipeRows(prisma, organizationId)
+  if (derivedRows.length) {
+    for (const product of products) {
+      if (product.bulk) continue
+      const managed = recipeManagedVariants(derivedRows, { id: product.productId, trackInventory: product.trackInventory, variantIds: product.variants.map((v) => v.id) })
+      if (!managed.size) continue
+      for (const variant of product.variants) {
+        if (managed.has(variant.id)) variant.stock = sellableUnits(derivedRows, product.productId, variant.id, (id) => variantStock.get(id) ?? 0) ?? 0
+      }
+      product.trackInventory = true
+      product.stock = product.variants.reduce((sum, v) => sum + v.stock, 0)
+    }
+  }
 
   if (builderMode) {
     const recipeRows = await prisma.productRecipeItem.findMany({
@@ -1463,12 +1483,16 @@ export async function createPortalOrder(
       })
     ).map((p) => p.id)
   )
+  // Presentaciones que se venden «de» una receta no tienen existencia propia: la receta valida el insumo.
+  const recipeManaged = await recipeManagedItemKeys(prisma, organizationId, trustedItems)
   const requested = new Map<string, number>()
   for (const item of trustedItems) {
     if (untracked.has(item.productId)) continue
+    if (recipeManaged.has(`${item.productId}|${item.variantId ?? ""}`)) continue
     const key = item.variantId ?? item.productId
     requested.set(key, round3((requested.get(key) ?? 0) + item.quantity))
   }
+  const shortages: StockShortage[] = []
   for (const [key, quantity] of requested) {
     // La ausencia de una fila conserva la semántica actual de productos sin
     // seguimiento de inventario. Si existe inventario, sí debe alcanzar para
@@ -1479,11 +1503,15 @@ export async function createPortalOrder(
       const item = trustedItems.find(
         (candidate) => (candidate.variantId ?? candidate.productId) === key
       )
-      throw new PortalError(
-        `Stock insuficiente para "${item?.productName ?? "el producto"}"`
-      )
+      shortages.push({
+        name: item?.productName ?? "el producto",
+        needed: quantity,
+        available: Math.max(0, stock),
+        kind: "product",
+      })
     }
   }
+  if (shortages.length) throw new StockShortageError(shortages, "portal")
 
   const pointsRedeemed = Math.max(0, Math.floor(input.pointsRedeemed ?? 0))
   const orgLoyalty = await prisma.organization.findUnique({

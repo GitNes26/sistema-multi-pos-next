@@ -8,6 +8,7 @@ import { FormCombobox } from "@/components/base/form-combobox"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { crudApi } from "@/lib/api"
 import { swalError, swalToast } from "@/lib/swal"
+import { GlossaryHint } from "@/components/shared/glossary"
 
 export type RecipeProduct = Record<string, unknown> & {
   id: string
@@ -113,9 +114,30 @@ export function RecipeDialog({
       })),
     ]
   }, [product])
-  const ingredientOptions = useMemo(
+  // Presentaciones del propio producto como insumo: el pastel «Rebanada» se descuenta del «Completo».
+  const ownVariantLabel = (v: NonNullable<RecipeProduct["variants"]>[number]) =>
+    v.optionValues?.length ? v.optionValues.map((value) => value.value).join(" + ") : v.name === "Default" ? "Presentación estándar" : v.name
+  const ownOptions = useMemo(
     () =>
-      catalog
+      product?.trackInventory
+        ? (product.variants ?? []).map((v) => ({
+            value: `variant:${v.id}`,
+            label: `${product.name} · ${ownVariantLabel(v)} (este mismo producto)`,
+            meta: "Se descuenta de la existencia de esa presentación",
+          }))
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [product]
+  )
+  const ownChoices = useMemo(
+    () => (product?.trackInventory ? (product.variants ?? []).map((v) => ({ value: v.id, label: ownVariantLabel(v) })) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [product]
+  )
+  const ingredientOptions = useMemo(
+    () => [
+      ...ownOptions,
+      ...catalog
         .filter((item) => item.id !== product?.id && item.trackInventory)
         .flatMap((item) => {
           const variants = item.variants ?? []
@@ -135,8 +157,23 @@ export function RecipeDialog({
               ? [{ value: `variant:${variants[0].id}`, label: `${item.name} · ${variants[0].name}` }]
               : [{ value: `product:${item.id}`, label: item.name }]
         }),
-    [catalog, product]
+    ],
+    [catalog, product, ownOptions]
   )
+  // Atajo «entero y porciones»: una sola existencia (la presentación entera) y la porción gasta 1/N de ella.
+  const [portion, setPortion] = useState({ whole: "", slice: "", count: "10" })
+  const portionCount = Number(portion.count)
+  const portionExact = Number.isInteger(portionCount) && portionCount >= 2 && Number.isInteger(1000 / portionCount)
+  const canBuildPortions = portion.whole && portion.slice && portion.whole !== portion.slice && Number.isInteger(portionCount) && portionCount >= 2
+  const buildPortions = () => {
+    if (!canBuildPortions) return
+    const ingredient = `variant:${portion.whole}`
+    setRows((current) => [
+      ...current.filter((row) => !(row.ingredient === ingredient && (row.source === `variant:${portion.whole}` || row.source === `variant:${portion.slice}`))),
+      { id: crypto.randomUUID(), source: `variant:${portion.whole}`, ingredient, quantity: "1", wastePercent: "0" },
+      { id: crypto.randomUUID(), source: `variant:${portion.slice}`, ingredient, quantity: String(Math.round(1000 / portionCount) / 1000), wastePercent: "0" },
+    ])
+  }
   const update = (id: string, patch: Partial<Row>) =>
     setRows((current) =>
       current.map((row) => (row.id === id ? { ...row, ...patch } : row))
@@ -209,7 +246,7 @@ export function RecipeDialog({
       size="4xl"
       icon={<CookingPot className="size-5" />}
       title={`Receta e insumos · ${product?.name ?? "Producto"}`}
-      description="Define lo que se descuenta del inventario por cada venta. En alimentos puedes ligar cada guiso o complemento; en servicios, materiales como shampoo, cera o refacciones."
+      description="Define qué insumos se descuentan del inventario cada vez que vendes este producto: ingredientes en alimentos o materiales (shampoo, cera, refacciones) en servicios."
       footer={
         <>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -223,13 +260,85 @@ export function RecipeDialog({
       }
     >
       <div className="space-y-4">
-        <div className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
-          La merma agrega un margen al consumo teórico. Ejemplo: 0.12 kg con 5%
-          descuenta 0.126 kg. Si falta un insumo, la venta se detiene para
-          evitar existencias negativas.
-          Para un insumo con variantes, elige «elegir variante al vender» para
-          que el POS pregunte la presentación o color utilizado.
+        <div className="space-y-2 rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">¿Cómo se llena?</p>
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>
+              <b className="text-foreground">Se aplica cuando:</b> elige «Siempre que se venda» si el gasto es el mismo
+              en cualquier presentación, o una presentación concreta (por ejemplo, «Rebanada») si solo se gasta con esa.
+            </li>
+            <li>
+              <b className="text-foreground">Insumo:</b> lo que se descuenta del inventario. Debe ser un producto que
+              controle inventario y ya tenga existencias en la sucursal.
+            </li>
+            <li>
+              <b className="text-foreground">Cantidad:</b> cuánto del insumo se gasta por <u>cada unidad vendida</u>, en
+              la misma unidad en que lo llevas en inventario (piezas, kg, litros…).
+            </li>
+            <li>
+              <b className="text-foreground">Merma %:</b> porcentaje extra que se desperdicia al preparar. Ejemplo: 0.12 kg
+              con 5% descuentan 0.126 kg. Déjalo en 0 si no aplica.
+            </li>
+          </ol>
+          <p>
+            Si falta un insumo, la venta se detiene y el sistema dice cuál falta, para no dejar existencias negativas.
+            Con un insumo que tiene variantes, elige «elegir variante al vender» para que el POS pregunte cuál se usó.
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <GlossaryHint term="receta">¿Qué es la receta?</GlossaryHint>
+            <GlossaryHint term="insumo">¿Qué es un insumo?</GlossaryHint>
+            <GlossaryHint term="merma">¿Qué es la merma?</GlossaryHint>
+            <GlossaryHint term="porciones">¿Vendo entero y por rebanadas?</GlossaryHint>
+          </div>
         </div>
+        {ownOptions.length >= 2 && (
+          <div className="space-y-3 rounded-xl border border-dashed p-3">
+            <div>
+              <p className="text-sm font-medium">Atajo: vender entero y por porciones</p>
+              <p className="text-xs text-muted-foreground">
+                Una sola existencia para todas las presentaciones: la entera gasta 1 y cada porción gasta 1/N de la entera. Se descuentan
+                decimales (0.1 de pastel) y el POS y el portal muestran cuántas piezas alcanzan.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <FormCombobox
+                id="recipe-portion-whole"
+                label="Presentación entera"
+                value={portion.whole}
+                onChange={(value) => setPortion((p) => ({ ...p, whole: value }))}
+                options={ownChoices}
+                placeholder="Ej. Completo"
+              />
+              <FormCombobox
+                id="recipe-portion-slice"
+                label="Presentación en porciones"
+                value={portion.slice}
+                onChange={(value) => setPortion((p) => ({ ...p, slice: value }))}
+                options={ownChoices}
+                placeholder="Ej. Rebanada"
+              />
+              <InputGroupField
+                id="recipe-portion-count"
+                label="Porciones por entero"
+                type="number"
+                min="2"
+                step="1"
+                value={portion.count}
+                onChange={(event) => setPortion((p) => ({ ...p, count: event.target.value }))}
+                helper="Si un entero rinde 10 rebanadas, cada rebanada gasta 0.1. Se guarda con 3 decimales: 2, 4, 5, 8, 10, 20… quedan exactos."
+              />
+            </div>
+            {canBuildPortions && !portionExact && (
+              <p className="text-xs text-warning-ink">
+                Con {portionCount} porciones cada una gasta {Math.round(1000 / portionCount) / 1000} (se guarda con 3 decimales), por lo que al
+                venderse todas puede quedar un sobrante mínimo. Con 2, 4, 5, 8, 10, 20 o 25 es exacto.
+              </p>
+            )}
+            <Button type="button" variant="outline" size="sm" onClick={buildPortions} disabled={!canBuildPortions}>
+              Crear los dos renglones
+            </Button>
+          </div>
+        )}
         {formError && (
           <p role="alert" className="text-sm text-destructive">
             {formError}
@@ -249,6 +358,7 @@ export function RecipeDialog({
             <FormCombobox
               id={`recipe-source-${index}`}
               label="Se aplica cuando"
+              helper="¿En qué venta se gasta este insumo? «Siempre» = en toda venta de este producto. Elige una presentación si solo se gasta al vender esa (ej. solo la rebanada)."
               icon={<CookingPot className="size-4" />}
               value={row.source}
               onChange={(value) => update(row.id, { source: value })}
@@ -261,6 +371,7 @@ export function RecipeDialog({
               id={`recipe-ingredient-${index}`}
               label="Insumo"
               required
+              helper="La materia prima o material que se descuenta del inventario. Solo aparecen productos que controlan inventario."
               icon={<Scale className="size-4" />}
               value={row.ingredient}
               onChange={(value) => update(row.id, { ingredient: value })}
@@ -273,6 +384,7 @@ export function RecipeDialog({
               id={`recipe-quantity-${index}`}
               label="Cantidad"
               required
+              helper="Cuánto de este insumo se gasta por CADA unidad que vendes, en la unidad del insumo (pieza, kg, L). Ej.: 0.018 kg de café por taza, o 1 vaso."
               type="number"
               min="0.001"
               step="0.001"
@@ -285,6 +397,7 @@ export function RecipeDialog({
             <InputGroupField
               id={`recipe-waste-${index}`}
               label="Merma %"
+              helper="Porcentaje extra por desperdicio al preparar. 0 = se descuenta exactamente la cantidad anotada. Con 5%, 0.12 kg descuentan 0.126 kg."
               type="number"
               min="0"
               max="100"

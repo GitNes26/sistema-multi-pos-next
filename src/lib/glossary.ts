@@ -127,6 +127,29 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: "Dejar que un cliente pague después (fiado).",
     body: "Le fijas un límite y un plazo, el sistema lleva su saldo y sus abonos. Solo aplica a clientes que tú decidas.",
   },
+  receta: {
+    term: "Receta e insumos",
+    short: "Lo que se gasta del inventario cada vez que vendes este producto.",
+    body: "Algunos productos no tienen existencias propias: se preparan con otras cosas. La receta le dice al sistema qué insumos descontar por cada venta. Así, al vender un café se bajan el grano y el vaso; al vender un corte, el shampoo. Si falta un insumo, la venta no se cobra para no dejarte inventario en negativo.",
+    example: "1 café americano = 18 g de café molido + 1 vaso. Si vendes 10, se descuentan 180 g y 10 vasos.",
+  },
+  insumo: {
+    term: "Insumo",
+    short: "Una materia prima o material que se gasta al vender.",
+    body: "Es cualquier producto de tu inventario que usas para preparar lo que vendes: harina, queso, vasos, shampoo, una refacción. Debe controlar inventario para que se pueda descontar.",
+  },
+  merma: {
+    term: "Merma",
+    short: "Lo que se desperdicia o se pierde al preparar.",
+    body: "Es un porcentaje extra que se descuenta por encima de la cantidad de la receta, para cubrir lo que se cae, se corta o se pasa de cocción. Con 0% se descuenta exactamente lo anotado.",
+    example: "0.12 kg de carne con 5% de merma descuentan 0.126 kg por cada venta.",
+  },
+  porciones: {
+    term: "Vender entero y por porciones",
+    short: "Un mismo producto que se vende completo y en pedazos (pastel, pizza, queso).",
+    body: "Registra UN solo producto con las variantes «Completo» y «Rebanada». En Receta e insumos usa el atajo «entero y por porciones»: el entero gasta 1 y la rebanada gasta 1/N del mismo entero (10 rebanadas = 0.1). Las existencias se llevan en la variante entera, con decimales si hace falta (2.6 pasteles), y el POS y el portal muestran cuántas piezas alcanzan, marcando agotado cuando se acaba.",
+    example: "Con 3 pasteles: 3 completos o 30 rebanadas. Vender 4 rebanadas deja 2.6 pasteles.",
+  },
   traslado: {
     term: "Traslados",
     short: "Mover mercancía de una sucursal o bodega a otra.",

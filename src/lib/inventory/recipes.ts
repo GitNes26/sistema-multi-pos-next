@@ -1,9 +1,13 @@
 import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
+import { StockShortageError, type StockShortage } from "@/lib/inventory/stock-errors"
+import { recipeManagedVariants, type RecipeRowLite } from "@/lib/inventory/recipe-stock"
 import {
   parseRecipeVariantSelections,
   resolveRecipeIngredientVariant,
 } from "@/lib/inventory/recipe-selection"
+
+type RecipeTotal = { productId: string | null; variantId: string | null; quantity: number; soldProductIds: Set<string> }
 
 export interface RecipeInput {
   variantId?: string | null
@@ -136,8 +140,8 @@ export async function replaceProductRecipe(
     throw new Error(
       "Los ingredientes deben pertenecer a la empresa y controlar inventario"
     )
-  if (variantRows.some((variant) => variant.productId === productId))
-    throw new Error("Un producto no puede consumirse a sí mismo")
+  // Una presentación sí puede descontarse de OTRA variante del mismo producto (pastel: la rebanada gasta 0.1
+  // del «Completo»). Lo que no tiene sentido es consumirse a sí misma en la receta de insumos de otra cosa.
   await prisma.$transaction(async (tx) => {
     await tx.productRecipeItem.deleteMany({
       where: { organizationId, productId },
@@ -189,10 +193,7 @@ export async function consumeRecipeIngredients(
     list.push(variant)
     variantsByProduct.set(variant.productId, list)
   }
-  const totals = new Map<
-    string,
-    { productId: string | null; variantId: string | null; quantity: number }
-  >()
+  const totals = new Map<string, RecipeTotal>()
   for (const sold of items) {
     const valueIds = new Set(
       (sold.selectedOptions ?? []).flatMap(
@@ -230,9 +231,17 @@ export async function consumeRecipeIngredients(
         productId: resolvedIngredientProductId,
         variantId: resolvedIngredientVariantId,
         quantity: (current?.quantity ?? 0) + required,
+        soldProductIds: new Set([...(current?.soldProductIds ?? []), sold.productId]),
       })
     }
   }
+  // Primero se revisa TODO lo que falta y se avisa de una vez, con nombres y cantidades,
+  // en lugar de detenerse en el primer insumo que no alcanza.
+  const prepared: { ingredient: RecipeTotal; inventoryId: string; required: number }[] = []
+  const shortages: StockShortage[] = []
+  const soldNames = new Map(
+    (await tx.product.findMany({ where: { organizationId, id: { in: productIds } }, select: { id: true, name: true } })).map((p) => [p.id, p.name] as const)
+  )
   for (const ingredient of totals.values()) {
     const inventory = await tx.inventory.findFirst({
       where: {
@@ -244,15 +253,35 @@ export async function consumeRecipeIngredients(
           : { productId: ingredient.productId }),
       },
     })
-    if (!inventory)
-      throw new Error("Falta registrar inventario para un insumo de la receta")
     const required = Math.round(ingredient.quantity * 1000) / 1000
+    const available = inventory ? Number(inventory.quantity) : 0
+    if (!inventory || available < required) {
+      const name = ingredient.variantId
+        ? await tx.productVariant.findUnique({ where: { id: ingredient.variantId }, select: { name: true, product: { select: { name: true } } } }).then((v) => (v ? (v.name && v.name !== "Default" ? `${v.product.name} · ${v.name}` : v.product.name) : "Insumo"))
+        : await tx.product.findUnique({ where: { id: ingredient.productId! }, select: { name: true } }).then((p) => p?.name ?? "Insumo")
+      shortages.push({
+        name,
+        needed: required,
+        available,
+        kind: "ingredient",
+        noRecord: !inventory,
+        usedFor: [...ingredient.soldProductIds].map((id) => soldNames.get(id) ?? "").filter(Boolean),
+      })
+      continue
+    }
+    prepared.push({ ingredient, inventoryId: inventory.id, required })
+  }
+  if (shortages.length) throw new StockShortageError(shortages)
+  for (const { ingredient, inventoryId, required } of prepared) {
     const updated = await tx.inventory.updateMany({
-      where: { id: inventory.id, quantity: { gte: required } },
+      where: { id: inventoryId, quantity: { gte: required } },
       data: { quantity: { decrement: required } },
     })
-    if (updated.count !== 1)
-      throw new Error("Insumos insuficientes para preparar la venta")
+    if (updated.count !== 1) {
+      // Otra venta se llevó la existencia entre la revisión y el descuento.
+      const row = await tx.inventory.findUnique({ where: { id: inventoryId }, select: { quantity: true } })
+      throw new StockShortageError([{ name: "Un insumo de la receta", needed: required, available: Number(row?.quantity ?? 0), kind: "ingredient", usedFor: [...ingredient.soldProductIds].map((id) => soldNames.get(id) ?? "").filter(Boolean) }])
+    }
     await tx.inventoryMovement.create({
       data: {
         organizationId,
@@ -327,4 +356,43 @@ export async function restoreRecipeIngredients(
       },
     })
   }
+}
+
+/** Renglones de receta en el formato que usa `recipe-stock` (cantidades como número). */
+export async function loadRecipeRows(
+  client: Prisma.TransactionClient | typeof prisma,
+  organizationId: string,
+  productIds?: string[]
+): Promise<RecipeRowLite[]> {
+  const rows = await client.productRecipeItem.findMany({
+    where: { organizationId, ...(productIds ? { productId: { in: productIds } } : {}) },
+    select: { productId: true, variantId: true, optionValueId: true, ingredientProductId: true, ingredientVariantId: true, quantity: true, wastePercent: true },
+  })
+  return rows.map((row) => ({ ...row, quantity: Number(row.quantity), wastePercent: Number(row.wastePercent) }))
+}
+
+/**
+ * Renglones del ticket/pedido que se venden «de» una receta (clave `productId|variantId`): no tienen existencia propia,
+ * así que no se validan ni se descuentan directamente; la receta se encarga y avisa si el insumo no alcanza.
+ */
+export async function recipeManagedItemKeys(
+  client: Prisma.TransactionClient | typeof prisma,
+  organizationId: string,
+  items: { productId?: string | null; variantId?: string | null }[]
+): Promise<Set<string>> {
+  const productIds = [...new Set(items.filter((item) => item.productId && item.variantId).map((item) => item.productId as string))]
+  const keys = new Set<string>()
+  if (!productIds.length) return keys
+  const [rows, products] = await Promise.all([
+    loadRecipeRows(client, organizationId, productIds),
+    client.product.findMany({
+      where: { organizationId, id: { in: productIds } },
+      select: { id: true, trackInventory: true, variants: { where: { isActive: true }, select: { id: true } } },
+    }),
+  ])
+  for (const product of products) {
+    const managed = recipeManagedVariants(rows, { id: product.id, trackInventory: product.trackInventory, variantIds: product.variants.map((v) => v.id) })
+    for (const variantId of managed) keys.add(`${product.id}|${variantId}`)
+  }
+  return keys
 }

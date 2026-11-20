@@ -1,3 +1,4 @@
+import { recipeManagedItemKeys } from "@/lib/inventory/recipes"
 import type { $Enums, Prisma } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { resolveUnitCosts } from "@/lib/pos/cost"
@@ -140,8 +141,11 @@ export async function recordOrderSale(organizationId: string, orderId: string, c
 
       // Inventario: la mercancía ya salió, así que se descuenta aunque quede en
       // negativo (el faltante se ve en inventario en lugar de ocultarse).
+      // Lo que se vende «de» una receta ya descontó su insumo al crear el pedido: no se vuelve a descontar.
+      const recipeManaged = await recipeManagedItemKeys(tx, organizationId, order.items)
       for (const item of order.items) {
         if (!item.product?.trackInventory || !item.productId) continue
+        if (recipeManaged.has(`${item.productId}|${item.variantId ?? ""}`)) continue
         const inv = item.variantId
           ? await tx.inventory.findFirst({ where: { organizationId, variantId: item.variantId, locationId, locationType: "location" }, select: { id: true } })
           : await tx.inventory.findFirst({ where: { organizationId, productId: item.productId, variantId: null, locationId, locationType: "location" }, select: { id: true } })
