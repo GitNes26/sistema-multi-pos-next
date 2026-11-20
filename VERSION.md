@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.70.1.0] — 2026-11-20
+- **Tipo:** `fix` (Patch)
+- fix: expandir y contraer con animacion suave en ambos sentidos (colapsables con curva mas gradual y nuevo componente Expandable en historiales, recepciones de compras, mapa de ubicacion y detalle de cocina)
+
 ### [0.70.0.0] — 2026-11-20
 - **Tipo:** `feat` (Minor)
 - feat: carrusel con flechas en planes y vigencia de suscripciones, accesos del plan Personalizado basados en un plan existente y colapsables, y expandir/contraer con animacion suave en todos los colapsables

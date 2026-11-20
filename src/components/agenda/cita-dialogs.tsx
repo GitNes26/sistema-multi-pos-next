@@ -1,5 +1,6 @@
 "use client";
 
+import { Expandable } from "@/components/ui/expandable"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Banknote,
@@ -832,7 +833,7 @@ export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverr
           <span className="inline-flex items-center gap-1.5"><History className="size-4" /> Historial{events ? ` (${events.length})` : ""}</span>
           <span className="text-xs font-medium text-primary">{showHistory ? "Ocultar" : "Ver"}</span>
         </button>
-        {showHistory && (
+        <Expandable open={showHistory}>
           <ol className="space-y-2 rounded-xl border bg-muted/30 p-3 text-sm">
             {events === null ? (
               <li className="text-muted-foreground">Cargando…</li>
@@ -851,7 +852,7 @@ export function CitaDetailDialog({ cita, canManage, canCheckIn = false, canOverr
               ))
             )}
           </ol>
-        )}
+        </Expandable>
       </div>
 
       {/* Acciones de estatus */}

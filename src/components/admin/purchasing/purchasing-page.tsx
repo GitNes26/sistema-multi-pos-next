@@ -1,5 +1,6 @@
 "use client"
 
+import { Expandable } from "@/components/ui/expandable"
 import { TextareaField } from "@/components/base/textarea-field"
 import { ActiveStatusPill, PurchaseStatusPill } from "@/components/shared/status-pills"
 import * as React from "react"
@@ -1493,7 +1494,7 @@ function ReceiptsHistory({ receipts }: { receipts: Workspace["receipts"] }) {
                   <span className="block">{new Date(r.receivedAt).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })}{r.receiverName ? ` · ${r.receiverName}` : ""}</span>
                 </span>
               </button>
-              {expanded && (
+              <Expandable open={expanded}>
                 <div className="border-t bg-muted/20 px-4 py-3">
                   <table className="w-full text-sm">
                     <thead>
@@ -1519,7 +1520,7 @@ function ReceiptsHistory({ receipts }: { receipts: Workspace["receipts"] }) {
                   </table>
                   {r.notes && <p className="mt-2 text-xs text-muted-foreground">Notas: {r.notes}</p>}
                 </div>
-              )}
+              </Expandable>
             </li>
           )
         })}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Expandable } from "@/components/ui/expandable"
 import { useCallback, useEffect, useState } from "react";
 import { Banknote, Car, Check, ClipboardCheck, CreditCard, History, KeyRound, Loader2, MapPin, MessageSquareText, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
@@ -336,7 +337,7 @@ export function ServiceOrderDetailDialog({
           </span>
           <span className="text-xs font-medium text-primary">{showHistory ? "Ocultar" : "Ver"}</span>
         </button>
-        {showHistory && (
+        <Expandable open={showHistory}>
           <ol className="space-y-2 rounded-xl border bg-muted/30 p-3 text-sm">
             {events === null ? (
               <li className="text-muted-foreground">Cargando…</li>
@@ -357,7 +358,7 @@ export function ServiceOrderDetailDialog({
               ))
             )}
           </ol>
-        )}
+        </Expandable>
       </div>
     </DialogComponent>
   );

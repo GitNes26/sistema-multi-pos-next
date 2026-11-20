@@ -1,5 +1,6 @@
 "use client"
 
+import { Expandable } from "@/components/ui/expandable"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Crosshair, MapPin, MapPinned, Loader2, Map, X, ChevronRight } from "lucide-react"
 import dynamic from "next/dynamic"
@@ -313,9 +314,9 @@ export function LocationSearch({
               </Button>
             )}
           </div>
-          {showMapState && lat != null && lon != null && (
-            <MapPreview lat={lat} lon={lon} height={192} />
-          )}
+          <Expandable open={showMapState && lat != null && lon != null}>
+            {lat != null && lon != null && <MapPreview lat={lat} lon={lon} height={192} />}
+          </Expandable>
         </div>
       )}
 

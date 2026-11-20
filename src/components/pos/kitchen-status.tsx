@@ -1,5 +1,6 @@
 "use client"
 
+import { Expandable } from "@/components/ui/expandable"
 import { useCallback, useEffect, useState } from "react"
 import { CheckCircle2, ChevronDown, Flame, Loader2, Undo2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -182,38 +183,40 @@ export function KitchenStatus({
         {order && <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />}
       </button>
 
-      {order && open && (
-        <div className="mt-1.5 space-y-1.5 border-t border-warning/20 pt-2">
-          <ul className="space-y-0.5">
-            {order.items.map((i) => (
-              <li key={i.id} className="flex items-center justify-between gap-2 text-xs">
-                <span className="min-w-0 truncate text-foreground">
-                  {i.quantity} × {i.productName}
-                  {i.variantName && i.variantName !== "Default" && i.productName !== i.variantName ? ` (${i.variantName})` : ""}
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 text-[0.65rem] font-medium",
-                    i.itemStatus === "ready" || i.itemStatus === "served" ? "text-success-ink" : "text-muted-foreground"
-                  )}
-                >
-                  {ITEM_STATUS_LABELS[i.itemStatus] ?? i.itemStatus}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={cancelling}
-            onClick={cancelOrder}
-            className="h-8 w-full justify-center text-xs text-destructive hover:text-destructive"
-          >
-            {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : <Undo2 className="size-3.5" />}
-            Cancelar la orden de cocina
-          </Button>
-        </div>
-      )}
+      <Expandable open={Boolean(order && open)}>
+        {order && (
+          <div className="mt-1.5 space-y-1.5 border-t border-warning/20 pt-2">
+            <ul className="space-y-0.5">
+              {order.items.map((i) => (
+                <li key={i.id} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="min-w-0 truncate text-foreground">
+                    {i.quantity} × {i.productName}
+                    {i.variantName && i.variantName !== "Default" && i.productName !== i.variantName ? ` (${i.variantName})` : ""}
+                  </span>
+                  <span
+                    className={cn(
+                      "shrink-0 text-[0.65rem] font-medium",
+                      i.itemStatus === "ready" || i.itemStatus === "served" ? "text-success-ink" : "text-muted-foreground"
+                    )}
+                  >
+                    {ITEM_STATUS_LABELS[i.itemStatus] ?? i.itemStatus}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={cancelling}
+              onClick={cancelOrder}
+              className="h-8 w-full justify-center text-xs text-destructive hover:text-destructive"
+            >
+              {cancelling ? <Loader2 className="size-3.5 animate-spin" /> : <Undo2 className="size-3.5" />}
+              Cancelar la orden de cocina
+            </Button>
+          </div>
+        )}
+      </Expandable>
     </div>
   )
 }
