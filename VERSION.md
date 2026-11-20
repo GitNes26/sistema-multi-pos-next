@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.70.2.0] — 2026-11-20
+- **Tipo:** `fix` (Patch)
+- fix: sin scroll horizontal en el modal de suscripciones (flechas del carrusel dentro del ancho) y el selector Basar los accesos en un plan ahora muestra el plan elegido
+
 ### [0.70.1.0] — 2026-11-20
 - **Tipo:** `fix` (Patch)
 - fix: expandir y contraer con animacion suave en ambos sentidos (colapsables con curva mas gradual y nuevo componente Expandable en historiales, recepciones de compras, mapa de ubicacion y detalle de cocina)

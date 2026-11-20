@@ -1,6 +1,6 @@
 {
   "name": "sistema-multi-pos-react-node-chadcnui",
-  "version": "0.70.1.0",
+  "version": "0.70.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",

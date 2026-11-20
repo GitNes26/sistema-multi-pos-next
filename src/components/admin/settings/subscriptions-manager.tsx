@@ -268,6 +268,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
     permissions: new Set<string>(Array.isArray(cp?.permissions) ? cp.permissions : PLAN_PERMISSION_KEYS),
   })
   const [permsOpen, setPermsOpen] = useState(false)
+  const [basePlanId, setBasePlanId] = useState("")
   const [payment, setPayment] = useState({ amount: "", reference: "" })
   const [busy, setBusy] = useState(false)
   const isCustom = form.planId === CUSTOM
@@ -335,7 +336,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
     >
       <section className="space-y-3">
         <h3 className="text-sm font-semibold">Plan y vigencia</h3>
-        <PlanCarousel label="Planes y vigencia" cardClassName="w-44 sm:w-44">
+        <PlanCarousel label="Planes y vigencia" cardClassName="w-44 sm:w-44" arrowsInside>
           {plans.map((p) => (
             <button
               key={p.id}
@@ -384,9 +385,10 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
               <FormCombobox
                 id="subscription-custom-base"
                 label="Basar los accesos en un plan"
-                value=""
+                value={basePlanId}
                 placeholder="Elige un plan para copiar sus accesos…"
                 onChange={(id) => {
+                  setBasePlanId(id)
                   const base = plans.find((p) => p.id === id)
                   if (base) setCustom({ ...custom, permissions: new Set(Array.isArray(base.permissions) ? base.permissions : PLAN_PERMISSION_KEYS) })
                 }}

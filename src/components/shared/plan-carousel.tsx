@@ -11,7 +11,9 @@ const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t 
  * tarjeta. Las flechas van a media altura de las tarjetas (donde se buscan); el desplazamiento con flechas es
  * animado y suave (sin animación con «reducir movimiento»). En táctil basta con arrastrar.
  */
-export function PlanCarousel({ children, className, label = "Planes", cardClassName }: { children: React.ReactNode; className?: string; label?: string; /** Ancho de cada tarjeta (por defecto el de los planes). */ cardClassName?: string }) {
+export function PlanCarousel({ children, className, label = "Planes", cardClassName, arrowsInside }: {
+  /** Flechas dentro del ancho del carrusel (en modales: evita desbordar y crear scroll horizontal). */
+  arrowsInside?: boolean; children: React.ReactNode; className?: string; label?: string; /** Ancho de cada tarjeta (por defecto el de los planes). */ cardClassName?: string }) {
   const scroller = useRef<HTMLDivElement>(null);
   const frame = useRef<number | null>(null);
   const [edge, setEdge] = useState({ start: true, end: true });
@@ -83,10 +85,10 @@ export function PlanCarousel({ children, className, label = "Planes", cardClassN
       </div>
       {hasOverflow && (
         <>
-          <button type="button" onClick={() => go(-1)} aria-label="Planes anteriores" tabIndex={-1} className={cn(arrow, "-left-3", edge.start && "pointer-events-none opacity-0")}>
+          <button type="button" onClick={() => go(-1)} aria-label="Planes anteriores" tabIndex={-1} className={cn(arrow, arrowsInside ? "left-1" : "-left-3", edge.start && "pointer-events-none opacity-0")}>
             <ChevronLeft className="size-5" />
           </button>
-          <button type="button" onClick={() => go(1)} aria-label="Planes siguientes" tabIndex={-1} className={cn(arrow, "-right-3", edge.end && "pointer-events-none opacity-0")}>
+          <button type="button" onClick={() => go(1)} aria-label="Planes siguientes" tabIndex={-1} className={cn(arrow, arrowsInside ? "right-1" : "-right-3", edge.end && "pointer-events-none opacity-0")}>
             <ChevronRight className="size-5" />
           </button>
         </>
