@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth/options"
 import { effectiveOrgId } from "@/lib/auth/org-context"
 import { hasPermission } from "@/lib/auth/permissions"
 import { prisma } from "@/lib/db"
-import { subscriptionUsage, syncExpiredSubscriptions } from "@/lib/billing/subscriptions"
+import { saveCustomPlan, subscriptionUsage, syncExpiredSubscriptions } from "@/lib/billing/subscriptions"
 import { demoPeriodEnd } from "@/lib/billing/demo"
 
 export async function GET() {
@@ -24,10 +24,14 @@ export async function POST(request:Request){
    const current=await prisma.organizationSubscription.findUnique({where:{organizationId},select:{isDemo:true}})
    if(current?.isDemo) return NextResponse.json({ok:false,error:"Es una empresa demo: no se cobra. Desactiva «Demo» al contratar para registrar su primer pago."},{status:409})
    const payment=await prisma.subscriptionPayment.create({data:{organizationId,subscriptionId:body.subscriptionId||null,planId:body.planId||null,amount:Number(body.amount),status:"paid",paidAt:new Date(),reference:String(body.reference??"")||null}}); if(body.subscriptionId) await prisma.organizationSubscription.update({where:{id:String(body.subscriptionId)},data:{status:"active"}}); await prisma.organization.update({where:{id:organizationId},data:{isBlocked:false,blockedReason:null}}); return NextResponse.json({ok:true,payment}) }
+  // Plan Personalizado: se arma un plan propio de la empresa y los extras no aplican.
+  const isCustomPlan=body.planId==="custom"
+  const planId=isCustomPlan?await saveCustomPlan(organizationId,body.custom??{}):String(body.planId)
+  const extraLocations=isCustomPlan?0:Math.max(0,Number(body.extraLocations??0)); const extraEmployeePacks=isCustomPlan?0:Math.max(0,Number(body.extraEmployeePacks??0))
   const isDemo=body.isDemo===true
   // En demo, «días de prueba» fija el fin de la prueba a partir de hoy.
   const periodEndsAt=isDemo&&Number(body.demoDays)>0?demoPeriodEnd(Number(body.demoDays)):new Date(String(body.periodEndsAt)); if(Number.isNaN(periodEndsAt.getTime())) throw new Error("Selecciona una fecha de vencimiento válida")
-  const subscription=await prisma.organizationSubscription.upsert({where:{organizationId},update:{planId:String(body.planId),status:String(body.status??"active"),periodEndsAt,graceEndsAt:body.graceEndsAt?new Date(body.graceEndsAt):null,extraLocations:Math.max(0,Number(body.extraLocations??0)),extraEmployeePacks:Math.max(0,Number(body.extraEmployeePacks??0)),autoBlockOnPastDue:body.autoBlockOnPastDue!==false,isDemo,reminderDaysBefore:Math.max(0,Number(body.reminderDaysBefore??5))},create:{organizationId,planId:String(body.planId),periodEndsAt,isDemo,status:String(body.status??"active"),extraLocations:Math.max(0,Number(body.extraLocations??0)),extraEmployeePacks:Math.max(0,Number(body.extraEmployeePacks??0))}})
+  const subscription=await prisma.organizationSubscription.upsert({where:{organizationId},update:{planId,status:String(body.status??"active"),periodEndsAt,graceEndsAt:body.graceEndsAt?new Date(body.graceEndsAt):null,extraLocations,extraEmployeePacks,autoBlockOnPastDue:body.autoBlockOnPastDue!==false,isDemo,reminderDaysBefore:Math.max(0,Number(body.reminderDaysBefore??5))},create:{organizationId,planId,periodEndsAt,isDemo,status:String(body.status??"active"),extraLocations,extraEmployeePacks}})
   const blocked=body.blocked===true; await prisma.organization.update({where:{id:organizationId},data:{isBlocked:blocked,blockedReason:blocked?String(body.blockedReason??"Cuenta suspendida por administración"):null}}); return NextResponse.json({ok:true,subscription})
  } catch(error){return NextResponse.json({ok:false,error:error instanceof Error?error.message:"No fue posible actualizar la suscripción"},{status:400})}
 }

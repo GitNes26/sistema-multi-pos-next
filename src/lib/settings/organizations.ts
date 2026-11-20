@@ -177,7 +177,7 @@ export async function createOrganization(
     return created
   })
 
-  const starterPlan = await prisma.subscriptionPlan.findFirst({ where: { isActive: true }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
+  const starterPlan = await prisma.subscriptionPlan.findFirst({ where: { isActive: true, isCustom: false }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
   if (starterPlan) {
     const demoDays = Math.floor(Number(input.demoDays) || 0)
     const isDemo = demoDays > 0

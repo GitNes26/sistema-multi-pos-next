@@ -32,7 +32,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ b
   if (!organizationId) redirect("/admin")
   const [usage, plans, trial] = await Promise.all([
     subscriptionUsage(organizationId),
-    prisma.subscriptionPlan.findMany({ where: { isActive: true }, orderBy: { monthlyPrice: "asc" } }),
+    prisma.subscriptionPlan.findMany({ where: { isActive: true, isCustom: false }, orderBy: { monthlyPrice: "asc" } }),
     demoTrialInfo(organizationId),
   ])
   const subscription = usage.subscription

@@ -380,10 +380,10 @@ export function TicketPanel({
               {t.discounts.map((d, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between text-xs text-success-ink"
+                  className="flex items-start justify-between gap-2 text-xs text-success-ink"
                 >
-                  <span className="truncate">{d.label}</span>
-                  <span className="font-medium">-{money(d.amount)}</span>
+                  <span className="min-w-0 break-words">{d.label}</span>
+                  <span className="shrink-0 whitespace-nowrap font-medium">-{money(d.amount)}</span>
                 </div>
               ))}
             </motion.div>

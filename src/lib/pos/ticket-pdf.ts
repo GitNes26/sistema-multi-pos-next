@@ -1,3 +1,4 @@
+import { wrapByWidth } from "@/lib/pos/ticket-text";
 import { loyaltyTicketLines } from "@/lib/loyalty/server";
 import { warrantyTicketLegends } from "@/lib/warranty/server";
 import { cleanItemName } from "@/lib/pos/item-name";
@@ -63,7 +64,6 @@ function draw(doc: PDFKit.PDFDocument, m: TicketModel, logo: TicketLogo | null, 
   const pageWidth = m.paperWidth * 2.83465;
   const margin = m.paperWidth === 58 ? 9 : 12;
   const contentWidth = pageWidth - margin * 2;
-  const amountWidth = m.paperWidth === 58 ? 54 : 74;
   const small = m.paperWidth === 58 ? 7 : 8;
 
   const rule = () => {
@@ -71,11 +71,22 @@ function draw(doc: PDFKit.PDFDocument, m: TicketModel, logo: TicketLogo | null, 
     doc.undash();
     doc.moveDown(0.8);
   };
+  // Etiqueta + importe: el importe se mide y la etiqueta usa TODO el ancho restante; si aun así no cabe, continúa en
+  // los renglones de abajo (máx. 3, con «…») en lugar de encimarse con el importe.
   const row = (l: string, r: string) => {
-    const y = doc.y;
-    doc.text(l, margin, y, { width: contentWidth - amountWidth - 4, lineBreak: false, ellipsis: true });
-    doc.text(r, pageWidth - margin - amountWidth, y, { align: "right", width: amountWidth, lineBreak: false });
-    doc.y = y + doc.currentLineHeight() + 2;
+    const amountW = doc.widthOfString(r);
+    // Los renglones de continuación van sangrados 4 pt: se mide con ese margen para que ninguno se parta de nuevo.
+    const labelW = contentWidth - amountW - 6 - 4;
+    const lines = wrapByWidth(l, labelW, (t) => doc.widthOfString(t), { maxLines: 3 });
+    const lineH = doc.currentLineHeight();
+    let y = doc.y;
+    doc.text(lines[0], margin, y, { width: contentWidth, lineBreak: false });
+    doc.text(r, pageWidth - margin - amountW, y, { width: amountW + 1, lineBreak: false });
+    for (const extra of lines.slice(1)) {
+      y += lineH + 1;
+      doc.text(extra, margin + 4, y, { width: contentWidth, lineBreak: false });
+    }
+    doc.y = y + lineH + 2;
   };
   const center = (t: string) => doc.text(t, margin, doc.y, { align: "center", width: contentWidth });
 

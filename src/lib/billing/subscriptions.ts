@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db"
 import { CrudError } from "@/lib/crud/types"
 import type { PermissionKey } from "@/lib/auth/permission-keys"
-import { planDeniedKeys } from "@/lib/billing/plan-permissions"
+import { planDeniedKeys, sanitizePlanPermissions } from "@/lib/billing/plan-permissions"
+import { Prisma } from "@prisma/client"
 import { demoLabel, monthlyCost, PERMANENT_DEMO_DAYS, daysUntil } from "@/lib/billing/demo"
 
 /** Motivo de bloqueo cuando termina una prueba gratis sin convertirse en suscripción. */
@@ -85,4 +86,48 @@ export async function demoTrialInfo(organizationId: string | null | undefined) {
     planName: sub.plan.name,
     monthlyCost: monthlyCost(sub.plan, sub.extraLocations, sub.extraEmployeePacks),
   }
+}
+
+export type CustomPlanInput = { monthlyPrice: unknown; locations: unknown; employees: unknown; permissions?: unknown; description?: unknown }
+
+/**
+ * Plan Personalizado de una empresa: un plan propio (`isCustom`) con capacidad,
+ * accesos y precio libres que fija el superadmin. No sale en el catálogo de
+ * planes; los límites y permisos se aplican igual que en cualquier plan, y sin
+ * extras (la capacidad ya es exactamente la pactada).
+ */
+export async function saveCustomPlan(organizationId: string, input: CustomPlanInput): Promise<string> {
+  const monthlyPrice = Number(input.monthlyPrice)
+  const locations = Math.floor(Number(input.locations))
+  const employees = Math.floor(Number(input.employees))
+  if (!Number.isFinite(monthlyPrice) || monthlyPrice < 0) throw new CrudError("Captura un precio mensual válido para el plan personalizado", 400)
+  if (!(locations >= 1) || !(employees >= 1)) throw new CrudError("El plan personalizado necesita al menos 1 sucursal y 1 empleado", 400)
+  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } })
+  if (!org) throw new CrudError("Empresa no encontrada", 404)
+  const permissions = sanitizePlanPermissions(input.permissions)
+  const description = String(input.description ?? "").trim() || null
+  const data = {
+    description,
+    monthlyPrice,
+    includedLocations: locations,
+    includedEmployees: employees,
+    extraLocationPrice: 0,
+    extraEmployeePackSize: 1,
+    extraEmployeePackPrice: 0,
+    features: [`${locations} sucursal(es)`, `${employees} empleado(s)`, "Acceso a medida"],
+    permissions: permissions === null ? Prisma.DbNull : permissions,
+    isCustom: true,
+    isActive: true,
+    sortOrder: 999,
+  }
+  const current = await prisma.organizationSubscription.findUnique({ where: { organizationId }, select: { plan: { select: { id: true, isCustom: true } } } })
+  if (current?.plan.isCustom) {
+    await prisma.subscriptionPlan.update({ where: { id: current.plan.id }, data })
+    return current.plan.id
+  }
+  // Nombre único por empresa (el nombre del plan es único en toda la tabla).
+  const baseName = `Personalizado · ${org.name}`
+  const taken = await prisma.subscriptionPlan.findUnique({ where: { name: baseName }, select: { id: true } })
+  const created = await prisma.subscriptionPlan.create({ data: { ...data, name: taken ? `${baseName} (${organizationId.slice(-6)})` : baseName } })
+  return created.id
 }

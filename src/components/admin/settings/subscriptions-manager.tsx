@@ -2,7 +2,7 @@
 
 import { matchesSearch } from "@/lib/search"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, Ban, Building2, CalendarClock, CreditCard, Gift, Loader2, Lock, Receipt, Search, ShieldCheck, Users, Wallet } from "lucide-react"
+import { AlertTriangle, Ban, Building2, CalendarClock, CreditCard, Gift, Loader2, Lock, Receipt, Search, ShieldCheck, SlidersHorizontal, Users, Wallet } from "lucide-react"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,8 @@ import { FormCombobox } from "@/components/base/form-combobox"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { DatePicker } from "@/components/base/date-picker"
 import { ymdToDate, dateToYmd } from "@/lib/date-input"
+import { PlanPermissionsPicker } from "@/components/admin/settings/plan-permissions-picker"
+import { PLAN_PERMISSION_KEYS } from "@/lib/billing/plan-permissions"
 import { SwitchField } from "@/components/base/switch-field"
 import { SegmentedFilter, StatusPill, type StatusTone } from "@/components/base"
 import { ClearFiltersButton } from "@/components/base/clear-filters-button"
@@ -31,7 +33,11 @@ interface Plan {
   extraLocationPrice: number | string
   extraEmployeePackSize: number
   extraEmployeePackPrice: number | string
+  isCustom?: boolean
+  permissions?: string[] | null
 }
+const CUSTOM = "custom"
+
 interface Payment {
   id: string
   amount: number | string
@@ -239,7 +245,7 @@ export function SubscriptionsManager() {
 function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans: Plan[]; onClose: () => void; onSaved: () => void }) {
   const s = org.subscription
   const [form, setForm] = useState({
-    planId: s?.planId ?? plans[0]?.id ?? "",
+    planId: s?.plan.isCustom ? CUSTOM : (s?.planId ?? plans[0]?.id ?? ""),
     status: s?.status ?? "active",
     periodEndsAt: (s?.periodEndsAt ?? new Date(Date.now() + 30 * 864e5).toISOString()).slice(0, 10),
     extraLocations: String(s?.extraLocations ?? 0),
@@ -251,11 +257,20 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
     blocked: org.isBlocked,
     blockedReason: org.blockedReason ?? "",
   })
+  // Plan Personalizado: capacidad, accesos y precio libres solo para esta empresa.
+  const cp = s?.plan.isCustom ? s.plan : null
+  const [custom, setCustom] = useState({
+    monthlyPrice: String(cp ? Number(cp.monthlyPrice) : 0),
+    locations: String(cp?.includedLocations ?? 1),
+    employees: String(cp?.includedEmployees ?? 1),
+    permissions: new Set<string>(Array.isArray(cp?.permissions) ? cp.permissions : PLAN_PERMISSION_KEYS),
+  })
   const [payment, setPayment] = useState({ amount: "", reference: "" })
   const [busy, setBusy] = useState(false)
-  const plan = plans.find((p) => p.id === form.planId)
+  const isCustom = form.planId === CUSTOM
+  const plan = isCustom ? undefined : plans.find((p) => p.id === form.planId)
   const isDemo = form.isDemo
-  const total = plan ? Number(plan.monthlyPrice) + Number(form.extraLocations || 0) * Number(plan.extraLocationPrice) + Number(form.extraEmployeePacks || 0) * Number(plan.extraEmployeePackPrice) : 0
+  const total = isCustom ? Number(custom.monthlyPrice || 0) : plan ? Number(plan.monthlyPrice) + Number(form.extraLocations || 0) * Number(plan.extraLocationPrice) + Number(form.extraEmployeePacks || 0) * Number(plan.extraEmployeePackPrice) : 0
 
   const post = async (body: Record<string, unknown>) => {
     setBusy(true)
@@ -272,7 +287,13 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
     }
   }
   const save = async () => {
-    if (await post({ organizationId: org.id, subscriptionId: s?.id ?? null, ...form, demoDays: form.demoDays ? Number(form.demoDays) : undefined })) {
+    if (isCustom && (!(Number(custom.locations) >= 1) || !(Number(custom.employees) >= 1))) {
+      toast.error("El plan personalizado necesita al menos 1 sucursal y 1 empleado")
+      return
+    }
+    const all = PLAN_PERMISSION_KEYS.every((k) => custom.permissions.has(k))
+    const customBody = isCustom ? { monthlyPrice: Number(custom.monthlyPrice || 0), locations: Number(custom.locations), employees: Number(custom.employees), permissions: all ? null : [...custom.permissions] } : undefined
+    if (await post({ organizationId: org.id, subscriptionId: s?.id ?? null, ...form, custom: customBody, demoDays: form.demoDays ? Number(form.demoDays) : undefined })) {
       toast.success("Suscripción actualizada")
       onSaved()
     }
@@ -282,7 +303,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
       toast.error("Captura un importe válido")
       return
     }
-    if (await post({ action: "payment", organizationId: org.id, subscriptionId: s?.id ?? null, planId: form.planId, amount: Number(payment.amount), reference: payment.reference })) {
+    if (await post({ action: "payment", organizationId: org.id, subscriptionId: s?.id ?? null, planId: isCustom ? (cp?.id ?? null) : form.planId, amount: Number(payment.amount), reference: payment.reference })) {
       toast.success("Pago registrado y negocio desbloqueado")
       onSaved()
     }
@@ -327,7 +348,35 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
               </p>
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, planId: CUSTOM })}
+            aria-pressed={isCustom}
+            className={cn("press w-44 shrink-0 snap-start rounded-xl border border-dashed p-3 text-left", isCustom ? "border-primary bg-primary/10 ring-2 ring-primary/30" : "hover:bg-muted/60")}
+          >
+            <p className="flex items-center gap-1.5 font-semibold"><SlidersHorizontal className="size-4" /> Personalizado</p>
+            <p className="text-sm tabular-nums">{isCustom ? `${money(Number(custom.monthlyPrice || 0))}/mes` : "Precio libre"}</p>
+            <p className="text-xs text-muted-foreground">Accesos, sucursales y empleados a la medida</p>
+          </button>
         </div>
+        {isCustom && (
+          <div className="space-y-3 rounded-xl border border-dashed bg-muted/30 p-4">
+            <p className="text-xs text-muted-foreground">Solo para esta empresa: no aparece en el catálogo de planes. Las cantidades y el precio son libres y no llevan extras.</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <InputGroupField required label="Precio mensual" type="text" inputMode="decimal" leftIcon={<Wallet className="size-4" />} value={custom.monthlyPrice} onChange={(e) => setCustom({ ...custom, monthlyPrice: e.target.value.replace(/[^\d.]/g, "") })} />
+              <InputGroupField required label="Sucursales" type="text" inputMode="numeric" leftIcon={<Building2 className="size-4" />} value={custom.locations} onChange={(e) => setCustom({ ...custom, locations: e.target.value.replace(/\D/g, "").slice(0, 5) })} />
+              <InputGroupField required label="Empleados" type="text" inputMode="numeric" leftIcon={<Users className="size-4" />} value={custom.employees} onChange={(e) => setCustom({ ...custom, employees: e.target.value.replace(/\D/g, "").slice(0, 6) })} />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h4 className="text-sm font-semibold">Accesos incluidos</h4>
+                <p className="text-xs text-muted-foreground">Lo que no marques queda fuera para toda la empresa, aunque sus roles lo tengan.</p>
+              </div>
+              <span className="text-xs text-muted-foreground tabular-nums">{custom.permissions.size} de {PLAN_PERMISSION_KEYS.length}</span>
+            </div>
+            <PlanPermissionsPicker value={custom.permissions} onChange={(permissions) => setCustom({ ...custom, permissions })} />
+          </div>
+        )}
         <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
           <SwitchField id="subscription-demo" label="Empresa demo (prueba gratis)" description="Se configura como pagada y se le muestra lo que costaría, pero no se cobra ni cuenta en los ingresos" checked={form.isDemo} onCheckedChange={(v) => setForm({ ...form, isDemo: v })} />
           {isDemo && (
@@ -373,7 +422,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
         </div>
       </section>
 
-      <section className="space-y-3">
+      {!isCustom && <section className="space-y-3">
         <h3 className="text-sm font-semibold">Capacidad adicional</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <InputGroupField
@@ -391,7 +440,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
             onChange={(e) => setForm({ ...form, extraEmployeePacks: e.target.value })}
           />
         </div>
-      </section>
+      </section>}
 
       <section className="space-y-2">
         <h3 className="text-sm font-semibold">Acceso</h3>

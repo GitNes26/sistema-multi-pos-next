@@ -140,6 +140,16 @@ switch (mode) {
       process.exit(r.status ?? 1)
     }
     break
+  case "custom-plan-integration":
+    {
+      const r = spawnSync(
+        process.execPath,
+        ["--import", "tsx", "--test", "tests/custom-plan.integration.test.mjs"],
+        { cwd: root, env, stdio: "inherit" }
+      )
+      process.exit(r.status ?? 1)
+    }
+    break
   case "e2e":
     run("@playwright/test/cli", ["test", ...process.argv.slice(4)])
     break

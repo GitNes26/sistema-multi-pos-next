@@ -385,6 +385,8 @@ model SubscriptionPlan {
   features               Json                       @default("[]")
   /// Permisos incluidos en el plan (null = sin restricción). Limita lo que los roles de la empresa pueden usar.
   permissions            Json?
+  /// Plan Personalizado de una sola empresa (lo arma el superadmin); nunca se muestra en el catalogo de planes.
+  isCustom               Boolean                    @default(false)
   isActive               Boolean                    @default(true)
   sortOrder              Int                        @default(0)
   createdAt              DateTime                   @default(now())

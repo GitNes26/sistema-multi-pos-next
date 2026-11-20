@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.69.0.0] — 2026-11-20
+- **Tipo:** `feat` (Minor)
+- feat: plan Personalizado en Control de suscripciones (plan propio de la empresa con precio, sucursales, empleados y accesos libres, fuera del catalogo de planes) y etiquetas largas de promociones en tickets sin encimarse (PDF y pantalla)
+
 ### [0.68.0.0] — 2026-11-20
 - **Tipo:** `feat` (Minor)
 - feat: quitar reglas por presentacion en topicos, receta e insumos mejor explicada, entero y porciones con una sola existencia (variantes del mismo producto o producto ligado, piezas vendibles en POS y portal, decimales en inventario) y mensajes claros cuando falta inventario o insumo

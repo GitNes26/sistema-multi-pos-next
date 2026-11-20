@@ -160,7 +160,7 @@ export async function seedNessikTest() {
   await prisma.organization.update({ where: { id: org.id }, data: { isBlocked: false, blockedReason: null } })
 
   // Suscripción vigente (plan más alto) para que no se bloquee.
-  const plan = await prisma.subscriptionPlan.findFirst({ where: { isActive: true }, orderBy: { sortOrder: "desc" } })
+  const plan = await prisma.subscriptionPlan.findFirst({ where: { isActive: true, isCustom: false }, orderBy: { sortOrder: "desc" } })
   if (plan && !(await prisma.organizationSubscription.findUnique({ where: { organizationId: org.id } }))) {
     await prisma.organizationSubscription.create({
       data: {

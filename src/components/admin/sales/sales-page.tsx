@@ -623,9 +623,9 @@ function SaleDetailDialog({
               <span className="tabular-nums">{money(sale.subtotal)}</span>
             </div>
             {sale.discounts.map((d, idx) => (
-              <div key={idx} className="flex justify-between">
-                <span className="text-muted-foreground">{d.label}</span>
-                <span className="tabular-nums text-success-ink">
+              <div key={idx} className="flex justify-between gap-3">
+                <span className="min-w-0 break-words text-muted-foreground">{d.label}</span>
+                <span className="shrink-0 whitespace-nowrap tabular-nums text-success-ink">
                   -{money(d.amount)}
                 </span>
               </div>

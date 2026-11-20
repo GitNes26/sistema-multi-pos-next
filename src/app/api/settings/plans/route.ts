@@ -9,7 +9,7 @@ import { sanitizePlanPermissions } from "@/lib/billing/plan-permissions"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
-  const plans = await prisma.subscriptionPlan.findMany({ where: hasPermission(session, "organizations.manage") ? {} : { isActive: true }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
+  const plans = await prisma.subscriptionPlan.findMany({ where: hasPermission(session, "organizations.manage") ? { isCustom: false } : { isActive: true, isCustom: false }, orderBy: [{ sortOrder: "asc" }, { monthlyPrice: "asc" }] })
   return NextResponse.json({ ok: true, plans })
 }
 export async function POST(request: Request) {

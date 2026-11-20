@@ -5,13 +5,13 @@ import { Building2, Check, CreditCard, Loader2, Lock, Plus, Save, ShieldCheck, U
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { DialogComponent } from "@/components/ui/dialog"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { PageHeader } from "@/components/layout/page-header"
-import { PERMISSION_MODULE_LABELS, permissionsByModule, type PermissionKey } from "@/lib/auth/permission-keys"
+import { PERMISSION_MODULE_LABELS } from "@/lib/auth/permission-keys"
 import { PLAN_PERMISSION_KEYS, planDeniedKeys } from "@/lib/billing/plan-permissions"
 import { cn } from "@/lib/utils"
+import { PlanPermissionsPicker, PLAN_MODULES } from "@/components/admin/settings/plan-permissions-picker"
 import { PlanCarousel } from "@/components/shared/plan-carousel"
 
 // Planes del sistema (superAdmin): precio, capacidad, beneficios comerciales y
@@ -47,10 +47,6 @@ type Form = {
   permissions: Set<string>
 }
 
-const MODULES = Object.entries(permissionsByModule())
-  .map(([module, perms]) => [module, perms.filter((p) => PLAN_PERMISSION_KEYS.includes(p.key))] as const)
-  .filter(([, perms]) => perms.length > 0)
-
 const empty = (): Form => ({
   name: "",
   description: "",
@@ -67,7 +63,7 @@ const empty = (): Form => ({
 /** Módulos que el plan deja completamente fuera. */
 function excludedModules(permissions: string[] | null) {
   const denied = new Set<string>(planDeniedKeys(permissions))
-  return MODULES.filter(([, perms]) => perms.every((p) => denied.has(p.key))).map(([m]) => PERMISSION_MODULE_LABELS[m] ?? m)
+  return PLAN_MODULES.filter(([, perms]) => perms.every((p) => denied.has(p.key))).map(([m]) => PERMISSION_MODULE_LABELS[m] ?? m)
 }
 
 export function PlansManager() {
@@ -97,17 +93,6 @@ export function PlansManager() {
       extraEmployeePackPrice: String(p.extraEmployeePackPrice),
       features: (p.features ?? []).join("\n"),
       permissions: new Set(Array.isArray(p.permissions) ? p.permissions : PLAN_PERMISSION_KEYS),
-    })
-
-  const togglePerms = (keys: PermissionKey[], on: boolean) =>
-    setForm((f) => {
-      if (!f) return f
-      const next = new Set(f.permissions)
-      for (const k of keys) {
-        if (on) next.add(k)
-        else next.delete(k)
-      }
-      return { ...f, permissions: next }
     })
 
   const save = async () => {
@@ -255,33 +240,7 @@ export function PlansManager() {
                   {form.permissions.size} de {PLAN_PERMISSION_KEYS.length}
                 </span>
               </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                {MODULES.map(([module, perms]) => {
-                  const on = perms.filter((p) => form.permissions.has(p.key)).length
-                  return (
-                    <div key={module} className={cn("rounded-xl border p-3", on === 0 && "bg-muted/40")}>
-                      <label className="flex cursor-pointer items-center gap-2">
-                        <Checkbox
-                          checked={on === perms.length ? true : on === 0 ? false : "indeterminate"}
-                          onCheckedChange={(v) => togglePerms(perms.map((p) => p.key), v === true)}
-                        />
-                        <span className="text-sm font-medium">{PERMISSION_MODULE_LABELS[module] ?? module}</span>
-                        <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                          {on}/{perms.length}
-                        </span>
-                      </label>
-                      <div className="mt-2 space-y-1 pl-6">
-                        {perms.map((p) => (
-                          <label key={p.key} className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-                            <Checkbox checked={form.permissions.has(p.key)} onCheckedChange={(v) => togglePerms([p.key], v === true)} />
-                            {p.label}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              <PlanPermissionsPicker value={form.permissions} onChange={(permissions) => setForm((f) => (f ? { ...f, permissions } : f))} />
             </section>
           </>
         )}

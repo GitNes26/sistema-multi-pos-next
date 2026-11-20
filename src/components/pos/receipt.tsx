@@ -155,9 +155,10 @@ export function Receipt({
           <span>{money(payload.subtotal)}</span>
         </div>
         {payload.discounts.map((d, idx) => (
-          <div key={idx} className="flex justify-between">
-            <span className="truncate pr-2">{d.label}</span>
-            <span>-{money(d.amount)}</span>
+          <div key={idx} className="flex justify-between gap-2">
+            {/* El nombre de la promoción baja de renglón en vez de encimarse con el importe. */}
+            <span className="min-w-0 break-words">{d.label}</span>
+            <span className="shrink-0 whitespace-nowrap">-{money(d.amount)}</span>
           </div>
         ))}
         <div className="flex justify-between">
