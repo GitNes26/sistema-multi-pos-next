@@ -2,7 +2,7 @@
 
 import { matchesSearch } from "@/lib/search"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertTriangle, Ban, Building2, CalendarClock, CreditCard, Gift, Loader2, Lock, Receipt, Search, ShieldCheck, SlidersHorizontal, Users, Wallet } from "lucide-react"
+import { AlertTriangle, Ban, Building2, CalendarClock, CreditCard, Gift, Loader2, Lock, Receipt, ChevronDown, Search, ShieldCheck, SlidersHorizontal, Users, Wallet } from "lucide-react"
 import { toast } from "sonner"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,8 @@ import { FormCombobox } from "@/components/base/form-combobox"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { DatePicker } from "@/components/base/date-picker"
 import { ymdToDate, dateToYmd } from "@/lib/date-input"
+import { PlanCarousel } from "@/components/shared/plan-carousel"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { PlanPermissionsPicker } from "@/components/admin/settings/plan-permissions-picker"
 import { PLAN_PERMISSION_KEYS } from "@/lib/billing/plan-permissions"
 import { SwitchField } from "@/components/base/switch-field"
@@ -265,6 +267,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
     employees: String(cp?.includedEmployees ?? 1),
     permissions: new Set<string>(Array.isArray(cp?.permissions) ? cp.permissions : PLAN_PERMISSION_KEYS),
   })
+  const [permsOpen, setPermsOpen] = useState(false)
   const [payment, setPayment] = useState({ amount: "", reference: "" })
   const [busy, setBusy] = useState(false)
   const isCustom = form.planId === CUSTOM
@@ -332,14 +335,14 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
     >
       <section className="space-y-3">
         <h3 className="text-sm font-semibold">Plan y vigencia</h3>
-        <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 py-1 scrollbar-none" role="group" aria-label="Planes">
+        <PlanCarousel label="Planes y vigencia" cardClassName="w-44 sm:w-44">
           {plans.map((p) => (
             <button
               key={p.id}
               type="button"
               onClick={() => setForm({ ...form, planId: p.id })}
               aria-pressed={form.planId === p.id}
-              className={cn("press w-44 shrink-0 snap-start rounded-xl border p-3 text-left", form.planId === p.id ? "border-primary bg-primary/10 ring-2 ring-primary/30" : "hover:bg-muted/60")}
+              className={cn("press w-full rounded-xl border p-3 text-left", form.planId === p.id ? "border-primary bg-primary/10 ring-2 ring-primary/30" : "hover:bg-muted/60")}
             >
               <p className="font-semibold">{p.name}</p>
               <p className="text-sm tabular-nums">{money(Number(p.monthlyPrice))}/mes</p>
@@ -352,13 +355,13 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
             type="button"
             onClick={() => setForm({ ...form, planId: CUSTOM })}
             aria-pressed={isCustom}
-            className={cn("press w-44 shrink-0 snap-start rounded-xl border border-dashed p-3 text-left", isCustom ? "border-primary bg-primary/10 ring-2 ring-primary/30" : "hover:bg-muted/60")}
+            className={cn("press w-full rounded-xl border border-dashed p-3 text-left", isCustom ? "border-primary bg-primary/10 ring-2 ring-primary/30" : "hover:bg-muted/60")}
           >
             <p className="flex items-center gap-1.5 font-semibold"><SlidersHorizontal className="size-4" /> Personalizado</p>
             <p className="text-sm tabular-nums">{isCustom ? `${money(Number(custom.monthlyPrice || 0))}/mes` : "Precio libre"}</p>
             <p className="text-xs text-muted-foreground">Accesos, sucursales y empleados a la medida</p>
           </button>
-        </div>
+        </PlanCarousel>
         {isCustom && (
           <div className="space-y-3 rounded-xl border border-dashed bg-muted/30 p-4">
             <p className="text-xs text-muted-foreground">Solo para esta empresa: no aparece en el catálogo de planes. Las cantidades y el precio son libres y no llevan extras.</p>
@@ -367,14 +370,34 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
               <InputGroupField required label="Sucursales" type="text" inputMode="numeric" leftIcon={<Building2 className="size-4" />} value={custom.locations} onChange={(e) => setCustom({ ...custom, locations: e.target.value.replace(/\D/g, "").slice(0, 5) })} />
               <InputGroupField required label="Empleados" type="text" inputMode="numeric" leftIcon={<Users className="size-4" />} value={custom.employees} onChange={(e) => setCustom({ ...custom, employees: e.target.value.replace(/\D/g, "").slice(0, 6) })} />
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h4 className="text-sm font-semibold">Accesos incluidos</h4>
-                <p className="text-xs text-muted-foreground">Lo que no marques queda fuera para toda la empresa, aunque sus roles lo tengan.</p>
+            <Collapsible open={permsOpen} onOpenChange={setPermsOpen} className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CollapsibleTrigger className="group/perms flex min-w-0 items-center gap-2 rounded-lg text-left">
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/perms:rotate-180" />
+                  <span>
+                    <span className="block text-sm font-semibold">Accesos incluidos</span>
+                    <span className="block text-xs text-muted-foreground">Lo que no marques queda fuera para toda la empresa, aunque sus roles lo tengan.</span>
+                  </span>
+                </CollapsibleTrigger>
+                <span className="text-xs text-muted-foreground tabular-nums">{custom.permissions.size} de {PLAN_PERMISSION_KEYS.length}</span>
               </div>
-              <span className="text-xs text-muted-foreground tabular-nums">{custom.permissions.size} de {PLAN_PERMISSION_KEYS.length}</span>
-            </div>
-            <PlanPermissionsPicker value={custom.permissions} onChange={(permissions) => setCustom({ ...custom, permissions })} />
+              <FormCombobox
+                id="subscription-custom-base"
+                label="Basar los accesos en un plan"
+                value=""
+                placeholder="Elige un plan para copiar sus accesos…"
+                onChange={(id) => {
+                  const base = plans.find((p) => p.id === id)
+                  if (base) setCustom({ ...custom, permissions: new Set(Array.isArray(base.permissions) ? base.permissions : PLAN_PERMISSION_KEYS) })
+                }}
+                options={plans.map((p) => ({ value: p.id, label: p.name }))}
+                clearable={false}
+                searchable={false}
+              />
+              <CollapsibleContent>
+                <PlanPermissionsPicker value={custom.permissions} onChange={(permissions) => setCustom({ ...custom, permissions })} />
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         )}
         <div className="space-y-3 rounded-xl border bg-muted/30 p-4">

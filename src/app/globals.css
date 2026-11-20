@@ -710,3 +710,30 @@ summary {
     transform: translateY(-0.5px);
   }
 }
+
+/* Expandir/contraer suave: Collapsible de Radix (altura medida) y <details> nativo. */
+@theme inline {
+  --animate-collapsible-down: collapsible-down 240ms var(--ease-out-quart, ease-out);
+  --animate-collapsible-up: collapsible-up 200ms var(--ease-out-quart, ease-out);
+}
+@keyframes collapsible-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-collapsible-content-height); opacity: 1; }
+}
+@keyframes collapsible-up {
+  from { height: var(--radix-collapsible-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root { interpolate-size: allow-keywords; }
+  details::details-content {
+    block-size: 0;
+    opacity: 0;
+    overflow: clip;
+    transition: block-size 240ms var(--ease-out-quart, ease-out), opacity 200ms, content-visibility 240ms allow-discrete;
+  }
+  details[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}

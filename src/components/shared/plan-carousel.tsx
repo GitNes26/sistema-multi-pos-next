@@ -11,7 +11,7 @@ const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t 
  * tarjeta. Las flechas van a media altura de las tarjetas (donde se buscan); el desplazamiento con flechas es
  * animado y suave (sin animación con «reducir movimiento»). En táctil basta con arrastrar.
  */
-export function PlanCarousel({ children, className, label = "Planes" }: { children: React.ReactNode; className?: string; label?: string }) {
+export function PlanCarousel({ children, className, label = "Planes", cardClassName }: { children: React.ReactNode; className?: string; label?: string; /** Ancho de cada tarjeta (por defecto el de los planes). */ cardClassName?: string }) {
   const scroller = useRef<HTMLDivElement>(null);
   const frame = useRef<number | null>(null);
   const [edge, setEdge] = useState({ start: true, end: true });
@@ -78,7 +78,7 @@ export function PlanCarousel({ children, className, label = "Planes" }: { childr
         }}
       >
         {Children.map(children, (child) => (
-          <div className="flex w-[min(88%,21rem)] shrink-0 snap-start flex-col sm:w-80 [&>*]:flex-1">{child}</div>
+          <div className={cn("flex shrink-0 snap-start flex-col [&>*]:flex-1", cardClassName ?? "w-[min(88%,21rem)] sm:w-80")}>{child}</div>
         ))}
       </div>
       {hasOverflow && (
