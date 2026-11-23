@@ -1,5 +1,6 @@
 "use client";
 
+import { posProductBlocked } from "@/lib/pos/availability";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, LockKeyhole, Printer } from "lucide-react";
@@ -278,7 +279,7 @@ export function PosApp({
   }, [refresh]);
 
   const selectProduct = (product: PosProduct) => {
-    if (!product.isAvailable || (product.trackInventory && product.stock <= 0)) {
+    if (posProductBlocked(product)) {
       swalError("Ya no hay", product.availabilityNote || `${product.name} no está disponible por el momento.`);
       return;
     }

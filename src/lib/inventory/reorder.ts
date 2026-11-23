@@ -1,3 +1,4 @@
+import { derivedVariantIds, withoutDerived } from "@/lib/inventory/derived"
 import type { $Enums } from "@prisma/client"
 import { prisma } from "@/lib/db"
 import { CrudError } from "@/lib/crud/types"
@@ -63,7 +64,8 @@ export async function getReorderSuggestions(organizationId: string, locationType
       unit: { select: { abbreviation: true } },
     },
   })
-  const low = rows.filter((r) => num(r.quantity) <= num(r.minThreshold))
+  // Una presentación derivada por receta (rebanada) no se resurte aparte: se surte el entero.
+  const low = withoutDerived(rows.filter((r) => num(r.quantity) <= num(r.minThreshold)), await derivedVariantIds(prisma, organizationId))
   if (!low.length) return []
 
   const productIds = [...new Set(low.map((r) => r.productId ?? r.variant?.product.id).filter((x): x is string => !!x))]

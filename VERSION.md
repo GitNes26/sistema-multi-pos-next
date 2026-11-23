@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.73.0.0] — 2026-11-23
+- **Tipo:** `feat` (Minor)
+- feat: variantes sin stock en el POS solo bloquean la presentacion agotada, inventario sin registros repetidos para presentaciones ligadas por receta (listas, excel, plantilla, revisiones, reorden, panel y reportes), el scroll ya no cambia campos numericos, tabla de productos sin recorte a 10 filas y boton Agregar mas alto en escritorio
+
 ### [0.72.0.0] — 2026-11-23
 - **Tipo:** `feat` (Minor)
 - feat: bandera isService en productos (un producto sencillo sin inventario ya no se confunde con un servicio, con migracion y respaldo de los servicios existentes) y boton Agregar mas alto en el constructor del POS

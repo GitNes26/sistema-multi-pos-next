@@ -1,3 +1,4 @@
+import { derivedVariantIds, withoutDerived } from "@/lib/inventory/derived";
 import { Prisma, type $Enums } from "@prisma/client";
 import { reconcileProductInventory } from "@/lib/inventory/reconcile";
 import ExcelJS from "exceljs";
@@ -231,8 +232,12 @@ export async function inventorySnapshot(
     };
   });
 
-  if (lowOnly) return mapped.filter((r) => r.status !== "ok");
-  return mapped;
+  // Presentaciones que se venden «de» otra por receta (rebanada de un pastel entero): su existencia depende del
+  // entero, así que no se muestran como un registro más (ver `derived.ts`).
+  const visible = withoutDerived(mapped, await derivedVariantIds(prisma, organizationId));
+
+  if (lowOnly) return visible.filter((r) => r.status !== "ok");
+  return visible;
 }
 
 async function findInventory(organizationId: string, refId: string) {
@@ -763,7 +768,7 @@ export async function exportInventoryImportTemplate(organizationId: string) {
     prisma.productVariant.findMany({
       where: { organizationId, isActive: true, product: { isActive: true, trackInventory: true } },
       orderBy: [{ product: { name: "asc" } }, { name: "asc" }],
-      select: { sku: true, barcode: true, name: true, productId: true, product: { select: { name: true } } },
+      select: { id: true, sku: true, barcode: true, name: true, productId: true, product: { select: { name: true } } },
     }),
     prisma.product.findMany({
       where: { organizationId, isActive: true, trackInventory: true, productType: "bulk" },
@@ -826,7 +831,9 @@ export async function exportInventoryImportTemplate(organizationId: string) {
   ];
   const variantsPerProduct = new Map<string, number>();
   for (const variant of variants) variantsPerProduct.set(variant.productId, (variantsPerProduct.get(variant.productId) ?? 0) + 1);
-  for (const variant of variants) {
+  // Las presentaciones derivadas por receta (rebanada) no llevan existencia propia: no se ofrecen en la plantilla.
+  const derivedHidden = await derivedVariantIds(prisma, organizationId);
+  for (const variant of variants.filter((v) => !derivedHidden.has(v.id))) {
     catalog.addRow(["Estándar", variant.product.name, variant.name, variant.sku ?? "", variant.barcode ?? "", importNameOf(variant.product.name, variant.name, variantsPerProduct.get(variant.productId) ?? 1)]);
   }
   for (const product of bulkProducts) {
@@ -997,7 +1004,7 @@ export async function createRevision(
   const now = new Date();
   const employee = await performerFor(userId);
 
-  const inventoryRows = await prisma.inventory.findMany({
+  const allInventoryRows = await prisma.inventory.findMany({
     where: { organizationId, locationId, locationType },
     include: {
       product: { select: { name: true, productType: true, bulkUnit: { select: { abbreviation: true } } } },
@@ -1005,6 +1012,8 @@ export async function createRevision(
     },
     orderBy: [{ product: { name: "asc" } }, { variant: { name: "asc" } }],
   });
+  // La revisión cuenta existencias físicas: la presentación derivada (rebanada) no se cuenta aparte.
+  const inventoryRows = withoutDerived(allInventoryRows, await derivedVariantIds(prisma, organizationId));
 
   const revision = await prisma.$transaction(async (tx) => {
     const created = await tx.inventoryRevision.create({
@@ -1255,6 +1264,7 @@ export async function importInventoryStock(
   const bulkByName = new Map(bulk.map((p) => [normText(p.name), p.id]));
 
   const employee = await performerFor(userId);
+  const derivedHidden = await derivedVariantIds(prisma, organizationId);
   const result: ImportResult = { ok: true, imported: 0, errors: [] };
   const seenTargets = new Set<string>();
 
@@ -1304,6 +1314,11 @@ export async function importInventoryStock(
       }
     } else {
       result.errors.push({ row: item.line, message: "Faltan SKU, código de barras o nombre" });
+      continue;
+    }
+
+    if (variantId && derivedHidden.has(variantId)) {
+      result.errors.push({ row: item.line, message: "Esta presentación se vende de otra por receta (p. ej. rebanada del pastel entero): captura la existencia de la presentación base" });
       continue;
     }
 

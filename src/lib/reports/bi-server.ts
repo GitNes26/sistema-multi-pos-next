@@ -1,3 +1,4 @@
+import { derivedVariantIds, withoutDerived } from "@/lib/inventory/derived";
 import { prisma } from "@/lib/db";
 
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
@@ -285,7 +286,8 @@ export async function getInventoryValuation(orgId: string, f: Period) {
   }
 
   const catMap = new Map<string, { name: string; cost: number; retail: number; stock: number; count: number; outOfStock: number }>();
-  for (const inv of inventory) {
+  // Las presentaciones derivadas por receta (rebanada) no cuentan como un producto más ni como agotadas.
+  for (const inv of withoutDerived(inventory, await derivedVariantIds(prisma, orgId))) {
     const product = inv.product ?? inv.variant?.product ?? null;
     const catId = product?.categoryId ?? "uncategorized";
     const catName = product?.category?.name ?? "Sin categoría";
@@ -750,7 +752,8 @@ export async function getLowStockAlerts(orgId: string, locationId?: string) {
     stockPlaceNames(orgId),
   ]);
 
-  const rows: LowStockRow[] = inventories
+  const hiddenDerived = await derivedVariantIds(prisma, orgId);
+  const rows: LowStockRow[] = withoutDerived(inventories, hiddenDerived)
     .filter((inv) => num(inv.quantity) <= num(inv.minThreshold))
     .flatMap((inv) => {
       const product = inv.product ?? inv.variant?.product ?? null;
@@ -1037,12 +1040,13 @@ export interface FillRateRow {
 
 export async function getInventoryFillRate(orgId: string, locationId?: string) {
   const [inventories, places] = await Promise.all([
-    prisma.inventory.findMany({ where: { organizationId: orgId, ...(locationId ? { locationId } : {}) }, select: { quantity: true, locationId: true } }),
+    prisma.inventory.findMany({ where: { organizationId: orgId, ...(locationId ? { locationId } : {}) }, select: { quantity: true, locationId: true, variantId: true } }),
     stockPlaceNames(orgId),
   ]);
+  const hiddenDerived = await derivedVariantIds(prisma, orgId);
 
   const map = new Map<string, { total: number; inStock: number }>();
-  for (const inv of inventories) {
+  for (const inv of withoutDerived(inventories, hiddenDerived)) {
     const loc = places.get(inv.locationId) ?? "Sin ubicación";
     const e = map.get(loc) ?? { total: 0, inStock: 0 };
     e.total += 1;

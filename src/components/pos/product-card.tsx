@@ -1,5 +1,6 @@
 "use client";
 
+import { posProductBlocked } from "@/lib/pos/availability";
 import { ServiceAvailabilityToggle } from "@/components/admin/crud/service-availability-toggle";
 import { memo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -62,7 +63,7 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
       className={cn(
         "group relative flex min-h-44 w-full touch-manipulation flex-col gap-2.5 rounded-2xl border bg-card p-2 text-left transition-[border-color,box-shadow,background-color] duration-200",
         "desk:hover:border-foreground/20 desk:hover:shadow-e2",
-        (!product.isAvailable || (product.trackInventory && product.stock <= 0)) && "opacity-55 saturate-50",
+        posProductBlocked(product) && "opacity-55 saturate-50",
         added && "border-primary ring-1 ring-primary"
       )}
     >
@@ -150,7 +151,7 @@ export const ProductCard = memo(function ProductCard({ product, hot, onSelect }:
               </span>
             )}
           </p>
-          {product.trackInventory ? (
+          {product.trackInventory && !(product.variants.length > 1 && product.stock <= 0 && !posProductBlocked(product)) ? (
             <StockBadge stock={Math.floor(product.stock)} />
           ) : (
             <span className="sr-only">Sin control de existencia</span>

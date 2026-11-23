@@ -1,5 +1,6 @@
 "use client";
 
+import { variantSellable } from "@/lib/pos/availability";
 import { matchesSearch } from "@/lib/search"
 import { useEffect, useMemo, useState } from "react";
 import { CornerDownLeft, Layers, Search } from "lucide-react";
@@ -22,7 +23,7 @@ export function VariantDialog({
   const [q, setQ] = useState("");
   const [highlighted, setHighlighted] = useState(0);
 
-  const isOut = (v: PosVariant) => !v.isActive || (product?.trackInventory && v.stock <= 0);
+  const isOut = (v: PosVariant) => !variantSellable(v, Boolean(product?.trackInventory));
 
   const filtered = useMemo(() => {
     if (!product) return [];
@@ -143,7 +144,7 @@ export function VariantDialog({
                     </span>
                     {out && (
                       <span className="block text-xs text-muted-foreground">
-                        {!v.isActive ? "Inactiva" : "Sin stock"}
+                        {!v.isActive ? "Inactiva" : v.isAvailable === false ? "En pausa" : "Agotada"}
                       </span>
                     )}
                   </span>

@@ -1,3 +1,4 @@
+import { derivedVariantIds, withoutDerived } from "@/lib/inventory/derived";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
@@ -32,10 +33,10 @@ export async function GET() {
         ? prisma.inventory
             .findMany({
               where: { organizationId, minThreshold: { gt: 0 }, OR: [{ product: { isActive: true, trackInventory: true } }, { productId: null, variant: { isActive: true } }] },
-              select: { quantity: true, minThreshold: true },
+              select: { quantity: true, minThreshold: true, variantId: true },
               take: 5000,
             })
-            .then((rows) => rows.filter((r) => Number(r.quantity) <= Number(r.minThreshold)).length)
+            .then(async (rows) => withoutDerived(rows, await derivedVariantIds(prisma, organizationId)).filter((r) => Number(r.quantity) <= Number(r.minThreshold)).length)
         : null,
       can("cash.open") || can("cash.close")
         ? prisma.cashSession.count({ where: { organizationId, status: "open" } })

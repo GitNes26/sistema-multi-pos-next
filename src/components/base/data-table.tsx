@@ -182,6 +182,9 @@ export function DataTable<TData, TValue>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getPaginationRowModel: getPaginationRowModel(),
+    // Sin paginador propio (paginación del servidor, p. ej. el CRUD): se muestran TODAS las filas recibidas.
+    // Sin esto la tabla recortaba a `pageSize` (10) filas aunque el servidor enviara 20.
+    manualPagination: !showPagination,
     initialState: {
       pagination: { pageSize },
     },
