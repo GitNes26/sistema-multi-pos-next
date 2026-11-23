@@ -64,6 +64,8 @@ import { Spinner } from "@/components/base/spinner"
 import { InputGroupField } from "./input-group-field"
 import { ClearFiltersButton } from "./clear-filters-button"
 
+export const DEFAULT_PAGE_SIZES = [10, 20, 50, 100]
+
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
@@ -89,6 +91,8 @@ export interface DataTableProps<TData, TValue> {
   renderCard?: (row: TData) => React.ReactNode
   className?: string
   tableClassName?: string
+  /** Altura máxima del cuerpo de la tabla en escritorio (el cuerpo desplaza y el encabezado queda fijo). */
+  maxHeightClassName?: string
 }
 
 export function DataTable<TData, TValue>({
@@ -97,7 +101,7 @@ export function DataTable<TData, TValue>({
   searchable = true,
   searchPlaceholder = "Buscar…",
   pageSize = 10,
-  pageSizeOptions = [10, 20, 50],
+  pageSizeOptions = DEFAULT_PAGE_SIZES,
   enableSelection = false,
   rowKey,
   onSelectedRowsChange,
@@ -114,6 +118,7 @@ export function DataTable<TData, TValue>({
   renderCard,
   className,
   tableClassName,
+  maxHeightClassName = "max-h-[max(18rem,calc(100dvh-21rem))]",
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -336,9 +341,14 @@ export function DataTable<TData, TValue>({
       )}
 
       <div className="hidden md:block">
-        <div className="overflow-hidden rounded-xl border bg-card">
+        <div
+          className={cn(
+            "overflow-auto overscroll-contain rounded-xl border bg-card [&_[data-slot=table-container]]:overflow-visible",
+            maxHeightClassName
+          )}
+        >
           <Table className={tableClassName}>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 shadow-[0_1px_0_var(--border)]">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
@@ -415,7 +425,7 @@ export function DataTable<TData, TValue>({
 
       <div className="md:hidden">{renderCards()}</div>
 
-      {showPagination && !loading && pageCount > 1 && (
+      {showPagination && !loading && data.length > Math.min(...pageSizeOptions) && (
         <PaginationFooter table={table} pageSizeOptions={pageSizeOptions} />
       )}
     </div>
@@ -457,22 +467,11 @@ function PaginationFooter<TData>({
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="hidden sm:inline">Filas por página</span>
-        <Select
-          value={String(table.getState().pagination.pageSize)}
-          onValueChange={(v) => table.setPageSize(Number(v))}
-        >
-          <SelectTrigger className="h-11 w-16 text-xs desk:h-7" size="sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {pageSizeOptions.map((n) => (
-              <SelectItem key={n} value={String(n)}>
-                {n}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <PageSizeSelect
+          value={table.getState().pagination.pageSize}
+          options={pageSizeOptions}
+          onChange={(n) => table.setPageSize(n)}
+        />
         <span className="hidden sm:inline">
           {table.getState().pagination.pageIndex *
             table.getState().pagination.pageSize +
@@ -511,6 +510,35 @@ function PaginationFooter<TData>({
           <ChevronRight className="size-3.5" />
         </Button>
       </div>
+    </div>
+  )
+}
+
+/** Selector «Filas por página»; lo comparten el DataTable y las tablas paginadas en el servidor. */
+export function PageSizeSelect({
+  value,
+  options = DEFAULT_PAGE_SIZES,
+  onChange,
+}: {
+  value: number
+  options?: number[]
+  onChange: (n: number) => void
+}) {
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <span className="hidden sm:inline">Filas por página</span>
+      <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
+        <SelectTrigger className="h-11 w-16 text-xs desk:h-7" size="sm" aria-label="Filas por página">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((n) => (
+            <SelectItem key={n} value={String(n)}>
+              {n}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }

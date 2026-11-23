@@ -20,7 +20,7 @@ import { PageHeader } from "@/components/layout/page-header"
 import { InputGroupField } from "@/components/base/input-group-field"
 import { DatePicker } from "@/components/base/date-picker"
 import { FormCombobox } from "@/components/base/form-combobox"
-import { DataTable } from "@/components/base/data-table"
+import { DataTable, PageSizeSelect } from "@/components/base/data-table"
 import { crudApi, salesApi, saleFolio, type SaleRow, type SaleDetail } from "@/lib/api"
 import { swalError, swalToast } from "@/lib/swal"
 import { cleanItemName } from "@/lib/pos/item-name"
@@ -75,7 +75,7 @@ export function SalesPage({
   const [rows, setRows] = useState<SaleRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [pageSize] = useState(20)
+  const [pageSize, setPageSize] = useState(20)
   const [loading, setLoading] = useState(false)
   // ?q=… (enlaces desde el POS y los pedidos) llega ya escrito en el buscador.
   const initialQ = useSearchParams().get("q") ?? ""
@@ -448,9 +448,12 @@ export function SalesPage({
 
               {!loading && total > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-                  <span className="text-sm tabular-nums text-muted-foreground">
-                    {from}–{to} de {total}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <PageSizeSelect value={pageSize} onChange={(n) => { setPageSize(n); setPage(1) }} />
+                    <span className="text-sm tabular-nums text-muted-foreground">
+                      {from}–{to} de {total}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"

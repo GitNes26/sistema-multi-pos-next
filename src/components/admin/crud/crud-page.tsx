@@ -29,7 +29,7 @@ import { DialogComponent } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { PageHeader } from "@/components/layout/page-header"
-import { DataTable } from "@/components/base/data-table"
+import { DataTable, PageSizeSelect } from "@/components/base/data-table"
 import {
   crudApi,
   exportExcel,
@@ -196,7 +196,7 @@ export function CrudPage({
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [page, setPage] = useState(1)
-  const [pageSize] = useState(20)
+  const [pageSize, setPageSize] = useState(20)
   const [q, setQ] = useState("")
   const debouncedQ = useDebounce(q)
   const [productFilters, setProductFilters] = useState<ProductFilterState>(EMPTY_PRODUCT_FILTERS)
@@ -928,9 +928,12 @@ export function CrudPage({
 
           {!loading && total > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2">
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {from}–{to} de {total}
-              </span>
+              <div className="flex items-center gap-3">
+                <PageSizeSelect value={pageSize} onChange={(n) => { setPageSize(n); setPage(1) }} />
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {from}–{to} de {total}
+                </span>
+              </div>
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"

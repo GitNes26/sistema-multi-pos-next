@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.74.0.0] — 2026-11-23
+- **Tipo:** `feat` (Minor)
+- feat: selector de filas por pagina (10/20/50/100) en las tablas, incluido el pie de Productos y Ventas, y altura maxima con encabezado fijo en DataTable para evitar el scroll vertical de la pagina
+
 ### [0.73.0.0] — 2026-11-23
 - **Tipo:** `feat` (Minor)
 - feat: variantes sin stock en el POS solo bloquean la presentacion agotada, inventario sin registros repetidos para presentaciones ligadas por receta (listas, excel, plantilla, revisiones, reorden, panel y reportes), el scroll ya no cambia campos numericos, tabla de productos sin recorte a 10 filas y boton Agregar mas alto en escritorio
