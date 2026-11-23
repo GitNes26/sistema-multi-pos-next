@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.72.0.0] — 2026-11-23
+- **Tipo:** `feat` (Minor)
+- feat: bandera isService en productos (un producto sencillo sin inventario ya no se confunde con un servicio, con migracion y respaldo de los servicios existentes) y boton Agregar mas alto en el constructor del POS
+
 ### [0.71.0.0] — 2026-11-23
 - **Tipo:** `feat` (Minor)
 - feat: toppings con descripcion e icono i en el constructor del POS y portal, tipo de producto sin conversion automatica a servicio, disponible en venta para cualquier producto sin inventario, constructor del POS redimensionable con pie de botones mas altos, y edicion de usuarios (nombre, correo, telefono y contrasena) en Usuarios y permisos y en Organizaciones y roles

@@ -4311,6 +4311,8 @@ async function seedVerticalOrgDemo(
         imageUrl: productImageUrl(def.emoji, def.category),
         taxRate: 0, // sin IVA por ahora
         trackInventory,
+        // En la demo, estándar sin inventario = servicio (peluquería, talleres, etc.).
+        isService: !trackInventory,
         productType: "standard",
         allowSplit: false,
         isNew: markNew,

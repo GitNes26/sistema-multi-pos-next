@@ -58,7 +58,7 @@ export async function applyBusinessTemplate(organizationId: string, key: string)
       productIds.push(found.id)
       continue
     }
-    const p = await prisma.product.create({ data: { organizationId, name: svc.name, trackInventory: false, variants: { create: { organizationId, name: "Default", price: svc.price } } } })
+    const p = await prisma.product.create({ data: { organizationId, name: svc.name, trackInventory: false, isService: true, variants: { create: { organizationId, name: "Default", price: svc.price } } } })
     productIds.push(p.id)
     created.push(`Servicio «${svc.name}» ($${svc.price})`)
   }

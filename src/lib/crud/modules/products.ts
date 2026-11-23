@@ -84,6 +84,7 @@ export interface ProductDto {
   isAvailable: boolean;
   availabilityNote: string | null;
   trackInventory: boolean;
+  isService: boolean;
   /** Importe de envase por pieza; 0 = no aplica. */
   depositAmount: number;
   isNew: boolean;
@@ -117,6 +118,7 @@ type ProductRow = {
   isAvailable: boolean;
   availabilityNote: string | null;
   trackInventory: boolean;
+  isService: boolean;
   depositAmount?: { toNumber(): number } | number;
   isNew: boolean;
   productType: "standard" | "bulk" | "custom";
@@ -219,6 +221,7 @@ function serialize(p: ProductRow): ProductDto {
     isAvailable: p.isAvailable,
     availabilityNote: p.availabilityNote,
     trackInventory: p.trackInventory,
+    isService: p.isService,
     depositAmount: num(p.depositAmount ?? 0),
     isNew: p.isNew,
     productType: p.productType,
@@ -327,13 +330,13 @@ export const productsModule: CrudModule<ProductDto> = {
     const pageSize = Math.min(200, params.pageSize ?? 20);
     const q = params.q?.trim() ?? "";
     const categoryId = (params.categoryId as string) || undefined;
-    // "service" = estándar sin control de inventario; "standard" excluye los servicios.
+    // "service" = estándar marcado como servicio (`isService`); "standard" = estándar que no lo es.
     const typeParam = (params.productType as "standard" | "bulk" | "custom" | "service") || undefined;
     const typeWhere: Prisma.ProductWhereInput =
       typeParam === "service"
-        ? { productType: "standard", trackInventory: false }
+        ? { productType: "standard", isService: true }
         : typeParam === "standard"
-          ? { productType: "standard", trackInventory: true }
+          ? { productType: "standard", isService: false }
           : typeParam
             ? { productType: typeParam }
             : {};
@@ -440,6 +443,8 @@ export const productsModule: CrudModule<ProductDto> = {
         isAvailable: data.isAvailable !== false,
         availabilityNote: data.availabilityNote ? String(data.availabilityNote).trim() : null,
         trackInventory: data.trackInventory !== false,
+        // Sin dato explícito (importación, plantillas, API) se conserva la regla de siempre: estándar sin inventario = servicio.
+        isService: productType === "standard" && (data.isService !== undefined ? data.isService === true : data.trackInventory === false),
         depositAmount: depositFrom(data.depositAmount, productType),
         isNew,
         productType,
@@ -584,6 +589,7 @@ export const productsModule: CrudModule<ProductDto> = {
         ...(data.isAvailable !== undefined ? { isAvailable: data.isAvailable !== false } : {}),
         ...(data.availabilityNote !== undefined ? { availabilityNote: data.availabilityNote ? String(data.availabilityNote).trim() : null } : {}),
         ...(data.trackInventory !== undefined ? { trackInventory: data.trackInventory !== false } : {}),
+        ...(data.isService !== undefined || productType !== "standard" ? { isService: productType === "standard" && data.isService === true } : {}),
         ...(data.depositAmount !== undefined ? { depositAmount: depositFrom(data.depositAmount, productType) } : {}),
         ...(data.isNew !== undefined ? { isNew: data.isNew === true } : {}),
         productType,
@@ -1324,6 +1330,7 @@ export async function duplicateProduct(organizationId: string, id: string): Prom
         taxRate: src.taxRate,
         isActive: true,
         trackInventory: src.trackInventory,
+        isService: src.isService,
         depositAmount: src.depositAmount,
         isAvailable: src.isAvailable,
         availabilityNote: src.availabilityNote,

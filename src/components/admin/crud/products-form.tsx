@@ -223,11 +223,10 @@ export function ProductsForm({
   const [trackInventory, setTrackInventory] = useState(
     (initial?.trackInventory as boolean) ?? true
   )
-  // «Servicio» es una elección del usuario: apagar «Controlar inventario» NO convierte un producto en servicio
-  // (hay productos sencillos que el dueño no quiere controlar). Al reabrir, un estándar sin inventario se
-  // muestra como servicio porque en la base ambos se guardan igual.
+  // «Servicio» es una elección del usuario (columna `isService`): apagar «Controlar inventario» NO convierte
+  // un producto en servicio (hay productos sencillos que el dueño no quiere controlar).
   const [serviceKind, setServiceKind] = useState(
-    initial?.productType !== "bulk" && initial?.productType !== "custom" && initial?.trackInventory === false
+    initial?.productType !== "bulk" && initial?.productType !== "custom" && initial?.isService === true
   )
   const [isNew, setIsNew] = useState((initial?.isNew as boolean) ?? false)
   // Importe de envase o garantía por pieza (se cobra aparte de la venta y se regresa al devolver el envase).
@@ -486,6 +485,7 @@ export function ProductsForm({
       isAvailable,
       availabilityNote: availabilityNote.trim() || null,
       trackInventory,
+      isService: productType === "standard" && serviceKind,
       depositAmount: productType === "standard" ? numOrEmpty(depositAmount) || 0 : 0,
       isNew,
       productType,
@@ -925,7 +925,11 @@ export function ProductsForm({
             label="Controlar inventario"
             description="Seguimiento de existencias"
             checked={trackInventory}
-            onCheckedChange={setTrackInventory}
+            onCheckedChange={(on) => {
+              setTrackInventory(on)
+              // Un servicio no lleva inventario: al controlarlo deja de ser servicio.
+              if (on) setServiceKind(false)
+            }}
             border={false}
           />
           {!availabilityInFooter && (

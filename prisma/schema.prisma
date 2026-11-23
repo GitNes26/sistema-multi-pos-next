@@ -1114,6 +1114,8 @@ model Product {
   taxRate           Decimal     @default(0) @db.Decimal(5, 4)
   isActive          Boolean     @default(true)
   trackInventory    Boolean     @default(true)
+  /// Se vende como «Servicio» (solo etiqueta/filtro): un producto sencillo sin inventario NO es servicio.
+  isService         Boolean     @default(false)
   isAvailable       Boolean     @default(true)
   availabilityNote  String?
   isNew             Boolean     @default(false)

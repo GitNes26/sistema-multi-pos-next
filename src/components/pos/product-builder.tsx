@@ -821,7 +821,7 @@ export function ProductBuilder({ product, portalProduct, initial, defaultVariant
             <Button
               onClick={handleAdd}
               size="lg"
-              className={cn("h-14 flex-1 rounded-xl text-base shadow-e2 transition-[opacity,transform] active:scale-[0.98]", !isValid && "opacity-80")}
+              className={cn("h-16 flex-1 rounded-xl text-lg shadow-e2 transition-[opacity,transform] active:scale-[0.98]", !isValid && "opacity-80")}
             >
               {isValid ? (
                 <>

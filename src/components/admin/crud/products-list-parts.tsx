@@ -136,9 +136,9 @@ const TYPE_META: Record<string, { label: string; icon?: typeof Scale; className:
   service: { label: "Servicio", icon: CalendarClock, className: "bg-info/12 text-info-ink" },
 }
 
-/** Tipo visible; un producto estándar sin inventario se muestra como «Servicio». */
-export function ProductTypeBadge({ type, trackInventory }: { type: unknown; trackInventory?: unknown }) {
-  const key = String(type) === "standard" && trackInventory === false ? "service" : String(type)
+/** Tipo visible; un producto estándar marcado como servicio se muestra como «Servicio». */
+export function ProductTypeBadge({ type, isService }: { type: unknown; isService?: unknown }) {
+  const key = String(type) === "standard" && isService === true ? "service" : String(type)
   const meta = TYPE_META[key] ?? TYPE_META.standard
   const Icon = meta.icon
   return (

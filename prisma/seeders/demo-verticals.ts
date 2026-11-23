@@ -32,7 +32,7 @@ export async function seedVerticalsDemo(): Promise<VerticalsDemoSummary> {
   // Membresía mensual: la cuota es un producto del catálogo
   let fee = await prisma.product.findFirst({ where: { organizationId, name: FEE_NAME }, select: { id: true } })
   if (!fee) {
-    fee = await prisma.product.create({ data: { organizationId, name: FEE_NAME, trackInventory: false, variants: { create: { organizationId, name: "Default", price: 400 } } }, select: { id: true } })
+    fee = await prisma.product.create({ data: { organizationId, name: FEE_NAME, trackInventory: false, isService: true, variants: { create: { organizationId, name: "Default", price: 400 } } }, select: { id: true } })
     created.push(`Producto «${FEE_NAME}» ($400)`)
   }
   let program = await prisma.loyaltyProgram.findFirst({ where: { organizationId, kind: "membership", packProductId: fee.id }, select: { id: true } })
