@@ -225,6 +225,7 @@ export interface UserRow {
   email: string
   isActive: boolean
   isSuperadmin: boolean
+  phone: string | null
   /** Empresas donde es cliente del portal (no usa membresía). */
   customerOf: { organizationId: string; organizationName: string; businessMode: string }[]
   memberships: {
@@ -248,6 +249,7 @@ export async function listAllUsers(): Promise<UserRow[]> {
       isActive: true,
       activationRequired: true,
       isSuperadmin: true,
+      phone: true,
       memberships: {
         select: {
           id: true,
@@ -269,6 +271,7 @@ export async function listAllUsers(): Promise<UserRow[]> {
     email: u.email,
     isActive: u.isActive,
     isSuperadmin: u.isSuperadmin,
+    phone: u.phone,
     memberships: u.memberships.map((m) => ({
       membershipId: m.id,
       organizationId: m.organizationId,

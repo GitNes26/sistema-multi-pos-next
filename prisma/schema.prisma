@@ -1181,13 +1181,15 @@ enum ProductOptionKind {
 }
 
 model ProductOptionValue {
-  id         String  @id @default(cuid())
-  optionId   String
-  value      String
-  extraPrice Decimal @default(0) @db.Decimal(12, 2)
-  imageUrl   String?
-  isActive   Boolean @default(true)
-  position   Int     @default(0)
+  id          String  @id @default(cuid())
+  optionId    String
+  value       String
+  extraPrice  Decimal @default(0) @db.Decimal(12, 2)
+  imageUrl    String?
+  /// Descripción opcional del valor (p. ej. de un topping); se ve con el icono «i» al armar el producto.
+  description String?
+  isActive    Boolean @default(true)
+  position    Int     @default(0)
 
   option   ProductOption        @relation(fields: [optionId], references: [id])
   variants VariantOptionValue[]

@@ -154,6 +154,7 @@ export interface PortalProductOptionValue {
   value: string
   extraPrice: number
   imageUrl: string | null
+  description?: string | null
   isActive: boolean
 }
 
@@ -326,6 +327,7 @@ export async function getStorefront(
                 value: val.value,
                 extraPrice: toNum(val.extraPrice),
                 imageUrl: val.imageUrl ?? null,
+                description: val.description ?? null,
                 isActive: val.isActive,
               })),
             }))

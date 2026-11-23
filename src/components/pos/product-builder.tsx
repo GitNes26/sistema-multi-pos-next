@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { Check, ShoppingCart, X } from "lucide-react"
+import { Check, GripVertical, Info, ShoppingCart, X } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { money } from "@/lib/pos/money"
@@ -59,6 +60,7 @@ interface PortalProductLike {
       value: string
       extraPrice: number
       imageUrl: string | null
+      description?: string | null
       isActive: boolean
     }[]
   }[]
@@ -129,6 +131,27 @@ function ruleText(option: PosProductOption): string {
 /*  Option value: pastilla o tarjeta con foto                          */
 /* ------------------------------------------------------------------ */
 
+/** Icono «i» con la descripción del valor (popover: sirve con toque y con mouse). */
+function ValueInfo({ text, name, className }: { text: string; name: string; className?: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Qué es ${name}`}
+          className={cn("grid size-7 shrink-0 touch-manipulation place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground", className)}
+        >
+          <Info className="size-4" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="center" className="z-[80] w-64">
+        <p className="text-sm font-semibold">{name}</p>
+        <p className="text-xs whitespace-pre-line text-muted-foreground">{text}</p>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 function OptionValueButton({
   value,
   isSelected,
@@ -143,15 +166,17 @@ function OptionValueButton({
   multi: boolean
 }) {
   const disabled = !value.isActive
+  const info = value.description?.trim()
   if (withImage) {
     return (
+      <div className="relative">
       <button
         type="button"
         disabled={disabled}
         onClick={onToggle}
         aria-pressed={isSelected}
         className={cn(
-          "relative flex touch-manipulation flex-col overflow-hidden rounded-2xl border-2 bg-card text-left transition-[border-color,box-shadow,transform] duration-200 active:scale-[0.97] disabled:opacity-45",
+          "relative flex h-full w-full touch-manipulation flex-col overflow-hidden rounded-2xl border-2 bg-card text-left transition-[border-color,box-shadow,transform] duration-200 active:scale-[0.97] disabled:opacity-45",
           isSelected ? "border-primary shadow-e2" : "border-border hover:border-primary/40"
         )}
       >
@@ -173,9 +198,12 @@ function OptionValueButton({
           </span>
         </span>
       </button>
+      {info && <ValueInfo text={info} name={value.value} className="absolute top-1.5 left-1.5 bg-black/35 text-white hover:bg-black/55 hover:text-white" />}
+      </div>
     )
   }
   return (
+    <span className="inline-flex items-center gap-0.5">
     <button
       type="button"
       disabled={disabled}
@@ -202,6 +230,8 @@ function OptionValueButton({
         value.extraPrice > 0 && <span className="text-xs font-semibold text-primary tabular-nums">+{money(value.extraPrice)}</span>
       )}
     </button>
+    {info && <ValueInfo text={info} name={value.value} />}
+    </span>
   )
 }
 
@@ -350,6 +380,14 @@ function NotesInput({ value, onChange }: { value: string; onChange: (v: string) 
   )
 }
 
+const PANEL_WIDTH_KEY = "pos.builder.width"
+const PANEL_DEFAULT_WIDTH = 540
+const PANEL_MIN_WIDTH = 380
+const clampPanelWidth = (w: number) => {
+  const max = typeof window === "undefined" ? 1000 : Math.max(PANEL_MIN_WIDTH, Math.min(1100, Math.round(window.innerWidth * 0.92)))
+  return Math.min(max, Math.max(PANEL_MIN_WIDTH, w))
+}
+
 /* ------------------------------------------------------------------ */
 /*  Main ProductBuilder                                                */
 /* ------------------------------------------------------------------ */
@@ -366,6 +404,26 @@ export function ProductBuilder({ product, portalProduct, initial, defaultVariant
   const [shakes, setShakes] = useState<Record<string, number>>({})
   const [bump, setBump] = useState<{ id: number; amount: number } | null>(null)
   const sectionRefs = useRef(new Map<string, HTMLElement>())
+  // Ancho del panel lateral (escritorio): se arrastra desde su borde izquierdo y se recuerda en el equipo.
+  const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT_WIDTH)
+  const [resizing, setResizing] = useState(false)
+  useEffect(() => {
+    try {
+      const saved = Number(window.localStorage.getItem(PANEL_WIDTH_KEY))
+      if (saved >= PANEL_MIN_WIDTH) setPanelWidth(clampPanelWidth(saved))
+    } catch {}
+  }, [])
+  const savePanelWidth = useCallback((w: number) => {
+    try {
+      window.localStorage.setItem(PANEL_WIDTH_KEY, String(Math.round(w)))
+    } catch {}
+  }, [])
+  // Si la ventana se reduce, el panel no puede quedar más ancho que ella.
+  useEffect(() => {
+    const onResize = () => setPanelWidth((w) => clampPanelWidth(w))
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const variantChoices: PortalProductLike["variants"] = portalProduct
@@ -563,13 +621,55 @@ export function ProductBuilder({ product, portalProduct, initial, defaultVariant
         className={cn(
           "fixed z-50 flex flex-col overflow-hidden bg-background shadow-e3 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
           "max-md:inset-x-0 max-md:bottom-0 max-md:h-[95dvh] max-md:rounded-t-3xl",
-          "md:inset-y-0 md:right-0 md:w-[540px] md:rounded-l-3xl",
+          "md:inset-y-0 md:right-0 md:w-[var(--builder-w)] md:rounded-l-3xl",
+          resizing && "transition-none select-none",
           open ? "max-md:translate-y-0 md:translate-x-0" : "max-md:translate-y-full md:translate-x-full"
         )}
+        style={{ "--builder-w": `${panelWidth}px` } as React.CSSProperties}
         role="dialog"
         aria-modal="true"
         aria-label={`Configurar ${activeProduct.name}`}
       >
+        {/* Ajustador de ancho (solo escritorio): arrastra, usa ←/→ o doble clic para restablecer */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Ajustar ancho del panel"
+          aria-valuemin={PANEL_MIN_WIDTH}
+          aria-valuenow={panelWidth}
+          tabIndex={0}
+          title="Arrastra para cambiar el ancho · doble clic para restablecer"
+          className="group absolute inset-y-0 left-0 z-30 hidden w-3 cursor-col-resize touch-none items-center justify-center outline-none md:flex"
+          onPointerDown={(e) => {
+            e.preventDefault()
+            e.currentTarget.setPointerCapture(e.pointerId)
+            setResizing(true)
+          }}
+          onPointerMove={(e) => {
+            if (!resizing) return
+            setPanelWidth(clampPanelWidth(window.innerWidth - e.clientX))
+          }}
+          onPointerUp={(e) => {
+            e.currentTarget.releasePointerCapture(e.pointerId)
+            setResizing(false)
+            savePanelWidth(panelWidth)
+          }}
+          onDoubleClick={() => {
+            setPanelWidth(clampPanelWidth(PANEL_DEFAULT_WIDTH))
+            savePanelWidth(PANEL_DEFAULT_WIDTH)
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return
+            e.preventDefault()
+            const next = clampPanelWidth(panelWidth + (e.key === "ArrowLeft" ? 32 : -32))
+            setPanelWidth(next)
+            savePanelWidth(next)
+          }}
+        >
+          <span className={cn("grid h-14 w-1.5 place-items-center rounded-full bg-border text-muted-foreground transition-colors group-hover:bg-primary/40 group-focus-visible:bg-primary/60", resizing && "bg-primary/60")}>
+            <GripVertical className="size-3 opacity-0 group-hover:opacity-100" />
+          </span>
+        </div>
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {/* Portada */}
           <div className="relative">
@@ -711,24 +811,17 @@ export function ProductBuilder({ product, portalProduct, initial, defaultVariant
               </motion.span>
             )}
           </AnimatePresence>
-          <div className="mb-2 flex items-baseline justify-between text-sm">
-            <span className="text-muted-foreground">
-              {money(basePrice)}
-              {totalExtraPrice > 0 && <> + extras {money(totalExtraPrice)}</>}
-              {quantity > 1 && <> · ×{quantity}</>}
-            </span>
-            {!isValid && requiredCount > 0 && (
-              <span className="text-xs font-medium text-warning-ink">
-                {missing.length === 1 ? `Falta: ${missing[0].name}` : `Faltan ${missing.length} secciones`}
-              </span>
-            )}
-          </div>
+          {!isValid && requiredCount > 0 && (
+            <p className="mb-2 text-right text-xs font-medium text-warning-ink">
+              {missing.length === 1 ? `Falta: ${missing[0].name}` : `Faltan ${missing.length} secciones`}
+            </p>
+          )}
           <div className="flex items-center gap-3">
-            <QuantityStepper value={quantity} min={1} onChange={setQuantity} ariaLabel="Cantidad" />
+            <QuantityStepper value={quantity} min={1} onChange={setQuantity} size="lg" ariaLabel="Cantidad" />
             <Button
               onClick={handleAdd}
               size="lg"
-              className={cn("h-12 flex-1 rounded-xl text-base shadow-e2 transition-[opacity,transform] active:scale-[0.98]", !isValid && "opacity-80")}
+              className={cn("h-14 flex-1 rounded-xl text-base shadow-e2 transition-[opacity,transform] active:scale-[0.98]", !isValid && "opacity-80")}
             >
               {isValid ? (
                 <>

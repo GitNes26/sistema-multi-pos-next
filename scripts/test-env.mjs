@@ -140,6 +140,23 @@ switch (mode) {
       process.exit(r.status ?? 1)
     }
     break
+  case "script":
+    {
+      // Ejecuta un script suelto (tsx) contra la base de pruebas: node scripts/test-env.mjs script <modo> <archivo>
+      const r = spawnSync(process.execPath, ["--import", "tsx", process.argv[4]], { cwd: root, env, stdio: "inherit" })
+      process.exit(r.status ?? 1)
+    }
+    break
+  case "user-account-integration":
+    {
+      const r = spawnSync(
+        process.execPath,
+        ["--import", "tsx", "--test", "tests/user-account.integration.test.mjs"],
+        { cwd: root, env, stdio: "inherit" }
+      )
+      process.exit(r.status ?? 1)
+    }
+    break
   case "custom-plan-integration":
     {
       const r = spawnSync(

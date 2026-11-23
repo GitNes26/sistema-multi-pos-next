@@ -527,6 +527,7 @@ async function buildPosCatalog(
           value: v.value,
           extraPrice: toNum(v.extraPrice),
           imageUrl: v.imageUrl ?? null,
+          description: v.description ?? null,
           isActive: v.isActive,
         })),
       }))

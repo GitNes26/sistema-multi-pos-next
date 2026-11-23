@@ -30,6 +30,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DialogComponent } from "@/components/ui/dialog"
 import { InputGroupField } from "@/components/base/input-group-field"
+import { EditUserDialog } from "@/components/admin/settings/edit-user-dialog"
 import {
   FormCombobox,
   type ComboboxOption,
@@ -80,6 +81,7 @@ type MembershipRow = {
 }
 
 type UserRow = {
+  phone?: string | null
   id: string
   fullName: string
   email: string
@@ -772,6 +774,7 @@ function UsersTab() {
   const [orgs, setOrgs] = React.useState<OrgRow[]>([])
   const [createOpen, setCreateOpen] = React.useState(false)
   const [assigning, setAssigning] = React.useState<UserRow | null>(null)
+  const [editing, setEditing] = React.useState<UserRow | null>(null)
   const [userFilter, setUserFilter] = React.useState<"all" | "team" | "customers" | "unassigned" | "superadmin" | "inactive">("team")
   const [query, setQuery] = React.useState("")
 
@@ -881,6 +884,9 @@ function UsersTab() {
                   </span>
                 ))}
               </div>
+              <Button size="sm" variant="ghost" onClick={() => setEditing(u)} aria-label={`Editar a ${u.fullName}`}>
+                <Pencil className="size-4" /> Editar
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setAssigning(u)}>
                 <Users className="size-4" /> Asignar empresa y rol
               </Button>
@@ -893,6 +899,17 @@ function UsersTab() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={load}
+      />
+      <EditUserDialog
+        user={editing}
+        onClose={() => setEditing(null)}
+        credentialsNote="Si cambias el correo o la contraseña, se cierran las sesiones abiertas de esa persona (salvo la tuya)."
+        onSave={async (payload) => {
+          if (!editing) return
+          await api(`/api/settings/organizations/users/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) })
+          load()
+          swalToast("Usuario actualizado")
+        }}
       />
       <AssignOrgDialog
         user={assigning}

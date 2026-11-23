@@ -131,7 +131,7 @@ function navKeyDown(e: React.KeyboardEvent<HTMLElement>) {
 
 /** «Agregar N» valores de golpe; el foco queda en el primero nuevo. */
 function BulkAddValues({ onAdd, label = "Agregar" }: { onAdd: (count: number) => void; label?: string }) {
-  const [count, setCount] = useState("5")
+  const [count, setCount] = useState("")
   const root = useRef<HTMLSpanElement>(null)
   const n = Math.min(50, Math.max(1, Math.floor(Number(count)) || 1))
   const textInputs = (group: Element | null | undefined) =>
@@ -140,6 +140,8 @@ function BulkAddValues({ onAdd, label = "Agregar" }: { onAdd: (count: number) =>
     const group = root.current?.closest("[data-values]")
     const before = textInputs(group).length
     onAdd(n)
+    // El número no se queda guardado: el campo vuelve a vacío para el siguiente uso.
+    setCount("")
     requestAnimationFrame(() => textInputs(group)[before]?.focus())
   }
   return (
@@ -157,6 +159,7 @@ function BulkAddValues({ onAdd, label = "Agregar" }: { onAdd: (count: number) =>
             add()
           }
         }}
+        placeholder="5"
         aria-label="Cuántos valores agregar"
         className="h-6 w-12 px-1.5 text-center text-xs"
       />
@@ -219,6 +222,12 @@ export function ProductsForm({
   )
   const [trackInventory, setTrackInventory] = useState(
     (initial?.trackInventory as boolean) ?? true
+  )
+  // «Servicio» es una elección del usuario: apagar «Controlar inventario» NO convierte un producto en servicio
+  // (hay productos sencillos que el dueño no quiere controlar). Al reabrir, un estándar sin inventario se
+  // muestra como servicio porque en la base ambos se guardan igual.
+  const [serviceKind, setServiceKind] = useState(
+    initial?.productType !== "bulk" && initial?.productType !== "custom" && initial?.trackInventory === false
   )
   const [isNew, setIsNew] = useState((initial?.isNew as boolean) ?? false)
   // Importe de envase o garantía por pieza (se cobra aparte de la venta y se regresa al devolver el envase).
@@ -520,7 +529,7 @@ export function ProductsForm({
           variantRules: o.variantRules ?? [],
           values: o.values
             .filter((v) => v.value.trim())
-            .map((v) => ({ value: v.value.trim(), extraPrice: Math.max(0, Number(v.extraPrice) || 0) })),
+            .map((v) => ({ value: v.value.trim(), extraPrice: Math.max(0, Number(v.extraPrice) || 0), description: v.description?.trim() || null })),
         }))
     } else {
       const hasOptions = options.some(
@@ -597,7 +606,7 @@ export function ProductsForm({
         variantRules: o.variantRules ?? [],
         values: o.values
           .filter((v) => v.value.trim())
-          .map((v) => ({ id: v.id, value: v.value.trim(), extraPrice: Math.max(0, Number(v.extraPrice) || 0), isActive: v.isActive !== false })),
+          .map((v) => ({ id: v.id, value: v.value.trim(), extraPrice: Math.max(0, Number(v.extraPrice) || 0), description: v.description?.trim() || null, isActive: v.isActive !== false })),
       }))
   const variantPayload = (list: ProductOption[]) =>
     list
@@ -768,6 +777,13 @@ export function ProductsForm({
       )
     )
   }
+  const updateValueDescription = (i: number, vi: number, description: string) => {
+    setOptions((prev) =>
+      prev.map((o, idx) =>
+        idx === i ? { ...o, values: o.values.map((v, vdx) => (vdx === vi ? { ...v, description: description.slice(0, 191) } : v)) } : o
+      )
+    )
+  }
   const updateValueAvailability = (
     i: number,
     vi: number,
@@ -823,14 +839,17 @@ export function ProductsForm({
         full
       >
         <ProductKindPicker
-          value={productType === "standard" && !trackInventory ? "service" : productType}
+          value={productType === "standard" && serviceKind ? "service" : productType}
           onChange={(kind) => {
             // «Servicio» = producto estándar sin control de inventario.
             if (kind === "service") {
               setProductType("standard")
+              setServiceKind(true)
               setTrackInventory(false)
             } else {
-              if (productType === "standard" && !trackInventory) setTrackInventory(true)
+              // Dejar «Servicio» regresa a producto con control de inventario (el usuario puede apagarlo después).
+              if (productType === "standard" && serviceKind) setTrackInventory(true)
+              setServiceKind(false)
               setProductType(kind)
             }
             // Elegido el tipo, lo siguiente es el nombre.
@@ -1283,7 +1302,7 @@ export function ProductsForm({
                     {opt.values.map((v, vi) => (
                       <div
                         key={vi}
-                        className="flex items-center gap-1.5 rounded-md border bg-muted/40 px-1.5 py-1"
+                        className="flex flex-wrap items-center gap-1.5 rounded-md border bg-muted/40 px-1.5 py-1"
                       >
                         <Input
                           value={v.value}
@@ -1325,6 +1344,14 @@ export function ProductsForm({
                         >
                           <X className="size-3" />
                         </Button>
+                        <Input
+                          value={v.description ?? ""}
+                          onChange={(e) => updateValueDescription(i, vi, e.target.value)}
+                          placeholder="Descripción (opcional): se ve con el icono «i» al armar el producto"
+                          aria-label={`Descripción de ${v.value || "la opción"}`}
+                          maxLength={191}
+                          className="h-6 basis-full border-0 bg-transparent px-1 text-xs text-muted-foreground focus-visible:ring-0"
+                        />
                       </div>
                     ))}
                     <div className="flex flex-wrap items-center gap-2">

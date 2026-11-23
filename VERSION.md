@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.71.0.0] — 2026-11-23
+- **Tipo:** `feat` (Minor)
+- feat: toppings con descripcion e icono i en el constructor del POS y portal, tipo de producto sin conversion automatica a servicio, disponible en venta para cualquier producto sin inventario, constructor del POS redimensionable con pie de botones mas altos, y edicion de usuarios (nombre, correo, telefono y contrasena) en Usuarios y permisos y en Organizaciones y roles
+
 ### [0.70.2.0] — 2026-11-20
 - **Tipo:** `fix` (Patch)
 - fix: sin scroll horizontal en el modal de suscripciones (flechas del carrusel dentro del ancho) y el selector Basar los accesos en un plan ahora muestra el plan elegido

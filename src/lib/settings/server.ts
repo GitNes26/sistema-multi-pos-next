@@ -119,6 +119,7 @@ export interface OrgUserRow {
   fullName: string;
   email: string;
   avatarUrl: string | null;
+  phone: string | null;
   isActive: boolean;
   role: string;
   roleId: string | null;
@@ -128,7 +129,7 @@ export interface OrgUserRow {
 export async function listOrgUsers(organizationId: string): Promise<OrgUserRow[]> {
   const memberships = await prisma.membership.findMany({
     where: { organizationId },
-    include: { user: { select: { id: true, fullName: true, email: true, avatarUrl: true, isActive: true } } },
+    include: { user: { select: { id: true, fullName: true, email: true, avatarUrl: true, phone: true, isActive: true } } },
     orderBy: { createdAt: "asc" },
   });
 
@@ -147,6 +148,7 @@ export async function listOrgUsers(organizationId: string): Promise<OrgUserRow[]
     fullName: m.user.fullName,
     email: m.user.email,
     avatarUrl: m.user.avatarUrl,
+    phone: m.user.phone,
     isActive: m.user.isActive,
     role: m.role,
     roleId: m.roleId,

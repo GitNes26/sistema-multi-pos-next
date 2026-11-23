@@ -891,6 +891,8 @@ export interface ProductOptionValue {
   value: string;
   /** Recargo por unidad (solo tópicos de productos personalizados). */
   extraPrice?: number;
+  /** Descripción opcional del valor (se ve con el icono «i» en POS y portal). */
+  description?: string | null;
   isActive?: boolean;
 }
 

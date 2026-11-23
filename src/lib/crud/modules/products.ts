@@ -26,7 +26,7 @@ export interface ProductOptionDto {
   maxSelect: number;
   kind: "variant" | "topic";
   variantRules: ProductOptionVariantRuleDto[];
-  values: { id: string; value: string; position: number; extraPrice: number; isActive: boolean }[];
+  values: { id: string; value: string; position: number; extraPrice: number; description: string | null; isActive: boolean }[];
 }
 
 export interface ProductOptionVariantRuleDto {
@@ -142,7 +142,7 @@ type ProductRow = {
     maxSelect: number;
     kind: "variant" | "topic";
     variantRules: unknown;
-    values: { id: string; value: string; position: number; extraPrice: { toNumber(): number } | number; isActive: boolean }[];
+    values: { id: string; value: string; position: number; extraPrice: { toNumber(): number } | number; description: string | null; isActive: boolean }[];
   }[];
   variants: {
     id: string;
@@ -177,7 +177,7 @@ const include = {
       kind: true,
       variantRules: true,
       values: {
-        select: { id: true, value: true, position: true, extraPrice: true, isActive: true },
+        select: { id: true, value: true, position: true, extraPrice: true, description: true, isActive: true },
         orderBy: { position: "asc" },
       },
     },
@@ -266,6 +266,7 @@ function serialize(p: ProductRow): ProductDto {
         value: v.value,
         position: v.position,
         extraPrice: num(v.extraPrice),
+        description: v.description,
         isActive: v.isActive,
       })),
     })),
@@ -750,7 +751,7 @@ function parseTopicOptions(raw: unknown): SaveOptionInput[] {
         .map((v) =>
           typeof v === "string"
             ? { value: v.trim(), extraPrice: 0 }
-            : { value: String((v as Record<string, unknown>)?.value ?? "").trim(), extraPrice: Math.max(0, Number((v as Record<string, unknown>)?.extraPrice) || 0) }
+            : { value: String((v as Record<string, unknown>)?.value ?? "").trim(), extraPrice: Math.max(0, Number((v as Record<string, unknown>)?.extraPrice) || 0), description: String((v as Record<string, unknown>)?.description ?? "").trim() || null }
         )
         .filter((v) => v.value);
       if (!name || !values.length) return null;
@@ -996,7 +997,7 @@ const optionsInclude = {
       kind: true,
       variantRules: true,
       values: {
-        select: { id: true, value: true, position: true, extraPrice: true, isActive: true },
+        select: { id: true, value: true, position: true, extraPrice: true, description: true, isActive: true },
         orderBy: { position: "asc" },
       },
     },
@@ -1024,6 +1025,7 @@ export async function getProductOptions(organizationId: string, productId: strin
       value: v.value,
       position: v.position,
       extraPrice: num(v.extraPrice),
+      description: v.description,
       isActive: v.isActive,
     })),
   }));
@@ -1167,7 +1169,7 @@ export interface SaveOptionInput {
   minSelect?: number;
   maxSelect?: number;
   variantRules?: ProductOptionVariantRuleDto[];
-  values: { id?: string; value: string; extraPrice?: number; isActive?: boolean }[];
+  values: { id?: string; value: string; extraPrice?: number; description?: string | null; isActive?: boolean }[];
 }
 
 export async function saveProductOptions(
@@ -1250,10 +1252,11 @@ export async function saveProductOptions(
       if (!value) continue;
       const existingId = existingValueMap.get(value.toLowerCase());
       const extraPrice = Math.max(0, Number(raw.extraPrice) || 0);
+      const description = String(raw.description ?? "").trim().slice(0, 191) || null;
       if (existingId) {
         await prisma.productOptionValue.update({
           where: { id: existingId },
-          data: { value, position: vpos, extraPrice, isActive: raw.isActive !== false },
+          data: { value, position: vpos, extraPrice, description, isActive: raw.isActive !== false },
         });
         existingValueMap.delete(value.toLowerCase());
       } else {
@@ -1263,6 +1266,7 @@ export async function saveProductOptions(
             value,
             position: vpos,
             extraPrice,
+            description,
             isActive: raw.isActive !== false,
           },
         });
@@ -1346,7 +1350,7 @@ export async function duplicateProduct(organizationId: string, id: string): Prom
       optionMap.set(o.id, newOpt.id);
       for (const v of o.values) {
         const nv = await tx.productOptionValue.create({
-          data: { optionId: newOpt.id, value: v.value, extraPrice: v.extraPrice, imageUrl: v.imageUrl, isActive: v.isActive, position: v.position },
+          data: { optionId: newOpt.id, value: v.value, extraPrice: v.extraPrice, imageUrl: v.imageUrl, description: v.description, isActive: v.isActive, position: v.position },
         });
         valueMap.set(v.id, nv.id);
       }

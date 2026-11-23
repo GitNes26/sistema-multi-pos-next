@@ -12,6 +12,7 @@ import {
   Trash2,
   UserPlus,
   UserX,
+  Pencil,
   AlertCircle,
 } from "lucide-react";
 import { settingsApi } from "@/lib/settings/client";
@@ -32,6 +33,7 @@ import { InputGroupField } from "@/components/base/input-group-field";
 import { TooltipButton } from "@/components/shared/tooltip-button";
 import { cn } from "@/lib/utils";
 import { useFocusInvalid } from "@/hooks/use-focus-invalid";
+import { EditUserDialog } from "@/components/admin/settings/edit-user-dialog";
 
 const ROLE_LABELS: Record<string, string> = {
   owner: "Propietario",
@@ -73,6 +75,7 @@ export function UsersManager({ isSuperadmin }: { isSuperadmin: boolean }) {
 function UsersTab() {
   const [users, setUsers] = useState<OrgUserRow[] | null>(null);
   const [roles, setRoles] = useState<RoleRow[]>([]);
+  const [editing, setEditing] = useState<OrgUserRow | null>(null);
 
   const load = useCallback(() => {
     settingsApi.users().then((d) => setUsers(d.users)).catch(() => undefined);
@@ -163,11 +166,25 @@ function UsersTab() {
             <label htmlFor={`user-active-${u.membershipId}`} className="cursor-pointer">Activo</label>
             <Switch id={`user-active-${u.membershipId}`} checked={u.isActive} onCheckedChange={(v) => toggleActive(u, v)} />
           </div>
+          <TooltipButton label="Editar datos (correo, contraseña…)" variant="ghost" size="icon-xs" onClick={() => setEditing(u)}>
+            <Pencil className="size-3.5" />
+          </TooltipButton>
           <TooltipButton label="Quitar" variant="ghost" size="icon-xs" onClick={() => remove(u)}>
             <UserX className="size-3.5 text-destructive" />
           </TooltipButton>
         </div>
       ))}
+      <EditUserDialog
+        user={editing}
+        onClose={() => setEditing(null)}
+        credentialsNote="Si cambias el correo o la contraseña, se cierran las sesiones abiertas de esa persona y deberá entrar con los datos nuevos."
+        onSave={async (payload) => {
+          if (!editing) return;
+          await settingsApi.updateUser(editing.membershipId, { profile: payload });
+          load();
+          swalToast("Usuario actualizado");
+        }}
+      />
     </div>
   );
 }

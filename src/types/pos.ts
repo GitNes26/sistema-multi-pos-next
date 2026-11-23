@@ -33,6 +33,8 @@ export interface PosProductOptionValue {
   value: string
   extraPrice: number
   imageUrl: string | null
+  /** Descripción opcional (icono «i» al armar el producto). */
+  description?: string | null
   isActive: boolean
 }
 

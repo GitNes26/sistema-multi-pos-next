@@ -61,7 +61,7 @@ export const settingsApi = {
     }),
 
   users: () => json<{ ok: boolean; users: OrgUserRow[] }>("/api/settings/users"),
-  updateUser: (membershipId: string, input: { role?: string; roleId?: string; isActive?: boolean }) =>
+  updateUser: (membershipId: string, input: { role?: string; roleId?: string; isActive?: boolean; profile?: { fullName?: string; email?: string; phone?: string; password?: string } }) =>
     json<{ ok: boolean }>(`/api/settings/users/${membershipId}`, {
       method: "PATCH",
       body: JSON.stringify(input),

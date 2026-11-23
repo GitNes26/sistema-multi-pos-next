@@ -15,15 +15,19 @@ interface ServiceProduct {
   trackInventory?: unknown
 }
 
-/** Servicio = producto estándar activo sin control de inventario (mismo criterio que la API). */
+/**
+ * Se puede pausar/reanudar desde el modal del producto y el POS: cualquier producto activo sin control de
+ * inventario (servicios y productos sencillos de cualquier tipo). Con inventario, la disponibilidad la
+ * decide la existencia. Mismo criterio que la API.
+ */
 export function isServiceProduct(p: ServiceProduct | null | undefined): boolean {
-  return !!p && p.isActive !== false && p.productType === "standard" && p.trackInventory === false
+  return !!p && p.isActive !== false && p.trackInventory === false
 }
 
 /**
- * Pausa o reanuda un servicio desde el pie del modal del producto. Es una acción inmediata (no
+ * Pausa o reanuda un producto sin control de inventario desde el pie del modal del producto. Es una acción inmediata (no
  * espera a «Guardar cambios»): llega a todas las cajas y a la tienda del portal al instante.
- * Solo se muestra con el permiso pos.toggle_services y para servicios ya creados.
+ * Solo se muestra con el permiso pos.toggle_services y para productos ya creados.
  */
 export function ServiceAvailabilityToggle({
   product,
