@@ -30,6 +30,10 @@ Formato: `MAJOR.MINOR.PATCH.REVISION` (X.X.X.X)
 
 ## Historial
 
+### [0.75.0.0] — 2026-11-27
+- **Tipo:** `feat` (Minor)
+- feat: control de suscripciones con inicio, frecuencia de pago y calculo del vencimiento (columna opcional billingMonths, sin alterar fechas existentes) y calendario sin tope con mes y anio escribibles
+
 ### [0.74.0.0] — 2026-11-23
 - **Tipo:** `feat` (Minor)
 - feat: selector de filas por pagina (10/20/50/100) en las tablas, incluido el pie de Productos y Ventas, y altura maxima con encabezado fijo en DataTable para evitar el scroll vertical de la pagina

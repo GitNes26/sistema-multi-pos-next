@@ -6,6 +6,7 @@ import { hasPermission } from "@/lib/auth/permissions"
 import { prisma } from "@/lib/db"
 import { saveCustomPlan, subscriptionUsage, syncExpiredSubscriptions } from "@/lib/billing/subscriptions"
 import { demoPeriodEnd } from "@/lib/billing/demo"
+import { parseBillingMonths, resolveBillingDate } from "@/lib/billing/periods"
 
 export async function GET() {
  const session = await getServerSession(authOptions); if (!session?.user) return NextResponse.json({ok:false,error:"No autorizado"},{status:401})
@@ -30,8 +31,15 @@ export async function POST(request:Request){
   const extraLocations=isCustomPlan?0:Math.max(0,Number(body.extraLocations??0)); const extraEmployeePacks=isCustomPlan?0:Math.max(0,Number(body.extraEmployeePacks??0))
   const isDemo=body.isDemo===true
   // En demo, «días de prueba» fija el fin de la prueba a partir de hoy.
-  const periodEndsAt=isDemo&&Number(body.demoDays)>0?demoPeriodEnd(Number(body.demoDays)):new Date(String(body.periodEndsAt)); if(Number.isNaN(periodEndsAt.getTime())) throw new Error("Selecciona una fecha de vencimiento válida")
-  const subscription=await prisma.organizationSubscription.upsert({where:{organizationId},update:{planId,status:String(body.status??"active"),periodEndsAt,graceEndsAt:body.graceEndsAt?new Date(body.graceEndsAt):null,extraLocations,extraEmployeePacks,autoBlockOnPastDue:body.autoBlockOnPastDue!==false,isDemo,reminderDaysBefore:Math.max(0,Number(body.reminderDaysBefore??5))},create:{organizationId,planId,periodEndsAt,isDemo,status:String(body.status??"active"),extraLocations,extraEmployeePacks}})
+  const current=await prisma.organizationSubscription.findUnique({where:{organizationId},select:{periodStartsAt:true,periodEndsAt:true}})
+  const periodEndsAt=isDemo&&Number(body.demoDays)>0?demoPeriodEnd(Number(body.demoDays)):resolveBillingDate(body.periodEndsAt,current?.periodEndsAt,"end"); if(!periodEndsAt) throw new Error("Selecciona una fecha de vencimiento válida")
+  // Inicio y frecuencia son opcionales: si no llegan, se conserva lo guardado.
+  const periodStartsAt=body.periodStartsAt?resolveBillingDate(body.periodStartsAt,current?.periodStartsAt):undefined; if(periodStartsAt===null) throw new Error("Selecciona una fecha de inicio válida")
+  const billingMonths=body.billingMonths===undefined?undefined:parseBillingMonths(body.billingMonths)
+  // El orden solo se exige al cambiar alguna fecha (no bloquea registros previos sin tocar).
+  const start=periodStartsAt??current?.periodStartsAt; const datesChanged=periodEndsAt!==current?.periodEndsAt||(periodStartsAt!==undefined&&periodStartsAt!==current?.periodStartsAt)
+  if(!isDemo&&datesChanged&&start&&periodEndsAt.toISOString().slice(0,10)<start.toISOString().slice(0,10)) throw new Error("El vencimiento no puede ser anterior al inicio de la suscripción")
+  const subscription=await prisma.organizationSubscription.upsert({where:{organizationId},update:{planId,status:String(body.status??"active"),periodStartsAt,periodEndsAt,billingMonths,graceEndsAt:body.graceEndsAt?new Date(body.graceEndsAt):null,extraLocations,extraEmployeePacks,autoBlockOnPastDue:body.autoBlockOnPastDue!==false,isDemo,reminderDaysBefore:Math.max(0,Number(body.reminderDaysBefore??5))},create:{organizationId,planId,periodStartsAt,periodEndsAt,billingMonths,isDemo,status:String(body.status??"active"),extraLocations,extraEmployeePacks}})
   const blocked=body.blocked===true; await prisma.organization.update({where:{id:organizationId},data:{isBlocked:blocked,blockedReason:blocked?String(body.blockedReason??"Cuenta suspendida por administración"):null}}); return NextResponse.json({ok:true,subscription})
  } catch(error){return NextResponse.json({ok:false,error:error instanceof Error?error.message:"No fue posible actualizar la suscripción"},{status:400})}
 }

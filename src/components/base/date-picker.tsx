@@ -6,6 +6,7 @@ import { CalendarDays, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
+import { CalendarHeader } from "@/components/base/calendar-header"
 import {
   Popover,
   PopoverContent,
@@ -55,6 +56,13 @@ export function DatePicker({
   className,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
+  // Mes que se está viendo: libre (sin tope) salvo `fromYear` / `toYear`.
+  const [month, setMonth] = React.useState<Date>(() => value ?? new Date())
+  const contentRef = React.useRef<HTMLDivElement>(null)
+  const openChange = (next: boolean) => {
+    if (next) setMonth(value ?? new Date())
+    setOpen(next)
+  }
   const autoId = React.useId().replace(/:/g, "")
   const pickerId = id ?? `date-${autoId}`
 
@@ -86,7 +94,7 @@ export function DatePicker({
         </div>
       )}
 
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={openChange}>
         <PopoverTrigger asChild>
           <Button
             id={pickerId}
@@ -122,7 +130,18 @@ export function DatePicker({
             ) : null}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto p-0">
+        <PopoverContent
+          ref={contentRef}
+          tabIndex={-1}
+          align="start"
+          className="max-h-(--radix-popover-content-available-height) w-auto overflow-y-auto p-0 outline-none"
+          // Sin foco automático en el campo del mes (en móvil abriría el teclado).
+          onOpenAutoFocus={(e) => {
+            e.preventDefault()
+            contentRef.current?.focus()
+          }}
+        >
+          <CalendarHeader month={month} onMonthChange={setMonth} startMonth={startMonth} endMonth={endMonth} />
           <Calendar
             mode="single"
             selected={value || undefined}
@@ -131,10 +150,12 @@ export function DatePicker({
               if (d) setOpen(false)
             }}
             disabled={disabledFn}
-            captionLayout="dropdown"
+            month={month}
+            onMonthChange={setMonth}
+            hideNavigation
+            classNames={{ month_caption: "hidden", root: "mx-auto w-fit" }}
             startMonth={startMonth}
             endMonth={endMonth}
-            defaultMonth={value || undefined}
           />
           <div className="border-t p-1.5">
             <Button

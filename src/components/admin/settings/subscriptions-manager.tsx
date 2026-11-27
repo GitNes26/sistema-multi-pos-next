@@ -22,6 +22,7 @@ import { ClearFiltersButton } from "@/components/base/clear-filters-button"
 import { money } from "@/lib/pos/money"
 import { cn } from "@/lib/utils"
 import { demoPeriodEnd, daysUntil, PERMANENT_DEMO_DAYS } from "@/lib/billing/demo"
+import { addMonthsYmd, billingLabel, BILLING_FREQUENCIES, MAX_BILLING_MONTHS } from "@/lib/billing/periods"
 
 // Control de suscripciones (solo superAdmin): plan, capacidad, vencimiento,
 // bloqueo y pagos de cada empresa, con lo urgente primero.
@@ -39,6 +40,8 @@ interface Plan {
   permissions?: string[] | null
 }
 const CUSTOM = "custom"
+const MANUAL = "manual"
+const OTHER = "other"
 
 interface Payment {
   id: string
@@ -57,7 +60,9 @@ interface Org {
     id: string
     planId: string
     status: string
+    periodStartsAt: string
     periodEndsAt: string
+    billingMonths: number | null
     extraLocations: number
     extraEmployeePacks: number
     reminderDaysBefore: number
@@ -80,7 +85,8 @@ const HEALTH: Record<Health, { label: string; tone: StatusTone }> = {
   demo: { label: "Prueba gratis", tone: "info" },
 }
 
-const daysLeft = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000)
+// Días de calendario hasta la fecha pactada (el día que se capturó, sin importar la hora).
+const daysLeft = (iso: string) => daysUntil(ymdToDate(iso)!)
 
 function healthOf(o: Org): Health {
   if (o.isBlocked) return "blocked"
@@ -212,7 +218,8 @@ export function SubscriptionsManager() {
                 {s && (
                   <p className={cn("flex items-center gap-1.5 text-sm", d! < 0 ? "text-destructive" : d! <= 7 ? "text-warning-ink" : "text-muted-foreground")}>
                     <CalendarClock className="size-4" />
-                    {s.isDemo && d! > PERMANENT_DEMO_DAYS ? "Demo permanente (uso interno)" : s.isDemo ? (d! < 0 ? `Su prueba terminó hace ${-d!} días` : d === 0 ? "Su prueba termina hoy" : `Le quedan ${d} días de prueba`) : d! < 0 ? `Venció hace ${-d!} días` : d === 0 ? "Vence hoy" : `Vence en ${d} días`} · {new Date(s.periodEndsAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
+                    {s.isDemo && d! > PERMANENT_DEMO_DAYS ? "Demo permanente (uso interno)" : s.isDemo ? (d! < 0 ? `Su prueba terminó hace ${-d!} días` : d === 0 ? "Su prueba termina hoy" : `Le quedan ${d} días de prueba`) : d! < 0 ? `Venció hace ${-d!} días` : d === 0 ? "Vence hoy" : `Vence en ${d} días`} · {new Date(s.periodEndsAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}
+                    {!s.isDemo && s.billingMonths ? ` · pago ${billingLabel(s.billingMonths).toLowerCase()}` : ""}
                   </p>
                 )}
                 {o.isBlocked && o.blockedReason && (
@@ -249,7 +256,10 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
   const [form, setForm] = useState({
     planId: s?.plan.isCustom ? CUSTOM : (s?.planId ?? plans[0]?.id ?? ""),
     status: s?.status ?? "active",
-    periodEndsAt: (s?.periodEndsAt ?? new Date(Date.now() + 30 * 864e5).toISOString()).slice(0, 10),
+    periodStartsAt: s?.periodStartsAt.slice(0, 10) ?? dateToYmd(new Date()),
+    periodEndsAt: s?.periodEndsAt.slice(0, 10) ?? addMonthsYmd(dateToYmd(new Date()), 1),
+    // Una suscripción nueva parte de pago mensual; una existente sin el dato queda en fecha manual.
+    billingMonths: s ? (s.billingMonths ? String(s.billingMonths) : "") : "1",
     extraLocations: String(s?.extraLocations ?? 0),
     extraEmployeePacks: String(s?.extraEmployeePacks ?? 0),
     reminderDaysBefore: String(s?.reminderDaysBefore ?? 5),
@@ -269,6 +279,16 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
   })
   const [permsOpen, setPermsOpen] = useState(false)
   const [basePlanId, setBasePlanId] = useState("")
+  const [otherMonths, setOtherMonths] = useState(() => Boolean(s?.billingMonths && !BILLING_FREQUENCIES.some((n) => n === s.billingMonths)))
+  const months = Number(form.billingMonths) || 0
+  // Cambiar el inicio o la frecuencia recalcula el vencimiento (que sigue siendo editable).
+  const setBilling = (patch: { periodStartsAt?: string; billingMonths?: string }) =>
+    setForm((current) => {
+      const next = { ...current, ...patch }
+      const n = Number(next.billingMonths)
+      if (!next.isDemo && next.periodStartsAt && n >= 1 && n <= MAX_BILLING_MONTHS) next.periodEndsAt = addMonthsYmd(next.periodStartsAt, n)
+      return next
+    })
   const [payment, setPayment] = useState({ amount: "", reference: "" })
   const [busy, setBusy] = useState(false)
   const isCustom = form.planId === CUSTOM
@@ -295,9 +315,17 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
       toast.error("El plan personalizado necesita al menos 1 sucursal y 1 empleado")
       return
     }
+    if (!form.periodStartsAt || !form.periodEndsAt) {
+      toast.error("Captura el inicio y el vencimiento de la suscripción")
+      return
+    }
+    if ((otherMonths && !months) || months > MAX_BILLING_MONTHS) {
+      toast.error(`Captura una frecuencia de 1 a ${MAX_BILLING_MONTHS} meses`)
+      return
+    }
     const all = PLAN_PERMISSION_KEYS.every((k) => custom.permissions.has(k))
     const customBody = isCustom ? { monthlyPrice: Number(custom.monthlyPrice || 0), locations: Number(custom.locations), employees: Number(custom.employees), permissions: all ? null : [...custom.permissions] } : undefined
-    if (await post({ organizationId: org.id, subscriptionId: s?.id ?? null, ...form, custom: customBody, demoDays: form.demoDays ? Number(form.demoDays) : undefined })) {
+    if (await post({ organizationId: org.id, subscriptionId: s?.id ?? null, ...form, billingMonths: months || null, custom: customBody, demoDays: form.demoDays ? Number(form.demoDays) : undefined })) {
       toast.success("Suscripción actualizada")
       onSaved()
     }
@@ -326,6 +354,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
         <>
           <span className="mr-auto text-sm text-muted-foreground">
             {isDemo ? "Costaría" : "Mensualidad"}: <b className="text-foreground tabular-nums">{money(total)}</b>{isDemo && " · prueba gratis, sin cobro"}
+            {!isDemo && months > 1 && <> · {billingLabel(months).toLowerCase()}: <b className="text-foreground tabular-nums">{money(total * months)}</b></>}
           </span>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={() => void save()} disabled={busy}>
@@ -428,8 +457,37 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
             </div>
           )}
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <DatePicker label={isDemo ? "La prueba termina el" : "Vence el"} value={ymdToDate(form.periodEndsAt)} onChange={(d) => setForm({ ...form, periodEndsAt: dateToYmd(d) })} clearable />
+        <div className="grid items-start gap-3 sm:grid-cols-3">
+          <DatePicker id="subscription-start" label="Inicio de suscripción" required value={ymdToDate(form.periodStartsAt)} onChange={(d) => setBilling({ periodStartsAt: dateToYmd(d) })} clearable={false} />
+          <div className="space-y-2">
+            <FormCombobox
+              id="subscription-frequency"
+              label="Frecuencia de pago"
+              value={otherMonths ? OTHER : form.billingMonths || MANUAL}
+              onChange={(value) => {
+                setOtherMonths(value === OTHER)
+                if (value !== OTHER) setBilling({ billingMonths: value === MANUAL ? "" : value })
+              }}
+              options={[
+                ...BILLING_FREQUENCIES.map((n) => ({ value: String(n), label: billingLabel(n) })),
+                { value: OTHER, label: "Otra (en meses)" },
+                { value: MANUAL, label: "Fecha manual" },
+              ]}
+              clearable={false}
+              searchable={false}
+            />
+            {otherMonths && (
+              <InputGroupField id="subscription-months" label="Meses por pago" required type="text" inputMode="numeric" leftIcon={<CalendarClock className="size-4" />} value={form.billingMonths} onChange={(e) => setBilling({ billingMonths: e.target.value.replace(/\D/g, "").slice(0, 3) })} />
+            )}
+          </div>
+          <div className="space-y-2">
+            <DatePicker id="subscription-end" label={isDemo ? "La prueba termina el" : "Vence el"} required value={ymdToDate(form.periodEndsAt)} onChange={(d) => setForm({ ...form, periodEndsAt: dateToYmd(d) })} clearable={false} />
+            {!isDemo && months > 0 && (
+              <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => setForm({ ...form, periodEndsAt: addMonthsYmd(form.periodEndsAt, months) })}>
+                Renovar: sumar {months === 1 ? "1 mes" : `${months} meses`}
+              </Button>
+            )}
+          </div>
           <FormCombobox
             id="subscription-status"
             label="Estado"
@@ -480,7 +538,7 @@ function SubscriptionDialog({ org, plans, onClose, onSaved }: { org: Org; plans:
         <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
           <p className="text-sm font-semibold">Registrar pago</p>
           {isDemo && <p className="rounded-lg bg-info/10 px-3 py-2 text-xs text-info-ink">Es una empresa demo: no se cobra. Cuando contrate, desactiva «Empresa demo», guarda y registra su primer pago.</p>}
-          <InputGroupField required label="Importe" type="number" leftIcon={<Wallet className="size-4" />} value={payment.amount} placeholder={String(total)} onChange={(e) => setPayment({ ...payment, amount: e.target.value })} />
+          <InputGroupField required label="Importe" type="number" leftIcon={<Wallet className="size-4" />} value={payment.amount} placeholder={String(total * (months || 1))} onChange={(e) => setPayment({ ...payment, amount: e.target.value })} />
           <InputGroupField label="Referencia" leftIcon={<Receipt className="size-4" />} value={payment.reference} onChange={(e) => setPayment({ ...payment, reference: e.target.value })} />
           <Button variant="outline" className="w-full" onClick={() => void pay()} disabled={busy || isDemo}>
             Registrar pago y desbloquear
